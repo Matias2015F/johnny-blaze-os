@@ -1,13 +1,18 @@
 import React from "react";
-import { PlusCircle, Clock, History, TrendingUp, Wrench } from "lucide-react";
+import { PlusCircle, Clock, History, LogOut } from "lucide-react";
+import { auth } from "../firebase.js";
 
-export default function HomeView({ stats, setView, bikes, loadDemoData, clearAllData }) {
+export default function HomeView({ stats, setView, bikes, loadDemoData, clearAllData, handleLogout }) {
   return (
     <div className="p-4 space-y-5 pb-28 text-left animate-in fade-in duration-500">
       <header className="bg-slate-900 border border-slate-800 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
+        <button onClick={handleLogout} className="absolute top-5 right-5 p-3 bg-white/10 rounded-2xl text-orange-500 active:scale-90 transition-all z-20">
+          <LogOut size={18} />
+        </button>
         <div className="relative z-10 text-left font-bold">
-          <p className="text-orange-500 font-black text-xs uppercase tracking-[0.4em] mb-2">Taller OS</p>
-          <h1 className="text-4xl font-black text-white tracking-tighter leading-none mb-6">JOHNNY BLAZE</h1>
+          <p className="text-orange-500 font-black text-xs uppercase tracking-[0.4em] mb-1">Taller OS</p>
+          <h1 className="text-4xl font-black text-white tracking-tighter leading-none mb-1">JOHNNY BLAZE</h1>
+          <p className="text-[10px] text-slate-400 font-normal mb-5">{auth.currentUser?.email}</p>
           <div className="grid grid-cols-3 gap-3">
             {[
               ["Activas", stats.activas, "text-orange-500"],
