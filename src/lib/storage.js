@@ -1,4 +1,3 @@
-// Capa de persistencia: LocalStorage con sincronización por eventos
 import { useState, useEffect } from "react";
 
 const appId = "johnny-blaze-os";
@@ -16,16 +15,26 @@ export const LS = {
     localStorage.setItem(LS.key(col), JSON.stringify(arr));
     window.dispatchEvent(new CustomEvent("ls_update", { detail: col }));
   },
+  getDoc: (col, id) => LS.getAll(col).find((d) => d.id === id) || null,
+  setDoc: (col, id, data) => {
+    const arr = LS.getAll(col).filter((d) => d.id !== id);
+    arr.push({ id, ...data });
+    LS.save(col, arr);
+    return { id };
+  },
   addDoc: (col, data) => {
     const id = generateId();
     const arr = LS.getAll(col);
-    const newDoc = { id, ...data };
-    arr.push(newDoc);
+    arr.push({ id, ...data });
     LS.save(col, arr);
-    return newDoc;
+    return { id };
   },
   updateDoc: (col, id, data) => {
-    const arr = LS.getAll(col).map(d => d.id === id ? { ...d, ...data } : d);
+    const arr = LS.getAll(col).map((d) => (d.id === id ? { ...d, ...data } : d));
+    LS.save(col, arr);
+  },
+  deleteDoc: (col, id) => {
+    const arr = LS.getAll(col).filter((d) => d.id !== id);
     LS.save(col, arr);
   },
 };

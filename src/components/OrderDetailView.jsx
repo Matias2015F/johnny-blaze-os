@@ -1,104 +1,196 @@
-import React, { useState } from "react";
-import { ArrowLeft, Plus, Check, ShieldCheck } from "lucide-react";
+import React from "react";
+import { ArrowLeft, Wrench, DollarSign, FileText, MessageSquare, Truck, Trash2, Edit2, Activity, ShieldCheck } from "lucide-react";
 import { LS } from "../lib/storage.js";
-import { formatMoney, formatMoneyInput, parseMonto } from "../utils/format.js";
+import { ESTADO_LABEL, ESTADO_CSS } from "../lib/constants.js";
+import { calcularResultadosOrden, generarMensajePresupuesto } from "../lib/calc.js";
+import { formatMoney } from "../utils/format.js";
 
-export default function OrderDetailView({ order, setView, showToast, configGlobal }) {
-  const [nuevaTarea, setNuevaTarea] = useState("");
-  const [tiempoTarea, setTiempoTarea] = useState("");
-  const [costoRepuestos, setCostoRepuestos] = useState("");
-
-  const tareas = order.tareas || [];
-
-  const totalCostos = configGlobal?.gastos?.reduce((acc, g) => acc + (Number(g.monto) || 0), 0) || 0;
-  const ganancia = Number(configGlobal?.objetivos?.gananciaDeseada) || 0;
-  const horasCapacidad = Number(configGlobal?.objetivos?.horasMes) || 1;
-  const valorHoraTaller = (totalCostos + ganancia) / horasCapacidad;
-
-  const addTarea = () => {
-    if (!nuevaTarea) return;
-    const hs = Number(tiempoTarea.replace(",", ".")) || 0;
-    const rep = parseMonto(costoRepuestos) || 0;
-    const subtotalManoObra = hs * valorHoraTaller;
-
-    const actualizadas = [
-      ...tareas,
-      { id: Date.now(), texto: nuevaTarea, horas: hs, repuestos: rep, total: subtotalManoObra + rep, check: false },
-    ];
-
-    LS.updateDoc("ordenes", order.id, { tareas: actualizadas });
-    setNuevaTarea("");
-    setTiempoTarea("");
-    setCostoRepuestos("");
-    showToast("Tarea añadida");
-  };
-
-  const toggleTarea = (id) => {
-    const actualizadas = tareas.map(t => t.id === id ? { ...t, check: !t.check } : t);
-    LS.updateDoc("ordenes", order.id, { tareas: actualizadas });
-  };
+export default function OrderDetailView({ order, clients, bikes, setView, showToast, setServiceToEdit }) {
+  if (!order) return null;
+  const b = bikes.find((x) => x.id === order.bikeId) || {};
+  const c = clients.find((x) => x.id === order.clientId) || {};
+  const res = calcularResultadosOrden(order);
+  const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
+  const saldoPendiente = res.total - totalPagado;
+  const isLocked = !!order.pdfEntregado;
 
   const cambiarEstado = (nuevo) => {
+    if (isLocked) { showToast("Orden bloqueada (PDF enviado)"); return; }
     LS.updateDoc("ordenes", order.id, { estado: nuevo });
-    showToast(`Estado: ${nuevo}`);
-    if (nuevo === "entregada") setView("ordenes");
+    showToast(`Estado: ${ESTADO_LABEL[nuevo]} ✓`);
   };
 
-  const totalOrden = tareas.reduce((acc, t) => acc + (t.total || 0), 0);
+  const eliminarItem = (lista, index) => {
+    if (isLocked) { showToast("Orden bloqueada"); return; }
+    const nuevaLista = [...(order[lista] || [])];
+    nuevaLista.splice(index, 1);
+    const t = lista === "tareas" ? nuevaLista : order.tareas;
+    const r = lista === "repuestos" ? nuevaLista : order.repuestos;
+    const f = lista === "fletes" ? nuevaLista : order.fletes;
+    const nTotal = (t || []).reduce((s, x) => s + (x.monto || 0), 0) +
+      (r || []).reduce((s, x) => s + ((x.monto || 0) * (x.cantidad || 1)), 0) +
+      (f || []).reduce((s, x) => s + (x.monto || 0), 0);
+    LS.updateDoc("ordenes", order.id, { [lista]: nuevaLista, total: nTotal });
+    showToast("Eliminado ✓");
+  };
+
+  const copiarPresupuesto = () => {
+    const msg = generarMensajePresupuesto(order, b, c);
+    navigator.clipboard?.writeText(msg).catch(() => {
+      const ta = document.createElement("textarea");
+      ta.value = msg;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    });
+    showToast("Presupuesto copiado ✓");
+  };
 
   return (
-    <div className="p-4 space-y-6 pb-28 text-left animate-in slide-in-from-right duration-500">
-      <div className="flex items-center justify-between mb-2">
-        <button onClick={() => setView("ordenes")} className="p-4 bg-white/5 border border-white/10 rounded-2xl text-white active:scale-95"><ArrowLeft size={20} /></button>
-        <div className="text-right">
-          <p className="text-2xl font-black text-white uppercase italic leading-none text-right">{order.patente}</p>
-          <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest text-right">{order.modelo}</p>
+    <div className="min-h-screen bg-slate-100 text-left animate-in slide-in-from-right duration-300 pb-32">
+      <div className="bg-slate-900 p-8 text-white">
+        <button onClick={() => setView("ordenes")} className="mb-6 text-orange-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
+          <ArrowLeft size={16} /> Volver
+        </button>
+        <div className="flex justify-between items-start">
+          <div className="text-left font-bold">
+            <div className="flex items-center gap-3">
+              <h2 className="text-4xl font-black tracking-tighter leading-none">{b?.patente || "---"}</h2>
+              {isLocked && <ShieldCheck className="text-blue-500" size={24} />}
+            </div>
+            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{c?.nombre || "Cliente Desconocido"}</p>
+            <div className="flex gap-2 items-center mt-3">
+              <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${ESTADO_CSS[order.estado]}`}>
+                {ESTADO_LABEL[order.estado]}
+              </div>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1">Precio Cliente</p>
+            <p className="text-3xl font-black tracking-tighter">{formatMoney(res.total)}</p>
+          </div>
         </div>
       </div>
 
-      <div className="bg-green-600 p-8 rounded-[2.5rem] shadow-xl text-white text-left">
-        <p className="text-white/60 text-[10px] font-black uppercase tracking-widest mb-1 leading-none text-left">Presupuesto Acumulado</p>
-        <h2 className="text-5xl font-black tracking-tighter text-left">{formatMoney(totalOrden)}</h2>
-      </div>
+      <div className="p-6 space-y-6">
+        {isLocked && (
+          <div className="bg-blue-50 border-2 border-blue-200 p-4 rounded-3xl flex items-center gap-3">
+            <div className="bg-blue-500 p-2 rounded-xl text-white"><ShieldCheck size={20} /></div>
+            <p className="text-[10px] font-black text-blue-700 uppercase leading-tight">Orden BLOQUEADA — ya generaste un PDF. No se pueden editar tareas ni montos.</p>
+          </div>
+        )}
 
-      <div className="bg-[#151515] p-8 rounded-[2.5rem] border border-white/5 space-y-6 shadow-2xl">
-        <div className="grid grid-cols-3 gap-2 text-left">
-          {['diagnostico', 'reparacion', 'lista'].map(e => (
-            <button key={e} onClick={() => cambiarEstado(e)} className={`p-3 rounded-xl text-[8px] font-black uppercase transition-all ${order.estado === e ? 'bg-orange-600 text-white shadow-lg' : 'bg-black text-slate-500 border border-white/10'}`}>
-              {e}
-            </button>
-          ))}
-        </div>
-
-        <div className="space-y-3 pt-4 border-t border-white/5 text-left">
-          <input className="w-full bg-black border border-white/10 p-4 rounded-2xl text-white text-sm outline-none" placeholder="Tarea..." value={nuevaTarea} onChange={e => setNuevaTarea(e.target.value)} />
-          <div className="flex gap-2">
-            <input className="flex-1 bg-black border border-white/10 p-4 rounded-2xl text-white text-sm outline-none font-bold" placeholder="Horas" inputMode="decimal" value={tiempoTarea} onChange={e => setTiempoTarea(e.target.value)} />
-            <input className="flex-1 bg-black border border-white/10 p-4 rounded-2xl text-white text-sm outline-none font-bold" placeholder="Repuestos $" inputMode="numeric" value={formatMoneyInput(costoRepuestos)} onChange={e => setCostoRepuestos(e.target.value)} />
-            <button onClick={addTarea} className="p-4 bg-orange-600 rounded-2xl text-white active:scale-90"><Plus size={24} /></button>
+        <div className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-200 shadow-sm grid grid-cols-2 gap-y-6 gap-x-4">
+          <div className="text-left font-bold">
+            <p className="text-[10px] font-black uppercase text-slate-400 leading-none mb-1">A Cobrar</p>
+            <p className="text-2xl font-black text-slate-900 tracking-tighter">{formatMoney(res.total)}</p>
+          </div>
+          <div className="text-right border-l border-slate-100 pl-4 font-bold">
+            <p className="text-[10px] font-black uppercase text-orange-500 leading-none mb-1">Saldo</p>
+            <p className={`text-2xl font-black tracking-tighter ${saldoPendiente > 0 ? "text-red-600" : "text-slate-400"}`}>
+              {formatMoney(saldoPendiente)}
+            </p>
+            {totalPagado > 0 && <p className="text-[8px] text-green-600 uppercase font-black">Seña: {formatMoney(totalPagado)} ✓</p>}
+          </div>
+          <div className="border-t border-slate-100 pt-4 text-left font-bold">
+            <p className="text-[10px] font-black uppercase text-slate-400 leading-none mb-1">Costo Interno</p>
+            <p className="text-xl font-black text-slate-500 tracking-tighter">{formatMoney(res.costoInterno)}</p>
+          </div>
+          <div className="text-right border-l border-slate-100 pl-4 border-t border-slate-100 pt-4 font-bold">
+            <p className="text-[10px] font-black uppercase text-slate-400 leading-none mb-1">Rentabilidad</p>
+            <div className="flex items-center justify-end gap-2">
+              <p className={`text-2xl font-black tracking-tighter ${res.rentabilidad < 25 ? "text-red-600" : "text-blue-600"}`}>
+                {Math.round(res.rentabilidad)}%
+              </p>
+              <Activity size={16} className={res.rentabilidad < 25 ? "text-red-500 animate-pulse" : "text-blue-500"} />
+            </div>
           </div>
         </div>
 
-        <div className="space-y-2">
-          {tareas.map(t => (
-            <div key={t.id} onClick={() => toggleTarea(t.id)} className={`p-4 rounded-2xl border transition-all text-left ${t.check ? 'bg-green-900/10 border-green-500/30' : 'bg-black border-white/10'}`}>
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-3">
-                  <div className={`p-1 rounded-md ${t.check ? 'bg-green-500 text-black' : 'border border-white/20 text-transparent'}`}><Check size={12} /></div>
-                  <p className={`text-sm font-bold ${t.check ? 'text-green-500 line-through' : 'text-white'}`}>{t.texto}</p>
-                </div>
-                <p className="text-xs font-black text-white/40">{formatMoney(t.total)}</p>
-              </div>
-              <div className="ml-8 mt-1 text-[9px] text-slate-500 uppercase font-bold text-left italic">
-                {t.horas} hs mano de obra + {formatMoney(t.repuestos)} repuestos
-              </div>
-            </div>
-          ))}
+        {order.estado !== "entregada" && !isLocked && (
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {order.estado === "diagnostico" && <button onClick={() => cambiarEstado("presupuesto")} className="bg-purple-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Pasar a Presupuesto</button>}
+            {order.estado === "presupuesto" && <button onClick={() => cambiarEstado("aprobacion")} className="bg-yellow-500 text-black px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Esperando Aprobación</button>}
+            {order.estado === "aprobacion" && <button onClick={() => cambiarEstado("reparacion")} className="bg-blue-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Iniciar Reparación</button>}
+            {order.estado === "reparacion" && <button onClick={() => cambiarEstado("finalizada")} className="bg-green-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Finalizar Trabajo</button>}
+            {order.estado === "finalizada" && <button onClick={() => cambiarEstado("entregada")} className="bg-black text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Marcar Entregado</button>}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={copiarPresupuesto} className="bg-slate-900 text-white py-5 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
+            <MessageSquare size={16} /> Copiar Presup.
+          </button>
+          <button onClick={() => setView("prePdf")} className="bg-red-600 text-white py-5 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
+            <FileText size={16} /> Generar PDF
+          </button>
         </div>
 
-        <button onClick={() => cambiarEstado('entregada')} className="w-full bg-green-600 text-white p-6 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 active:scale-95 shadow-lg">
-          <ShieldCheck size={20} /> Entregar y Finalizar
-        </button>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center px-2">
+            <h3 className="text-xs font-black uppercase text-slate-400 tracking-tighter">Resumen del Trabajo</h3>
+            {!isLocked && (
+              <button onClick={() => setView("logistica")} className="text-[10px] font-black uppercase text-orange-600 flex items-center gap-1 active:scale-90">
+                <Truck size={14} /> + Logística
+              </button>
+            )}
+          </div>
+          <div className="space-y-2">
+            {res.tareasAnalizadas?.map((t, idx) => (
+              <div key={idx} className={`flex items-center p-4 rounded-2xl border-2 shadow-sm transition-all ${t.perdida ? "border-red-300 bg-red-50" : "border-slate-100 bg-white"}`}>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[9px] font-black uppercase tracking-tighter ${t.perdida ? "text-red-600" : "text-orange-500"}`}>
+                    {t.perdida ? "⚠️ REVISAR: BAJA RENTABILIDAD" : "Mano de Obra"}
+                  </p>
+                  <p className="text-sm font-black text-slate-800 truncate pr-2 leading-none mt-1 uppercase">{t.nombre}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className={`text-sm font-black mr-1 ${t.perdida ? "text-red-700" : "text-slate-900"}`}>{formatMoney(t.monto)}</p>
+                  {!isLocked && (
+                    <>
+                      <button onClick={() => { setServiceToEdit(t); setView("gestionarTareas"); }} className="p-2.5 text-blue-500 bg-blue-50 rounded-xl active:scale-90"><Edit2 size={16} /></button>
+                      <button onClick={() => eliminarItem("tareas", idx)} className="p-2.5 text-red-500 bg-red-50 rounded-xl active:scale-90"><Trash2 size={16} /></button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+            {order.repuestos?.map((t, idx) => (
+              <div key={idx} className="flex items-center gap-2 bg-blue-50/30 p-4 rounded-2xl border border-blue-100 shadow-sm">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-0.5">Repuesto</p>
+                  <p className="text-sm font-bold text-blue-900 leading-tight uppercase truncate">{t.cantidad > 1 ? `${t.cantidad}x ` : ""}{t.nombre}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-black text-blue-600 mr-2">{formatMoney(t.monto * (t.cantidad || 1))}</p>
+                  {!isLocked && <button onClick={() => eliminarItem("repuestos", idx)} className="p-2 text-blue-200 active:text-red-500 transition-colors"><Trash2 size={18} /></button>}
+                </div>
+              </div>
+            ))}
+            {order.fletes?.map((t, idx) => (
+              <div key={idx} className="flex items-center gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm">
+                <Truck size={14} className="text-slate-400" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-700 leading-tight uppercase truncate">{t.nombre}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-black text-slate-900 mr-2">{formatMoney(t.monto)}</p>
+                  {!isLocked && <button onClick={() => eliminarItem("fletes", idx)} className="p-2 text-slate-300 active:text-red-500 transition-colors"><Trash2 size={18} /></button>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <button disabled={isLocked} onClick={() => setView("gestionarTareas")} className={`py-5 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-sm flex items-center justify-center gap-2 active:scale-95 transition-all ${isLocked ? "bg-slate-50 text-slate-300" : "bg-slate-200 text-slate-900"}`}>
+            <Wrench size={14} /> Editar Tareas
+          </button>
+          <button onClick={() => setView("pagos")} className="bg-green-600 text-white py-5 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
+            <DollarSign size={14} /> Cobrar
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,7 +1,5 @@
-// 🇦🇷 Formateadores argentinos — utilidades puras de formato numérico
-
 export const formatMoney = (monto) =>
-  `$ ${Math.round(monto || 0).toLocaleString("es-AR")}`;
+  `$${Math.round(monto || 0).toLocaleString("es-AR")}`;
 
 export const formatMoneyInput = (val) => {
   if (val === "" || val === 0 || val === "0") return "";
@@ -14,7 +12,11 @@ export const formatQtyInput = (val) => {
   return String(val).replace(/\D/g, "");
 };
 
-export const parseMonto = (val) => {
-  const clean = String(val).replace(/\./g, "");
-  return clean === "" ? "" : Number(clean);
+// Soporta formato argentino con puntos de miles y coma decimal
+export const parseMonto = (valor) => {
+  if (typeof valor === "number") return valor;
+  if (!valor) return 0;
+  const limpio = valor.toString().replace(/\./g, "").replace(",", ".");
+  const n = parseFloat(limpio);
+  return isNaN(n) ? 0 : n;
 };
