@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
-import { Wrench, Clock, History, TrendingUp } from "lucide-react";
+import { Wrench, Clock, History, TrendingUp, DollarSign } from "lucide-react";
 
 import { LS, useCollection, generateId } from "./lib/storage.js";
 import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
@@ -12,6 +12,7 @@ import NewOrderView from "./views/NewOrderView.jsx";
 import ConfigView from "./views/ConfigView.jsx";
 import HistoryView from "./views/HistoryView.jsx";
 import BikeProfileView from "./views/BikeProfileView.jsx";
+import PreciosView from "./views/PreciosView.jsx";
 
 import OrderDetailView from "./components/OrderDetailView.jsx";
 import TaskManagerView from "./components/TaskManagerView.jsx";
@@ -20,7 +21,7 @@ import PaymentView from "./components/PaymentView.jsx";
 import PrePdfView from "./components/PrePdfView.jsx";
 import ExportPdfView from "./components/ExportPdfView.jsx";
 
-const NAV_VIEWS = ["home", "ordenes", "historial", "config"];
+const NAV_VIEWS = ["home", "ordenes", "historial", "precios", "config"];
 
 export default function TallerPanel() {
   const [view, setView] = useState("home");
@@ -159,12 +160,13 @@ export default function TallerPanel() {
           extraData={finalPdfData}
         />
       )}
+      {view === "precios" && <PreciosView setView={setView} />}
       {view === "config" && <ConfigView setView={setView} showToast={showToast} />}
       {view === "historial" && <HistoryView orders={orders} bikes={bikes} clients={clients} setView={setView} setSelectedBikeId={setSelectedBikeId} />}
       {view === "perfilMoto" && <BikeProfileView bikeId={selectedBikeId} orders={orders} bikes={bikes} clients={clients} setView={setView} handleStartNewService={handleStartNewService} />}
 
       {NAV_VIEWS.includes(view) && (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-black/95 backdrop-blur-3xl border-t border-white/10 p-5 flex justify-around items-center z-50 rounded-t-[3rem] shadow-2xl">
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-black/95 backdrop-blur-3xl border-t border-white/10 px-2 py-4 flex justify-around items-center z-50 rounded-t-[3rem] shadow-2xl">
           <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "home" ? "text-orange-500 scale-110" : "text-slate-500"}`}>
             <Wrench size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Taller</span>
           </button>
@@ -173,6 +175,9 @@ export default function TallerPanel() {
           </button>
           <button onClick={() => setView("historial")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "historial" || view === "perfilMoto" ? "text-orange-500 scale-110" : "text-slate-500"}`}>
             <History size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Historial</span>
+          </button>
+          <button onClick={() => setView("precios")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "precios" ? "text-orange-500 scale-110" : "text-slate-500"}`}>
+            <DollarSign size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Precios</span>
           </button>
           <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "config" ? "text-orange-500 scale-110" : "text-slate-500"}`}>
             <TrendingUp size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Balance</span>
