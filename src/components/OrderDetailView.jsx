@@ -121,31 +121,76 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           </div>
         )}
 
-        <div className="bg-white p-6 rounded-[2.5rem] border-2 border-slate-200 shadow-sm grid grid-cols-2 gap-y-6 gap-x-4">
-          <div className="text-left font-bold">
-            <p className="text-[10px] font-black uppercase text-slate-400 leading-none mb-1">A Cobrar</p>
-            <p className="text-2xl font-black text-slate-900 tracking-tighter">{formatMoney(res.total)}</p>
+        <div className="bg-white rounded-[2rem] border-2 border-slate-200 shadow-sm p-5 space-y-3">
+          {/* Cabecera columnas */}
+          <div className="grid grid-cols-4 text-[8px] font-black text-slate-400 uppercase tracking-widest pb-1 border-b border-slate-100">
+            <span></span>
+            <span className="text-right">Cobrado</span>
+            <span className="text-right">Costo</span>
+            <span className="text-right">Margen</span>
           </div>
-          <div className="text-right border-l border-slate-100 pl-4 font-bold">
-            <p className="text-[10px] font-black uppercase text-blue-500 leading-none mb-1">Saldo</p>
-            <p className={`text-2xl font-black tracking-tighter ${saldoPendiente > 0 ? "text-red-600" : "text-slate-400"}`}>
-              {formatMoney(saldoPendiente)}
-            </p>
-            {totalPagado > 0 && <p className="text-[8px] text-green-600 uppercase font-black">Seña: {formatMoney(totalPagado)} ✓</p>}
-          </div>
-          <div className="border-t border-slate-100 pt-4 text-left font-bold">
-            <p className="text-[10px] font-black uppercase text-slate-400 leading-none mb-1">Costo Interno</p>
-            <p className="text-xl font-black text-slate-500 tracking-tighter">{formatMoney(res.costoInterno)}</p>
-          </div>
-          <div className="text-right border-l border-slate-100 pl-4 border-t border-slate-100 pt-4 font-bold">
-            <p className="text-[10px] font-black uppercase text-slate-400 leading-none mb-1">Rentabilidad</p>
-            <div className="flex items-center justify-end gap-2">
-              <p className={`text-2xl font-black tracking-tighter ${res.rentabilidad < 25 ? "text-red-600" : "text-blue-600"}`}>
-                {Math.round(res.rentabilidad)}%
-              </p>
-              <Activity size={16} className={res.rentabilidad < 25 ? "text-red-500 animate-pulse" : "text-blue-500"} />
+
+          {/* Mano de obra */}
+          {res.desglose.moCliente > 0 && (
+            <div className="grid grid-cols-4 items-center">
+              <span className="text-[9px] font-black text-slate-500 uppercase">MO</span>
+              <span className="text-right text-xs font-black text-slate-800">{formatMoney(res.desglose.moCliente)}</span>
+              <span className="text-right text-xs text-slate-400">{formatMoney(res.desglose.moCosto)}</span>
+              <span className={`text-right text-xs font-black ${res.desglose.margenMO >= 0 ? "text-green-600" : "text-red-600"}`}>{formatMoney(res.desglose.margenMO)}</span>
+            </div>
+          )}
+
+          {/* Repuestos */}
+          {res.desglose.repuestosCliente > 0 && (
+            <div className="grid grid-cols-4 items-center">
+              <span className="text-[9px] font-black text-slate-500 uppercase">Reptos</span>
+              <span className="text-right text-xs font-black text-slate-800">{formatMoney(res.desglose.repuestosCliente)}</span>
+              <span className="text-right text-xs text-slate-400">{formatMoney(res.desglose.repuestosCosto)}</span>
+              <span className={`text-right text-xs font-black ${res.desglose.margenRepuestos >= 0 ? "text-green-600" : "text-red-600"}`}>{formatMoney(res.desglose.margenRepuestos)}</span>
+            </div>
+          )}
+
+          {/* Logística */}
+          {res.desglose.logisticaCliente > 0 && (
+            <div className="grid grid-cols-4 items-center">
+              <span className="text-[9px] font-black text-slate-500 uppercase">Logíst.</span>
+              <span className="text-right text-xs font-black text-slate-800">{formatMoney(res.desglose.logisticaCliente)}</span>
+              <span className="text-right text-xs text-slate-400">{formatMoney(res.desglose.logisticaCosto)}</span>
+              <span className={`text-right text-xs font-black ${res.desglose.margenLogistica >= 0 ? "text-green-600" : "text-red-600"}`}>{formatMoney(res.desglose.margenLogistica)}</span>
+            </div>
+          )}
+
+          {/* Total */}
+          <div className="grid grid-cols-4 items-center border-t border-slate-200 pt-3">
+            <span className="text-[9px] font-black text-slate-800 uppercase">Total</span>
+            <span className="text-right text-sm font-black text-slate-900">{formatMoney(res.total)}</span>
+            <span className="text-right text-sm text-slate-400">{formatMoney(res.costoInterno)}</span>
+            <div className="text-right flex items-center justify-end gap-1">
+              <span className={`text-sm font-black ${res.rentabilidad < 25 ? "text-red-600" : "text-blue-600"}`}>{Math.round(res.rentabilidad)}%</span>
+              <Activity size={12} className={res.rentabilidad < 25 ? "text-red-500 animate-pulse" : "text-blue-500"} />
             </div>
           </div>
+
+          {/* Saldo pendiente */}
+          {saldoPendiente > 0 && (
+            <div className="bg-red-50 rounded-2xl p-3 flex justify-between items-center border border-red-100">
+              <span className="text-[9px] font-black text-red-500 uppercase">Saldo pendiente</span>
+              <span className="text-sm font-black text-red-600">{formatMoney(saldoPendiente)}</span>
+            </div>
+          )}
+          {totalPagado > 0 && saldoPendiente <= 0 && (
+            <div className="bg-green-50 rounded-2xl p-3 flex justify-between items-center border border-green-100">
+              <span className="text-[9px] font-black text-green-600 uppercase">Pagado completo</span>
+              <span className="text-sm font-black text-green-600">{formatMoney(totalPagado)} ✓</span>
+            </div>
+          )}
+
+          {/* Advertencia si repuestos sin costo cargado */}
+          {res.sinCostoCargado && res.desglose.repuestosCliente > 0 && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-3">
+              <p className="text-[8px] font-black text-yellow-700 uppercase tracking-wide">⚠️ Repuestos sin precio de costo — el margen real puede ser mayor</p>
+            </div>
+          )}
         </div>
 
         {order.estado !== "entregada" && !isLocked && (

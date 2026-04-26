@@ -28,11 +28,29 @@ export const calcularResultadosOrden = (order) => {
   const costoFletes = (order.fletes || []).reduce((s, f) => s + (f.monto || 0), 0);
   const costoMO = (order.tareas || []).reduce((s, t) => s + ((t.horasReal || t.horasBase || 0) * vHoraInt), 0);
 
+  const moCliente          = (order.tareas    || []).reduce((s, t) => s + (t.monto || 0), 0);
+  const repuestosCliente   = (order.repuestos || []).reduce((s, r) => s + ((r.monto || 0) * (r.cantidad || 1)), 0);
+  const logisticaCliente   = (order.fletes    || []).reduce((s, f) => s + (f.monto || 0), 0);
+  const logisticaCosto     = costoFletes + costoInsumos;
+  const sinCostoCargado    = (order.repuestos || []).some(r => !r.montoCosto);
+
   const costoInternoTotal = costoRepuestos + costoInsumos + costoFletes + costoMO;
   const margen = totalCobrado - costoInternoTotal;
   const rentabilidad = totalCobrado > 0 ? (margen / totalCobrado) * 100 : 0;
 
-  return { total: totalCobrado, costoInterno: costoInternoTotal, margen, rentabilidad, tareasAnalizadas };
+  return {
+    total: totalCobrado,
+    costoInterno: costoInternoTotal,
+    margen,
+    rentabilidad,
+    tareasAnalizadas,
+    sinCostoCargado,
+    desglose: {
+      moCliente, moCosto: costoMO, margenMO: moCliente - costoMO,
+      repuestosCliente, repuestosCosto: costoRepuestos, margenRepuestos: repuestosCliente - costoRepuestos,
+      logisticaCliente, logisticaCosto, margenLogistica: logisticaCliente - logisticaCosto,
+    },
+  };
 };
 
 export function calcularNuevoRango({ tiempoActual, costoHora, promedioHoras, desvioHoras }) {
