@@ -90,6 +90,10 @@ export default function TallerPanel() {
       margen: 0, costoInterno: 0,
       observacionesProxima: "",
       pdfEntregado: false,
+      tiempoReal: 0,
+      cronometroActivo: false,
+      inicioCronometro: null,
+      maxAutorizado: 0,
     });
 
     setSelectedOrderId(orden.id);

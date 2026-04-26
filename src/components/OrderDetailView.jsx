@@ -1,15 +1,37 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft, Wrench, DollarSign, FileText, MessageSquare, Truck, Trash2, Edit2, Activity, ShieldCheck } from "lucide-react";
 import { LS } from "../lib/storage.js";
-import { ESTADO_LABEL, ESTADO_CSS } from "../lib/constants.js";
-import { calcularResultadosOrden, generarMensajePresupuesto } from "../lib/calc.js";
+import { ESTADO_LABEL, ESTADO_CSS, CONFIG_DEFAULT } from "../lib/constants.js";
+import { calcularResultadosOrden, generarMensajePresupuesto, evaluarEstado } from "../lib/calc.js";
+import { iniciarCronometro, pausarCronometro, obtenerTiempoActual, formatTiempo } from "../lib/timer.js";
+import { mensajeBloqueo, abrirWhatsApp } from "../lib/messages.js";
 import { formatMoney } from "../utils/format.js";
 
 export default function OrderDetailView({ order, clients, bikes, setView, showToast, setServiceToEdit }) {
+  const [tiempoActual, setTiempoActual] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setTiempoActual(obtenerTiempoActual(order)), 1000);
+    return () => clearInterval(id);
+  }, [order]);
+
   if (!order) return null;
   const b = bikes.find((x) => x.id === order.bikeId) || {};
   const c = clients.find((x) => x.id === order.clientId) || {};
+  const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const res = calcularResultadosOrden(order);
+  const { estadoCron, costoActual } = evaluarEstado({
+    tiempoHoras: tiempoActual,
+    valorHora: config.valorHoraCliente || 15000,
+    maxAutorizado: order.maxAutorizado || 0,
+  });
+
+  const handleStart = () => LS.updateDoc("ordenes", order.id, iniciarCronometro(order));
+  const handlePause = () => LS.updateDoc("ordenes", order.id, pausarCronometro(order));
+  const handleSetMax = () => {
+    const val = prompt("Máximo autorizado por el cliente ($):");
+    if (val && !isNaN(val) && Number(val) > 0) LS.updateDoc("ordenes", order.id, { maxAutorizado: Number(val) });
+  };
   const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
   const saldoPendiente = res.total - totalPagado;
   const isLocked = !!order.pdfEntregado;
@@ -115,6 +137,70 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             {order.estado === "aprobacion" && <button onClick={() => cambiarEstado("reparacion")} className="bg-blue-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Iniciar Reparación</button>}
             {order.estado === "reparacion" && <button onClick={() => cambiarEstado("finalizada")} className="bg-green-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Finalizar Trabajo</button>}
             {order.estado === "finalizada" && <button onClick={() => cambiarEstado("entregada")} className="bg-black text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Marcar Entregado</button>}
+          </div>
+        )}
+
+        {order.estado === "reparacion" && (
+          <div className="bg-slate-900 rounded-3xl p-5 space-y-4">
+            <div className="flex justify-between items-center">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cronómetro</p>
+              <p className="text-2xl font-black text-white font-mono tracking-widest">{formatTiempo(tiempoActual)}</p>
+            </div>
+
+            <div className="bg-slate-800 rounded-2xl p-4 flex justify-between items-center">
+              <p className="text-[10px] font-black text-slate-400 uppercase">Costo actual</p>
+              <p className="text-lg font-black text-orange-400">{formatMoney(costoActual)}</p>
+            </div>
+
+            {order.maxAutorizado > 0 && (() => {
+              const pct = Math.min((costoActual / order.maxAutorizado) * 100, 100);
+              return (
+                <div>
+                  <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase mb-1.5">
+                    <span>Progreso</span>
+                    <span>{Math.round(pct)}% de {formatMoney(order.maxAutorizado)}</span>
+                  </div>
+                  <div className="bg-slate-700 rounded-full h-2.5">
+                    <div className={`h-2.5 rounded-full transition-all ${pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-yellow-400" : "bg-orange-500"}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {estadoCron === "ALERTA" && (
+              <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-2xl p-3 text-center">
+                <p className="text-yellow-400 font-black text-[10px] uppercase tracking-wider">⚠️ Cerca del límite autorizado</p>
+              </div>
+            )}
+
+            {estadoCron === "BLOQUEADO" && (
+              <div className="bg-red-500/10 border border-red-500/50 rounded-2xl p-4 space-y-3">
+                <p className="text-red-400 font-black text-[10px] uppercase tracking-wider text-center">⛔ Límite superado — avisá al cliente</p>
+                <button
+                  onClick={() => abrirWhatsApp(c.tel, mensajeBloqueo(b, c, costoActual))}
+                  className="w-full bg-green-600 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+                >
+                  Enviar WhatsApp
+                </button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={handleStart} disabled={order.cronometroActivo}
+                className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${order.cronometroActivo ? "bg-slate-700 text-slate-500" : "bg-green-600 text-white"}`}>
+                ▶ Iniciar
+              </button>
+              <button onClick={handlePause} disabled={!order.cronometroActivo}
+                className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${!order.cronometroActivo ? "bg-slate-700 text-slate-500" : "bg-orange-500 text-white"}`}>
+                ⏸ Pausar
+              </button>
+            </div>
+
+            {!order.maxAutorizado && (
+              <button onClick={handleSetMax} className="w-full border border-slate-700 text-slate-500 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider active:scale-95 transition-all">
+                + Definir máx. autorizado
+              </button>
+            )}
           </div>
         )}
 

@@ -1,5 +1,24 @@
 import { LS } from "./storage.js";
 
+const LS_KEY_APR = "jbos_aprendizaje";
+
+export function guardarAprendizaje({ tipo, cilindrada, tiempoReal }) {
+  const key = `${tipo.toUpperCase()}_${cilindrada}`;
+  let data = {};
+  try { data = JSON.parse(localStorage.getItem(LS_KEY_APR) || "{}"); } catch { /* */ }
+  data[key] = data[key]
+    ? { promedio: data[key].promedio * 0.8 + tiempoReal * 0.2, muestras: data[key].muestras + 1 }
+    : { promedio: tiempoReal, muestras: 1 };
+  localStorage.setItem(LS_KEY_APR, JSON.stringify(data));
+}
+
+export function obtenerAprendizaje(tipo, cilindrada) {
+  try {
+    const data = JSON.parse(localStorage.getItem(LS_KEY_APR) || "{}");
+    return data[`${tipo.toUpperCase()}_${cilindrada}`] || null;
+  } catch { return null; }
+}
+
 const COL = "precioHistorial";
 
 export function registrarPrecio({ tarea, precio, cilindrada, modelo = "", marca = "", tipoMotor = "", tiempo = null }) {

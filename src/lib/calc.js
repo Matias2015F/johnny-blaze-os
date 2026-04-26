@@ -35,6 +35,14 @@ export const calcularResultadosOrden = (order) => {
   return { total: totalCobrado, costoInterno: costoInternoTotal, margen, rentabilidad, tareasAnalizadas };
 };
 
+export function evaluarEstado({ tiempoHoras, valorHora, maxAutorizado }) {
+  if (!maxAutorizado) return { estadoCron: "NORMAL", costoActual: tiempoHoras * valorHora };
+  const costoActual = tiempoHoras * valorHora;
+  if (costoActual >= maxAutorizado) return { estadoCron: "BLOQUEADO", costoActual };
+  if (costoActual >= maxAutorizado * 0.8) return { estadoCron: "ALERTA", costoActual };
+  return { estadoCron: "NORMAL", costoActual };
+}
+
 export const generarMensajePresupuesto = (order, bike, client) => {
   return `Hola ${client.nombre || "cliente"}.
 Te paso el presupuesto estimado de tu moto ${bike.marca || ""} ${bike.modelo || ""} (${bike.patente || "---"}).
