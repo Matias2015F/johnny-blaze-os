@@ -2,11 +2,12 @@ import { LS } from "./storage.js";
 import { CONFIG_DEFAULT } from "./constants.js";
 import { formatMoney } from "../utils/format.js";
 
-export const calcularNuevoTotal = (tareas = [], repuestos = [], fletes = []) => {
+export const calcularNuevoTotal = (tareas = [], repuestos = [], fletes = [], insumos = []) => {
   const t = tareas.reduce((s, x) => s + (x.monto || 0), 0);
   const r = repuestos.reduce((s, x) => s + ((x.monto || 0) * (x.cantidad || 1)), 0);
   const f = fletes.reduce((s, x) => s + (x.monto || 0), 0);
-  return t + r + f;
+  const i = insumos.reduce((s, x) => s + (x.monto || 0), 0);
+  return t + r + f + i;
 };
 
 export const calcularResultadosOrden = (order) => {
@@ -17,15 +18,16 @@ export const calcularResultadosOrden = (order) => {
   const moCliente        = (order.tareas    || []).reduce((s, t) => s + (t.monto || 0), 0);
   const repuestosCliente = (order.repuestos || []).reduce((s, r) => s + ((r.monto || 0) * (r.cantidad || 1)), 0);
   const fletesCliente    = (order.fletes    || []).reduce((s, f) => s + (f.monto || 0), 0);
-  const totalCobrado     = moCliente + repuestosCliente + fletesCliente;
+  const insumosCliente   = (order.insumos   || []).reduce((s, i) => s + (i.monto || 0), 0);
+  const totalCobrado     = moCliente + repuestosCliente + fletesCliente + insumosCliente;
 
   // ── Costo interno (lo que sale de caja) ──────────────────────
-  const moCosto          = (order.tareas    || []).reduce((s, t) => s + ((t.horasReal || t.horasBase || 0) * vHoraInt), 0);
-  const repuestosCosto   = (order.repuestos || []).reduce((s, r) => s + ((r.montoCosto || r.monto || 0) * (r.cantidad || 1)), 0);
-  const fletesCosto      = (order.fletes    || []).reduce((s, f) => s + ((f.montoCosto || f.monto || 0)), 0);
-  const insumosOverhead  = (order.insumos   || []).reduce((s, i) => s + (i.monto || 0), 0); // no se cobra, es gasto operativo
+  const moCosto        = (order.tareas    || []).reduce((s, t) => s + ((t.horasReal || t.horasBase || 0) * vHoraInt), 0);
+  const repuestosCosto = (order.repuestos || []).reduce((s, r) => s + ((r.montoCosto || r.monto || 0) * (r.cantidad || 1)), 0);
+  const fletesCosto    = (order.fletes    || []).reduce((s, f) => s + ((f.montoCosto || f.monto || 0)), 0);
+  const insumosCosto   = insumosCliente; // se cobran al cliente al mismo precio que cuestan
 
-  const costoInternoTotal = moCosto + repuestosCosto + fletesCosto + insumosOverhead;
+  const costoInternoTotal = moCosto + repuestosCosto + fletesCosto + insumosCosto;
 
   // ── Resultado ─────────────────────────────────────────────────
   const margen       = totalCobrado - costoInternoTotal;
@@ -46,12 +48,10 @@ export const calcularResultadosOrden = (order) => {
     tareasAnalizadas,
     sinCostoCargado,
     desglose: {
-      // Cada categoría: cobrado / costo / margen — simétrico y consistente
       moCliente,        moCosto,        margenMO:        moCliente        - moCosto,
       repuestosCliente, repuestosCosto, margenRepuestos: repuestosCliente - repuestosCosto,
       fletesCliente,    fletesCosto,    margenFletes:    fletesCliente    - fletesCosto,
-      // Insumos: gasto operativo puro, no facturado al cliente
-      insumosOverhead,
+      insumosCliente,   insumosCosto,   margenInsumos:   0, // se cobran al costo, sin markup
     },
   };
 };

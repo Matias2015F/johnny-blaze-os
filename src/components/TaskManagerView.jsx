@@ -6,7 +6,7 @@ import { calcularNuevoTotal } from "../lib/calc.js";
 import { obtenerAprendizaje, evaluarConfianza } from "../lib/priceLearning.js";
 import { formatMoney, parseMonto } from "../utils/format.js";
 
-const AJUSTE_PASOS = [2000, 5000, 10000];
+const MARGEN_PASOS = [5, 10, 15, 20, 30];
 
 export default function TaskManagerView({ order, setView, showToast, serviceToEdit, setServiceToEdit }) {
   const catalogData = useCollection("serviciosCatalogo");
@@ -20,7 +20,8 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     nombre: "", horasBase: 1, dificultad: "normal", montoMO: 0, repuestos: [], insumos: [], observacionesProxima: "",
   });
   const [moBase, setMoBase] = useState(0);
-  const [sugerencia, setSugerencia] = useState(null); // { apr, confianza }
+  const [sugerencia, setSugerencia] = useState(null);
+  const [margenPct, setMargenPct] = useState(0);
 
   const calcMO = (horasBase, dificultad) => {
     const factor = (config.factorDificultad || CONFIG_DEFAULT.factorDificultad)[dificultad] || 1;
@@ -104,17 +105,22 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   };
 
   const stats = useMemo(() => {
-    const moPrecio = editForm.montoMO;
-    const moCosto = editForm.horasBase * (config.valorHoraInterno || 12000);
-    const repPrecio = editForm.repuestos.reduce((s, r) => s + (r.monto * (r.cantidad || 1)), 0);
-    const repCosto = editForm.repuestos.reduce((s, r) => s + ((r.montoCosto || r.monto) * (r.cantidad || 1)), 0);
-    const insumosCosto = editForm.insumos.reduce((s, i) => s + (i.monto || 0), 0);
-    const totalCobrar = moPrecio + repPrecio;
-    const totalCostoInterno = moCosto + repCosto + insumosCosto;
-    const margen = totalCobrar - totalCostoInterno;
-    const rentabilidad = totalCobrar > 0 ? (margen / totalCobrar) * 100 : 0;
-    return { moPrecio, moCosto, repPrecio, repCosto, insumosCosto, totalCobrar, totalCostoInterno, margen, rentabilidad };
-  }, [editForm, config]);
+    const moPrecio     = editForm.montoMO;
+    const moCosto      = editForm.horasBase * (config.valorHoraInterno || 12000);
+    const repPrecio    = editForm.repuestos.reduce((s, r) => s + ((r.monto || 0) * (r.cantidad || 1)), 0);
+    const repCosto     = editForm.repuestos.reduce((s, r) => s + ((r.montoCosto || r.monto || 0) * (r.cantidad || 1)), 0);
+    const insumosPrecio= editForm.insumos.reduce((s, i) => s + (i.monto || 0), 0); // cobrado al cliente
+    const insumosCosto = insumosPrecio; // sin markup
+
+    const totalBase        = moPrecio + repPrecio + insumosPrecio;
+    const margenExtra      = margenPct > 0 ? Math.round(totalBase * margenPct / 100) : 0;
+    const totalCobrar      = totalBase + margenExtra;
+    const totalCostoInterno= moCosto + repCosto + insumosCosto;
+    const margen           = totalCobrar - totalCostoInterno;
+    const rentabilidad     = totalCobrar > 0 ? (margen / totalCobrar) * 100 : 0;
+
+    return { moPrecio, moCosto, repPrecio, repCosto, insumosPrecio, insumosCosto, totalBase, margenExtra, totalCobrar, totalCostoInterno, margen, rentabilidad };
+  }, [editForm, config, margenPct]);
 
   const moAjustada = editForm.montoMO !== moBase && moBase > 0;
 
@@ -124,14 +130,16 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
     const idx = (order.tareas || []).findIndex((t) => t.nombre.trim().toLowerCase() === nombreTarea.toLowerCase());
     let nuevasTareas = [...(order.tareas || [])];
-    const datosTarea = { nombre: nombreTarea, monto: parseMonto(editForm.montoMO), horasBase: editForm.horasBase, horasReal: editForm.horasBase };
+    // El margen extra (%) se suma al monto de MO al guardar
+    const montoMOFinal = parseMonto(editForm.montoMO) + stats.margenExtra;
+    const datosTarea = { nombre: nombreTarea, monto: montoMOFinal, horasBase: editForm.horasBase, horasReal: editForm.horasBase };
 
     if (idx !== -1) { nuevasTareas[idx] = datosTarea; showToast("Precio actualizado ✓"); }
     else { nuevasTareas.push(datosTarea); showToast("Agregado ✓"); }
 
     const nuevosRepuestos = [...(order.repuestos || []), ...editForm.repuestos];
     const nuevosInsumos = [...(order.insumos || []), ...editForm.insumos];
-    const nTotal = calcularNuevoTotal(nuevasTareas, nuevosRepuestos, order.fletes);
+    const nTotal = calcularNuevoTotal(nuevasTareas, nuevosRepuestos, order.fletes, nuevosInsumos);
     LS.updateDoc("ordenes", order.id, {
       tareas: nuevasTareas, repuestos: nuevosRepuestos, insumos: nuevosInsumos,
       total: nTotal, observacionesProxima: editForm.observacionesProxima || order.observacionesProxima,
@@ -264,30 +272,38 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             <p className="text-5xl font-black text-white tracking-tighter leading-none">
               {formatMoney(stats.totalCobrar)}
             </p>
-            <div className="flex justify-center gap-3 text-[10px] text-slate-500 font-bold mt-2">
-              {stats.moPrecio > 0 && <span>MO {formatMoney(stats.moPrecio)}</span>}
-              {stats.repPrecio > 0 && <><span className="text-slate-700">+</span><span>Repuestos {formatMoney(stats.repPrecio)}</span></>}
+            {/* Composición del total */}
+            <div className="flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 font-bold mt-2">
+              {stats.moPrecio > 0      && <span>MO {formatMoney(stats.moPrecio)}</span>}
+              {stats.repPrecio > 0     && <><span className="text-slate-700">+</span><span>Repuestos {formatMoney(stats.repPrecio)}</span></>}
+              {stats.insumosPrecio > 0 && <><span className="text-slate-700">+</span><span>Insumos {formatMoney(stats.insumosPrecio)}</span></>}
+              {stats.margenExtra > 0   && <><span className="text-slate-700">+</span><span className="text-green-500">Margen {formatMoney(stats.margenExtra)}</span></>}
             </div>
           </div>
 
-          {/* Ajuste rápido */}
+          {/* Margen adicional % */}
           <div className="px-6 pb-4 space-y-2">
-            <div className="grid grid-cols-3 gap-2">
-              {AJUSTE_PASOS.map(p => (
-                <button key={p} onClick={() => ajustarTotal(p)}
-                  className="bg-green-900/30 border border-green-700/40 text-green-400 py-2.5 rounded-xl text-[10px] font-black active:scale-95 transition-all">
-                  +{formatMoney(p)}
-                </button>
-              ))}
-              {AJUSTE_PASOS.map(p => (
-                <button key={-p} onClick={() => ajustarTotal(-p)}
-                  className="bg-red-900/20 border border-red-700/30 text-red-400 py-2.5 rounded-xl text-[10px] font-black active:scale-95 transition-all">
-                  −{formatMoney(p)}
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Agregar margen de ganancia</p>
+            <div className="flex gap-2 justify-center flex-wrap">
+              {MARGEN_PASOS.map(p => (
+                <button key={p}
+                  onClick={() => setMargenPct(prev => prev === p ? 0 : p)}
+                  className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all active:scale-95 ${
+                    margenPct === p
+                      ? "bg-green-500 text-white"
+                      : "bg-slate-800 border border-slate-700 text-slate-400"
+                  }`}>
+                  +{p}%
                 </button>
               ))}
             </div>
+            {margenPct > 0 && (
+              <p className="text-[10px] text-green-400 font-black text-center">
+                +{margenPct}% = +{formatMoney(stats.margenExtra)} sobre el total
+              </p>
+            )}
             {moAjustada && (
-              <button onClick={resetMO} className="w-full flex items-center justify-center gap-1.5 text-[9px] text-slate-600 font-black uppercase tracking-widest py-2 active:text-slate-400 transition-all">
+              <button onClick={resetMO} className="w-full flex items-center justify-center gap-1.5 text-[9px] text-slate-600 font-black uppercase tracking-widest py-1 active:text-slate-400 transition-all">
                 <RefreshCw size={11} /> Volver al precio de fórmula ({formatMoney(moBase)})
               </button>
             )}
@@ -300,10 +316,10 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 <span className="font-black text-slate-400">Cobrás</span>
                 <span className="font-black text-white">{formatMoney(stats.totalCobrar)}</span>
               </div>
-              {stats.insumosCosto > 0 && (
+              {stats.margenExtra > 0 && (
                 <div className="flex justify-between text-xs">
-                  <span className="font-bold text-slate-600">Insumos (no facturado)</span>
-                  <span className="font-black text-red-400">−{formatMoney(stats.insumosCosto)}</span>
+                  <span className="font-bold text-slate-500">Margen adicional +{margenPct}%</span>
+                  <span className="font-black text-green-400">+{formatMoney(stats.margenExtra)}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
