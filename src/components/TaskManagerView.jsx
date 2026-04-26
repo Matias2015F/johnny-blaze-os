@@ -1,22 +1,26 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Plus, X, RefreshCw } from "lucide-react";
+import { ArrowLeft, Plus, X, RefreshCw, Sparkles } from "lucide-react";
 import { LS, useCollection, generateId } from "../lib/storage.js";
 import { CONFIG_DEFAULT, SERVICIOS_DEFAULT } from "../lib/constants.js";
 import { calcularNuevoTotal } from "../lib/calc.js";
+import { obtenerAprendizaje, evaluarConfianza } from "../lib/priceLearning.js";
 import { formatMoney, parseMonto } from "../utils/format.js";
 
 const AJUSTE_PASOS = [2000, 5000, 10000];
 
 export default function TaskManagerView({ order, setView, showToast, serviceToEdit, setServiceToEdit }) {
   const catalogData = useCollection("serviciosCatalogo");
-  const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
-  const servicios = [...SERVICIOS_DEFAULT, ...catalogData];
+  const bikes       = useCollection("motos");
+  const config      = LS.getDoc("config", "global") || CONFIG_DEFAULT;
+  const servicios   = [...SERVICIOS_DEFAULT, ...catalogData];
+  const bike        = bikes.find(b => b.id === order.bikeId) || {};
 
   const [selectedId, setSelectedId] = useState(null);
   const [editForm, setEditForm] = useState({
     nombre: "", horasBase: 1, dificultad: "normal", montoMO: 0, repuestos: [], insumos: [], observacionesProxima: "",
   });
-  const [moBase, setMoBase] = useState(0); // MO calculada por fórmula, para mostrar referencia
+  const [moBase, setMoBase] = useState(0);
+  const [sugerencia, setSugerencia] = useState(null); // { apr, confianza }
 
   const calcMO = (horasBase, dificultad) => {
     const factor = (config.factorDificultad || CONFIG_DEFAULT.factorDificultad)[dificultad] || 1;
@@ -26,6 +30,8 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   useEffect(() => {
     if (serviceToEdit) {
       const mo = serviceToEdit.monto || 0;
+      const apr = obtenerAprendizaje(serviceToEdit.nombre, bike.cilindrada);
+      setSugerencia(apr ? { apr, confianza: evaluarConfianza(apr) } : null);
       setEditForm({
         nombre: serviceToEdit.nombre,
         horasBase: serviceToEdit.horasBase || 1,
@@ -39,19 +45,35 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     }
   }, [serviceToEdit, order.observacionesProxima]);
 
+  const aplicarHistorial = (nombre, horasBase, dificultad) => {
+    const apr = obtenerAprendizaje(nombre, bike.cilindrada);
+    if (apr) {
+      const confianza = evaluarConfianza(apr);
+      setSugerencia({ apr, confianza });
+      // Usa tiempo real histórico como horasBase
+      const horasHistorial = Math.round(apr.promedio * 10) / 10;
+      const mo = calcMO(horasHistorial, dificultad);
+      return { horasBase: horasHistorial, montoMO: mo };
+    }
+    setSugerencia(null);
+    return { horasBase, montoMO: calcMO(horasBase, dificultad) };
+  };
+
   const handleSelect = (id) => {
     setSelectedId(id);
     if (!id) {
       const mo = calcMO(1, "normal");
       setEditForm({ nombre: "", horasBase: 1, dificultad: "normal", montoMO: mo, repuestos: [], insumos: [], observacionesProxima: "" });
       setMoBase(mo);
+      setSugerencia(null);
       return;
     }
     const s = servicios.find((x) => x.id === id);
     if (s) {
-      const mo = calcMO(s.horasBase || 1, s.dificultad || "normal");
-      setEditForm({ ...JSON.parse(JSON.stringify(s)), montoMO: mo, observacionesProxima: order.observacionesProxima || "" });
-      setMoBase(mo);
+      const { horasBase, montoMO } = aplicarHistorial(s.nombre, s.horasBase || 1, s.dificultad || "normal");
+      const form = { ...JSON.parse(JSON.stringify(s)), horasBase, montoMO, observacionesProxima: order.observacionesProxima || "" };
+      setEditForm(form);
+      setMoBase(montoMO);
     }
   };
 
@@ -143,6 +165,34 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             <input value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} placeholder="Ej: Cambio de cubierta" className="w-full border-2 border-slate-100 rounded-2xl p-4 font-black outline-none focus:border-blue-500" />
           </div>
         </div>
+
+        {/* SUGERENCIA DEL SISTEMA — solo cuando hay historial */}
+        {sugerencia && (
+          <div className={`rounded-[2rem] border p-5 space-y-3 ${sugerencia.confianza?.badge || "bg-slate-50 border-slate-200"}`}>
+            <div className="flex items-center gap-2">
+              <Sparkles size={14} className="flex-shrink-0" />
+              <p className="text-[10px] font-black uppercase tracking-widest">
+                Sugerencia del sistema · {sugerencia.apr.muestras} {sugerencia.apr.muestras === 1 ? "trabajo" : "trabajos"} registrados
+              </p>
+            </div>
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-[9px] font-bold opacity-70 uppercase tracking-wide">Tiempo promedio real</p>
+                <p className="text-xl font-black">{Math.round(sugerencia.apr.promedio * 10) / 10}h</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] font-bold opacity-70 uppercase tracking-wide">Variabilidad</p>
+                <p className="text-sm font-black">±{Math.round(sugerencia.apr.desvio * 10) / 10}h</p>
+              </div>
+              <div className={`px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-wide ${sugerencia.confianza?.badge || ""}`}>
+                {sugerencia.confianza?.texto || "Sin datos"}
+              </div>
+            </div>
+            <p className="text-[9px] opacity-60 font-bold">
+              Las horas y el precio de abajo ya reflejan este historial. Podés ajustar si este trabajo es diferente.
+            </p>
+          </div>
+        )}
 
         {/* Parámetros MO — compacto, secundario */}
         <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-3">
