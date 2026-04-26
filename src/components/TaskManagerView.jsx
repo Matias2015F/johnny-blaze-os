@@ -126,6 +126,9 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             <input type="text" value={editForm.montoMO > 0 ? editForm.montoMO.toLocaleString("es-AR") : ""} onChange={(e) => setEditForm({ ...editForm, montoMO: parseMonto(e.target.value) })} placeholder="0" className="w-full pl-10 pr-4 py-4 bg-white border-2 border-blue-200 rounded-2xl text-2xl font-black text-slate-800 outline-none focus:border-blue-500" />
             <label className="absolute -top-2.5 left-4 bg-white px-2 text-[8px] font-black uppercase text-blue-500 tracking-widest">Mano de Obra Cliente</label>
           </div>
+          <p className="text-[10px] text-slate-400 text-center tracking-wide">
+            {editForm.horasBase}h &times; {(config.valorHoraCliente || 15000).toLocaleString("es-AR")}/h &times; {((config.factorDificultad || CONFIG_DEFAULT.factorDificultad)[editForm.dificultad] || 1).toFixed(1)} ({editForm.dificultad})
+          </p>
         </div>
 
         {["repuestos", "insumos"].map((lista) => (

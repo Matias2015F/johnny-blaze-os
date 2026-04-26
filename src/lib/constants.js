@@ -17,6 +17,7 @@ export const CONFIG_DEFAULT = {
   garantiaDefault: PLANTILLAS_GARANTIA[0].texto,
   offsetServiceKm: 2500,
   valorHoraInterno: 12000,
+  margenPolitica: 25,
   valorHoraCliente: 15000,
   factorDificultad: { facil: 1, normal: 1.3, dificil: 1.7, complicado: 2.2 },
 };
