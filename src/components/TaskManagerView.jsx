@@ -101,7 +101,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     const list = editForm[lista].map((item, i) =>
       i === idx ? { ...item, [field]: parsed } : item
     );
-    setEditForm(f => ({ ...f, [lista]: list }));
+    setEditForm({ ...editForm, [lista]: list });
   };
 
   const stats = useMemo(() => {
