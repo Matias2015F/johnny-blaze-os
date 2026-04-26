@@ -147,7 +147,7 @@ export default function TallerPanel() {
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#0A0A0A] relative text-left selection:bg-blue-500 overflow-x-hidden font-bold">
 
-      {view === "home" && <HomeView stats={stats} setView={setView} bikes={bikes} loadDemoData={loadDemoData} clearAllData={clearAllData} handleLogout={handleLogout} />}
+      {view === "home" && <HomeView stats={stats} setView={setView} bikes={bikes} orders={orders} setSelectedOrderId={setSelectedOrderId} loadDemoData={loadDemoData} clearAllData={clearAllData} handleLogout={handleLogout} />}
       {view === "nuevaOrden" && <NewOrderView handleCreateAll={handleCreateOrder} setView={setView} prefill={prefillData} />}
       {view === "ordenes" && <OrderListView orders={orders} bikes={bikes} clients={clients} setSelectedOrderId={setSelectedOrderId} setView={setView} />}
       {view === "detalleOrden" && selectedOrder && <OrderDetailView order={selectedOrder} clients={clients} bikes={bikes} setView={setView} showToast={showToast} setServiceToEdit={setServiceToEdit} />}
