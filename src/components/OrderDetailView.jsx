@@ -5,7 +5,7 @@ import { ESTADO_LABEL, ESTADO_CSS, CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden, generarMensajePresupuesto, evaluarEstado, calcularNuevoRango } from "../lib/calc.js";
 import { obtenerAprendizaje } from "../lib/priceLearning.js";
 import { iniciarCronometro, pausarCronometro, obtenerTiempoActual, formatTiempo, formatTiempoCorto } from "../lib/timer.js";
-import { mensajeBloqueo, abrirWhatsApp } from "../lib/messages.js";
+import { mensajeBloqueo, mensajePresupuesto, abrirWhatsApp } from "../lib/messages.js";
 import { MOTIVOS_BLOQUEO } from "../lib/theme.js";
 import { formatMoney } from "../utils/format.js";
 
@@ -13,6 +13,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const [tiempoActual, setTiempoActual] = useState(0);
   const [motivoBloqueo, setMotivoBloqueo] = useState(MOTIVOS_BLOQUEO[0]);
   const [motivoManual, setMotivoManual] = useState("");
+  const [maxInput, setMaxInput] = useState("");
 
   useEffect(() => {
     const id = setInterval(() => setTiempoActual(obtenerTiempoActual(order)), 1000);
@@ -263,6 +264,58 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               </button>
             )}
           </div>
+          );
+        })()}
+
+        {/* SECCIÓN CONTRACTUAL — solo en estado presupuesto */}
+        {order.estado === "presupuesto" && (() => {
+          const presMin = res.total > 0 ? res.total : promedioHoras * valorHora;
+          const presMax = Number(maxInput) > 0 ? Number(maxInput) : Math.round(presMin * 1.3);
+          const handleAprobar = () => {
+            if (presMax <= 0) { showToast("Definí un máximo"); return; }
+            LS.updateDoc("ordenes", order.id, { maxAutorizado: presMax, estado: "aprobacion" });
+            showToast(`Máx. aprobado: ${formatMoney(presMax)} ✓`);
+          };
+          return (
+            <div className="bg-slate-900 rounded-3xl p-5 space-y-4 border border-slate-700">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Presupuesto para el cliente</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-800 rounded-2xl p-4">
+                  <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Mínimo estimado</p>
+                  <p className="text-lg font-black text-green-400">{formatMoney(presMin)}</p>
+                </div>
+                <div className="bg-slate-800 rounded-2xl p-4">
+                  <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Máximo autorizado</p>
+                  <p className="text-lg font-black text-yellow-400">{formatMoney(presMax)}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-2 items-center">
+                <span className="text-[9px] font-black text-slate-500 uppercase whitespace-nowrap">Ajustar máx. $</span>
+                <input
+                  type="number"
+                  placeholder={String(presMax)}
+                  value={maxInput}
+                  onChange={e => setMaxInput(e.target.value)}
+                  className="flex-1 bg-slate-800 border border-slate-600 text-white text-sm font-black rounded-xl p-2.5 outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <button
+                onClick={() => abrirWhatsApp(c.tel, mensajePresupuesto ? mensajePresupuesto({ bike: b, client: c, min: presMin, max: presMax }) : "")}
+                className="w-full bg-green-600 text-white py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+              >
+                Enviar presupuesto por WhatsApp
+              </button>
+
+              <button
+                onClick={handleAprobar}
+                className="w-full bg-blue-600 text-white py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+              >
+                Cliente aprobó → registrar máx. {formatMoney(presMax)}
+              </button>
+            </div>
           );
         })()}
 
