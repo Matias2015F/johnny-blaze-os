@@ -1,5 +1,5 @@
-﻿import React, { useState, useEffect } from "react";
-import { ArrowLeft, Wrench, DollarSign, FileText, MessageSquare, Truck, Trash2, Edit2, Activity, ShieldCheck } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ArrowLeft, Wrench, DollarSign, FileText, MessageSquare, Truck, Trash2, Edit2, ShieldCheck } from "lucide-react";
 import { LS } from "../lib/storage.js";
 import { ESTADO_LABEL, ESTADO_CSS, CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden, generarMensajePresupuesto, evaluarEstado, calcularNuevoRango } from "../lib/calc.js";
@@ -9,11 +9,14 @@ import { mensajeBloqueo, mensajePresupuesto, abrirWhatsApp } from "../lib/messag
 import { MOTIVOS_BLOQUEO } from "../lib/theme.js";
 import { formatMoney } from "../utils/format.js";
 
+const AJUSTE_PASOS = [5000, 10000, 20000];
+
 export default function OrderDetailView({ order, clients, bikes, setView, showToast, setServiceToEdit }) {
   const [tiempoActual, setTiempoActual] = useState(0);
   const [motivoBloqueo, setMotivoBloqueo] = useState(MOTIVOS_BLOQUEO[0]);
   const [motivoManual, setMotivoManual] = useState("");
   const [maxInput, setMaxInput] = useState("");
+  const [ajuste, setAjuste] = useState(0);
 
   useEffect(() => {
     const id = setInterval(() => setTiempoActual(obtenerTiempoActual(order)), 1000);
@@ -26,17 +29,18 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const res = calcularResultadosOrden(order);
   const valorHora = config.valorHoraCliente || 15000;
+
   const { estadoCron, costoActual } = evaluarEstado({
     tiempoHoras: tiempoActual,
     valorHora,
     maxAutorizado: order.maxAutorizado || 0,
   });
 
-  // Rango estimado para el mensaje de bloqueo
   const promedioHoras = (order.tareas || []).reduce((s, t) => {
     const apr = obtenerAprendizaje(t.nombre, b.cilindrada);
     return s + (apr ? apr.promedio : (t.horasBase || 1));
   }, 0) || 1;
+
   const { nuevoMin, nuevoMax } = calcularNuevoRango({
     tiempoActual,
     costoHora: valorHora,
@@ -46,13 +50,17 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
   const handleStart = () => LS.updateDoc("ordenes", order.id, iniciarCronometro(order));
   const handlePause = () => LS.updateDoc("ordenes", order.id, pausarCronometro(order));
-  const handleSetMax = () => {
-    const val = prompt("Máximo autorizado por el cliente ($):");
-    if (val && !isNaN(val) && Number(val) > 0) LS.updateDoc("ordenes", order.id, { maxAutorizado: Number(val) });
-  };
+
   const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
   const saldoPendiente = res.total - totalPagado;
   const isLocked = !!order.pdfEntregado;
+
+  // Presupuesto con ajuste dinámico
+  const presBase = res.total > 0 ? res.total : promedioHoras * valorHora;
+  const presMax = Number(maxInput) > 0 ? Number(maxInput) : Math.round(presBase * 1.3);
+  const totalConAjuste = presBase + ajuste;
+  const margenConAjuste = totalConAjuste - res.costoInterno;
+  const rentConAjuste = totalConAjuste > 0 ? (margenConAjuste / totalConAjuste) * 100 : 0;
 
   const cambiarEstado = (nuevo) => {
     if (isLocked) { showToast("Orden bloqueada (PDF enviado)"); return; }
@@ -78,17 +86,24 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     const msg = generarMensajePresupuesto(order, b, c);
     navigator.clipboard?.writeText(msg).catch(() => {
       const ta = document.createElement("textarea");
-      ta.value = msg;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
+      ta.value = msg; document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); document.body.removeChild(ta);
     });
     showToast("Presupuesto copiado ✓");
   };
 
+  // Cronómetro: textos de estado
+  const CRON_MSG = {
+    NORMAL:   { texto: "Vas dentro del presupuesto", color: "text-green-400", bg: "bg-green-500/10 border-green-500/30" },
+    ALERTA:   { texto: "Estás cerca del límite", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/30" },
+    BLOQUEADO:{ texto: "Te pasaste del presupuesto", color: "text-red-400", bg: "bg-red-500/10 border-red-500/30" },
+  };
+  const cronMsg = CRON_MSG[estadoCron] || CRON_MSG.NORMAL;
+
   return (
     <div className="min-h-screen bg-slate-100 text-left animate-in slide-in-from-right duration-300 pb-32">
+
+      {/* ── HEADER ─────────────────────────────────────────────── */}
       <div className="bg-slate-900 p-8 text-white">
         <button onClick={() => setView("ordenes")} className="mb-6 text-blue-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
           <ArrowLeft size={16} /> Volver
@@ -100,20 +115,28 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               {isLocked && <ShieldCheck className="text-blue-500" size={24} />}
             </div>
             <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{c?.nombre || "Cliente Desconocido"}</p>
-            <div className="flex gap-2 items-center mt-3">
-              <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${ESTADO_CSS[order.estado]}`}>
+            <div className="mt-3">
+              <div className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${ESTADO_CSS[order.estado]}`}>
                 {ESTADO_LABEL[order.estado]}
               </div>
             </div>
           </div>
+
+          {/* GANANCIA / PÉRDIDA — el número que importa */}
           <div className="text-right">
-            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Precio Cliente</p>
-            <p className="text-3xl font-black tracking-tighter">{formatMoney(res.total)}</p>
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">
+              {res.margen >= 0 ? "Tu ganancia" : "Tu pérdida"}
+            </p>
+            <p className={`text-2xl font-black tracking-tighter ${res.margen >= 0 ? "text-green-400" : "text-red-400"}`}>
+              {res.margen >= 0 ? "+" : "−"}{formatMoney(Math.abs(res.margen))}
+            </p>
+            <p className="text-[9px] text-slate-500 mt-0.5">{formatMoney(res.total)} cobrado</p>
           </div>
         </div>
       </div>
 
       <div className="p-6 space-y-6">
+
         {isLocked && (
           <div className="bg-blue-50 border-2 border-blue-200 p-4 rounded-3xl flex items-center gap-3">
             <div className="bg-blue-500 p-2 rounded-xl text-white"><ShieldCheck size={20} /></div>
@@ -121,249 +144,302 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           </div>
         )}
 
-        <div className="bg-white rounded-[2rem] border-2 border-slate-200 shadow-sm p-5 space-y-3">
-          {/* Cabecera columnas */}
-          <div className="grid grid-cols-4 text-[8px] font-black text-slate-400 uppercase tracking-widest pb-1 border-b border-slate-100">
-            <span></span>
-            <span className="text-right">Cobrado</span>
-            <span className="text-right">Costo</span>
-            <span className="text-right">Margen</span>
-          </div>
+        {/* ── RESULTADO FINANCIERO ───────────────────────────────── */}
+        <div className="bg-white rounded-[2rem] border-2 border-slate-200 shadow-sm overflow-hidden">
 
-          {/* Mano de obra */}
-          {res.desglose.moCliente > 0 && (
-            <div className="grid grid-cols-4 items-center">
-              <span className="text-[9px] font-black text-slate-500 uppercase">MO</span>
-              <span className="text-right text-xs font-black text-slate-800">{formatMoney(res.desglose.moCliente)}</span>
-              <span className="text-right text-xs text-slate-400">{formatMoney(res.desglose.moCosto)}</span>
-              <span className={`text-right text-xs font-black ${res.desglose.margenMO >= 0 ? "text-green-600" : "text-red-600"}`}>{formatMoney(res.desglose.margenMO)}</span>
-            </div>
-          )}
-
-          {/* Repuestos */}
-          {res.desglose.repuestosCliente > 0 && (
-            <div className="grid grid-cols-4 items-center">
-              <span className="text-[9px] font-black text-slate-500 uppercase">Reptos</span>
-              <span className="text-right text-xs font-black text-slate-800">{formatMoney(res.desglose.repuestosCliente)}</span>
-              <span className="text-right text-xs text-slate-400">{formatMoney(res.desglose.repuestosCosto)}</span>
-              <span className={`text-right text-xs font-black ${res.desglose.margenRepuestos >= 0 ? "text-green-600" : "text-red-600"}`}>{formatMoney(res.desglose.margenRepuestos)}</span>
-            </div>
-          )}
-
-          {/* Logística */}
-          {res.desglose.logisticaCliente > 0 && (
-            <div className="grid grid-cols-4 items-center">
-              <span className="text-[9px] font-black text-slate-500 uppercase">Logíst.</span>
-              <span className="text-right text-xs font-black text-slate-800">{formatMoney(res.desglose.logisticaCliente)}</span>
-              <span className="text-right text-xs text-slate-400">{formatMoney(res.desglose.logisticaCosto)}</span>
-              <span className={`text-right text-xs font-black ${res.desglose.margenLogistica >= 0 ? "text-green-600" : "text-red-600"}`}>{formatMoney(res.desglose.margenLogistica)}</span>
-            </div>
-          )}
-
-          {/* Total */}
-          <div className="grid grid-cols-4 items-center border-t border-slate-200 pt-3">
-            <span className="text-[9px] font-black text-slate-800 uppercase">Total</span>
-            <span className="text-right text-sm font-black text-slate-900">{formatMoney(res.total)}</span>
-            <span className="text-right text-sm text-slate-400">{formatMoney(res.costoInterno)}</span>
-            <div className="text-right flex items-center justify-end gap-1">
-              <span className={`text-sm font-black ${res.rentabilidad < 25 ? "text-red-600" : "text-blue-600"}`}>{Math.round(res.rentabilidad)}%</span>
-              <Activity size={12} className={res.rentabilidad < 25 ? "text-red-500 animate-pulse" : "text-blue-500"} />
+          {/* Resultado principal */}
+          <div className={`p-5 ${res.margen >= 0 ? "bg-green-50" : "bg-red-50"}`}>
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Resultado de esta orden</p>
+            <div className="flex items-baseline justify-between">
+              <p className={`text-3xl font-black tracking-tighter ${res.margen >= 0 ? "text-green-600" : "text-red-600"}`}>
+                {res.margen >= 0 ? "Ganás " : "Perdés "}{formatMoney(Math.abs(res.margen))}
+              </p>
+              <span className={`text-sm font-black px-3 py-1 rounded-full ${res.margen >= 0 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                {Math.round(res.rentabilidad)}%
+              </span>
             </div>
           </div>
 
-          {/* Saldo pendiente */}
-          {saldoPendiente > 0 && (
-            <div className="bg-red-50 rounded-2xl p-3 flex justify-between items-center border border-red-100">
-              <span className="text-[9px] font-black text-red-500 uppercase">Saldo pendiente</span>
-              <span className="text-sm font-black text-red-600">{formatMoney(saldoPendiente)}</span>
+          {/* Desglose simple */}
+          <div className="p-5 space-y-2">
+            <div className="flex justify-between items-center py-2 border-b border-slate-100">
+              <span className="text-sm font-black text-slate-500">Lo que cobrás</span>
+              <span className="text-sm font-black text-slate-900">{formatMoney(res.total)}</span>
             </div>
-          )}
-          {totalPagado > 0 && saldoPendiente <= 0 && (
-            <div className="bg-green-50 rounded-2xl p-3 flex justify-between items-center border border-green-100">
-              <span className="text-[9px] font-black text-green-600 uppercase">Pagado completo</span>
-              <span className="text-sm font-black text-green-600">{formatMoney(totalPagado)} ✓</span>
+            <div className="flex justify-between items-center py-2 border-b border-slate-100">
+              <span className="text-sm font-black text-slate-500">Lo que te cuesta</span>
+              <span className="text-sm font-black text-slate-500">{formatMoney(res.costoInterno)}</span>
             </div>
-          )}
+            <div className="flex justify-between items-center py-2">
+              <span className="text-sm font-black text-slate-900">Tu ganancia</span>
+              <span className={`text-sm font-black ${res.margen >= 0 ? "text-green-600" : "text-red-600"}`}>{formatMoney(res.margen)}</span>
+            </div>
 
-          {/* Advertencia si repuestos sin costo cargado */}
-          {res.sinCostoCargado && res.desglose.repuestosCliente > 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-3">
-              <p className="text-[8px] font-black text-yellow-700 uppercase tracking-wide">⚠️ Repuestos sin precio de costo — el margen real puede ser mayor</p>
-            </div>
-          )}
+            {/* Desglose por categoría — secundario */}
+            {(res.desglose.moCliente > 0 || res.desglose.repuestosCliente > 0 || res.desglose.logisticaCliente > 0) && (
+              <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Detalle</p>
+                {res.desglose.moCliente > 0 && (
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-slate-400 font-bold">Mano de obra</span>
+                    <span className="font-black text-slate-700">{formatMoney(res.desglose.moCliente)}
+                      <span className={`ml-2 ${res.desglose.margenMO >= 0 ? "text-green-500" : "text-red-500"}`}>({formatMoney(res.desglose.margenMO)})</span>
+                    </span>
+                  </div>
+                )}
+                {res.desglose.repuestosCliente > 0 && (
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-slate-400 font-bold">Repuestos</span>
+                    <span className="font-black text-slate-700">{formatMoney(res.desglose.repuestosCliente)}
+                      <span className={`ml-2 ${res.desglose.margenRepuestos >= 0 ? "text-green-500" : "text-red-500"}`}>({formatMoney(res.desglose.margenRepuestos)})</span>
+                    </span>
+                  </div>
+                )}
+                {res.desglose.logisticaCliente > 0 && (
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-slate-400 font-bold">Logística</span>
+                    <span className="font-black text-slate-700">{formatMoney(res.desglose.logisticaCliente)}
+                      <span className={`ml-2 ${res.desglose.margenLogistica >= 0 ? "text-green-500" : "text-red-500"}`}>({formatMoney(res.desglose.margenLogistica)})</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Saldo */}
+            {saldoPendiente > 0 && (
+              <div className="bg-red-50 rounded-2xl p-3 flex justify-between items-center border border-red-100 mt-2">
+                <span className="text-[9px] font-black text-red-500 uppercase">Saldo pendiente</span>
+                <span className="text-sm font-black text-red-600">{formatMoney(saldoPendiente)}</span>
+              </div>
+            )}
+            {totalPagado > 0 && saldoPendiente <= 0 && (
+              <div className="bg-green-50 rounded-2xl p-3 flex justify-between items-center border border-green-100 mt-2">
+                <span className="text-[9px] font-black text-green-600 uppercase">Pagado completo</span>
+                <span className="text-sm font-black text-green-600">{formatMoney(totalPagado)} ✓</span>
+              </div>
+            )}
+            {res.sinCostoCargado && res.desglose.repuestosCliente > 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-3 mt-2">
+                <p className="text-[8px] font-black text-yellow-700 uppercase tracking-wide">⚠️ Repuestos sin precio de costo — la ganancia real puede ser mayor</p>
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* ── BOTONES DE ESTADO ─────────────────────────────────── */}
         {order.estado !== "entregada" && !isLocked && (
           <div className="flex gap-2 overflow-x-auto pb-2">
             {order.estado === "diagnostico" && <button onClick={() => cambiarEstado("presupuesto")} className="bg-purple-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Pasar a Presupuesto</button>}
-            {order.estado === "presupuesto" && <button onClick={() => cambiarEstado("aprobacion")} className="bg-yellow-500 text-black px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Esperando Aprobación</button>}
-            {order.estado === "aprobacion" && <button onClick={() => cambiarEstado("reparacion")} className="bg-blue-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Iniciar Reparación</button>}
-            {order.estado === "reparacion" && <button onClick={() => cambiarEstado("finalizada")} className="bg-green-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Finalizar Trabajo</button>}
-            {order.estado === "finalizada" && <button onClick={() => cambiarEstado("entregada")} className="bg-black text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Marcar Entregado</button>}
+            {order.estado === "presupuesto"  && <button onClick={() => cambiarEstado("aprobacion")} className="bg-yellow-500 text-black px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Esperando Aprobación</button>}
+            {order.estado === "aprobacion"   && <button onClick={() => cambiarEstado("reparacion")} className="bg-blue-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Iniciar Reparación</button>}
+            {order.estado === "reparacion"   && <button onClick={() => cambiarEstado("finalizada")} className="bg-green-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Finalizar Trabajo</button>}
+            {order.estado === "finalizada"   && <button onClick={() => cambiarEstado("entregada")} className="bg-black text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Marcar Entregado</button>}
           </div>
         )}
 
+        {/* ── MODO PRESUPUESTO ──────────────────────────────────── */}
+        {order.estado === "presupuesto" && (
+          <div className="bg-slate-900 rounded-3xl p-5 space-y-4 border border-slate-700">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ajustar presupuesto</p>
+
+            {/* Total ajustado en tiempo real */}
+            <div className="bg-slate-800 rounded-[1.5rem] p-5">
+              <div className="flex justify-between items-baseline mb-3">
+                <span className="text-[9px] font-black text-slate-400 uppercase">Total para el cliente</span>
+                <span className="text-2xl font-black text-white">{formatMoney(totalConAjuste)}</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-slate-500">
+                <span>Costo interno: {formatMoney(res.costoInterno)}</span>
+                <span className={margenConAjuste >= 0 ? "text-green-400 font-black" : "text-red-400 font-black"}>
+                  Ganancia: {formatMoney(margenConAjuste)} ({Math.round(rentConAjuste)}%)
+                </span>
+              </div>
+            </div>
+
+            {/* Botones de ajuste rápido */}
+            <div className="space-y-2">
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest px-1">Ajuste rápido</p>
+              <div className="grid grid-cols-3 gap-2">
+                {AJUSTE_PASOS.map(paso => (
+                  <button key={paso} onClick={() => setAjuste(a => a + paso)}
+                    className="bg-green-900/30 border border-green-700/40 text-green-400 py-2 rounded-xl text-[10px] font-black active:scale-95 transition-all">
+                    +{formatMoney(paso)}
+                  </button>
+                ))}
+                {AJUSTE_PASOS.map(paso => (
+                  <button key={-paso} onClick={() => setAjuste(a => a - paso)}
+                    className="bg-red-900/20 border border-red-700/30 text-red-400 py-2 rounded-xl text-[10px] font-black active:scale-95 transition-all">
+                    −{formatMoney(paso)}
+                  </button>
+                ))}
+              </div>
+              {ajuste !== 0 && (
+                <button onClick={() => setAjuste(0)} className="w-full text-[9px] text-slate-600 font-black uppercase tracking-widest py-2 active:text-slate-400">
+                  Resetear ajuste
+                </button>
+              )}
+            </div>
+
+            {/* Max autorizado para el cronómetro */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-800 rounded-2xl p-4">
+                <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Mínimo estimado</p>
+                <p className="text-lg font-black text-green-400">{formatMoney(presBase)}</p>
+              </div>
+              <div className="bg-slate-800 rounded-2xl p-4">
+                <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Máximo autorizado</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-sm text-slate-500 font-black">$</span>
+                  <input
+                    type="number"
+                    placeholder={String(presMax)}
+                    value={maxInput}
+                    onChange={e => setMaxInput(e.target.value)}
+                    className="w-full bg-transparent text-lg font-black text-yellow-400 outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => abrirWhatsApp(c.tel, mensajePresupuesto({ bike: b, client: c, min: presBase, max: presMax }))}
+              className="w-full bg-green-600 text-white py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+            >
+              Enviar presupuesto por WhatsApp
+            </button>
+
+            <button
+              onClick={() => {
+                if (presMax <= 0) { showToast("Definí un máximo"); return; }
+                LS.updateDoc("ordenes", order.id, { maxAutorizado: presMax, estado: "aprobacion" });
+                showToast(`Máx. aprobado: ${formatMoney(presMax)} ✓`);
+              }}
+              className="w-full bg-blue-600 text-white py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+            >
+              Cliente aprobó → registrar {formatMoney(presMax)}
+            </button>
+          </div>
+        )}
+
+        {/* ── CRONÓMETRO ────────────────────────────────────────── */}
         {order.estado === "reparacion" && (() => {
-          const tiempoMax   = order.maxAutorizado > 0 ? order.maxAutorizado / valorHora : 0;
-          const tiempoAlerta = tiempoMax * 0.8;
+          const tiempoMax = order.maxAutorizado > 0 ? order.maxAutorizado / valorHora : 0;
           const pct = tiempoMax > 0 ? Math.min((costoActual / order.maxAutorizado) * 100, 100) : 0;
           const restante = Math.max(tiempoMax - tiempoActual, 0);
           return (
-          <div className="bg-slate-900 rounded-3xl p-5 space-y-4">
+            <div className="bg-slate-900 rounded-3xl p-5 space-y-4">
 
-            {/* Header */}
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cronómetro</p>
-                <p className="text-[9px] text-slate-500 font-bold mt-0.5">{formatMoney(valorHora)} / hora</p>
-              </div>
-              <p className="text-2xl font-black text-white font-mono tracking-widest">{formatTiempo(tiempoActual)}</p>
-            </div>
+              {/* Estado — HÉROE */}
+              {order.maxAutorizado > 0 ? (
+                <div className={`rounded-2xl p-4 border text-center ${cronMsg.bg}`}>
+                  <p className={`text-base font-black ${cronMsg.color}`}>{cronMsg.texto}</p>
+                  <p className="text-[10px] text-slate-500 mt-1 font-bold">
+                    {formatMoney(costoActual)} acumulado · {tiempoMax > 0 ? `quedan ${formatTiempoCorto(restante)}` : "sin límite"}
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-slate-800 rounded-2xl p-4 text-center">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sin límite definido</p>
+                  <p className="text-[9px] text-slate-600 mt-1">Definí un máximo para activar el control</p>
+                </div>
+              )}
 
-            {/* Costo + tiempo restante */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-slate-800 rounded-2xl p-3">
-                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Costo actual</p>
-                <p className="text-base font-black text-blue-400">{formatMoney(costoActual)}</p>
-              </div>
+              {/* Barra de progreso — protagonista */}
               {tiempoMax > 0 && (
-                <div className="bg-slate-800 rounded-2xl p-3">
-                  <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Te quedan</p>
-                  <p className={`text-base font-black ${estadoCron === "BLOQUEADO" ? "text-red-400" : estadoCron === "ALERTA" ? "text-yellow-400" : "text-green-400"}`}>
-                    {formatTiempoCorto(restante)}
+                <div className="space-y-2">
+                  <div className="bg-slate-700 rounded-full h-5 overflow-hidden">
+                    <div
+                      className={`h-5 rounded-full transition-all duration-500 ${pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-yellow-400" : "bg-green-500"}`}
+                      style={{ width: `${Math.max(pct, 2)}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[9px] font-black text-slate-500">
+                    <span>{Math.round(pct)}% usado</span>
+                    <span>Máx: {formatMoney(order.maxAutorizado)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Tiempo — dato secundario */}
+              <div className="flex justify-between items-center px-1">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{formatMoney(valorHora)}/hora</p>
+                <p className="text-xl font-black text-white font-mono tracking-widest">{formatTiempo(tiempoActual)}</p>
+              </div>
+
+              {/* ALERTA: acción principal visible */}
+              {estadoCron === "ALERTA" && (
+                <button
+                  onClick={() => abrirWhatsApp(c.tel, mensajeBloqueo({
+                    bike: b, client: c,
+                    tareas: order.tareas, repuestos: order.repuestos,
+                    motivo: "Trabajo más complejo de lo estimado",
+                    costoActual, nuevoMin, nuevoMax,
+                  }))}
+                  className="w-full bg-yellow-500 text-black py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+                >
+                  ⚠️ Pedir autorización por WhatsApp
+                </button>
+              )}
+
+              {/* BLOQUEADO */}
+              {estadoCron === "BLOQUEADO" && (
+                <div className="bg-red-500/10 border border-red-500/50 rounded-2xl p-4 space-y-3">
+                  <p className="text-red-400 font-black text-[10px] uppercase tracking-wider text-center">⛔ Superaste el máximo — necesitás autorización</p>
+                  <select
+                    value={motivoBloqueo}
+                    onChange={e => setMotivoBloqueo(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-600 text-white text-xs font-bold rounded-xl p-3 outline-none"
+                  >
+                    {MOTIVOS_BLOQUEO.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  {motivoBloqueo === "Otro (manual)" && (
+                    <textarea
+                      value={motivoManual}
+                      onChange={e => setMotivoManual(e.target.value)}
+                      placeholder="Describí el motivo..."
+                      className="w-full bg-slate-800 border border-slate-600 text-white text-xs rounded-xl p-3 outline-none resize-none h-16"
+                    />
+                  )}
+                  <button
+                    onClick={() => abrirWhatsApp(c.tel, mensajeBloqueo({
+                      bike: b, client: c,
+                      tareas: order.tareas, repuestos: order.repuestos,
+                      motivo: motivoBloqueo === "Otro (manual)" ? motivoManual : motivoBloqueo,
+                      costoActual, nuevoMin, nuevoMax,
+                    }))}
+                    className="w-full bg-green-600 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+                  >
+                    Pedir autorización por WhatsApp
+                  </button>
+                </div>
+              )}
+
+              {/* Iniciar / Pausar */}
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={handleStart} disabled={order.cronometroActivo}
+                  className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${order.cronometroActivo ? "bg-slate-700 text-slate-500" : "bg-green-600 text-white"}`}>
+                  ▶ Iniciar
+                </button>
+                <button onClick={handlePause} disabled={!order.cronometroActivo}
+                  className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${!order.cronometroActivo ? "bg-slate-700 text-slate-500" : "bg-blue-500 text-white"}`}>
+                  ⏸ Pausar
+                </button>
+              </div>
+
+              {/* Advertencia si costo real se acerca al máximo durante reparación */}
+              {order.maxAutorizado > 0 && res.costoInterno > order.maxAutorizado * 0.85 && (
+                <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-3">
+                  <p className="text-orange-400 text-[9px] font-black uppercase tracking-wide">
+                    ⚠️ Tu costo interno ({formatMoney(res.costoInterno)}) se acerca al máximo autorizado ({formatMoney(order.maxAutorizado)})
                   </p>
                 </div>
               )}
             </div>
-
-            {/* Barra de progreso */}
-            {tiempoMax > 0 && (
-              <div>
-                <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase mb-1.5">
-                  <span>{Math.round(pct)}% usado</span>
-                  <span>Quedan {Math.max(100 - Math.round(pct), 0)}%</span>
-                </div>
-                <div className="bg-slate-700 rounded-full h-2.5">
-                  <div className={`h-2.5 rounded-full transition-all ${pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-yellow-400" : "bg-blue-500"}`} style={{ width: `${pct}%` }} />
-                </div>
-                <div className="flex justify-between text-[9px] text-slate-600 font-bold mt-1.5">
-                  <span>⚠️ Alerta: {formatTiempoCorto(tiempoAlerta)}</span>
-                  <span>⏱️ Máx: {formatTiempoCorto(tiempoMax)}</span>
-                </div>
-              </div>
-            )}
-
-            {estadoCron === "ALERTA" && (
-              <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-2xl p-3 text-center">
-                <p className="text-yellow-400 font-black text-[10px] uppercase tracking-wider">⚠️ Cerca del límite autorizado</p>
-              </div>
-            )}
-
-            {estadoCron === "BLOQUEADO" && (
-              <div className="bg-red-500/10 border border-red-500/50 rounded-2xl p-4 space-y-3">
-                <p className="text-red-400 font-black text-[10px] uppercase tracking-wider text-center">⛔ Límite superado</p>
-                <select
-                  value={motivoBloqueo}
-                  onChange={e => setMotivoBloqueo(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-600 text-white text-xs font-bold rounded-xl p-3 outline-none"
-                >
-                  {MOTIVOS_BLOQUEO.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-                {motivoBloqueo === "Otro (manual)" && (
-                  <textarea
-                    value={motivoManual}
-                    onChange={e => setMotivoManual(e.target.value)}
-                    placeholder="Describí el motivo..."
-                    className="w-full bg-slate-800 border border-slate-600 text-white text-xs rounded-xl p-3 outline-none resize-none h-16"
-                  />
-                )}
-                <button
-                  onClick={() => abrirWhatsApp(c.tel, mensajeBloqueo({
-                    bike: b, client: c,
-                    tareas: order.tareas,
-                    repuestos: order.repuestos,
-                    motivo: motivoBloqueo === "Otro (manual)" ? motivoManual : motivoBloqueo,
-                    costoActual, nuevoMin, nuevoMax,
-                  }))}
-                  className="w-full bg-green-600 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
-                >
-                  Enviar WhatsApp
-                </button>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={handleStart} disabled={order.cronometroActivo}
-                className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${order.cronometroActivo ? "bg-slate-700 text-slate-500" : "bg-green-600 text-white"}`}>
-                ▶ Iniciar
-              </button>
-              <button onClick={handlePause} disabled={!order.cronometroActivo}
-                className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${!order.cronometroActivo ? "bg-slate-700 text-slate-500" : "bg-blue-500 text-white"}`}>
-                ⏸ Pausar
-              </button>
-            </div>
-
-            {!order.maxAutorizado && (
-              <button onClick={handleSetMax} className="w-full border border-slate-700 text-slate-500 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider active:scale-95 transition-all">
-                + Definir máx. autorizado
-              </button>
-            )}
-          </div>
           );
         })()}
 
-        {/* SECCIÓN CONTRACTUAL — solo en estado presupuesto */}
-        {order.estado === "presupuesto" && (() => {
-          const presMin = res.total > 0 ? res.total : promedioHoras * valorHora;
-          const presMax = Number(maxInput) > 0 ? Number(maxInput) : Math.round(presMin * 1.3);
-          const handleAprobar = () => {
-            if (presMax <= 0) { showToast("Definí un máximo"); return; }
-            LS.updateDoc("ordenes", order.id, { maxAutorizado: presMax, estado: "aprobacion" });
-            showToast(`Máx. aprobado: ${formatMoney(presMax)} ✓`);
-          };
-          return (
-            <div className="bg-slate-900 rounded-3xl p-5 space-y-4 border border-slate-700">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Presupuesto para el cliente</p>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-800 rounded-2xl p-4">
-                  <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Mínimo estimado</p>
-                  <p className="text-lg font-black text-green-400">{formatMoney(presMin)}</p>
-                </div>
-                <div className="bg-slate-800 rounded-2xl p-4">
-                  <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Máximo autorizado</p>
-                  <p className="text-lg font-black text-yellow-400">{formatMoney(presMax)}</p>
-                </div>
-              </div>
-
-              <div className="flex gap-2 items-center">
-                <span className="text-[9px] font-black text-slate-500 uppercase whitespace-nowrap">Ajustar máx. $</span>
-                <input
-                  type="number"
-                  placeholder={String(presMax)}
-                  value={maxInput}
-                  onChange={e => setMaxInput(e.target.value)}
-                  className="flex-1 bg-slate-800 border border-slate-600 text-white text-sm font-black rounded-xl p-2.5 outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <button
-                onClick={() => abrirWhatsApp(c.tel, mensajePresupuesto ? mensajePresupuesto({ bike: b, client: c, min: presMin, max: presMax }) : "")}
-                className="w-full bg-green-600 text-white py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
-              >
-                Enviar presupuesto por WhatsApp
-              </button>
-
-              <button
-                onClick={handleAprobar}
-                className="w-full bg-blue-600 text-white py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
-              >
-                Cliente aprobó → registrar máx. {formatMoney(presMax)}
-              </button>
-            </div>
-          );
-        })()}
-
+        {/* ── ACCIONES ──────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3">
           <button onClick={copiarPresupuesto} className="bg-slate-900 text-white py-5 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
             <MessageSquare size={16} /> Copiar Presup.
@@ -373,21 +449,23 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           </button>
         </div>
 
+        {/* ── ÍTEMS DEL TRABAJO ─────────────────────────────────── */}
         <div className="space-y-4">
           <div className="flex justify-between items-center px-2">
-            <h3 className="text-xs font-black uppercase text-slate-400 tracking-tighter">Resumen del Trabajo</h3>
+            <h3 className="text-xs font-black uppercase text-slate-400 tracking-tighter">Trabajos y Materiales</h3>
             {!isLocked && (
               <button onClick={() => setView("logistica")} className="text-[10px] font-black uppercase text-blue-600 flex items-center gap-1 active:scale-90">
                 <Truck size={14} /> + Logística
               </button>
             )}
           </div>
+
           <div className="space-y-2">
             {res.tareasAnalizadas?.map((t, idx) => (
               <div key={idx} className={`flex items-center p-4 rounded-2xl border-2 shadow-sm transition-all ${t.perdida ? "border-red-300 bg-red-50" : "border-slate-100 bg-white"}`}>
                 <div className="flex-1 min-w-0">
                   <p className={`text-[9px] font-black uppercase tracking-tighter ${t.perdida ? "text-red-600" : "text-blue-500"}`}>
-                    {t.perdida ? "⚠️ REVISAR: BAJA RENTABILIDAD" : "Mano de Obra"}
+                    {t.perdida ? "⚠️ Baja rentabilidad" : "Mano de Obra"}
                   </p>
                   <p className="text-sm font-black text-slate-800 truncate pr-2 leading-none mt-1 uppercase">{t.nombre}</p>
                 </div>
@@ -402,6 +480,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 </div>
               </div>
             ))}
+
             {order.repuestos?.map((t, idx) => (
               <div key={idx} className="flex items-center gap-2 bg-blue-50/30 p-4 rounded-2xl border border-blue-100 shadow-sm">
                 <div className="flex-1 min-w-0">
@@ -414,6 +493,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 </div>
               </div>
             ))}
+
             {order.fletes?.map((t, idx) => (
               <div key={idx} className="flex items-center gap-2 bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm">
                 <Truck size={14} className="text-slate-400" />
@@ -429,6 +509,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           </div>
         </div>
 
+        {/* ── BOTTOM ACTIONS ────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3 mt-4">
           <button disabled={isLocked} onClick={() => setView("gestionarTareas")} className={`py-5 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-sm flex items-center justify-center gap-2 active:scale-95 transition-all ${isLocked ? "bg-slate-50 text-slate-300" : "bg-slate-200 text-slate-900"}`}>
             <Wrench size={14} /> Editar Tareas
@@ -437,6 +518,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             <DollarSign size={14} /> Cobrar
           </button>
         </div>
+
       </div>
     </div>
   );
