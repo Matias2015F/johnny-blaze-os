@@ -282,13 +282,52 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           </div>
 
           {/* Margen adicional % */}
-          <div className="px-6 pb-4 space-y-2">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Agregar margen de ganancia</p>
+          <div className="px-6 pb-4 space-y-3">
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Margen de ganancia adicional</p>
+
+            {/* Input manual + valor actual */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2">
+                <input
+                  type="number"
+                  min="0"
+                  max="200"
+                  value={margenPct}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setMargenPct(isNaN(v) ? 0 : Math.max(0, Math.min(200, v)));
+                  }}
+                  className="w-full bg-transparent text-white font-black text-lg text-center outline-none"
+                />
+                <span className="text-slate-400 font-black text-sm">%</span>
+              </div>
+              {margenPct > 0 && (
+                <button onClick={() => setMargenPct(0)} className="text-[9px] text-slate-500 font-black uppercase tracking-widest active:text-red-400 transition-all">
+                  Quitar
+                </button>
+              )}
+            </div>
+
+            {/* Slider 0-100 */}
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={Math.min(margenPct, 100)}
+              onChange={(e) => setMargenPct(Number(e.target.value))}
+              className="w-full accent-green-500"
+            />
+            <div className="flex justify-between text-[9px] text-slate-600 font-bold px-0.5">
+              <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+            </div>
+
+            {/* Atajos rápidos */}
             <div className="flex gap-2 justify-center flex-wrap">
               {MARGEN_PASOS.map(p => (
                 <button key={p}
                   onClick={() => setMargenPct(prev => prev === p ? 0 : p)}
-                  className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all active:scale-95 ${
+                  className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all active:scale-95 ${
                     margenPct === p
                       ? "bg-green-500 text-white"
                       : "bg-slate-800 border border-slate-700 text-slate-400"
@@ -297,6 +336,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 </button>
               ))}
             </div>
+
             {margenPct > 0 && (
               <p className="text-[10px] text-green-400 font-black text-center">
                 +{margenPct}% = +{formatMoney(stats.margenExtra)} sobre el total
