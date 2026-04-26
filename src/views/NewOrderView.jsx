@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 
 export default function NewOrderView({ handleCreateAll, setView, prefill }) {
@@ -15,7 +15,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill }) {
 
   return (
     <div className="p-6 text-left animate-in slide-in-from-bottom duration-300">
-      <button onClick={() => setView(prefill ? "historial" : "home")} className="mb-8 text-orange-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
+      <button onClick={() => setView(prefill ? "historial" : "home")} className="mb-8 text-blue-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
         <ArrowLeft size={16} /> Volver
       </button>
       <h1 className="text-4xl font-black text-white tracking-tighter mb-8 uppercase">
@@ -27,7 +27,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill }) {
             <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Patente</label>
             <input
               disabled={!!prefill}
-              className={`w-full border-2 rounded-xl p-3 font-black uppercase text-black outline-none ${prefill ? "bg-slate-50 text-slate-400 border-slate-200" : "border-slate-200 focus:border-orange-500"}`}
+              className={`w-full border-2 rounded-xl p-3 font-black uppercase text-black outline-none ${prefill ? "bg-slate-50 text-slate-400 border-slate-200" : "border-slate-200 focus:border-blue-500"}`}
               value={f.patente}
               onChange={(e) => setF({ ...f, patente: e.target.value })}
             />
@@ -35,7 +35,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill }) {
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Km Actual</label>
             <input
-              className="w-full border-2 border-orange-200 rounded-xl p-3 font-black text-black outline-none focus:border-orange-500 bg-orange-50/30"
+              className="w-full border-2 border-blue-200 rounded-xl p-3 font-black text-black outline-none focus:border-blue-500 bg-blue-50/30"
               type="number"
               value={f.km}
               onChange={(e) => setF({ ...f, km: e.target.value })}
@@ -47,11 +47,11 @@ export default function NewOrderView({ handleCreateAll, setView, prefill }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Marca</label>
-              <input className="w-full border-2 border-slate-200 rounded-xl p-3 font-black text-black outline-none focus:border-orange-500" value={f.marca} onChange={(e) => setF({ ...f, marca: e.target.value })} />
+              <input className="w-full border-2 border-slate-200 rounded-xl p-3 font-black text-black outline-none focus:border-blue-500" value={f.marca} onChange={(e) => setF({ ...f, marca: e.target.value })} />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Modelo</label>
-              <input className="w-full border-2 border-slate-200 rounded-xl p-3 font-black text-black outline-none focus:border-orange-500" value={f.modelo} onChange={(e) => setF({ ...f, modelo: e.target.value })} />
+              <input className="w-full border-2 border-slate-200 rounded-xl p-3 font-black text-black outline-none focus:border-blue-500" value={f.modelo} onChange={(e) => setF({ ...f, modelo: e.target.value })} />
             </div>
           </div>
         )}
@@ -59,7 +59,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill }) {
           <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Cliente</label>
           <input
             disabled={!!prefill}
-            className={`w-full border-2 rounded-xl p-3 font-black text-black outline-none ${prefill ? "bg-slate-50 text-slate-400 border-slate-200" : "border-slate-200 focus:border-orange-500"}`}
+            className={`w-full border-2 rounded-xl p-3 font-black text-black outline-none ${prefill ? "bg-slate-50 text-slate-400 border-slate-200" : "border-slate-200 focus:border-blue-500"}`}
             placeholder="Nombre completo"
             value={f.nombre}
             onChange={(e) => setF({ ...f, nombre: e.target.value })}
@@ -69,7 +69,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill }) {
           <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Teléfono</label>
           <input
             disabled={!!prefill}
-            className={`w-full border-2 rounded-xl p-3 font-black text-black outline-none ${prefill ? "bg-slate-50 text-slate-400 border-slate-200" : "border-slate-200 focus:border-orange-500"}`}
+            className={`w-full border-2 rounded-xl p-3 font-black text-black outline-none ${prefill ? "bg-slate-50 text-slate-400 border-slate-200" : "border-slate-200 focus:border-blue-500"}`}
             placeholder="Ej: 3434123456"
             value={f.tel}
             onChange={(e) => setF({ ...f, tel: e.target.value })}
@@ -78,14 +78,14 @@ export default function NewOrderView({ handleCreateAll, setView, prefill }) {
         <div className="space-y-1">
           <label className="text-[10px] font-black uppercase text-slate-400 ml-2">Motivo del Ingreso</label>
           <textarea
-            className="w-full border-2 border-slate-200 rounded-xl p-3 font-bold text-black outline-none focus:border-orange-500"
+            className="w-full border-2 border-slate-200 rounded-xl p-3 font-bold text-black outline-none focus:border-blue-500"
             rows="2"
             value={f.falla}
             onChange={(e) => setF({ ...f, falla: e.target.value })}
             placeholder="¿Qué le pasa hoy?"
           />
         </div>
-        <button onClick={() => handleCreateAll(f)} className="w-full bg-orange-600 text-white py-5 rounded-3xl font-black uppercase shadow-xl active:scale-95 transition-all">
+        <button onClick={() => handleCreateAll(f)} className="w-full bg-blue-600 text-white py-5 rounded-3xl font-black uppercase shadow-xl active:scale-95 transition-all">
           {prefill ? "Abrir Nueva Orden" : "Ingresar al Taller"}
         </button>
       </div>

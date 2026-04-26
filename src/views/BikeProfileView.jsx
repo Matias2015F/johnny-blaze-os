@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { ArrowLeft, PlusCircle, ChevronDown } from "lucide-react";
 import { formatMoney } from "../utils/format.js";
 
@@ -15,13 +15,13 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
   return (
     <div className="min-h-screen bg-slate-100 text-left animate-in slide-in-from-right duration-300 pb-32">
       <div className="bg-slate-900 p-8 text-white">
-        <button onClick={() => setView("historial")} className="mb-6 text-orange-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
+        <button onClick={() => setView("historial")} className="mb-6 text-blue-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
           <ArrowLeft size={16} /> Historial
         </button>
         <div className="flex justify-between items-start">
           <div className="text-left">
             <h2 className="text-5xl font-black tracking-tighter leading-none mb-2">{b.patente}</h2>
-            <p className="text-xs font-bold text-orange-500 uppercase tracking-[0.2em]">{b.marca} {b.modelo}</p>
+            <p className="text-xs font-bold text-blue-500 uppercase tracking-[0.2em]">{b.marca} {b.modelo}</p>
             <div className="flex gap-4 mt-4">
               <div className="bg-white/10 px-4 py-2 rounded-2xl">
                 <p className="text-[8px] font-black uppercase text-slate-400">Cliente</p>
@@ -33,7 +33,7 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
               </div>
             </div>
           </div>
-          <button onClick={() => handleStartNewService(b, c)} className="bg-orange-600 text-white p-4 rounded-3xl shadow-xl active:scale-95 transition-all">
+          <button onClick={() => handleStartNewService(b, c)} className="bg-blue-600 text-white p-4 rounded-3xl shadow-xl active:scale-95 transition-all">
             <PlusCircle size={32} />
           </button>
         </div>
@@ -65,7 +65,7 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
                     <div className="space-y-1">
                       {order.tareas?.map((t, i) => (
                         <div key={i} className="text-xs font-bold text-slate-700 uppercase flex items-center gap-2">
-                          <div className="w-1.5 h-1.5 rounded-full bg-orange-500" /> {t.nombre}
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> {t.nombre}
                         </div>
                       ))}
                       {order.repuestos?.map((r, i) => (
@@ -82,9 +82,9 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
                     </div>
                   )}
                   {order.observacionesProxima && (
-                    <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
-                      <p className="text-[8px] font-black uppercase text-orange-400 mb-1">Obs. Próxima Visita</p>
-                      <p className="text-xs font-bold italic text-orange-900">"{order.observacionesProxima}"</p>
+                    <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+                      <p className="text-[8px] font-black uppercase text-blue-400 mb-1">Obs. Próxima Visita</p>
+                      <p className="text-xs font-bold italic text-blue-900">"{order.observacionesProxima}"</p>
                     </div>
                   )}
                 </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+﻿import React, { useState, useEffect, useMemo } from "react";
 import { ArrowLeft, Plus, X } from "lucide-react";
 import { LS, useCollection, generateId } from "../lib/storage.js";
 import { CONFIG_DEFAULT, SERVICIOS_DEFAULT } from "../lib/constants.js";
@@ -95,7 +95,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
   return (
     <div className="p-6 text-left animate-in slide-in-from-bottom duration-300 pb-32">
-      <button onClick={() => { setServiceToEdit(null); setView("detalleOrden"); }} className="mb-6 text-orange-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
+      <button onClick={() => { setServiceToEdit(null); setView("detalleOrden"); }} className="mb-6 text-blue-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
         <ArrowLeft size={16} /> Volver
       </button>
       <div className="bg-white p-8 rounded-[2.5rem] space-y-5 shadow-2xl">
@@ -106,7 +106,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
         </select>
         <div className="space-y-1">
           <label className="text-[10px] uppercase text-slate-400 ml-2 font-black tracking-widest">Nombre</label>
-          <input value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} placeholder="Ej: Cambio de Cubierta" className="w-full border-2 border-slate-100 rounded-2xl p-4 font-black outline-none focus:border-orange-500" />
+          <input value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })} placeholder="Ej: Cambio de Cubierta" className="w-full border-2 border-slate-100 rounded-2xl p-4 font-black outline-none focus:border-blue-500" />
         </div>
         <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -122,9 +122,9 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             </div>
           </div>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 font-black text-lg">$</span>
-            <input type="text" value={editForm.montoMO > 0 ? editForm.montoMO.toLocaleString("es-AR") : ""} onChange={(e) => setEditForm({ ...editForm, montoMO: parseMonto(e.target.value) })} placeholder="0" className="w-full pl-10 pr-4 py-4 bg-white border-2 border-orange-200 rounded-2xl text-2xl font-black text-slate-800 outline-none focus:border-orange-500" />
-            <label className="absolute -top-2.5 left-4 bg-white px-2 text-[8px] font-black uppercase text-orange-500 tracking-widest">Mano de Obra Cliente</label>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 font-black text-lg">$</span>
+            <input type="text" value={editForm.montoMO > 0 ? editForm.montoMO.toLocaleString("es-AR") : ""} onChange={(e) => setEditForm({ ...editForm, montoMO: parseMonto(e.target.value) })} placeholder="0" className="w-full pl-10 pr-4 py-4 bg-white border-2 border-blue-200 rounded-2xl text-2xl font-black text-slate-800 outline-none focus:border-blue-500" />
+            <label className="absolute -top-2.5 left-4 bg-white px-2 text-[8px] font-black uppercase text-blue-500 tracking-widest">Mano de Obra Cliente</label>
           </div>
         </div>
 
@@ -149,7 +149,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
         <div className="space-y-1">
           <label className="text-[10px] uppercase text-slate-400 ml-2 font-black tracking-widest">Obs. Próxima Visita</label>
-          <textarea value={editForm.observacionesProxima} onChange={(e) => setEditForm({ ...editForm, observacionesProxima: e.target.value })} rows="2" className="w-full border-2 border-slate-100 rounded-2xl p-4 font-bold text-sm outline-none focus:border-orange-500" placeholder="Ej: Revisar transmisión en 2000km..." />
+          <textarea value={editForm.observacionesProxima} onChange={(e) => setEditForm({ ...editForm, observacionesProxima: e.target.value })} rows="2" className="w-full border-2 border-slate-100 rounded-2xl p-4 font-bold text-sm outline-none focus:border-blue-500" placeholder="Ej: Revisar transmisión en 2000km..." />
         </div>
 
         <div className="bg-slate-900 p-6 rounded-[2.5rem] space-y-4 text-white shadow-2xl">
@@ -166,7 +166,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 <span className={`text-xs font-bold ${stats.rentabilidad < 20 ? "text-red-500" : "text-blue-400"}`}>{Math.round(stats.rentabilidad)}%</span>
               </div>
             </div>
-            <button onClick={aplicar} className="bg-orange-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all">Confirmar</button>
+            <button onClick={aplicar} className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all">Confirmar</button>
           </div>
         </div>
       </div>

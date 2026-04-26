@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+﻿import React, { useState, useMemo } from "react";
 import { ArrowLeft, Search, ChevronRight } from "lucide-react";
 
 export default function HistoryView({ orders, bikes, clients, setView, setSelectedBikeId }) {
@@ -32,7 +32,7 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
           placeholder="Buscar patente o cliente..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-white border-2 border-slate-200 p-5 pl-12 rounded-3xl font-black text-black outline-none focus:border-orange-500"
+          className="w-full bg-white border-2 border-slate-200 p-5 pl-12 rounded-3xl font-black text-black outline-none focus:border-blue-500"
         />
       </div>
       <div className="space-y-4 mt-6">

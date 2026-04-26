@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { Printer } from "lucide-react";
 import { LS } from "../lib/storage.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
@@ -22,7 +22,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           </div>
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-black text-orange-500 uppercase">Orden Única</p>
+          <p className="text-[10px] font-black text-blue-500 uppercase">Orden Única</p>
           <p className="text-5xl font-black tracking-tighter">#{order.id.slice(-4).toUpperCase()}</p>
           <p className="text-xs font-bold mt-2 uppercase">{order.fechaIngreso}</p>
         </div>

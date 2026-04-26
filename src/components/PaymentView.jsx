@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { ArrowLeft, Check } from "lucide-react";
 import { LS, generateId } from "../lib/storage.js";
 import { hoyEstable } from "../lib/constants.js";
@@ -46,7 +46,7 @@ export default function PaymentView({ order, setView, showToast }) {
 
   return (
     <div className="p-6 text-left animate-in slide-in-from-bottom duration-300 pb-32">
-      <button onClick={() => setView("detalleOrden")} className="mb-6 text-orange-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
+      <button onClick={() => setView("detalleOrden")} className="mb-6 text-blue-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
         <ArrowLeft size={16} /> Volver al Trabajo
       </button>
       <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl space-y-6">
@@ -57,16 +57,16 @@ export default function PaymentView({ order, setView, showToast }) {
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-2">
             {["efectivo", "transferencia", "mercadopago"].map((m) => (
-              <button key={m} onClick={() => setMetodo(m)} className={`py-3 rounded-2xl text-[10px] font-black uppercase border-2 transition-all ${metodo === m ? "border-orange-500 bg-orange-50 text-orange-600" : "border-slate-100 text-slate-400"}`}>
+              <button key={m} onClick={() => setMetodo(m)} className={`py-3 rounded-2xl text-[10px] font-black uppercase border-2 transition-all ${metodo === m ? "border-blue-500 bg-blue-50 text-blue-600" : "border-slate-100 text-slate-400"}`}>
                 {m}
               </button>
             ))}
           </div>
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xl">$</span>
-            <input type="text" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="Ej: 15.000" className="w-full pl-10 pr-4 py-5 bg-slate-50 border-2 border-slate-100 rounded-3xl text-2xl font-black outline-none focus:border-orange-500" />
+            <input type="text" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="Ej: 15.000" className="w-full pl-10 pr-4 py-5 bg-slate-50 border-2 border-slate-100 rounded-3xl text-2xl font-black outline-none focus:border-blue-500" />
           </div>
-          <input value={comprobante} onChange={(e) => setComprobante(e.target.value)} placeholder="N° Comprobante / Ref (Opcional)" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-orange-500" />
+          <input value={comprobante} onChange={(e) => setComprobante(e.target.value)} placeholder="N° Comprobante / Ref (Opcional)" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-blue-500" />
           <button onClick={registrar} className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black uppercase shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
             <Check size={20} /> Confirmar Entrega
           </button>

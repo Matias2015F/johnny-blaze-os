@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { Wrench, Clock, History, TrendingUp, DollarSign } from "lucide-react";
@@ -145,7 +145,7 @@ export default function TallerPanel() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#0A0A0A] relative text-left selection:bg-orange-500 overflow-x-hidden font-bold">
+    <div className="max-w-md mx-auto min-h-screen bg-[#0A0A0A] relative text-left selection:bg-blue-500 overflow-x-hidden font-bold">
 
       {view === "home" && <HomeView stats={stats} setView={setView} bikes={bikes} loadDemoData={loadDemoData} clearAllData={clearAllData} handleLogout={handleLogout} />}
       {view === "nuevaOrden" && <NewOrderView handleCreateAll={handleCreateOrder} setView={setView} prefill={prefillData} />}
@@ -171,19 +171,19 @@ export default function TallerPanel() {
 
       {NAV_VIEWS.includes(view) && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-black/95 backdrop-blur-3xl border-t border-white/10 px-2 py-4 flex justify-around items-center z-50 rounded-t-[3rem] shadow-2xl">
-          <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "home" ? "text-orange-500 scale-110" : "text-slate-500"}`}>
+          <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "home" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
             <Wrench size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Taller</span>
           </button>
-          <button onClick={() => setView("ordenes")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "ordenes" ? "text-orange-500 scale-110" : "text-slate-500"}`}>
+          <button onClick={() => setView("ordenes")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "ordenes" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
             <Clock size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Trabajos</span>
           </button>
-          <button onClick={() => setView("historial")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "historial" || view === "perfilMoto" ? "text-orange-500 scale-110" : "text-slate-500"}`}>
+          <button onClick={() => setView("historial")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "historial" || view === "perfilMoto" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
             <History size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Historial</span>
           </button>
-          <button onClick={() => setView("precios")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "precios" ? "text-orange-500 scale-110" : "text-slate-500"}`}>
+          <button onClick={() => setView("precios")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "precios" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
             <DollarSign size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Precios</span>
           </button>
-          <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "config" ? "text-orange-500 scale-110" : "text-slate-500"}`}>
+          <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "config" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
             <TrendingUp size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Balance</span>
           </button>
         </nav>

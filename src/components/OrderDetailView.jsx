@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { ArrowLeft, Wrench, DollarSign, FileText, MessageSquare, Truck, Trash2, Edit2, Activity, ShieldCheck } from "lucide-react";
 import { LS } from "../lib/storage.js";
 import { ESTADO_LABEL, ESTADO_CSS, CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden, generarMensajePresupuesto, evaluarEstado } from "../lib/calc.js";
 import { iniciarCronometro, pausarCronometro, obtenerTiempoActual, formatTiempo } from "../lib/timer.js";
 import { mensajeBloqueo, abrirWhatsApp } from "../lib/messages.js";
+import { MOTIVOS_BLOQUEO } from "../lib/theme.js";
 import { formatMoney } from "../utils/format.js";
 
 export default function OrderDetailView({ order, clients, bikes, setView, showToast, setServiceToEdit }) {
   const [tiempoActual, setTiempoActual] = useState(0);
+  const [motivoBloqueo, setMotivoBloqueo] = useState(MOTIVOS_BLOQUEO[0]);
+  const [motivoManual, setMotivoManual] = useState("");
 
   useEffect(() => {
     const id = setInterval(() => setTiempoActual(obtenerTiempoActual(order)), 1000);
@@ -72,7 +75,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   return (
     <div className="min-h-screen bg-slate-100 text-left animate-in slide-in-from-right duration-300 pb-32">
       <div className="bg-slate-900 p-8 text-white">
-        <button onClick={() => setView("ordenes")} className="mb-6 text-orange-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
+        <button onClick={() => setView("ordenes")} className="mb-6 text-blue-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
           <ArrowLeft size={16} /> Volver
         </button>
         <div className="flex justify-between items-start">
@@ -89,7 +92,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             </div>
           </div>
           <div className="text-right">
-            <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1">Precio Cliente</p>
+            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Precio Cliente</p>
             <p className="text-3xl font-black tracking-tighter">{formatMoney(res.total)}</p>
           </div>
         </div>
@@ -109,7 +112,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             <p className="text-2xl font-black text-slate-900 tracking-tighter">{formatMoney(res.total)}</p>
           </div>
           <div className="text-right border-l border-slate-100 pl-4 font-bold">
-            <p className="text-[10px] font-black uppercase text-orange-500 leading-none mb-1">Saldo</p>
+            <p className="text-[10px] font-black uppercase text-blue-500 leading-none mb-1">Saldo</p>
             <p className={`text-2xl font-black tracking-tighter ${saldoPendiente > 0 ? "text-red-600" : "text-slate-400"}`}>
               {formatMoney(saldoPendiente)}
             </p>
@@ -149,7 +152,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
             <div className="bg-slate-800 rounded-2xl p-4 flex justify-between items-center">
               <p className="text-[10px] font-black text-slate-400 uppercase">Costo actual</p>
-              <p className="text-lg font-black text-orange-400">{formatMoney(costoActual)}</p>
+              <p className="text-lg font-black text-blue-400">{formatMoney(costoActual)}</p>
             </div>
 
             {order.maxAutorizado > 0 && (() => {
@@ -161,7 +164,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                     <span>{Math.round(pct)}% de {formatMoney(order.maxAutorizado)}</span>
                   </div>
                   <div className="bg-slate-700 rounded-full h-2.5">
-                    <div className={`h-2.5 rounded-full transition-all ${pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-yellow-400" : "bg-orange-500"}`} style={{ width: `${pct}%` }} />
+                    <div className={`h-2.5 rounded-full transition-all ${pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-yellow-400" : "bg-blue-500"}`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
@@ -175,9 +178,30 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
             {estadoCron === "BLOQUEADO" && (
               <div className="bg-red-500/10 border border-red-500/50 rounded-2xl p-4 space-y-3">
-                <p className="text-red-400 font-black text-[10px] uppercase tracking-wider text-center">⛔ Límite superado — avisá al cliente</p>
+                <p className="text-red-400 font-black text-[10px] uppercase tracking-wider text-center">⛔ Límite superado</p>
+                <select
+                  value={motivoBloqueo}
+                  onChange={e => setMotivoBloqueo(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-600 text-white text-xs font-bold rounded-xl p-3 outline-none"
+                >
+                  {MOTIVOS_BLOQUEO.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+                {motivoBloqueo === "Otro (manual)" && (
+                  <textarea
+                    value={motivoManual}
+                    onChange={e => setMotivoManual(e.target.value)}
+                    placeholder="Describí el motivo..."
+                    className="w-full bg-slate-800 border border-slate-600 text-white text-xs rounded-xl p-3 outline-none resize-none h-16"
+                  />
+                )}
                 <button
-                  onClick={() => abrirWhatsApp(c.tel, mensajeBloqueo(b, c, costoActual))}
+                  onClick={() => abrirWhatsApp(c.tel, mensajeBloqueo({
+                    bike: b, client: c,
+                    tareas: order.tareas,
+                    repuestos: order.repuestos,
+                    motivo: motivoBloqueo === "Otro (manual)" ? motivoManual : motivoBloqueo,
+                    costoActual,
+                  }))}
                   className="w-full bg-green-600 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
                 >
                   Enviar WhatsApp
@@ -191,7 +215,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 ▶ Iniciar
               </button>
               <button onClick={handlePause} disabled={!order.cronometroActivo}
-                className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${!order.cronometroActivo ? "bg-slate-700 text-slate-500" : "bg-orange-500 text-white"}`}>
+                className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${!order.cronometroActivo ? "bg-slate-700 text-slate-500" : "bg-blue-500 text-white"}`}>
                 ⏸ Pausar
               </button>
             </div>
@@ -217,7 +241,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           <div className="flex justify-between items-center px-2">
             <h3 className="text-xs font-black uppercase text-slate-400 tracking-tighter">Resumen del Trabajo</h3>
             {!isLocked && (
-              <button onClick={() => setView("logistica")} className="text-[10px] font-black uppercase text-orange-600 flex items-center gap-1 active:scale-90">
+              <button onClick={() => setView("logistica")} className="text-[10px] font-black uppercase text-blue-600 flex items-center gap-1 active:scale-90">
                 <Truck size={14} /> + Logística
               </button>
             )}
@@ -226,7 +250,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             {res.tareasAnalizadas?.map((t, idx) => (
               <div key={idx} className={`flex items-center p-4 rounded-2xl border-2 shadow-sm transition-all ${t.perdida ? "border-red-300 bg-red-50" : "border-slate-100 bg-white"}`}>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-[9px] font-black uppercase tracking-tighter ${t.perdida ? "text-red-600" : "text-orange-500"}`}>
+                  <p className={`text-[9px] font-black uppercase tracking-tighter ${t.perdida ? "text-red-600" : "text-blue-500"}`}>
                     {t.perdida ? "⚠️ REVISAR: BAJA RENTABILIDAD" : "Mano de Obra"}
                   </p>
                   <p className="text-sm font-black text-slate-800 truncate pr-2 leading-none mt-1 uppercase">{t.nombre}</p>
