@@ -300,6 +300,12 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 <span className="font-black text-slate-400">Cobrás</span>
                 <span className="font-black text-white">{formatMoney(stats.totalCobrar)}</span>
               </div>
+              {stats.insumosCosto > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span className="font-bold text-slate-600">Insumos (no facturado)</span>
+                  <span className="font-black text-red-400">−{formatMoney(stats.insumosCosto)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="font-black text-slate-400">Te cuesta</span>
                 <span className="font-black text-slate-500">{formatMoney(stats.totalCostoInterno)}</span>
