@@ -1,4 +1,4 @@
-export function mensajeBloqueo({ bike, client, tareas = [], repuestos = [], motivo, costoActual }) {
+export function mensajeBloqueo({ bike, client, tareas = [], repuestos = [], motivo, costoActual, nuevoMin, nuevoMax }) {
   const listaTareas = tareas.map(t => `• ${t.nombre}`).join("\n") || "—";
   const listaRepuestos = repuestos.map(r => `• ${r.nombre}`).join("\n") || "—";
 
@@ -6,22 +6,23 @@ export function mensajeBloqueo({ bike, client, tareas = [], repuestos = [], moti
 
 Te actualizamos sobre tu moto ${bike.marca || ""} ${bike.modelo || ""} (${bike.patente || "---"}):
 
-🔧 Trabajos realizados hasta el momento:
+🔧 Trabajos realizados:
 ${listaTareas}
 
 🧩 Repuestos utilizados:
 ${listaRepuestos}
 
-⚠️ Se ha superado el presupuesto estimado inicialmente.
+⚠️ Se superó el presupuesto estimado inicial.
 
 Motivo:
-${motivo || "Se detectaron complicaciones adicionales durante la reparación."}
+${motivo || "Se detectaron condiciones adicionales durante la reparación."}
 
-💰 Nuevo estimado aproximado de mano de obra: $${Math.round(costoActual).toLocaleString()}
+💰 Mano de obra acumulada hasta ahora: $${Math.round(costoActual).toLocaleString()}
 
-Para continuar necesitamos tu confirmación.
+📊 Nuevo rango estimado para finalizar:
+Entre $${Math.round(nuevoMin).toLocaleString()} y $${Math.round(nuevoMax).toLocaleString()}
 
-¿Autorizás que sigamos con la reparación o preferís que nos detengamos acá?`;
+¿Querés que continuemos o preferís que nos detengamos acá?`;
 }
 
 export function mensajePresupuesto({ bike, client, min, max }) {

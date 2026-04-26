@@ -35,6 +35,17 @@ export const calcularResultadosOrden = (order) => {
   return { total: totalCobrado, costoInterno: costoInternoTotal, margen, rentabilidad, tareasAnalizadas };
 };
 
+export function calcularNuevoRango({ tiempoActual, costoHora, promedioHoras, desvioHoras }) {
+  const costoActual = tiempoActual * costoHora;
+  const restanteMin = Math.max(promedioHoras - tiempoActual, 0);
+  const restanteMax = Math.max(promedioHoras + desvioHoras - tiempoActual, 0);
+  return {
+    costoActual,
+    nuevoMin: costoActual + restanteMin * costoHora,
+    nuevoMax: costoActual + restanteMax * costoHora,
+  };
+}
+
 export function evaluarEstado({ tiempoHoras, valorHora, maxAutorizado }) {
   if (!maxAutorizado) return { estadoCron: "NORMAL", costoActual: tiempoHoras * valorHora };
   const costoActual = tiempoHoras * valorHora;

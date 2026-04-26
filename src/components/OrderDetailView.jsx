@@ -2,7 +2,8 @@
 import { ArrowLeft, Wrench, DollarSign, FileText, MessageSquare, Truck, Trash2, Edit2, Activity, ShieldCheck } from "lucide-react";
 import { LS } from "../lib/storage.js";
 import { ESTADO_LABEL, ESTADO_CSS, CONFIG_DEFAULT } from "../lib/constants.js";
-import { calcularResultadosOrden, generarMensajePresupuesto, evaluarEstado } from "../lib/calc.js";
+import { calcularResultadosOrden, generarMensajePresupuesto, evaluarEstado, calcularNuevoRango } from "../lib/calc.js";
+import { obtenerAprendizaje } from "../lib/priceLearning.js";
 import { iniciarCronometro, pausarCronometro, obtenerTiempoActual, formatTiempo } from "../lib/timer.js";
 import { mensajeBloqueo, abrirWhatsApp } from "../lib/messages.js";
 import { MOTIVOS_BLOQUEO } from "../lib/theme.js";
@@ -23,10 +24,23 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const c = clients.find((x) => x.id === order.clientId) || {};
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const res = calcularResultadosOrden(order);
+  const valorHora = config.valorHoraCliente || 15000;
   const { estadoCron, costoActual } = evaluarEstado({
     tiempoHoras: tiempoActual,
-    valorHora: config.valorHoraCliente || 15000,
+    valorHora,
     maxAutorizado: order.maxAutorizado || 0,
+  });
+
+  // Rango estimado para el mensaje de bloqueo
+  const promedioHoras = (order.tareas || []).reduce((s, t) => {
+    const apr = obtenerAprendizaje(t.nombre, b.cilindrada);
+    return s + (apr ? apr.promedio : (t.horasBase || 1));
+  }, 0) || 1;
+  const { nuevoMin, nuevoMax } = calcularNuevoRango({
+    tiempoActual,
+    costoHora: valorHora,
+    promedioHoras,
+    desvioHoras: promedioHoras * 0.3,
   });
 
   const handleStart = () => LS.updateDoc("ordenes", order.id, iniciarCronometro(order));
@@ -200,7 +214,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                     tareas: order.tareas,
                     repuestos: order.repuestos,
                     motivo: motivoBloqueo === "Otro (manual)" ? motivoManual : motivoBloqueo,
-                    costoActual,
+                    costoActual, nuevoMin, nuevoMax,
                   }))}
                   className="w-full bg-green-600 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
                 >

@@ -10,8 +10,9 @@ export function pausarCronometro(orden) {
 }
 
 export function obtenerTiempoActual(orden) {
-  if (!orden.cronometroActivo) return orden.tiempoReal || 0;
-  return (orden.tiempoReal || 0) + (Date.now() - orden.inicioCronometro) / 3600000;
+  const base = orden.tiempoReal || 0;
+  if (!orden.cronometroActivo || !orden.inicioCronometro) return base;
+  return base + (Date.now() - orden.inicioCronometro) / 3600000;
 }
 
 export function formatTiempo(horas) {
