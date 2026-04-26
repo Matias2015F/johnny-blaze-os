@@ -4,7 +4,7 @@ import { LS } from "../lib/storage.js";
 import { ESTADO_LABEL, ESTADO_CSS, CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden, generarMensajePresupuesto, evaluarEstado, calcularNuevoRango } from "../lib/calc.js";
 import { obtenerAprendizaje } from "../lib/priceLearning.js";
-import { iniciarCronometro, pausarCronometro, obtenerTiempoActual, formatTiempo } from "../lib/timer.js";
+import { iniciarCronometro, pausarCronometro, obtenerTiempoActual, formatTiempo, formatTiempoCorto } from "../lib/timer.js";
 import { mensajeBloqueo, abrirWhatsApp } from "../lib/messages.js";
 import { MOTIVOS_BLOQUEO } from "../lib/theme.js";
 import { formatMoney } from "../utils/format.js";
@@ -157,32 +157,55 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           </div>
         )}
 
-        {order.estado === "reparacion" && (
+        {order.estado === "reparacion" && (() => {
+          const tiempoMax   = order.maxAutorizado > 0 ? order.maxAutorizado / valorHora : 0;
+          const tiempoAlerta = tiempoMax * 0.8;
+          const pct = tiempoMax > 0 ? Math.min((costoActual / order.maxAutorizado) * 100, 100) : 0;
+          const restante = Math.max(tiempoMax - tiempoActual, 0);
+          return (
           <div className="bg-slate-900 rounded-3xl p-5 space-y-4">
+
+            {/* Header */}
             <div className="flex justify-between items-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cronómetro</p>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cronómetro</p>
+                <p className="text-[9px] text-slate-500 font-bold mt-0.5">{formatMoney(valorHora)} / hora</p>
+              </div>
               <p className="text-2xl font-black text-white font-mono tracking-widest">{formatTiempo(tiempoActual)}</p>
             </div>
 
-            <div className="bg-slate-800 rounded-2xl p-4 flex justify-between items-center">
-              <p className="text-[10px] font-black text-slate-400 uppercase">Costo actual</p>
-              <p className="text-lg font-black text-blue-400">{formatMoney(costoActual)}</p>
+            {/* Costo + tiempo restante */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-slate-800 rounded-2xl p-3">
+                <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Costo actual</p>
+                <p className="text-base font-black text-blue-400">{formatMoney(costoActual)}</p>
+              </div>
+              {tiempoMax > 0 && (
+                <div className="bg-slate-800 rounded-2xl p-3">
+                  <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Te quedan</p>
+                  <p className={`text-base font-black ${estadoCron === "BLOQUEADO" ? "text-red-400" : estadoCron === "ALERTA" ? "text-yellow-400" : "text-green-400"}`}>
+                    {formatTiempoCorto(restante)}
+                  </p>
+                </div>
+              )}
             </div>
 
-            {order.maxAutorizado > 0 && (() => {
-              const pct = Math.min((costoActual / order.maxAutorizado) * 100, 100);
-              return (
-                <div>
-                  <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase mb-1.5">
-                    <span>Progreso</span>
-                    <span>{Math.round(pct)}% de {formatMoney(order.maxAutorizado)}</span>
-                  </div>
-                  <div className="bg-slate-700 rounded-full h-2.5">
-                    <div className={`h-2.5 rounded-full transition-all ${pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-yellow-400" : "bg-blue-500"}`} style={{ width: `${pct}%` }} />
-                  </div>
+            {/* Barra de progreso */}
+            {tiempoMax > 0 && (
+              <div>
+                <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase mb-1.5">
+                  <span>{Math.round(pct)}% usado</span>
+                  <span>Quedan {Math.max(100 - Math.round(pct), 0)}%</span>
                 </div>
-              );
-            })()}
+                <div className="bg-slate-700 rounded-full h-2.5">
+                  <div className={`h-2.5 rounded-full transition-all ${pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-yellow-400" : "bg-blue-500"}`} style={{ width: `${pct}%` }} />
+                </div>
+                <div className="flex justify-between text-[9px] text-slate-600 font-bold mt-1.5">
+                  <span>⚠️ Alerta: {formatTiempoCorto(tiempoAlerta)}</span>
+                  <span>⏱️ Máx: {formatTiempoCorto(tiempoMax)}</span>
+                </div>
+              </div>
+            )}
 
             {estadoCron === "ALERTA" && (
               <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-2xl p-3 text-center">
@@ -240,7 +263,8 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               </button>
             )}
           </div>
-        )}
+          );
+        })()}
 
         <div className="grid grid-cols-2 gap-3">
           <button onClick={copiarPresupuesto} className="bg-slate-900 text-white py-5 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
