@@ -96,9 +96,11 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   };
 
   const updateListItem = (lista, idx, field, val) => {
-    const list = [...editForm[lista]];
-    list[idx][field] = ["monto", "cantidad", "montoCosto"].includes(field) ? parseMonto(val) : val;
-    setEditForm({ ...editForm, [lista]: list });
+    const parsed = ["monto", "cantidad", "montoCosto"].includes(field) ? parseMonto(val) : val;
+    const list = editForm[lista].map((item, i) =>
+      i === idx ? { ...item, [field]: parsed } : item
+    );
+    setEditForm(f => ({ ...f, [lista]: list }));
   };
 
   const stats = useMemo(() => {
@@ -238,9 +240,12 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 <input className="flex-1 border-none bg-transparent text-xs font-black uppercase text-slate-700 outline-none" placeholder="Nombre..." value={item.nombre} onChange={(e) => updateListItem(lista, idx, "nombre", e.target.value)} />
                 <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
                   <span className="text-[10px] font-black text-slate-300">$</span>
-                  <input type="text" className={`w-20 text-xs text-right font-black outline-none bg-transparent ${lista === "repuestos" ? "text-blue-600" : "text-orange-500"}`}
+                  <input type="text" inputMode="numeric" className={`w-20 text-xs text-right font-black outline-none bg-transparent ${lista === "repuestos" ? "text-blue-600" : "text-orange-500"}`}
                     value={item.monto > 0 ? item.monto.toLocaleString("es-AR") : ""}
-                    onChange={(e) => updateListItem(lista, idx, "monto", e.target.value)} placeholder="0" />
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, "");
+                      updateListItem(lista, idx, "monto", digits ? Number(digits) : 0);
+                    }} placeholder="0" />
                 </div>
                 <button onClick={() => setEditForm({ ...editForm, [lista]: editForm[lista].filter((_, i) => i !== idx) })} className="p-1 text-slate-300 active:text-red-500">
                   <X size={16} />
