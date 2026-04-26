@@ -175,32 +175,44 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               <span className={`text-sm font-black ${res.margen >= 0 ? "text-green-600" : "text-red-600"}`}>{formatMoney(res.margen)}</span>
             </div>
 
-            {/* Desglose por categoría — secundario */}
-            {(res.desglose.moCliente > 0 || res.desglose.repuestosCliente > 0 || res.desglose.logisticaCliente > 0) && (
+            {/* Desglose por categoría — cada una con cobrado/costo/margen simétrico */}
+            {(res.desglose.moCliente > 0 || res.desglose.repuestosCliente > 0 || res.desglose.fletesCliente > 0 || res.desglose.insumosOverhead > 0) && (
               <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Detalle</p>
-                {res.desglose.moCliente > 0 && (
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-slate-400 font-bold">Mano de obra</span>
-                    <span className="font-black text-slate-700">{formatMoney(res.desglose.moCliente)}
-                      <span className={`ml-2 ${res.desglose.margenMO >= 0 ? "text-green-500" : "text-red-500"}`}>({formatMoney(res.desglose.margenMO)})</span>
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Cómo se compone</p>
+
+                {[
+                  res.desglose.moCliente > 0 && {
+                    label: "Mano de obra",
+                    cobrado: res.desglose.moCliente,
+                    margen: res.desglose.margenMO,
+                  },
+                  res.desglose.repuestosCliente > 0 && {
+                    label: "Repuestos",
+                    cobrado: res.desglose.repuestosCliente,
+                    margen: res.desglose.margenRepuestos,
+                  },
+                  res.desglose.fletesCliente > 0 && {
+                    label: "Fletes",
+                    cobrado: res.desglose.fletesCliente,
+                    margen: res.desglose.margenFletes,
+                  },
+                ].filter(Boolean).map(({ label, cobrado, margen }) => (
+                  <div key={label} className="flex justify-between items-center text-[10px]">
+                    <span className="text-slate-400 font-bold">{label}</span>
+                    <span className="font-black text-slate-700">
+                      {formatMoney(cobrado)}
+                      <span className={`ml-2 text-[9px] ${margen >= 0 ? "text-green-500" : "text-red-500"}`}>
+                        ({margen >= 0 ? "+" : ""}{formatMoney(margen)})
+                      </span>
                     </span>
                   </div>
-                )}
-                {res.desglose.repuestosCliente > 0 && (
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-slate-400 font-bold">Repuestos</span>
-                    <span className="font-black text-slate-700">{formatMoney(res.desglose.repuestosCliente)}
-                      <span className={`ml-2 ${res.desglose.margenRepuestos >= 0 ? "text-green-500" : "text-red-500"}`}>({formatMoney(res.desglose.margenRepuestos)})</span>
-                    </span>
-                  </div>
-                )}
-                {res.desglose.logisticaCliente > 0 && (
-                  <div className="flex justify-between text-[10px]">
-                    <span className="text-slate-400 font-bold">Logística</span>
-                    <span className="font-black text-slate-700">{formatMoney(res.desglose.logisticaCliente)}
-                      <span className={`ml-2 ${res.desglose.margenLogistica >= 0 ? "text-green-500" : "text-red-500"}`}>({formatMoney(res.desglose.margenLogistica)})</span>
-                    </span>
+                ))}
+
+                {/* Insumos: gasto operativo, no se cobra al cliente */}
+                {res.desglose.insumosOverhead > 0 && (
+                  <div className="flex justify-between items-center text-[10px] pt-1.5 border-t border-slate-100 mt-1">
+                    <span className="text-slate-400 font-bold">Insumos / Overhead</span>
+                    <span className="font-black text-red-400">−{formatMoney(res.desglose.insumosOverhead)}</span>
                   </div>
                 )}
               </div>

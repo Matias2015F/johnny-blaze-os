@@ -13,30 +13,30 @@ export const calcularResultadosOrden = (order) => {
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const vHoraInt = config.valorHoraInterno || 12000;
 
-  const totalCobrado =
-    (order.tareas || []).reduce((s, t) => s + (t.monto || 0), 0) +
-    (order.repuestos || []).reduce((s, r) => s + ((r.monto || 0) * (r.cantidad || 1)), 0) +
-    (order.fletes || []).reduce((s, f) => s + (f.monto || 0), 0);
+  // ── Precio al cliente (lo que se cobra) ──────────────────────
+  const moCliente        = (order.tareas    || []).reduce((s, t) => s + (t.monto || 0), 0);
+  const repuestosCliente = (order.repuestos || []).reduce((s, r) => s + ((r.monto || 0) * (r.cantidad || 1)), 0);
+  const fletesCliente    = (order.fletes    || []).reduce((s, f) => s + (f.monto || 0), 0);
+  const totalCobrado     = moCliente + repuestosCliente + fletesCliente;
+
+  // ── Costo interno (lo que sale de caja) ──────────────────────
+  const moCosto          = (order.tareas    || []).reduce((s, t) => s + ((t.horasReal || t.horasBase || 0) * vHoraInt), 0);
+  const repuestosCosto   = (order.repuestos || []).reduce((s, r) => s + ((r.montoCosto || r.monto || 0) * (r.cantidad || 1)), 0);
+  const fletesCosto      = (order.fletes    || []).reduce((s, f) => s + ((f.montoCosto || f.monto || 0)), 0);
+  const insumosOverhead  = (order.insumos   || []).reduce((s, i) => s + (i.monto || 0), 0); // no se cobra, es gasto operativo
+
+  const costoInternoTotal = moCosto + repuestosCosto + fletesCosto + insumosOverhead;
+
+  // ── Resultado ─────────────────────────────────────────────────
+  const margen       = totalCobrado - costoInternoTotal;
+  const rentabilidad = totalCobrado > 0 ? (margen / totalCobrado) * 100 : 0;
 
   const tareasAnalizadas = (order.tareas || []).map((t) => {
     const costoT = (t.horasReal || t.horasBase || 1) * vHoraInt;
     return { ...t, perdida: t.monto < costoT };
   });
 
-  const costoRepuestos = (order.repuestos || []).reduce((s, r) => s + ((r.montoCosto || r.monto || 0) * (r.cantidad || 1)), 0);
-  const costoInsumos = (order.insumos || []).reduce((s, i) => s + (i.monto || 0), 0);
-  const costoFletes = (order.fletes || []).reduce((s, f) => s + (f.monto || 0), 0);
-  const costoMO = (order.tareas || []).reduce((s, t) => s + ((t.horasReal || t.horasBase || 0) * vHoraInt), 0);
-
-  const moCliente          = (order.tareas    || []).reduce((s, t) => s + (t.monto || 0), 0);
-  const repuestosCliente   = (order.repuestos || []).reduce((s, r) => s + ((r.monto || 0) * (r.cantidad || 1)), 0);
-  const logisticaCliente   = (order.fletes    || []).reduce((s, f) => s + (f.monto || 0), 0);
-  const logisticaCosto     = costoFletes + costoInsumos;
-  const sinCostoCargado    = (order.repuestos || []).some(r => !r.montoCosto);
-
-  const costoInternoTotal = costoRepuestos + costoInsumos + costoFletes + costoMO;
-  const margen = totalCobrado - costoInternoTotal;
-  const rentabilidad = totalCobrado > 0 ? (margen / totalCobrado) * 100 : 0;
+  const sinCostoCargado = (order.repuestos || []).some(r => !r.montoCosto);
 
   return {
     total: totalCobrado,
@@ -46,9 +46,12 @@ export const calcularResultadosOrden = (order) => {
     tareasAnalizadas,
     sinCostoCargado,
     desglose: {
-      moCliente, moCosto: costoMO, margenMO: moCliente - costoMO,
-      repuestosCliente, repuestosCosto: costoRepuestos, margenRepuestos: repuestosCliente - costoRepuestos,
-      logisticaCliente, logisticaCosto, margenLogistica: logisticaCliente - logisticaCosto,
+      // Cada categoría: cobrado / costo / margen — simétrico y consistente
+      moCliente,        moCosto,        margenMO:        moCliente        - moCosto,
+      repuestosCliente, repuestosCosto, margenRepuestos: repuestosCliente - repuestosCosto,
+      fletesCliente,    fletesCosto,    margenFletes:    fletesCliente    - fletesCosto,
+      // Insumos: gasto operativo puro, no facturado al cliente
+      insumosOverhead,
     },
   };
 };
