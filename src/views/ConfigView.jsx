@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from "react";
-import { ArrowLeft, Download, LogOut, Trash2, Database, Info } from "lucide-react";
+import React, { useState, useMemo, useRef } from "react";
+import { ArrowLeft, Download, LogOut, Trash2, Database, Info, Save, Upload } from "lucide-react";
 import { LS, useCollection } from "../lib/storage.js";
+import { getMeta, setMeta, exportBackup, importBackup } from "../lib/backup.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { formatMoney } from "../utils/format.js";
@@ -17,6 +18,9 @@ const DIFICULTADES = [
 
 export default function ConfigView({ setView, showToast, orders = [], bikes = [], clients = [], handleLogout, loadDemoData, clearAllData }) {
   const [cfg, setCfg] = useState(() => LS.getDoc("config", "global") || CONFIG_DEFAULT);
+  const [backupMeta, setBackupMeta] = useState(getMeta);
+  const [restoring, setRestoring] = useState(false);
+  const fileInputRef = useRef(null);
   const caja = useCollection("caja");
 
   const balance = useMemo(
@@ -37,6 +41,37 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
 
   const margen = cfg.margenPolitica ?? 25;
   const horaCliente = Math.round(cfg.valorHoraInterno * (1 + margen / 100));
+
+  const handleGuardarBackup = () => {
+    exportBackup();
+    setBackupMeta(getMeta());
+    showToast("Backup guardado en el dispositivo ✓");
+  };
+
+  const handleRecuperar = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setRestoring(true);
+    try {
+      await importBackup(file);
+      showToast("Datos restaurados ✓ — recargando...");
+      setTimeout(() => window.location.reload(), 1200);
+    } catch {
+      showToast("Error al leer el archivo");
+      setRestoring(false);
+    }
+  };
+
+  const toggleAutoBackup = () => {
+    setMeta({ autoBackupEnabled: !backupMeta.autoBackupEnabled });
+    setBackupMeta(getMeta());
+  };
+
+  const setAutoBackupDays = (days) => {
+    setMeta({ autoBackupDays: days });
+    setBackupMeta(getMeta());
+  };
 
   const guardar = () => {
     LS.setDoc("config", "global", { ...cfg, margenPolitica: margen, valorHoraCliente: horaCliente });
@@ -195,6 +230,69 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
               <Download size={16} className="text-blue-500 flex-shrink-0" />
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* ── COPIA DE SEGURIDAD ──────────────────────────────────────── */}
+      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl mb-4 space-y-4">
+        <div className="flex items-center gap-3 mb-1">
+          <Save size={18} className="text-slate-400" />
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Copia de Seguridad</p>
+        </div>
+
+        <div className="bg-slate-50 rounded-2xl p-4">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Último backup</p>
+          <p className="text-sm font-black text-slate-700 mt-1">
+            {backupMeta.lastBackup
+              ? new Date(backupMeta.lastBackup).toLocaleString("es-AR")
+              : "Nunca realizado"}
+          </p>
+        </div>
+
+        <button onClick={handleGuardarBackup}
+          className="w-full flex items-center justify-between bg-blue-600 text-white rounded-2xl p-4 active:scale-[0.98] transition-all">
+          <div className="text-left">
+            <p className="text-sm font-black">Guardar ahora</p>
+            <p className="text-[10px] opacity-75 font-bold">Descarga un archivo .json al dispositivo</p>
+          </div>
+          <Save size={18} className="flex-shrink-0" />
+        </button>
+
+        <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleRecuperar} />
+        <button onClick={() => fileInputRef.current?.click()} disabled={restoring}
+          className="w-full flex items-center justify-between bg-slate-50 border border-slate-200 rounded-2xl p-4 active:scale-[0.98] transition-all disabled:opacity-50">
+          <div className="text-left">
+            <p className="text-sm font-black text-slate-800">{restoring ? "Restaurando..." : "Recuperar backup"}</p>
+            <p className="text-[10px] text-slate-400 font-bold">Seleccioná un archivo .json guardado</p>
+          </div>
+          <Upload size={18} className="text-slate-500 flex-shrink-0" />
+        </button>
+
+        <div className="border-t border-slate-100 pt-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-black text-slate-700">Auto-backup</p>
+              <p className="text-[10px] text-slate-400 font-bold">Guarda al abrir la app automáticamente</p>
+            </div>
+            <button onClick={toggleAutoBackup}
+              className={`relative w-12 h-6 rounded-full transition-colors ${backupMeta.autoBackupEnabled ? "bg-blue-600" : "bg-slate-200"}`}>
+              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${backupMeta.autoBackupEnabled ? "left-6" : "left-0.5"}`} />
+            </button>
+          </div>
+
+          {backupMeta.autoBackupEnabled && (
+            <div className="space-y-2">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Frecuencia</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[{ d: 1, label: "Diario" }, { d: 3, label: "Cada 3d" }, { d: 7, label: "Semanal" }].map(({ d, label }) => (
+                  <button key={d} onClick={() => setAutoBackupDays(d)}
+                    className={`py-2 rounded-xl font-black text-xs transition-all ${(backupMeta.autoBackupDays || 1) === d ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

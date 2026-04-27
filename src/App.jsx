@@ -1,14 +1,23 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
+import { shouldAutoBackup, exportBackup } from "./lib/backup.js";
 
 import TallerPanel from "./TallerPanel.jsx";
 import LoginScreen from "./LoginScreen.jsx";
 
 export default function App() {
-  const [estado, setEstado] = useState("loading"); 
+  const [estado, setEstado] = useState("loading");
   // loading | login | ok | bloqueado
+  const autoBackupDone = useRef(false);
+
+  useEffect(() => {
+    if (estado === "ok" && !autoBackupDone.current) {
+      autoBackupDone.current = true;
+      if (shouldAutoBackup()) exportBackup();
+    }
+  }, [estado]);
 
   useEffect(() => {
     let unsubFirestore = null;
