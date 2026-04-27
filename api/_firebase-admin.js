@@ -18,6 +18,10 @@
 const { initializeApp, getApps, cert } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 
+console.log("Firebase init — PROJECT_ID:", process.env.FIREBASE_PROJECT_ID || "NO DEFINIDO");
+console.log("Firebase init — CLIENT_EMAIL:", process.env.FIREBASE_CLIENT_EMAIL || "NO DEFINIDO");
+console.log("Firebase init — PRIVATE_KEY definida:", !!process.env.FIREBASE_PRIVATE_KEY);
+
 if (!getApps().length) {
   initializeApp({
     credential: cert({
