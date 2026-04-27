@@ -87,14 +87,14 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     const moCosto  = editForm.horasBase * (config.valorHoraInterno || 12000) * factor;
     const moPrecio = Math.round(moCosto * k);
 
-    const repCosto  = editForm.repuestos.reduce((s, r) => s + ((r.montoCosto || 0) * (r.cantidad || 1)), 0);
-    const repPrecio = Math.round(repCosto * k);
+    const repPrecio = editForm.repuestos.reduce((s, r) => s + ((r.monto || 0) * (r.cantidad || 1)), 0);
+    const repCosto  = editForm.repuestos.reduce((s, r) => s + ((r.montoCosto || r.monto || 0) * (r.cantidad || 1)), 0);
 
     const insCosto  = editForm.insumos.reduce((s, i) => s + (i.monto || 0), 0);
     const insPrecio = insCosto; // pasan al cliente al mismo costo
 
     const totalCosto  = moCosto + repCosto + insCosto;
-    const totalCobrar = moPrecio + repPrecio + insPrecio;
+    const totalCobrar = moPrecio + repPrecio + insPrecio; // repuestos e insumos ya son precio final
     const margen      = totalCobrar - totalCosto;
     const rentabilidad = totalCobrar > 0 ? (margen / totalCobrar) * 100 : 0;
 
@@ -108,12 +108,8 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     const tareaId = nombreTarea.toLowerCase();
     const k = 1 + margenPct / 100;
 
-    // Repuestos: guardan costo + precio derivado + tag de tarea para poder reemplazar al editar
-    const repuestosGuardados = editForm.repuestos.map(r => ({
-      ...r,
-      monto: Math.round((r.montoCosto || 0) * k),
-      _tareaId: tareaId,
-    }));
+    // Repuestos: precio final tal como lo ingresó el usuario
+    const repuestosGuardados = editForm.repuestos.map(r => ({ ...r, _tareaId: tareaId }));
     const insumosGuardados = editForm.insumos.map(i => ({ ...i, _tareaId: tareaId }));
 
     const datosTarea = {
@@ -250,12 +246,9 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
         {/* Repuestos — se ingresa el costo, el precio se deriva del margen */}
         <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-3">
           <div className="flex justify-between items-center">
-            <div>
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Repuestos</p>
-              <p className="text-[9px] text-slate-300 font-bold">Ingresá el costo — el precio al cliente se calcula con el margen</p>
-            </div>
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Repuestos</p>
             <button
-              onClick={() => setEditForm({ ...editForm, repuestos: [...editForm.repuestos, { nombre: "", montoCosto: 0, cantidad: 1 }] })}
+              onClick={() => setEditForm({ ...editForm, repuestos: [...editForm.repuestos, { nombre: "", monto: 0, cantidad: 1 }] })}
               className="p-2 rounded-xl bg-blue-50 text-blue-600">
               <Plus size={18} />
             </button>
@@ -263,56 +256,37 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           {editForm.repuestos.length === 0 && (
             <p className="text-[10px] text-slate-300 font-bold text-center py-1">Sin repuestos</p>
           )}
-          {editForm.repuestos.map((item, idx) => {
-            const precioDeriv = Math.round((item.montoCosto || 0) * (1 + margenPct / 100)) * (item.cantidad || 1);
-            return (
-              <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    className="flex-1 border-none bg-transparent text-xs font-black uppercase text-slate-700 outline-none"
-                    placeholder="Nombre del repuesto..."
-                    value={item.nombre}
-                    onChange={e => updateListItem("repuestos", idx, "nombre", e.target.value)}
-                  />
-                  <button onClick={() => setEditForm({ ...editForm, repuestos: editForm.repuestos.filter((_, i) => i !== idx) })}
-                    className="p-1 text-slate-300 active:text-red-500 flex-shrink-0">
-                    <X size={16} />
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 flex-1 bg-white border border-slate-200 rounded-lg px-2 py-1.5">
-                    <span className="text-[9px] font-black text-slate-400 uppercase flex-shrink-0">Costo $</span>
-                    <input
-                      type="text" inputMode="numeric"
-                      className="flex-1 text-xs font-black outline-none bg-transparent text-slate-700 text-right"
-                      value={item.montoCosto > 0 ? item.montoCosto.toLocaleString("es-AR") : ""}
-                      onChange={e => {
-                        const digits = e.target.value.replace(/\D/g, "");
-                        updateListItem("repuestos", idx, "montoCosto", digits ? Number(digits) : 0);
-                      }}
-                      placeholder="0"
-                    />
-                  </div>
-                  <span className="text-slate-400 text-xs font-black flex-shrink-0">×</span>
-                  <input
-                    type="number" min="1"
-                    className="w-12 text-xs font-black text-center outline-none bg-white border border-slate-200 rounded-lg px-1 py-1.5"
-                    value={item.cantidad || 1}
-                    onChange={e => updateListItem("repuestos", idx, "cantidad", Number(e.target.value))}
-                  />
-                  {item.montoCosto > 0 && (
-                    <span className="text-[10px] font-black text-blue-600 flex-shrink-0">→ {formatMoney(precioDeriv)}</span>
-                  )}
-                </div>
+          {editForm.repuestos.map((item, idx) => (
+            <div key={idx} className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+              <input
+                className="flex-1 border-none bg-transparent text-xs font-black uppercase text-slate-700 outline-none"
+                placeholder="Nombre del repuesto..."
+                value={item.nombre}
+                onChange={e => updateListItem("repuestos", idx, "nombre", e.target.value)}
+              />
+              <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
+                <span className="text-[10px] font-black text-slate-300">$</span>
+                <input
+                  type="text" inputMode="numeric"
+                  className="w-20 text-xs text-right font-black outline-none bg-transparent text-blue-600"
+                  value={item.monto > 0 ? item.monto.toLocaleString("es-AR") : ""}
+                  onChange={e => {
+                    const digits = e.target.value.replace(/\D/g, "");
+                    updateListItem("repuestos", idx, "monto", digits ? Number(digits) : 0);
+                  }}
+                  placeholder="0"
+                />
               </div>
-            );
-          })}
-          {editForm.repuestos.length > 0 && stats.repCosto > 0 && (
+              <button onClick={() => setEditForm({ ...editForm, repuestos: editForm.repuestos.filter((_, i) => i !== idx) })}
+                className="p-1 text-slate-300 active:text-red-500">
+                <X size={16} />
+              </button>
+            </div>
+          ))}
+          {editForm.repuestos.length > 0 && stats.repPrecio > 0 && (
             <div className="flex justify-between text-[10px] font-black px-1 pt-1 border-t border-slate-100">
               <span className="text-slate-400">Total repuestos</span>
-              <span className="text-slate-500">
-                {formatMoney(stats.repCosto)} costo → <span className="text-blue-600">{formatMoney(stats.repPrecio)} cliente</span>
-              </span>
+              <span className="text-blue-600">{formatMoney(stats.repPrecio)}</span>
             </div>
           )}
         </div>
