@@ -1,8 +1,12 @@
 import React, { useState, useMemo } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Download, LogOut, Trash2, Database, Info } from "lucide-react";
 import { LS, useCollection } from "../lib/storage.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
+import { calcularResultadosOrden } from "../lib/calc.js";
 import { formatMoney } from "../utils/format.js";
+import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
+
+const APP_VERSION = "1.0.0";
 
 const DIFICULTADES = [
   { key: "facil",      label: "Fácil" },
@@ -11,13 +15,25 @@ const DIFICULTADES = [
   { key: "complicado", label: "Complicado" },
 ];
 
-export default function ConfigView({ setView, showToast }) {
+export default function ConfigView({ setView, showToast, orders = [], bikes = [], clients = [], handleLogout, loadDemoData, clearAllData }) {
   const [cfg, setCfg] = useState(() => LS.getDoc("config", "global") || CONFIG_DEFAULT);
   const caja = useCollection("caja");
+
   const balance = useMemo(
     () => caja.reduce((acc, mov) => (mov.tipo === "ingreso" ? acc + mov.monto : acc - mov.monto), 0),
     [caja]
   );
+
+  // Stats del mes actual
+  const mesActual = new Date().toISOString().slice(0, 7);
+  const ordenesMes = useMemo(
+    () => orders.filter(o => (o.fechaIngreso || "").startsWith(mesActual)),
+    [orders, mesActual]
+  );
+  const { totalMes, gananciaMes } = useMemo(() => ({
+    totalMes:    ordenesMes.reduce((s, o) => s + (o.total || 0), 0),
+    gananciaMes: ordenesMes.reduce((s, o) => s + calcularResultadosOrden(o).margen, 0),
+  }), [ordenesMes]);
 
   const margen = cfg.margenPolitica ?? 25;
   const horaCliente = Math.round(cfg.valorHoraInterno * (1 + margen / 100));
@@ -25,7 +41,6 @@ export default function ConfigView({ setView, showToast }) {
   const guardar = () => {
     LS.setDoc("config", "global", { ...cfg, margenPolitica: margen, valorHoraCliente: horaCliente });
     showToast("Guardado ✓");
-    setView("home");
   };
 
   const setFactor = (key, val) => {
@@ -36,20 +51,35 @@ export default function ConfigView({ setView, showToast }) {
 
   return (
     <div className="p-6 text-left animate-in slide-in-from-right duration-300 pb-28">
-      <button onClick={() => setView("home")} className="mb-8 text-blue-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
-        <ArrowLeft size={16} /> Volver
-      </button>
-      <h1 className="text-4xl font-black text-white tracking-tighter mb-8 uppercase">AJUSTES</h1>
 
-      {/* CAJA */}
-      <div className="bg-white p-8 rounded-[2.5rem] mb-6 shadow-2xl">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Caja Actual</p>
-        <p className={`text-5xl font-black tracking-tighter ${balance >= 0 ? "text-green-600" : "text-red-600"}`}>
-          {formatMoney(balance)}
-        </p>
+      <h1 className="text-4xl font-black text-white tracking-tighter mb-8 uppercase">Cuenta</h1>
+
+      {/* ── BALANCE DEL MES ─────────────────────────────────────────── */}
+      <div className="bg-slate-900 rounded-[2.5rem] p-6 mb-6 border border-slate-800 space-y-4">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Este mes</p>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-slate-800 rounded-2xl p-4 text-center">
+            <p className="text-2xl font-black text-blue-400">{ordenesMes.length}</p>
+            <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Órdenes</p>
+          </div>
+          <div className="bg-slate-800 rounded-2xl p-4 text-center">
+            <p className="text-lg font-black text-white">{formatMoney(totalMes)}</p>
+            <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Cobrado</p>
+          </div>
+          <div className="bg-slate-800 rounded-2xl p-4 text-center">
+            <p className={`text-lg font-black ${gananciaMes >= 0 ? "text-green-400" : "text-red-400"}`}>{formatMoney(gananciaMes)}</p>
+            <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Ganancia</p>
+          </div>
+        </div>
+        <div className="border-t border-slate-800 pt-4 flex justify-between items-center">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Caja actual</p>
+          <p className={`text-2xl font-black tracking-tighter ${balance >= 0 ? "text-green-400" : "text-red-400"}`}>
+            {formatMoney(balance)}
+          </p>
+        </div>
       </div>
 
-      {/* DATOS TALLER */}
+      {/* ── DATOS DEL TALLER ────────────────────────────────────────── */}
       <div className="space-y-4 bg-white p-8 rounded-[2.5rem] shadow-xl mb-4">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Datos del Taller</p>
         {[
@@ -62,14 +92,14 @@ export default function ConfigView({ setView, showToast }) {
             <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">{label}</label>
             <input
               value={cfg[field] ?? ""}
-              onChange={(e) => setCfg({ ...cfg, [field]: e.target.value })}
+              onChange={e => setCfg({ ...cfg, [field]: e.target.value })}
               className="w-full border-2 border-slate-100 rounded-2xl p-4 font-black outline-none focus:border-blue-500"
             />
           </div>
         ))}
       </div>
 
-      {/* POLÍTICA DE PRECIOS */}
+      {/* ── POLÍTICA DE PRECIOS ─────────────────────────────────────── */}
       <div className="bg-white p-8 rounded-[2.5rem] shadow-xl mb-4 space-y-5">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Política de Precios</p>
 
@@ -78,7 +108,7 @@ export default function ConfigView({ setView, showToast }) {
           <input
             type="number"
             value={cfg.valorHoraInterno}
-            onChange={(e) => setCfg({ ...cfg, valorHoraInterno: Number(e.target.value) })}
+            onChange={e => setCfg({ ...cfg, valorHoraInterno: Number(e.target.value) })}
             className="w-full border-2 border-slate-100 rounded-2xl p-4 font-black outline-none focus:border-blue-500"
           />
           <p className="text-[10px] text-slate-400 ml-2">Gastos fijos del taller ÷ horas trabajadas al mes</p>
@@ -86,16 +116,13 @@ export default function ConfigView({ setView, showToast }) {
 
         <div className="space-y-2">
           <div className="flex justify-between items-center px-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Margen de política</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Margen por defecto</label>
             <span className="text-lg font-black text-blue-600">{margen}%</span>
           </div>
           <input
-            type="range"
-            min="5"
-            max="120"
-            step="5"
+            type="range" min="5" max="120" step="5"
             value={margen}
-            onChange={(e) => setCfg({ ...cfg, margenPolitica: Number(e.target.value) })}
+            onChange={e => setCfg({ ...cfg, margenPolitica: Number(e.target.value) })}
             className="w-full accent-blue-600"
           />
           <div className="flex justify-between text-[9px] text-slate-400 font-bold px-1">
@@ -112,13 +139,9 @@ export default function ConfigView({ setView, showToast }) {
           </div>
           <p className="text-3xl font-black text-blue-400">{formatMoney(horaCliente)}</p>
         </div>
-
-        <p className="text-[10px] text-slate-400 ml-1">
-          Modificar el costo o el margen recalibra todos los servicios automáticamente.
-        </p>
       </div>
 
-      {/* FACTORES DE DIFICULTAD */}
+      {/* ── MULTIPLICADORES POR DIFICULTAD ──────────────────────────── */}
       <div className="bg-white p-8 rounded-[2.5rem] shadow-xl mb-4 space-y-4">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Multiplicadores por Dificultad</p>
         <div className="grid grid-cols-2 gap-3">
@@ -129,12 +152,8 @@ export default function ConfigView({ setView, showToast }) {
                 <label className="text-[9px] font-black text-slate-400 uppercase ml-1 tracking-widest">{label}</label>
                 <div className="flex items-center gap-2 border-2 border-slate-100 rounded-xl p-3">
                   <input
-                    type="number"
-                    step="0.1"
-                    min="0.5"
-                    max="5"
-                    value={factor}
-                    onChange={(e) => setFactor(key, e.target.value)}
+                    type="number" step="0.1" min="0.5" max="5" value={factor}
+                    onChange={e => setFactor(key, e.target.value)}
                     className="w-full font-black text-center outline-none bg-transparent"
                   />
                   <span className="text-[10px] text-slate-400 font-bold">×</span>
@@ -146,14 +165,89 @@ export default function ConfigView({ setView, showToast }) {
             );
           })}
         </div>
-        <p className="text-[10px] text-slate-400 ml-1">
-          Cada factor multiplica el precio hora según la complejidad del trabajo.
-        </p>
       </div>
 
-      <button onClick={guardar} className="w-full bg-blue-600 text-white py-5 rounded-3xl font-black uppercase shadow-xl active:scale-95 transition-all mt-2">
-        Guardar Cambios
+      <button onClick={guardar} className="w-full bg-blue-600 text-white py-5 rounded-3xl font-black uppercase shadow-xl active:scale-95 transition-all mb-8">
+        Guardar Configuración
       </button>
+
+      {/* ── EXPORTAR DATOS ──────────────────────────────────────────── */}
+      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl mb-4 space-y-4">
+        <div className="flex items-center gap-3 mb-1">
+          <Download size={18} className="text-slate-400" />
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Exportar Datos</p>
+        </div>
+        <p className="text-[10px] text-slate-400">Archivos CSV — abrís en Excel, Google Sheets o Numbers.</p>
+
+        <div className="space-y-2">
+          {[
+            { label: "Órdenes de trabajo",  sub: `${orders.length} registros`,           fn: () => { exportarOrdenes(orders, bikes, clients); showToast("Exportando órdenes..."); } },
+            { label: "Clientes",             sub: `${clients.length} registros`,          fn: () => { exportarClientes(clients, orders);       showToast("Exportando clientes..."); } },
+            { label: "Balance mensual",      sub: "Totales agrupados por mes",            fn: () => { exportarBalance(orders);                  showToast("Exportando balance..."); } },
+            { label: "Repuestos utilizados", sub: "Ranking por frecuencia de uso",        fn: () => { exportarRepuestos(orders);                showToast("Exportando repuestos..."); } },
+          ].map(({ label, sub, fn }) => (
+            <button key={label} onClick={fn}
+              className="w-full flex items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl p-4 active:scale-[0.98] transition-all">
+              <div className="text-left">
+                <p className="text-sm font-black text-slate-800">{label}</p>
+                <p className="text-[10px] text-slate-400 font-bold">{sub}</p>
+              </div>
+              <Download size={16} className="text-blue-500 flex-shrink-0" />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── VERSIÓN DE LA APP ───────────────────────────────────────── */}
+      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl mb-4 space-y-3">
+        <div className="flex items-center gap-3 mb-1">
+          <Info size={18} className="text-slate-400" />
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Versión de la App</p>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm font-black text-slate-700">Johnny Blaze OS</span>
+          <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-3 py-1 rounded-full border border-blue-100">v{APP_VERSION}</span>
+        </div>
+        <p className="text-[10px] text-slate-400">
+          Si la app no muestra los últimos cambios, recargá la página desde el navegador.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="w-full bg-slate-50 border border-slate-200 text-slate-600 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+        >
+          Recargar app
+        </button>
+      </div>
+
+      {/* ── SISTEMA ─────────────────────────────────────────────────── */}
+      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl mb-4 space-y-3">
+        <div className="flex items-center gap-3 mb-1">
+          <Database size={18} className="text-slate-400" />
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sistema</p>
+        </div>
+
+        {loadDemoData && (
+          <button onClick={() => { loadDemoData(); showToast("Demo cargado ✓"); }}
+            className="w-full bg-slate-50 border border-slate-200 text-slate-700 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
+            Cargar datos de prueba
+          </button>
+        )}
+
+        {clearAllData && (
+          <button onClick={clearAllData}
+            className="w-full flex items-center justify-center gap-2 bg-red-50 border border-red-100 text-red-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
+            <Trash2 size={14} /> Borrar todos los datos
+          </button>
+        )}
+
+        {handleLogout && (
+          <button onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
+            <LogOut size={14} /> Cerrar sesión
+          </button>
+        )}
+      </div>
+
     </div>
   );
 }

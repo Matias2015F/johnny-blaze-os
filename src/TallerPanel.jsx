@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from "react";
 import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
-import { Wrench, Clock, History, TrendingUp, DollarSign } from "lucide-react";
+import { Wrench, Clock, History, Settings, DollarSign } from "lucide-react";
 
 import { LS, useCollection, generateId } from "./lib/storage.js";
 import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
@@ -147,7 +147,7 @@ export default function TallerPanel() {
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#0A0A0A] relative text-left selection:bg-blue-500 overflow-x-hidden font-bold">
 
-      {view === "home" && <HomeView stats={stats} setView={setView} bikes={bikes} orders={orders} setSelectedOrderId={setSelectedOrderId} loadDemoData={loadDemoData} clearAllData={clearAllData} handleLogout={handleLogout} />}
+      {view === "home" && <HomeView stats={stats} setView={setView} bikes={bikes} orders={orders} setSelectedOrderId={setSelectedOrderId} />}
       {view === "nuevaOrden" && <NewOrderView handleCreateAll={handleCreateOrder} setView={setView} prefill={prefillData} />}
       {view === "ordenes" && <OrderListView orders={orders} bikes={bikes} clients={clients} setSelectedOrderId={setSelectedOrderId} setView={setView} />}
       {view === "detalleOrden" && selectedOrder && <OrderDetailView order={selectedOrder} clients={clients} bikes={bikes} setView={setView} showToast={showToast} setServiceToEdit={setServiceToEdit} />}
@@ -165,7 +165,7 @@ export default function TallerPanel() {
         />
       )}
       {view === "precios" && <PreciosView setView={setView} />}
-      {view === "config" && <ConfigView setView={setView} showToast={showToast} />}
+      {view === "config" && <ConfigView setView={setView} showToast={showToast} orders={orders} bikes={bikes} clients={clients} handleLogout={handleLogout} loadDemoData={loadDemoData} clearAllData={clearAllData} />}
       {view === "historial" && <HistoryView orders={orders} bikes={bikes} clients={clients} setView={setView} setSelectedBikeId={setSelectedBikeId} />}
       {view === "perfilMoto" && <BikeProfileView bikeId={selectedBikeId} orders={orders} bikes={bikes} clients={clients} setView={setView} handleStartNewService={handleStartNewService} />}
 
@@ -184,7 +184,7 @@ export default function TallerPanel() {
             <DollarSign size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Precios</span>
           </button>
           <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "config" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
-            <TrendingUp size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Balance</span>
+            <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Cuenta</span>
           </button>
         </nav>
       )}

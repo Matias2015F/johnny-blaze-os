@@ -1,5 +1,5 @@
 import React from "react";
-import { PlusCircle, Clock, History, LogOut } from "lucide-react";
+import { PlusCircle, Clock, History } from "lucide-react";
 import { auth } from "../firebase.js";
 import { LS } from "../lib/storage.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
@@ -15,7 +15,7 @@ const ESTADO_BADGE = {
 const ESTADO_ICONO = { NORMAL: "🟢", ALERTA: "⚠️", BLOQUEADO: "⛔" };
 const ORDEN_ESTADO = { BLOQUEADO: 0, ALERTA: 1, NORMAL: 2 };
 
-export default function HomeView({ stats, setView, bikes, orders, setSelectedOrderId, loadDemoData, clearAllData, handleLogout }) {
+export default function HomeView({ stats, setView, bikes, orders, setSelectedOrderId }) {
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const valorHora = config.valorHoraCliente || 15000;
 
@@ -40,9 +40,6 @@ export default function HomeView({ stats, setView, bikes, orders, setSelectedOrd
 
       {/* HEADER */}
       <header className="bg-slate-900 border border-slate-800 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
-        <button onClick={handleLogout} className="absolute top-5 right-5 p-3 bg-white/10 rounded-2xl text-blue-500 active:scale-90 transition-all z-20">
-          <LogOut size={18} />
-        </button>
         <div className="relative z-10 text-left font-bold">
           <p className="text-blue-500 font-black text-xs uppercase tracking-[0.4em] mb-1">Taller OS</p>
           <h1 className="text-4xl font-black text-white tracking-tighter leading-none mb-1">JOHNNY BLAZE</h1>
@@ -117,11 +114,6 @@ export default function HomeView({ stats, setView, bikes, orders, setSelectedOrd
         </button>
       </div>
 
-      {/* DEMO / BORRAR */}
-      <div className="flex gap-2 pt-2">
-        <button onClick={loadDemoData} className="flex-1 bg-slate-800 text-white py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">Cargar Demo</button>
-        <button onClick={clearAllData} className="flex-1 bg-red-900/10 text-red-500 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-red-900/20 active:scale-95 transition-all">Borrar Todo</button>
-      </div>
 
     </div>
   );
