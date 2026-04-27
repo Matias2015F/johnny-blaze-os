@@ -4,13 +4,15 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { shouldAutoBackup, exportBackup } from "./lib/backup.js";
 import { DURACION_TRIAL } from "./services/accessService.js";
+import { LS } from "./lib/storage.js";
+import { CONFIG_DEFAULT } from "./lib/constants.js";
 
 import TallerPanel from "./TallerPanel.jsx";
 import LoginScreen from "./LoginScreen.jsx";
 
 export default function App() {
   const [estado, setEstado] = useState("loading");
-  // loading | login | ok | bloqueado
+  const [snapData, setSnapData] = useState(null);
   const autoBackupDone = useRef(false);
 
   useEffect(() => {
@@ -24,7 +26,6 @@ export default function App() {
     let unsubFirestore = null;
 
     const unsubAuth = onAuthStateChanged(auth, (u) => {
-      // 🔴 NO LOGUEADO
       if (!u) {
         setEstado("login");
         if (unsubFirestore) unsubFirestore();
@@ -33,10 +34,7 @@ export default function App() {
 
       const ref = doc(db, "usuarios", u.uid);
 
-      // 🔥 TIEMPO REAL (soluciona todo)
       unsubFirestore = onSnapshot(ref, (snap) => {
-
-        // ⏳ todavía no existe → crear trial para cualquier proveedor
         if (!snap.exists()) {
           const isPhone = u.providerData?.[0]?.providerId === "phone";
           const ahora = Date.now();
@@ -54,30 +52,16 @@ export default function App() {
         const trialFin = Number(data.trialFin);
         const ahora = Date.now();
 
-        // 🟢 USUARIO ACTIVO
-        if (data.estado === "activo") {
-          setEstado("ok");
-          return;
-        }
+        setSnapData(data);
 
-        // 🟡 TRIAL
-        if (!isNaN(trialFin) && trialFin > ahora) {
-          setEstado("ok");
-          return;
-        }
-
-        // 🔴 BLOQUEADO
+        if (data.estado === "activo") { setEstado("ok"); return; }
+        if (!isNaN(trialFin) && trialFin > ahora) { setEstado("ok"); return; }
         setEstado("bloqueado");
       });
     });
 
-    return () => {
-      unsubAuth();
-      if (unsubFirestore) unsubFirestore();
-    };
+    return () => { unsubAuth(); if (unsubFirestore) unsubFirestore(); };
   }, []);
-
-  // --- RENDERS ---
 
   if (estado === "loading") {
     return (
@@ -87,28 +71,73 @@ export default function App() {
     );
   }
 
-  if (estado === "login") {
-    return <LoginScreen />;
-  }
+  if (estado === "login") return <LoginScreen />;
 
   if (estado === "bloqueado") {
+    const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
+    const tel = (config.telefonoTaller || "").replace(/\D/g, "");
+    const waLink = tel ? `https://wa.me/54${tel}` : null;
+    const vencioTs = snapData?.trialFin || snapData?.activoHasta;
+    const vencioStr = vencioTs
+      ? new Date(vencioTs).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })
+      : null;
+    const userLabel = auth.currentUser?.email || auth.currentUser?.phoneNumber || "";
+
     return (
-      <div className="min-h-screen bg-[#0b0b0b] text-white flex flex-col items-center justify-center p-10 text-center">
-        <div className="bg-[#151515] p-10 rounded-[2.5rem] border border-red-900/30 shadow-2xl max-w-sm">
-          <h2 className="text-3xl font-black text-red-500 mb-4 uppercase">
-            Acceso Restringido
-          </h2>
+      <div className="min-h-screen bg-[#0b0b0b] text-white flex flex-col items-center justify-center p-6">
+        <div className="bg-[#151515] rounded-[2.5rem] border border-red-900/30 shadow-2xl w-full max-w-sm overflow-hidden">
 
-          <p className="text-slate-400 text-sm mb-8">
-            Tu trial venció o no tenés una suscripción activa.
-          </p>
+          {/* Header rojo */}
+          <div className="bg-red-950/40 border-b border-red-900/30 p-8 text-center">
+            <div className="text-5xl mb-3">🔒</div>
+            <h2 className="text-2xl font-black text-red-400 uppercase tracking-tighter">Acceso Restringido</h2>
+            <p className="text-red-400/60 text-[10px] font-bold uppercase tracking-widest mt-1">Johnny Blaze OS</p>
+          </div>
 
-          <button
-            onClick={() => auth.signOut()}
-            className="text-slate-500 text-xs uppercase"
-          >
-            Cerrar sesión
-          </button>
+          {/* Cuerpo */}
+          <div className="p-8 space-y-5">
+
+            {/* Info vencimiento */}
+            <div className="bg-slate-900 rounded-2xl p-4 space-y-1 text-center">
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                {snapData?.estado === "trial" ? "Trial vencido" : "Suscripción vencida"}
+              </p>
+              {vencioStr && (
+                <p className="text-sm font-black text-slate-300">{vencioStr}</p>
+              )}
+              {userLabel && (
+                <p className="text-[10px] text-slate-500 truncate">{userLabel}</p>
+              )}
+            </div>
+
+            <p className="text-slate-400 text-xs text-center leading-relaxed">
+              Tus datos están guardados y seguros.<br />
+              Renovando el acceso los recuperás al instante.
+            </p>
+
+            {/* Botón principal: contacto WhatsApp */}
+            {waLink ? (
+              <a
+                href={waLink}
+                target="_blank"
+                rel="noreferrer"
+                className="w-full flex items-center justify-center gap-3 bg-green-600 hover:bg-green-500 active:scale-95 transition-all text-white py-5 rounded-2xl font-black text-sm uppercase tracking-wide"
+              >
+                <span className="text-xl">💬</span> Contactar para renovar
+              </a>
+            ) : (
+              <div className="bg-slate-800 rounded-2xl p-4 text-center">
+                <p className="text-[10px] text-slate-400 font-bold">Contactá al administrador para renovar el acceso</p>
+              </div>
+            )}
+
+            <button
+              onClick={() => auth.signOut()}
+              className="w-full text-slate-600 hover:text-slate-400 transition-colors text-[10px] font-black uppercase tracking-widest py-2"
+            >
+              Cerrar sesión
+            </button>
+          </div>
         </div>
       </div>
     );
