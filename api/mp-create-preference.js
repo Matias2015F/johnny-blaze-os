@@ -8,7 +8,12 @@
 // Respuesta:     { url: string, preferenceId: string }
 // ─────────────────────────────────────────────────────────────────────────────
 
-const { db } = require("./_firebase-admin.js");
+let db;
+try {
+  db = require("./_firebase-admin.js").db;
+} catch (initError) {
+  console.error("ERROR al inicializar Firebase Admin:", initError.message);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PLANES — modificar precios y duraciones según tu modelo de negocio.
@@ -41,6 +46,11 @@ const BASE_URL = "https://johnny-blaze-os.vercel.app";
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
+
+  if (!db) {
+    console.error("Firebase Admin no inicializado");
+    return res.status(500).json({ error: "Error de configuración del servidor. Revisá las variables de entorno." });
+  }
 
   const { uid, plan: planKey } = req.body || {};
 
