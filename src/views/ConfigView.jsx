@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { ArrowLeft, Download, LogOut, Trash2, Database, Info, Save, Upload, User, Lock, Mail, Phone } from "lucide-react";
 import { LS, useCollection } from "../lib/storage.js";
 import { getMeta, setMeta, exportBackup, importBackup } from "../lib/backup.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
-import { auth } from "../firebase.js";
+import { auth, db } from "../firebase.js";
+import { doc, getDoc } from "firebase/firestore";
 import {
   updatePassword,
   reauthenticateWithCredential,
@@ -82,6 +83,16 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
     setMeta({ autoBackupDays: days });
     setBackupMeta(getMeta());
   };
+
+  // ── SUSCRIPCIÓN ───────────────────────────────────────────────────
+  const [suscripcion, setSuscripcion] = useState(null);
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
+    getDoc(doc(db, "usuarios", user.uid)).then(snap => {
+      if (snap.exists()) setSuscripcion(snap.data());
+    });
+  }, []);
 
   // ── MI CUENTA ─────────────────────────────────────────────────────
   const [accountAction, setAccountAction] = useState(null); // null | "password" | "email"
@@ -464,6 +475,29 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Email actual</p>
           <p className="text-sm font-black text-slate-700 mt-1 break-all">{auth.currentUser?.email}</p>
         </div>
+
+        {suscripcion && (() => {
+          const ahora = Date.now();
+          const estado = suscripcion.estado;
+          const badge =
+            estado === "activo"  ? "bg-green-100 text-green-700" :
+            estado === "trial"   ? "bg-yellow-100 text-yellow-700" :
+                                   "bg-red-100 text-red-600";
+          const detalle =
+            estado === "activo" && !suscripcion.activoHasta ? "Sin vencimiento" :
+            estado === "activo" && suscripcion.activoHasta  ? `Hasta ${new Date(suscripcion.activoHasta).toLocaleDateString("es-AR")}` :
+            estado === "trial"  && suscripcion.trialFin     ? (suscripcion.trialFin > ahora ? `Vence ${new Date(suscripcion.trialFin).toLocaleString("es-AR")}` : "Trial vencido") :
+            "---";
+          return (
+            <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Suscripción</p>
+                <p className="text-[10px] font-bold text-slate-500">{detalle}</p>
+              </div>
+              <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${badge}`}>{estado}</span>
+            </div>
+          );
+        })()}
 
         <div id="recaptcha-link-container" />
 
