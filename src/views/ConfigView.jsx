@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from "react";
-import { ArrowLeft, Download, LogOut, Trash2, Database, Info, Save, Upload, User, Lock, Mail } from "lucide-react";
+import { ArrowLeft, Download, LogOut, Trash2, Database, Info, Save, Upload, User, Lock, Mail, Phone } from "lucide-react";
 import { LS, useCollection } from "../lib/storage.js";
 import { getMeta, setMeta, exportBackup, importBackup } from "../lib/backup.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
@@ -10,6 +10,9 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   verifyBeforeUpdateEmail,
+  linkWithPhoneNumber,
+  unlink,
+  RecaptchaVerifier,
 } from "firebase/auth";
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
@@ -139,7 +142,71 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
   const resetAccountForm = (action) => {
     setAccountAction(action);
     setCurrentPass(""); setNewPass(""); setConfirmPass(""); setNewEmail("");
+    setPhoneInput(""); setOtpInput(""); setPhoneConfirmResult(null);
     setAccountMsg({ text: "", ok: false });
+  };
+
+  // ── VINCULAR TELÉFONO ─────────────────────────────────────────────
+  const [phoneInput, setPhoneInput]               = useState("");
+  const [phoneCC, setPhoneCC]                     = useState("+54");
+  const [otpInput, setOtpInput]                   = useState("");
+  const [phoneConfirmResult, setPhoneConfirmResult] = useState(null);
+  const recaptchaLinkRef = useRef(null);
+
+  const linkedPhone = auth.currentUser?.providerData?.find(p => p.providerId === "phone")?.phoneNumber;
+
+  const getLinkRecaptcha = () => {
+    if (!recaptchaLinkRef.current) {
+      recaptchaLinkRef.current = new RecaptchaVerifier(auth, "recaptcha-link-container", {
+        size: "invisible", callback: () => {},
+      });
+    }
+    return recaptchaLinkRef.current;
+  };
+
+  const handleSendPhoneLink = async () => {
+    const digits = phoneInput.replace(/\D/g, "");
+    if (digits.length < 6) return accountErr("Número inválido");
+    setAccountLoading(true);
+    setAccountMsg({ text: "", ok: false });
+    try {
+      const result = await linkWithPhoneNumber(auth.currentUser, phoneCC + digits, getLinkRecaptcha());
+      setPhoneConfirmResult(result);
+      setAccountAction("phone-otp");
+      setAccountMsg({ text: "", ok: false });
+    } catch (e) {
+      recaptchaLinkRef.current?.clear();
+      recaptchaLinkRef.current = null;
+      if (e.code === "auth/provider-already-linked") accountErr("Ya tenés un teléfono vinculado");
+      else if (e.code === "auth/invalid-phone-number") accountErr("Número inválido");
+      else accountErr("Error: " + e.code);
+    }
+    setAccountLoading(false);
+  };
+
+  const handleVerifyPhoneLink = async () => {
+    if (!otpInput || otpInput.length < 4) return accountErr("Ingresá el código");
+    setAccountLoading(true);
+    try {
+      await phoneConfirmResult.confirm(otpInput);
+      accountOk("Teléfono vinculado ✓");
+      setTimeout(() => setAccountAction(null), 2000);
+    } catch (e) {
+      if (e.code === "auth/invalid-verification-code") accountErr("Código incorrecto");
+      else if (e.code === "auth/code-expired") accountErr("Código expirado, pedí uno nuevo");
+      else accountErr("Error: " + e.code);
+    }
+    setAccountLoading(false);
+  };
+
+  const handleUnlinkPhone = async () => {
+    try {
+      await unlink(auth.currentUser, "phone");
+      showToast("Teléfono desvinculado");
+      setAccountAction(null);
+    } catch (e) {
+      accountErr("Error al desvincular: " + e.code);
+    }
   };
 
   const guardar = () => {
@@ -398,6 +465,22 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
           <p className="text-sm font-black text-slate-700 mt-1 break-all">{auth.currentUser?.email}</p>
         </div>
 
+        <div id="recaptcha-link-container" />
+
+        {/* Teléfono vinculado */}
+        {linkedPhone && (
+          <div className="bg-green-50 border border-green-100 rounded-2xl p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[9px] font-black text-green-600 uppercase tracking-widest">Teléfono vinculado</p>
+              <p className="text-sm font-black text-slate-700 mt-0.5">{linkedPhone}</p>
+            </div>
+            <button onClick={handleUnlinkPhone}
+              className="text-[9px] font-black text-red-400 uppercase tracking-wide border border-red-100 bg-red-50 rounded-xl px-3 py-2">
+              Desvincular
+            </button>
+          </div>
+        )}
+
         {/* Botones acción */}
         {!accountAction && (
           <div className="grid grid-cols-2 gap-3">
@@ -411,6 +494,13 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
               <Mail size={18} className="text-slate-500" />
               <p className="text-[10px] font-black text-slate-700 uppercase tracking-wide text-center">Cambiar email</p>
             </button>
+            {!linkedPhone && (
+              <button onClick={() => resetAccountForm("phone")}
+                className="col-span-2 flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl p-4 active:scale-[0.98] transition-all">
+                <Phone size={16} className="text-slate-500" />
+                <p className="text-[10px] font-black text-slate-700 uppercase tracking-wide">Vincular teléfono</p>
+              </button>
+            )}
           </div>
         )}
 
@@ -464,6 +554,56 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
             <button onClick={() => setAccountAction(null)}
               className="w-full text-slate-400 font-black text-[10px] uppercase py-2">
               Cancelar
+            </button>
+          </div>
+        )}
+
+        {/* Formulario vincular teléfono */}
+        {accountAction === "phone" && (
+          <div className="space-y-3 border border-slate-100 rounded-2xl p-5">
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Vincular teléfono</p>
+            <p className="text-[10px] text-slate-400">Podrás iniciar sesión con tu número de celular además del email.</p>
+            <div className="flex gap-2">
+              <select value={phoneCC} onChange={e => setPhoneCC(e.target.value)}
+                className="border-2 border-slate-100 rounded-xl p-3 font-black text-sm outline-none focus:border-blue-500 bg-white">
+                {["+54","+598","+56","+55","+1"].map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <input type="tel" placeholder="Número sin 0 ni 15" value={phoneInput}
+                onChange={e => setPhoneInput(e.target.value)}
+                className="flex-1 border-2 border-slate-100 rounded-xl p-3 font-black text-sm outline-none focus:border-blue-500" />
+            </div>
+            {accountMsg.text && (
+              <p className={`text-[11px] font-bold ${accountMsg.ok ? "text-green-600" : "text-red-500"}`}>{accountMsg.text}</p>
+            )}
+            <button onClick={handleSendPhoneLink} disabled={accountLoading}
+              className="w-full bg-blue-600 text-white py-3 rounded-xl font-black text-[11px] uppercase active:scale-95 transition-all disabled:opacity-50">
+              {accountLoading ? "Enviando..." : "Enviar código SMS"}
+            </button>
+            <button onClick={() => setAccountAction(null)}
+              className="w-full text-slate-400 font-black text-[10px] uppercase py-2">
+              Cancelar
+            </button>
+          </div>
+        )}
+
+        {/* OTP para vincular teléfono */}
+        {accountAction === "phone-otp" && (
+          <div className="space-y-3 border border-slate-100 rounded-2xl p-5">
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Código SMS</p>
+            <p className="text-[10px] text-slate-400">Ingresá el código que recibiste por mensaje de texto.</p>
+            <input type="number" placeholder="Código de 6 dígitos" value={otpInput}
+              onChange={e => setOtpInput(e.target.value)}
+              className="w-full border-2 border-slate-100 rounded-xl p-3 font-black text-xl text-center outline-none focus:border-blue-500 tracking-widest" />
+            {accountMsg.text && (
+              <p className={`text-[11px] font-bold ${accountMsg.ok ? "text-green-600" : "text-red-500"}`}>{accountMsg.text}</p>
+            )}
+            <button onClick={handleVerifyPhoneLink} disabled={accountLoading}
+              className="w-full bg-blue-600 text-white py-3 rounded-xl font-black text-[11px] uppercase active:scale-95 transition-all disabled:opacity-50">
+              {accountLoading ? "Verificando..." : "Confirmar"}
+            </button>
+            <button onClick={() => setAccountAction("phone")}
+              className="w-full text-slate-400 font-black text-[10px] uppercase py-2">
+              Cambiar número
             </button>
           </div>
         )}

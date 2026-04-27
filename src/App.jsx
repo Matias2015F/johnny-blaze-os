@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { shouldAutoBackup, exportBackup } from "./lib/backup.js";
 
 import TallerPanel from "./TallerPanel.jsx";
@@ -35,10 +35,20 @@ export default function App() {
       // 🔥 TIEMPO REAL (soluciona todo)
       unsubFirestore = onSnapshot(ref, (snap) => {
 
-        // ⏳ todavía no existe (usuario recién creado)
+        // ⏳ todavía no existe
         if (!snap.exists()) {
-          console.log("⏳ Esperando documento en Firestore...");
-          return; // NO bloquea
+          // Usuario nuevo por teléfono → crear doc de trial automáticamente
+          const isPhone = u.providerData?.[0]?.providerId === "phone";
+          if (isPhone) {
+            const ahora = Date.now();
+            setDoc(ref, {
+              email: u.phoneNumber,
+              estado: "trial",
+              trialInicio: ahora,
+              trialFin: ahora + 60 * 1000,
+            });
+          }
+          return;
         }
 
         const data = snap.data();
