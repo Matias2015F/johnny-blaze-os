@@ -12,15 +12,15 @@
 //   [Convert]::ToBase64String([System.IO.File]::ReadAllBytes("ruta\al\archivo.json"))
 //
 // En Vercel → Settings → Environment Variables:
-//   FIREBASE_SERVICE_ACCOUNT = (la cadena base64 resultante)
+//   FIREBASE_SERVICE_ACCOUNT_B64 = (la cadena base64 resultante)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { initializeApp, getApps, cert } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 
 if (!getApps().length) {
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT no está definida");
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
+  if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT_B64 no está definida");
 
   const serviceAccount = JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
   console.log("Firebase init — project_id:", serviceAccount.project_id);
