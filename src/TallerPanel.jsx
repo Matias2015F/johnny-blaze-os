@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect, lazy, Suspense } from "react";
 import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { Wrench, Clock, History, Settings, DollarSign } from "lucide-react";
@@ -6,20 +6,29 @@ import { Wrench, Clock, History, Settings, DollarSign } from "lucide-react";
 import { LS, useCollection, generateId } from "./lib/storage.js";
 import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
 
+// HomeView se carga de forma eager — es la pantalla inicial
 import HomeView from "./views/HomeView.jsx";
-import OrderListView from "./views/OrderListView.jsx";
-import NewOrderView from "./views/NewOrderView.jsx";
-import ConfigView from "./views/ConfigView.jsx";
-import HistoryView from "./views/HistoryView.jsx";
-import BikeProfileView from "./views/BikeProfileView.jsx";
-import PreciosView from "./views/PreciosView.jsx";
 
-import OrderDetailView from "./components/OrderDetailView.jsx";
-import TaskManagerView from "./components/TaskManagerView.jsx";
-import LogisticsView from "./components/LogisticsView.jsx";
-import PaymentView from "./components/PaymentView.jsx";
-import PrePdfView from "./components/PrePdfView.jsx";
-import ExportPdfView from "./components/ExportPdfView.jsx";
+// El resto se carga bajo demanda (code splitting) → reduce el bundle inicial
+const OrderListView  = lazy(() => import("./views/OrderListView.jsx"));
+const NewOrderView   = lazy(() => import("./views/NewOrderView.jsx"));
+const ConfigView     = lazy(() => import("./views/ConfigView.jsx"));
+const HistoryView    = lazy(() => import("./views/HistoryView.jsx"));
+const BikeProfileView= lazy(() => import("./views/BikeProfileView.jsx"));
+const PreciosView    = lazy(() => import("./views/PreciosView.jsx"));
+const OrderDetailView= lazy(() => import("./components/OrderDetailView.jsx"));
+const TaskManagerView= lazy(() => import("./components/TaskManagerView.jsx"));
+const LogisticsView  = lazy(() => import("./components/LogisticsView.jsx"));
+const PaymentView    = lazy(() => import("./components/PaymentView.jsx"));
+const PrePdfView     = lazy(() => import("./components/PrePdfView.jsx"));
+const ExportPdfView  = lazy(() => import("./components/ExportPdfView.jsx"));
+
+// Fallback minimalista mientras carga un chunk
+const Cargando = () => (
+  <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-slate-600 text-[10px] font-black uppercase tracking-widest">
+    Cargando...
+  </div>
+);
 
 const NAV_VIEWS = ["home", "ordenes", "historial", "precios", "config"];
 
@@ -28,6 +37,9 @@ export default function TallerPanel() {
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [selectedBikeId, setSelectedBikeId] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
+  const [confirm, setConfirm] = useState(null); // { mensaje, onOk }
+
+  const showConfirm = (mensaje, onOk) => setConfirm({ mensaje, onOk });
   const [prefillData, setPrefillData] = useState(null);
   const [serviceToEdit, setServiceToEdit] = useState(null);
   const [finalPdfData, setFinalPdfData] = useState({ garantia: "" });
@@ -128,12 +140,12 @@ export default function TallerPanel() {
   };
 
   const clearAllData = () => {
-    if (window.confirm("¿Borrar todo?")) {
+    showConfirm("¿Borrar todos los datos? Esta acción no se puede deshacer.", () => {
       ["clientes", "motos", "ordenes", "config", "caja", "serviciosCatalogo"].forEach((c) =>
         localStorage.removeItem(LS.key(c))
       );
       window.location.reload();
-    }
+    });
   };
 
   // ── Datos derivados ────────────────────────────────────────────────────────
@@ -147,6 +159,7 @@ export default function TallerPanel() {
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#0A0A0A] relative text-left selection:bg-blue-500 overflow-x-hidden font-bold">
 
+      <Suspense fallback={<Cargando />}>
       {view === "home" && <HomeView stats={stats} setView={setView} bikes={bikes} orders={orders} setSelectedOrderId={setSelectedOrderId} handleLogout={handleLogout} />}
       {view === "nuevaOrden" && <NewOrderView handleCreateAll={handleCreateOrder} setView={setView} prefill={prefillData} />}
       {view === "ordenes" && <OrderListView orders={orders} bikes={bikes} clients={clients} setSelectedOrderId={setSelectedOrderId} setView={setView} />}
@@ -168,6 +181,26 @@ export default function TallerPanel() {
       {view === "config" && <ConfigView setView={setView} showToast={showToast} orders={orders} bikes={bikes} clients={clients} handleLogout={handleLogout} loadDemoData={loadDemoData} clearAllData={clearAllData} />}
       {view === "historial" && <HistoryView orders={orders} bikes={bikes} clients={clients} setView={setView} setSelectedBikeId={setSelectedBikeId} />}
       {view === "perfilMoto" && <BikeProfileView bikeId={selectedBikeId} orders={orders} bikes={bikes} clients={clients} setView={setView} handleStartNewService={handleStartNewService} />}
+      </Suspense>
+
+      {/* Modal de confirmación — reemplaza window.confirm */}
+      {confirm && (
+        <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-6">
+          <div className="bg-[#151515] border border-slate-800 rounded-[2rem] p-8 w-full max-w-sm space-y-5">
+            <p className="text-white font-black text-sm text-center">{confirm.mensaje}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => setConfirm(null)}
+                className="bg-slate-800 text-slate-300 py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">
+                Cancelar
+              </button>
+              <button onClick={() => { confirm.onOk(); setConfirm(null); }}
+                className="bg-red-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {NAV_VIEWS.includes(view) && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-black/95 backdrop-blur-3xl border-t border-white/10 px-2 py-4 flex justify-around items-center z-50 rounded-t-[3rem] shadow-2xl">
