@@ -9,6 +9,7 @@ import {
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { Eye, EyeOff, Phone, ArrowLeft } from "lucide-react";
+import { DURACION_TRIAL } from "./services/accessService.js";
 
 const COUNTRY_CODES = [
   { label: "🇦🇷 +54", value: "+54" },
@@ -50,7 +51,7 @@ export default function LoginScreen() {
         const res = await createUserWithEmailAndPassword(auth, email, password);
         const ahora = Date.now();
         await setDoc(doc(db, "usuarios", res.user.uid), {
-          email, estado: "trial", trialInicio: ahora, trialFin: ahora + 60 * 1000,
+          email, estado: "trial", trialInicio: ahora, trialFin: ahora + DURACION_TRIAL,
         });
       }
     } catch (e) {

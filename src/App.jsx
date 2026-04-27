@@ -3,6 +3,7 @@ import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { shouldAutoBackup, exportBackup } from "./lib/backup.js";
+import { DURACION_TRIAL } from "./services/accessService.js";
 
 import TallerPanel from "./TallerPanel.jsx";
 import LoginScreen from "./LoginScreen.jsx";
@@ -35,27 +36,23 @@ export default function App() {
       // 🔥 TIEMPO REAL (soluciona todo)
       unsubFirestore = onSnapshot(ref, (snap) => {
 
-        // ⏳ todavía no existe
+        // ⏳ todavía no existe → crear trial para cualquier proveedor
         if (!snap.exists()) {
-          // Usuario nuevo por teléfono → crear doc de trial automáticamente
           const isPhone = u.providerData?.[0]?.providerId === "phone";
-          if (isPhone) {
-            const ahora = Date.now();
-            setDoc(ref, {
-              email: u.phoneNumber,
-              estado: "trial",
-              trialInicio: ahora,
-              trialFin: ahora + 60 * 1000,
-            });
-          }
+          const ahora = Date.now();
+          setDoc(ref, {
+            email: isPhone ? u.phoneNumber : u.email,
+            estado: "trial",
+            trialInicio: ahora,
+            trialFin: ahora + DURACION_TRIAL,
+            createdAt: ahora,
+          });
           return;
         }
 
         const data = snap.data();
         const trialFin = Number(data.trialFin);
         const ahora = Date.now();
-
-        console.log("--- EVALUACIÓN ---");
 
         // 🟢 USUARIO ACTIVO
         if (data.estado === "activo") {

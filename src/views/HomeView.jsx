@@ -1,5 +1,5 @@
 import React from "react";
-import { PlusCircle, Clock, History } from "lucide-react";
+import { PlusCircle, Clock, History, LogOut } from "lucide-react";
 import { auth } from "../firebase.js";
 import { LS } from "../lib/storage.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
@@ -15,8 +15,10 @@ const ESTADO_BADGE = {
 const ESTADO_ICONO = { NORMAL: "🟢", ALERTA: "⚠️", BLOQUEADO: "⛔" };
 const ORDEN_ESTADO = { BLOQUEADO: 0, ALERTA: 1, NORMAL: 2 };
 
-export default function HomeView({ stats, setView, bikes, orders, setSelectedOrderId }) {
+export default function HomeView({ stats, setView, bikes, orders, setSelectedOrderId, handleLogout }) {
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
+  const user = auth.currentUser;
+  const userLabel = user?.email || user?.phoneNumber || "";
   const valorHora = config.valorHoraCliente || 15000;
 
   const ordenesActivas = (orders || [])
@@ -43,7 +45,12 @@ export default function HomeView({ stats, setView, bikes, orders, setSelectedOrd
         <div className="relative z-10 text-left font-bold">
           <p className="text-blue-500 font-black text-xs uppercase tracking-[0.4em] mb-1">Taller OS</p>
           <h1 className="text-4xl font-black text-white tracking-tighter leading-none mb-1">JOHNNY BLAZE</h1>
-          <p className="text-[10px] text-slate-400 font-normal mb-5">{auth.currentUser?.email}</p>
+          <div className="flex items-center justify-between mb-5">
+            <p className="text-[10px] text-slate-400 font-normal truncate max-w-[75%]">{userLabel}</p>
+            <button onClick={handleLogout} className="flex items-center gap-1 text-slate-500 hover:text-red-400 active:scale-95 transition-all text-[10px] font-black uppercase tracking-widest">
+              <LogOut size={13} /> Salir
+            </button>
+          </div>
           <div className="grid grid-cols-3 gap-3">
             {[
               ["Activas", ordenesActivas.length, "text-blue-400"],

@@ -26,10 +26,11 @@ export async function validarAcceso(uid) {
   return { acceso: false, motivo: "sin_permisos" };
 }
 
-// Crear trial de 30 minutos para usuario nuevo
+export const DURACION_TRIAL = 30 * 60 * 1000;
+
+// Crear trial para usuario nuevo
 export async function crearTrial(uid, email) {
   const ahora = Date.now();
-  const DURACION_TRIAL = 30 * 60 * 1000;
 
   await setDoc(doc(db, "usuarios", uid), {
     email,
