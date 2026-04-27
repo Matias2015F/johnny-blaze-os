@@ -18,16 +18,29 @@
 const { initializeApp, getApps, cert } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
 
+// Parsea la private key tolerando los formatos más comunes al copiar desde el JSON:
+// - Con comillas envolventes:  "-----BEGIN PRIVATE KEY-----\n..."
+// - Con \n literales:           -----BEGIN PRIVATE KEY-----\nMIIE...
+// - Con saltos de línea reales: -----BEGIN PRIVATE KEY-----↵MIIE...
+function parsePrivateKey(raw) {
+  if (!raw) return null;
+  return raw
+    .replace(/^["']|["']$/g, "")  // elimina comillas externas si las hay
+    .replace(/\\n/g, "\n");        // convierte \n literal a salto de línea real
+}
+
+const privateKey = parsePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
+
 console.log("Firebase init — PROJECT_ID:", process.env.FIREBASE_PROJECT_ID || "NO DEFINIDO");
 console.log("Firebase init — CLIENT_EMAIL:", process.env.FIREBASE_CLIENT_EMAIL || "NO DEFINIDO");
-console.log("Firebase init — PRIVATE_KEY definida:", !!process.env.FIREBASE_PRIVATE_KEY);
+console.log("Firebase init — PRIVATE_KEY empieza con:", privateKey?.slice(0, 40) || "NO DEFINIDO");
 
 if (!getApps().length) {
   initializeApp({
     credential: cert({
       projectId:   process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey:  process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+      privateKey,
     }),
   });
 }
