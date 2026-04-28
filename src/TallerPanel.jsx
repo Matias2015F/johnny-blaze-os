@@ -23,12 +23,22 @@ const PaymentView    = lazy(() => import("./components/PaymentView.jsx"));
 const PrePdfView     = lazy(() => import("./components/PrePdfView.jsx"));
 const ExportPdfView  = lazy(() => import("./components/ExportPdfView.jsx"));
 
-// Fallback minimalista mientras carga un chunk
 const Cargando = () => (
   <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-slate-600 text-[10px] font-black uppercase tracking-widest">
     Cargando...
   </div>
 );
+
+class ChunkErrorBoundary extends React.Component {
+  componentDidCatch(error) {
+    if (error?.name === "ChunkLoadError" || error?.message?.includes("dynamically imported module")) {
+      window.location.reload();
+    }
+  }
+  render() {
+    return this.props.children;
+  }
+}
 
 const NAV_VIEWS = ["home", "ordenes", "historial", "precios", "config"];
 
@@ -169,6 +179,7 @@ export default function TallerPanel() {
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#0A0A0A] relative text-left selection:bg-blue-500 overflow-x-hidden font-bold">
 
+      <ChunkErrorBoundary>
       <Suspense fallback={<Cargando />}>
       {view === "home" && <HomeView stats={stats} setView={setView} bikes={bikes} orders={orders} setSelectedOrderId={setSelectedOrderId} handleLogout={handleLogout} />}
       {view === "nuevaOrden" && <NewOrderView handleCreateAll={handleCreateOrder} setView={setView} prefill={prefillData} />}
@@ -192,6 +203,7 @@ export default function TallerPanel() {
       {view === "historial" && <HistoryView orders={orders} bikes={bikes} clients={clients} setView={setView} setSelectedBikeId={setSelectedBikeId} />}
       {view === "perfilMoto" && <BikeProfileView bikeId={selectedBikeId} orders={orders} bikes={bikes} clients={clients} setView={setView} handleStartNewService={handleStartNewService} />}
       </Suspense>
+      </ChunkErrorBoundary>
 
       {/* Modal de confirmación — reemplaza window.confirm */}
       {confirm && (
