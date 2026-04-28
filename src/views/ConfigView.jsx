@@ -8,7 +8,7 @@ import { LS, useCollection } from "../lib/storage.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { formatMoney } from "../utils/format.js";
-import { exportarClientes, exportarBalance, exportarRepuestos, exportarExcel } from "../utils/export.js";
+import { exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
 
 const APP_VERSION = "1.0.0";
