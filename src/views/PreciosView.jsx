@@ -19,12 +19,11 @@ const MOCK_INICIAL = [
   { tarea: "SERVICE GENERAL", precio: 35000, cilindrada: 600 },
 ];
 
-if (LS.getAll("precioHistorial").length === 0) {
-  MOCK_INICIAL.forEach(d => LS.addDoc("precioHistorial", d));
-}
-
 export default function PreciosView({ setView }) {
-  const historial = useCollection("precioHistorial");
+  const _historial = useCollection("precioHistorial");
+  const historial = _historial.length > 0
+    ? _historial
+    : MOCK_INICIAL.map((m, i) => ({ ...m, id: `mock_${i}` }));
   const [busqueda, setBusqueda] = useState("");
   const [ccFiltro, setCcFiltro] = useState(150);
   const [mostrandoForm, setMostrandoForm] = useState(false);
