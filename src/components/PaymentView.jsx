@@ -3,6 +3,7 @@ import { ArrowLeft, Check } from "lucide-react";
 import { LS, generateId } from "../lib/storage.js";
 import { hoyEstable } from "../lib/constants.js";
 import { formatMoney, parseMonto } from "../utils/format.js";
+import { calcularResultadosOrden } from "../lib/calc.js";
 
 export default function PaymentView({ order, setView, showToast }) {
   const [monto, setMonto] = useState("");
@@ -10,7 +11,8 @@ export default function PaymentView({ order, setView, showToast }) {
   const [comprobante, setComprobante] = useState("");
 
   const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
-  const saldoActual = order.total - totalPagado;
+  const totalOrden  = calcularResultadosOrden(order).total;
+  const saldoActual = totalOrden - totalPagado;
 
   const registrar = () => {
     const montoNum = parseMonto(monto);
@@ -29,7 +31,7 @@ export default function PaymentView({ order, setView, showToast }) {
 
     LS.updateDoc("ordenes", order.id, {
       pagos: nuevosPagos,
-      estado: pagadoAcum >= order.total ? "entregada" : order.estado,
+      estado: pagadoAcum >= totalOrden ? "entregada" : order.estado,
     });
     LS.addDoc("caja", {
       fecha: hoyEstable(),

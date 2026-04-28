@@ -3,6 +3,7 @@ import { ArrowLeft, Truck } from "lucide-react";
 import { LS } from "../lib/storage.js";
 import { hoyEstable } from "../lib/constants.js";
 import { parseMonto } from "../utils/format.js";
+import { calcularNuevoTotal } from "../lib/calc.js";
 
 export default function LogisticsView({ order, setView, showToast }) {
   const [monto, setMonto] = useState("");
@@ -12,7 +13,7 @@ export default function LogisticsView({ order, setView, showToast }) {
     const m = parseMonto(monto);
     if (!m) return;
     const nuevos = [...(order.fletes || []), { nombre: motivo, monto: m, fecha: hoyEstable() }];
-    const nTotal = (order.total || 0) + m;
+    const nTotal = calcularNuevoTotal(order.tareas || [], order.repuestos || [], nuevos, order.insumos || []);
     LS.updateDoc("ordenes", order.id, { fletes: nuevos, total: nTotal });
     LS.addDoc("caja", { fecha: hoyEstable(), tipo: "egreso", concepto: `VIAJE: ${motivo}`, monto: m });
     showToast("Viaje cargado ✓");

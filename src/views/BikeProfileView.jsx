@@ -1,6 +1,7 @@
 ﻿import React, { useState } from "react";
 import { ArrowLeft, PlusCircle, ChevronDown } from "lucide-react";
 import { formatMoney } from "../utils/format.js";
+import { calcularResultadosOrden } from "../lib/calc.js";
 
 export default function BikeProfileView({ bikeId, orders, bikes, clients, setView, handleStartNewService }) {
   const b = bikes.find((x) => x.id === bikeId);
@@ -46,12 +47,13 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
         )}
         {history.map((order) => {
           const isExpanded = expandedId === order.id;
+          const totalOrden = calcularResultadosOrden(order).total;
           return (
             <div key={order.id} className="bg-white rounded-[2.5rem] border border-slate-200 overflow-hidden shadow-sm">
               <div onClick={() => setExpandedId(isExpanded ? null : order.id)} className="p-6 flex justify-between items-center cursor-pointer active:bg-slate-50">
                 <div className="text-left">
                   <p className="text-xs font-black text-slate-400 uppercase mb-1 tracking-widest">{order.fechaIngreso}</p>
-                  <p className="text-xl font-black text-black leading-none">{formatMoney(order.total)}</p>
+                  <p className="text-xl font-black text-black leading-none">{formatMoney(totalOrden)}</p>
                   <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase">Kilometraje: {order.km} km</p>
                 </div>
                 <div className={`transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}>
