@@ -34,10 +34,11 @@ export function importBackup(file) {
       try {
         const parsed = JSON.parse(e.target.result);
         const data = parsed.data || parsed;
-        COLS.forEach(col => {
+        COLS.forEach((col) => {
           if (Array.isArray(data[col])) {
-            localStorage.setItem(LS.key(col), JSON.stringify(data[col]));
-            window.dispatchEvent(new CustomEvent("ls_update", { detail: col }));
+            data[col].forEach((item) => {
+              if (item.id) LS.setDoc(col, item.id, item);
+            });
           }
         });
         resolve(parsed.fecha || "desconocida");

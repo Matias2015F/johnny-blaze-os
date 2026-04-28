@@ -3,7 +3,7 @@ import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { Wrench, Clock, History, Settings, DollarSign } from "lucide-react";
 
-import { LS, useCollection, generateId } from "./lib/storage.js";
+import { LS, useCollection, generateId, migrateFromLocalStorage, clearFirestoreData } from "./lib/storage.js";
 import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
 
 // HomeView se carga de forma eager — es la pantalla inicial
@@ -45,8 +45,9 @@ export default function TallerPanel() {
   const [finalPdfData, setFinalPdfData] = useState({ garantia: "" });
 
   const clients = useCollection("clientes");
-  const bikes = useCollection("motos");
-  const orders = useCollection("ordenes");
+  const bikes   = useCollection("motos");
+  const orders  = useCollection("ordenes");
+  useCollection("config"); // mantiene config en cache para lecturas síncronas
 
   const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 2500); };
   const handleLogout = async () => { try { await signOut(auth); } catch (e) { console.error(e); } };
@@ -54,6 +55,15 @@ export default function TallerPanel() {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => { if (u) setView("home"); });
     return () => unsub();
+  }, []);
+
+  // Migración única: sube datos de localStorage a Firestore al primer login
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    migrateFromLocalStorage(uid)
+      .then((n) => { if (n > 0) showToast(`Datos sincronizados (${n} registros) ✓`); })
+      .catch(console.error);
   }, []);
 
   // ── Crear orden nueva ──────────────────────────────────────────────────────
@@ -140,10 +150,10 @@ export default function TallerPanel() {
   };
 
   const clearAllData = () => {
-    showConfirm("¿Borrar todos los datos? Esta acción no se puede deshacer.", () => {
-      ["clientes", "motos", "ordenes", "config", "caja", "serviciosCatalogo"].forEach((c) =>
-        localStorage.removeItem(LS.key(c))
-      );
+    showConfirm("¿Borrar todos los datos? Esta acción no se puede deshacer.", async () => {
+      const uid = auth.currentUser?.uid;
+      if (uid) await clearFirestoreData(uid);
+      localStorage.removeItem("jbos_fs_migrated_v1");
       window.location.reload();
     });
   };
