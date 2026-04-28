@@ -52,22 +52,48 @@ export const LS = {
   },
 };
 
-// ── useCollection — tiempo real via onSnapshot ───────────────────────────────
+// ── useCollection — tiempo real via onSnapshot con reintento automático ────────
 export function useCollection(col) {
   const [data, setData] = useState(() => _cache[col] ?? []);
 
   useEffect(() => {
     const uid = getUid();
     if (!uid) return;
-    return onSnapshot(
-      userCol(col),
-      (snap) => {
-        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        _cache[col] = docs;
-        setData(docs);
-      },
-      (err) => console.error("[FS snapshot]", col, err),
-    );
+
+    let unsub = null;
+    let retryTimer = null;
+    let retries = 0;
+    let cancelled = false;
+
+    const subscribe = () => {
+      if (cancelled) return;
+      unsub = onSnapshot(
+        userCol(col),
+        (snap) => {
+          if (cancelled) return;
+          const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          _cache[col] = docs;
+          setData(docs);
+          retries = 0;
+        },
+        (err) => {
+          console.error("[FS snapshot]", col, err);
+          if (cancelled) return;
+          // Reintento con backoff exponencial: 2s, 4s, 8s … máx 30s
+          const delay = Math.min(2000 * 2 ** retries, 30000);
+          retries++;
+          retryTimer = setTimeout(subscribe, delay);
+        },
+      );
+    };
+
+    subscribe();
+
+    return () => {
+      cancelled = true;
+      if (unsub) unsub();
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [col]);
 
   return data;
