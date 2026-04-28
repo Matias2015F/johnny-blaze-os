@@ -1,224 +1,120 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
-import { ArrowLeft, Download, LogOut, Trash2, Database, Info, Save, Upload, User, Lock, Mail, Phone } from "lucide-react";
+import React, { useState, useMemo, useRef } from "react";
+import {
+  Download, LogOut, Trash2, Database, Info, Shield,
+  RotateCcw, FileSpreadsheet, ChevronRight, BarChart2,
+  Settings, HardDrive, Wrench, Plus, Minus,
+} from "lucide-react";
 import { LS, useCollection } from "../lib/storage.js";
-import { getMeta, setMeta, exportBackup, importBackup } from "../lib/backup.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
-import { auth, db } from "../firebase.js";
-import { doc, getDoc } from "firebase/firestore";
-import {
-  updatePassword,
-  reauthenticateWithCredential,
-  EmailAuthProvider,
-  verifyBeforeUpdateEmail,
-  linkWithPhoneNumber,
-  unlink,
-  RecaptchaVerifier,
-} from "firebase/auth";
 import { formatMoney } from "../utils/format.js";
-import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
+import { exportarClientes, exportarBalance, exportarRepuestos, exportarExcel } from "../utils/export.js";
+import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
 
 const APP_VERSION = "1.0.0";
 
 const DIFICULTADES = [
-  { key: "facil",      label: "Fácil" },
-  { key: "normal",     label: "Normal" },
-  { key: "dificil",    label: "Difícil" },
-  { key: "complicado", label: "Complicado" },
+  { key: "facil",      label: "Fácil",       color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
+  { key: "normal",     label: "Normal",      color: "text-blue-500",   bg: "bg-blue-50",   border: "border-blue-200" },
+  { key: "dificil",    label: "Difícil",     color: "text-orange-500", bg: "bg-orange-50", border: "border-orange-200" },
+  { key: "complicado", label: "Complicado",  color: "text-red-500",    bg: "bg-red-50",    border: "border-red-200" },
 ];
 
-export default function ConfigView({ setView, showToast, orders = [], bikes = [], clients = [], handleLogout, loadDemoData, clearAllData }) {
-  const [cfg, setCfg] = useState(() => LS.getDoc("config", "global") || CONFIG_DEFAULT);
-  const [backupMeta, setBackupMeta] = useState(getMeta);
-  const [restoring, setRestoring] = useState(false);
-  const fileInputRef = useRef(null);
-  const caja = useCollection("caja");
+const TABS = [
+  { id: "resumen", label: "Resumen",  Icon: BarChart2 },
+  { id: "taller",  label: "Taller",   Icon: Wrench },
+  { id: "datos",   label: "Datos",    Icon: HardDrive },
+  { id: "sistema", label: "Sistema",  Icon: Settings },
+];
 
-  const balance = useMemo(
-    () => caja.reduce((acc, mov) => (mov.tipo === "ingreso" ? acc + mov.monto : acc - mov.monto), 0),
-    [caja]
+// ── Stepper component ──────────────────────────────────────────────────────────
+function Stepper({ value, onChange, step = 1, min = 0, max = Infinity, format = v => v, suffix = "" }) {
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        onClick={() => onChange(Math.max(min, value - step))}
+        className="w-11 h-11 rounded-2xl bg-slate-100 flex items-center justify-center active:scale-90 transition-all"
+      >
+        <Minus size={16} className="text-slate-600" />
+      </button>
+      <div className="flex-1 text-center">
+        <span className="text-2xl font-black text-slate-800 tracking-tight">{format(value)}</span>
+        {suffix && <span className="text-sm font-bold text-slate-400 ml-1">{suffix}</span>}
+      </div>
+      <button
+        onClick={() => onChange(Math.min(max, value + step))}
+        className="w-11 h-11 rounded-2xl bg-slate-900 flex items-center justify-center active:scale-90 transition-all"
+      >
+        <Plus size={16} className="text-white" />
+      </button>
+    </div>
   );
+}
 
-  // Stats del mes actual
+// ── Section card ───────────────────────────────────────────────────────────────
+function Card({ children, className = "" }) {
+  return (
+    <div className={`bg-white rounded-3xl shadow-sm border border-slate-100 p-6 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function SectionTitle({ children }) {
+  return <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{children}</p>;
+}
+
+// ── PANTALLA: Resumen ──────────────────────────────────────────────────────────
+function PantallaResumen({ orders, caja }) {
   const mesActual = new Date().toISOString().slice(0, 7);
-  const ordenesMes = useMemo(
-    () => orders.filter(o => (o.fechaIngreso || "").startsWith(mesActual)),
-    [orders, mesActual]
-  );
+  const ordenesMes = useMemo(() => orders.filter(o => (o.fechaIngreso || "").startsWith(mesActual)), [orders, mesActual]);
   const { totalMes, gananciaMes } = useMemo(() => ({
     totalMes:    ordenesMes.reduce((s, o) => s + (o.total || 0), 0),
     gananciaMes: ordenesMes.reduce((s, o) => s + calcularResultadosOrden(o).margen, 0),
   }), [ordenesMes]);
+  const balance = useMemo(() => caja.reduce((acc, m) => (m.tipo === "ingreso" ? acc + m.monto : acc - m.monto), 0), [caja]);
 
+  const mes = new Date().toLocaleString("es-AR", { month: "long", year: "numeric" });
+
+  return (
+    <div className="space-y-4">
+      {/* Caja */}
+      <Card>
+        <SectionTitle>Caja actual</SectionTitle>
+        <p className={`text-5xl font-black tracking-tighter ${balance >= 0 ? "text-green-500" : "text-red-500"}`}>
+          {formatMoney(balance)}
+        </p>
+        <p className="text-xs text-slate-400 font-bold mt-1 capitalize">{mes}</p>
+      </Card>
+
+      {/* Stats del mes */}
+      <Card>
+        <SectionTitle>Este mes</SectionTitle>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+            <p className="text-3xl font-black text-blue-500">{ordenesMes.length}</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase mt-1">Órdenes</p>
+          </div>
+          <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+            <p className="text-xl font-black text-slate-800">{formatMoney(totalMes)}</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase mt-1">Cobrado</p>
+          </div>
+          <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+            <p className={`text-xl font-black ${gananciaMes >= 0 ? "text-green-500" : "text-red-500"}`}>
+              {formatMoney(gananciaMes)}
+            </p>
+            <p className="text-[9px] font-black text-slate-400 uppercase mt-1">Ganancia</p>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ── PANTALLA: Taller ───────────────────────────────────────────────────────────
+function PantallaTaller({ cfg, setCfg, showToast }) {
   const margen = cfg.margenPolitica ?? 25;
   const horaCliente = Math.round(cfg.valorHoraInterno * (1 + margen / 100));
-
-  const handleGuardarBackup = () => {
-    exportBackup();
-    setBackupMeta(getMeta());
-    showToast("Backup guardado en el dispositivo ✓");
-  };
-
-  const handleRecuperar = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    setRestoring(true);
-    try {
-      await importBackup(file);
-      showToast("Datos restaurados ✓ — recargando...");
-      setTimeout(() => window.location.reload(), 1200);
-    } catch {
-      showToast("Error al leer el archivo");
-      setRestoring(false);
-    }
-  };
-
-  const toggleAutoBackup = () => {
-    setMeta({ autoBackupEnabled: !backupMeta.autoBackupEnabled });
-    setBackupMeta(getMeta());
-  };
-
-  const setAutoBackupDays = (days) => {
-    setMeta({ autoBackupDays: days });
-    setBackupMeta(getMeta());
-  };
-
-  // ── SUSCRIPCIÓN ───────────────────────────────────────────────────
-  const [suscripcion, setSuscripcion] = useState(null);
-  useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
-    getDoc(doc(db, "usuarios", user.uid)).then(snap => {
-      if (snap.exists()) setSuscripcion(snap.data());
-    });
-  }, []);
-
-  // ── MI CUENTA ─────────────────────────────────────────────────────
-  const [accountAction, setAccountAction] = useState(null); // null | "password" | "email"
-  const [currentPass, setCurrentPass]     = useState("");
-  const [newPass, setNewPass]             = useState("");
-  const [confirmPass, setConfirmPass]     = useState("");
-  const [newEmail, setNewEmail]           = useState("");
-  const [accountMsg, setAccountMsg]       = useState({ text: "", ok: false });
-  const [accountLoading, setAccountLoading] = useState(false);
-
-  const accountErr = (text) => setAccountMsg({ text, ok: false });
-  const accountOk  = (text) => setAccountMsg({ text, ok: true });
-
-  const reauth = async () => {
-    const user = auth.currentUser;
-    const cred = EmailAuthProvider.credential(user.email, currentPass);
-    await reauthenticateWithCredential(user, cred);
-  };
-
-  const handleChangePassword = async () => {
-    if (!currentPass || !newPass || !confirmPass) return accountErr("Completá todos los campos");
-    if (newPass.length < 6)          return accountErr("Mínimo 6 caracteres");
-    if (newPass !== confirmPass)     return accountErr("Las contraseñas no coinciden");
-    setAccountLoading(true);
-    setAccountMsg({ text: "", ok: false });
-    try {
-      await reauth();
-      await updatePassword(auth.currentUser, newPass);
-      accountOk("Contraseña actualizada ✓");
-      setCurrentPass(""); setNewPass(""); setConfirmPass("");
-      setTimeout(() => setAccountAction(null), 2000);
-    } catch (e) {
-      if (e.code === "auth/wrong-password" || e.code === "auth/invalid-credential") accountErr("Contraseña actual incorrecta");
-      else accountErr("Error: " + e.code);
-    }
-    setAccountLoading(false);
-  };
-
-  const handleChangeEmail = async () => {
-    if (!currentPass || !newEmail) return accountErr("Completá todos los campos");
-    if (!newEmail.includes("@"))    return accountErr("Email inválido");
-    setAccountLoading(true);
-    setAccountMsg({ text: "", ok: false });
-    try {
-      await reauth();
-      await verifyBeforeUpdateEmail(auth.currentUser, newEmail);
-      accountOk("Verificación enviada al nuevo email — confirmá desde ahí");
-      setCurrentPass(""); setNewEmail("");
-      setTimeout(() => setAccountAction(null), 3000);
-    } catch (e) {
-      if (e.code === "auth/wrong-password" || e.code === "auth/invalid-credential") accountErr("Contraseña actual incorrecta");
-      else if (e.code === "auth/email-already-in-use") accountErr("Ese email ya tiene cuenta");
-      else accountErr("Error: " + e.code);
-    }
-    setAccountLoading(false);
-  };
-
-  const resetAccountForm = (action) => {
-    setAccountAction(action);
-    setCurrentPass(""); setNewPass(""); setConfirmPass(""); setNewEmail("");
-    setPhoneInput(""); setOtpInput(""); setPhoneConfirmResult(null);
-    setAccountMsg({ text: "", ok: false });
-  };
-
-  // ── VINCULAR TELÉFONO ─────────────────────────────────────────────
-  const [phoneInput, setPhoneInput]               = useState("");
-  const [phoneCC, setPhoneCC]                     = useState("+54");
-  const [otpInput, setOtpInput]                   = useState("");
-  const [phoneConfirmResult, setPhoneConfirmResult] = useState(null);
-  const recaptchaLinkRef = useRef(null);
-
-  const linkedPhone = auth.currentUser?.providerData?.find(p => p.providerId === "phone")?.phoneNumber;
-
-  const getLinkRecaptcha = () => {
-    if (!recaptchaLinkRef.current) {
-      recaptchaLinkRef.current = new RecaptchaVerifier(auth, "recaptcha-link-container", {
-        size: "invisible", callback: () => {},
-      });
-    }
-    return recaptchaLinkRef.current;
-  };
-
-  const handleSendPhoneLink = async () => {
-    const digits = phoneInput.replace(/\D/g, "");
-    if (digits.length < 6) return accountErr("Número inválido");
-    setAccountLoading(true);
-    setAccountMsg({ text: "", ok: false });
-    try {
-      const result = await linkWithPhoneNumber(auth.currentUser, phoneCC + digits, getLinkRecaptcha());
-      setPhoneConfirmResult(result);
-      setAccountAction("phone-otp");
-      setAccountMsg({ text: "", ok: false });
-    } catch (e) {
-      recaptchaLinkRef.current?.clear();
-      recaptchaLinkRef.current = null;
-      if (e.code === "auth/provider-already-linked") accountErr("Ya tenés un teléfono vinculado");
-      else if (e.code === "auth/invalid-phone-number") accountErr("Número inválido");
-      else accountErr("Error: " + e.code);
-    }
-    setAccountLoading(false);
-  };
-
-  const handleVerifyPhoneLink = async () => {
-    if (!otpInput || otpInput.length < 4) return accountErr("Ingresá el código");
-    setAccountLoading(true);
-    try {
-      await phoneConfirmResult.confirm(otpInput);
-      accountOk("Teléfono vinculado ✓");
-      setTimeout(() => setAccountAction(null), 2000);
-    } catch (e) {
-      if (e.code === "auth/invalid-verification-code") accountErr("Código incorrecto");
-      else if (e.code === "auth/code-expired") accountErr("Código expirado, pedí uno nuevo");
-      else accountErr("Error: " + e.code);
-    }
-    setAccountLoading(false);
-  };
-
-  const handleUnlinkPhone = async () => {
-    try {
-      await unlink(auth.currentUser, "phone");
-      showToast("Teléfono desvinculado");
-      setAccountAction(null);
-    } catch (e) {
-      accountErr("Error al desvincular: " + e.code);
-    }
-  };
 
   const guardar = () => {
     LS.setDoc("config", "global", { ...cfg, margenPolitica: margen, valorHoraCliente: horaCliente });
@@ -226,147 +122,136 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
   };
 
   const setFactor = (key, val) => {
-    const f = parseFloat(val);
-    if (isNaN(f) || f <= 0) return;
+    const f = Math.round(val * 10) / 10;
+    if (f <= 0) return;
     setCfg({ ...cfg, factorDificultad: { ...(cfg.factorDificultad || CONFIG_DEFAULT.factorDificultad), [key]: f } });
   };
 
   return (
-    <div className="p-6 text-left animate-in slide-in-from-right duration-300 pb-28">
-
-      <h1 className="text-4xl font-black text-white tracking-tighter mb-8 uppercase">Cuenta</h1>
-
-      {/* ── BALANCE DEL MES ─────────────────────────────────────────── */}
-      <div className="bg-slate-900 rounded-[2.5rem] p-6 mb-6 border border-slate-800 space-y-4">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Este mes</p>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-slate-800 rounded-2xl p-4 text-center">
-            <p className="text-2xl font-black text-blue-400">{ordenesMes.length}</p>
-            <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Órdenes</p>
-          </div>
-          <div className="bg-slate-800 rounded-2xl p-4 text-center">
-            <p className="text-lg font-black text-white">{formatMoney(totalMes)}</p>
-            <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Cobrado</p>
-          </div>
-          <div className="bg-slate-800 rounded-2xl p-4 text-center">
-            <p className={`text-lg font-black ${gananciaMes >= 0 ? "text-green-400" : "text-red-400"}`}>{formatMoney(gananciaMes)}</p>
-            <p className="text-[9px] font-black text-slate-500 uppercase mt-1">Ganancia</p>
-          </div>
+    <div className="space-y-4">
+      {/* Datos del taller */}
+      <Card>
+        <SectionTitle>Datos del Taller</SectionTitle>
+        <div className="space-y-3">
+          {[
+            ["nombreTaller",        "Nombre del Taller", "text"],
+            ["mecanicoResponsable", "Responsable",       "text"],
+            ["dniMecanico",         "DNI",               "text"],
+            ["telefonoTaller",      "Teléfono",          "tel"],
+          ].map(([field, label, type]) => (
+            <div key={field}>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">{label}</label>
+              <input
+                type={type}
+                value={cfg[field] ?? ""}
+                onChange={e => setCfg({ ...cfg, [field]: e.target.value })}
+                className="w-full border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-colors bg-slate-50"
+              />
+            </div>
+          ))}
         </div>
-        <div className="border-t border-slate-800 pt-4 flex justify-between items-center">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Caja actual</p>
-          <p className={`text-2xl font-black tracking-tighter ${balance >= 0 ? "text-green-400" : "text-red-400"}`}>
-            {formatMoney(balance)}
-          </p>
+      </Card>
+
+      {/* Costo hora */}
+      <Card>
+        <SectionTitle>Costo por Hora</SectionTitle>
+        <p className="text-[10px] text-slate-400 font-bold mb-4">Gastos fijos ÷ horas trabajadas al mes</p>
+        <Stepper
+          value={cfg.valorHoraInterno}
+          onChange={v => setCfg({ ...cfg, valorHoraInterno: v })}
+          step={500}
+          min={0}
+          format={formatMoney}
+        />
+      </Card>
+
+      {/* Margen */}
+      <Card>
+        <SectionTitle>Margen por Defecto</SectionTitle>
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[10px] text-slate-400 font-bold">Ganancia sobre el costo</span>
+          <span className="text-2xl font-black text-blue-600">{margen}%</span>
         </div>
-      </div>
-
-      {/* ── DATOS DEL TALLER ────────────────────────────────────────── */}
-      <div className="space-y-4 bg-white p-8 rounded-[2.5rem] shadow-xl mb-4">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Datos del Taller</p>
-        {[
-          ["nombreTaller",        "Nombre Taller"],
-          ["mecanicoResponsable", "Responsable"],
-          ["dniMecanico",         "DNI"],
-          ["telefonoTaller",      "Teléfono"],
-        ].map(([field, label]) => (
-          <div key={field} className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">{label}</label>
-            <input
-              value={cfg[field] ?? ""}
-              onChange={e => setCfg({ ...cfg, [field]: e.target.value })}
-              className="w-full border-2 border-slate-100 rounded-2xl p-4 font-black outline-none focus:border-blue-500"
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* ── POLÍTICA DE PRECIOS ─────────────────────────────────────── */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl mb-4 space-y-5">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Política de Precios</p>
-
-        <div className="space-y-1">
-          <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Costo real por hora</label>
-          <input
-            type="number"
-            value={cfg.valorHoraInterno}
-            onChange={e => setCfg({ ...cfg, valorHoraInterno: Number(e.target.value) })}
-            className="w-full border-2 border-slate-100 rounded-2xl p-4 font-black outline-none focus:border-blue-500"
-          />
-          <p className="text-[10px] text-slate-400 ml-2">Gastos fijos del taller ÷ horas trabajadas al mes</p>
+        <input
+          type="range" min="5" max="120" step="5"
+          value={margen}
+          onChange={e => setCfg({ ...cfg, margenPolitica: Number(e.target.value) })}
+          className="w-full accent-blue-600 mb-2"
+        />
+        <div className="flex justify-between text-[9px] text-slate-400 font-bold">
+          <span>5%</span><span>60%</span><span>120%</span>
         </div>
-
-        <div className="space-y-2">
-          <div className="flex justify-between items-center px-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Margen por defecto</label>
-            <span className="text-lg font-black text-blue-600">{margen}%</span>
-          </div>
-          <input
-            type="range" min="5" max="120" step="5"
-            value={margen}
-            onChange={e => setCfg({ ...cfg, margenPolitica: Number(e.target.value) })}
-            className="w-full accent-blue-600"
-          />
-          <div className="flex justify-between text-[9px] text-slate-400 font-bold px-1">
-            <span>5%</span><span>60%</span><span>120%</span>
-          </div>
-        </div>
-
-        <div className="bg-slate-900 rounded-[1.5rem] p-5 flex items-center justify-between">
+        <div className="mt-4 bg-slate-900 rounded-2xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Precio hora al cliente</p>
-            <p className="text-[10px] text-slate-500">
-              {formatMoney(cfg.valorHoraInterno)} × {(1 + margen / 100).toFixed(2)}
-            </p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio hora al cliente</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">{formatMoney(cfg.valorHoraInterno)} × {(1 + margen / 100).toFixed(2)}</p>
           </div>
-          <p className="text-3xl font-black text-blue-400">{formatMoney(horaCliente)}</p>
+          <p className="text-2xl font-black text-blue-400">{formatMoney(horaCliente)}</p>
         </div>
-      </div>
+      </Card>
 
-      {/* ── MULTIPLICADORES POR DIFICULTAD ──────────────────────────── */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl mb-4 space-y-4">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Multiplicadores por Dificultad</p>
-        <div className="grid grid-cols-2 gap-3">
-          {DIFICULTADES.map(({ key, label }) => {
+      {/* Multiplicadores */}
+      <Card>
+        <SectionTitle>Multiplicadores por Dificultad</SectionTitle>
+        <div className="space-y-3">
+          {DIFICULTADES.map(({ key, label, color, bg, border }) => {
             const factor = cfg.factorDificultad?.[key] ?? CONFIG_DEFAULT.factorDificultad[key];
             return (
-              <div key={key} className="space-y-1">
-                <label className="text-[9px] font-black text-slate-400 uppercase ml-1 tracking-widest">{label}</label>
-                <div className="flex items-center gap-2 border-2 border-slate-100 rounded-xl p-3">
-                  <input
-                    type="number" step="0.1" min="0.5" max="5" value={factor}
-                    onChange={e => setFactor(key, e.target.value)}
-                    className="w-full font-black text-center outline-none bg-transparent"
-                  />
-                  <span className="text-[10px] text-slate-400 font-bold">×</span>
+              <div key={key} className={`${bg} border ${border} rounded-2xl p-4`}>
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`text-sm font-black ${color}`}>{label}</span>
+                  <span className="text-[10px] text-slate-500 font-bold">
+                    = {formatMoney(Math.round(horaCliente * factor))}/h
+                  </span>
                 </div>
-                <p className="text-[9px] text-slate-400 ml-1 text-center">
-                  = {formatMoney(Math.round(horaCliente * factor))}/h
-                </p>
+                <Stepper
+                  value={factor}
+                  onChange={v => setFactor(key, v)}
+                  step={0.1}
+                  min={0.5}
+                  max={5}
+                  format={v => `${v.toFixed(1)}×`}
+                />
               </div>
             );
           })}
         </div>
-      </div>
+      </Card>
 
-      <button onClick={guardar} className="w-full bg-blue-600 text-white py-5 rounded-3xl font-black uppercase shadow-xl active:scale-95 transition-all mb-8">
-        Guardar Configuración
+      <button
+        onClick={guardar}
+        className="w-full bg-blue-600 text-white py-4 rounded-3xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+      >
+        Guardar cambios
       </button>
+    </div>
+  );
+}
 
-      {/* ── EXPORTAR DATOS ──────────────────────────────────────────── */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl mb-4 space-y-4">
-        <div className="flex items-center gap-3 mb-1">
-          <Download size={18} className="text-slate-400" />
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Exportar Datos</p>
-        </div>
-        <p className="text-[10px] text-slate-400">Archivos CSV — abrís en Excel, Google Sheets o Numbers.</p>
+// ── PANTALLA: Datos ────────────────────────────────────────────────────────────
+function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setBkpEstado, fileInputRef, handleRestaurarArchivo, handleRestaurarAuto }) {
+  return (
+    <div className="space-y-4">
+      {/* Exportar */}
+      <Card>
+        <SectionTitle>Exportar Datos</SectionTitle>
+        <button
+          onClick={() => { exportarExcel(orders, bikes, clients, cfg); showToast("Exportando Excel..."); }}
+          className="w-full flex items-center justify-between bg-green-600 text-white rounded-2xl p-5 active:scale-[0.98] transition-all shadow-md mb-4"
+        >
+          <div className="text-left">
+            <p className="text-sm font-black uppercase">Exportar a Excel</p>
+            <p className="text-[10px] font-bold text-green-100 mt-0.5">2 hojas · Trabajos + Resumen</p>
+          </div>
+          <FileSpreadsheet size={22} />
+        </button>
 
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">CSV separados</p>
         <div className="space-y-2">
           {[
-            { label: "Órdenes de trabajo",  sub: `${orders.length} registros`,           fn: () => { exportarOrdenes(orders, bikes, clients); showToast("Exportando órdenes..."); } },
-            { label: "Clientes",             sub: `${clients.length} registros`,          fn: () => { exportarClientes(clients, orders);       showToast("Exportando clientes..."); } },
-            { label: "Balance mensual",      sub: "Totales agrupados por mes",            fn: () => { exportarBalance(orders);                  showToast("Exportando balance..."); } },
-            { label: "Repuestos utilizados", sub: "Ranking por frecuencia de uso",        fn: () => { exportarRepuestos(orders);                showToast("Exportando repuestos..."); } },
+            { label: "Clientes",             sub: `${clients.length} registros`,   fn: () => { exportarClientes(clients, orders); showToast("Exportando clientes..."); } },
+            { label: "Balance mensual",      sub: "Totales por mes",               fn: () => { exportarBalance(orders);           showToast("Exportando balance..."); } },
+            { label: "Repuestos utilizados", sub: "Ranking por uso",               fn: () => { exportarRepuestos(orders);         showToast("Exportando repuestos..."); } },
           ].map(({ label, sub, fn }) => (
             <button key={label} onClick={fn}
               className="w-full flex items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl p-4 active:scale-[0.98] transition-all">
@@ -374,87 +259,80 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
                 <p className="text-sm font-black text-slate-800">{label}</p>
                 <p className="text-[10px] text-slate-400 font-bold">{sub}</p>
               </div>
-              <Download size={16} className="text-blue-500 flex-shrink-0" />
+              <Download size={16} className="text-blue-500" />
             </button>
           ))}
         </div>
-      </div>
+      </Card>
 
-      {/* ── COPIA DE SEGURIDAD ──────────────────────────────────────── */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl mb-4 space-y-4">
-        <div className="flex items-center gap-3 mb-1">
-          <Save size={18} className="text-slate-400" />
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Copia de Seguridad</p>
+      {/* Backup */}
+      <Card>
+        <SectionTitle>Copia de Seguridad</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Última manual</p>
+            <p className="text-xs font-black text-slate-700">{tiempoDesde(bkpEstado.ultimoManual) || "Nunca"}</p>
+          </div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Auto-guardado</p>
+            <p className="text-xs font-black text-slate-700">{tiempoDesde(bkpEstado.ultimoAuto) || "Nunca"}</p>
+          </div>
         </div>
 
-        <div className="bg-slate-50 rounded-2xl p-4">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Último backup</p>
-          <p className="text-sm font-black text-slate-700 mt-1">
-            {backupMeta.lastBackup
-              ? new Date(backupMeta.lastBackup).toLocaleString("es-AR")
-              : "Nunca realizado"}
-          </p>
-        </div>
-
-        <button onClick={handleGuardarBackup}
-          className="w-full flex items-center justify-between bg-blue-600 text-white rounded-2xl p-4 active:scale-[0.98] transition-all">
-          <div className="text-left">
-            <p className="text-sm font-black">Guardar ahora</p>
-            <p className="text-[10px] opacity-75 font-bold">Descarga un archivo .json al dispositivo</p>
-          </div>
-          <Save size={18} className="flex-shrink-0" />
-        </button>
-
-        <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleRecuperar} />
-        <button onClick={() => fileInputRef.current?.click()} disabled={restoring}
-          className="w-full flex items-center justify-between bg-slate-50 border border-slate-200 rounded-2xl p-4 active:scale-[0.98] transition-all disabled:opacity-50">
-          <div className="text-left">
-            <p className="text-sm font-black text-slate-800">{restoring ? "Restaurando..." : "Recuperar backup"}</p>
-            <p className="text-[10px] text-slate-400 font-bold">Seleccioná un archivo .json guardado</p>
-          </div>
-          <Upload size={18} className="text-slate-500 flex-shrink-0" />
-        </button>
-
-        <div className="border-t border-slate-100 pt-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-black text-slate-700">Auto-backup</p>
-              <p className="text-[10px] text-slate-400 font-bold">Guarda al abrir la app automáticamente</p>
+        <div className="space-y-2">
+          <button
+            onClick={() => { descargarBackup(); setBkpEstado(estadoBackup()); showToast("Copia descargada ✓"); }}
+            className="w-full flex items-center justify-between bg-blue-600 text-white rounded-2xl p-5 active:scale-[0.98] transition-all shadow-md"
+          >
+            <div className="text-left">
+              <p className="text-sm font-black uppercase">Descargar copia</p>
+              <p className="text-[10px] font-bold text-blue-100 mt-0.5">Archivo .json en tu dispositivo</p>
             </div>
-            <button onClick={toggleAutoBackup}
-              className={`relative w-12 h-6 rounded-full transition-colors ${backupMeta.autoBackupEnabled ? "bg-blue-600" : "bg-slate-200"}`}>
-              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${backupMeta.autoBackupEnabled ? "left-6" : "left-0.5"}`} />
-            </button>
-          </div>
+            <Download size={20} />
+          </button>
 
-          {backupMeta.autoBackupEnabled && (
-            <div className="space-y-2">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Frecuencia</p>
-              <div className="grid grid-cols-3 gap-2">
-                {[{ d: 1, label: "Diario" }, { d: 3, label: "Cada 3d" }, { d: 7, label: "Semanal" }].map(({ d, label }) => (
-                  <button key={d} onClick={() => setAutoBackupDays(d)}
-                    className={`py-2 rounded-xl font-black text-xs transition-all ${(backupMeta.autoBackupDays || 1) === d ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"}`}>
-                    {label}
-                  </button>
-                ))}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full flex items-center justify-between bg-slate-900 text-white rounded-2xl p-5 active:scale-[0.98] transition-all"
+          >
+            <div className="text-left">
+              <p className="text-sm font-black uppercase">Restaurar desde archivo</p>
+              <p className="text-[10px] font-bold text-slate-400 mt-0.5">Elegí el .json descargado</p>
+            </div>
+            <RotateCcw size={20} />
+          </button>
+          <input ref={fileInputRef} type="file" accept=".json" onChange={handleRestaurarArchivo} className="hidden" />
+
+          {bkpEstado.tieneAuto && (
+            <button
+              onClick={handleRestaurarAuto}
+              className="w-full flex items-center justify-between bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl p-4 active:scale-[0.98] transition-all"
+            >
+              <div className="text-left">
+                <p className="text-sm font-black">Restaurar auto-guardado</p>
+                <p className="text-[10px] text-slate-400 font-bold mt-0.5">Guardado {tiempoDesde(bkpEstado.ultimoAuto)}</p>
               </div>
-            </div>
+              <RotateCcw size={16} className="text-slate-500" />
+            </button>
           )}
         </div>
-      </div>
+      </Card>
+    </div>
+  );
+}
 
-      {/* ── VERSIÓN DE LA APP ───────────────────────────────────────── */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl mb-4 space-y-3">
-        <div className="flex items-center gap-3 mb-1">
-          <Info size={18} className="text-slate-400" />
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Versión de la App</p>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-sm font-black text-slate-700">Johnny Blaze OS</span>
+// ── PANTALLA: Sistema ──────────────────────────────────────────────────────────
+function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast }) {
+  return (
+    <div className="space-y-4">
+      <Card>
+        <SectionTitle>Versión de la App</SectionTitle>
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-sm font-black text-slate-800">Johnny Blaze OS</span>
           <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-3 py-1 rounded-full border border-blue-100">v{APP_VERSION}</span>
         </div>
-        <p className="text-[10px] text-slate-400">
-          Si la app no muestra los últimos cambios, recargá la página desde el navegador.
+        <p className="text-[10px] text-slate-400 font-bold mb-4">
+          Si la app no muestra los últimos cambios, recargá la página.
         </p>
         <button
           onClick={() => window.location.reload()}
@@ -462,216 +340,121 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
         >
           Recargar app
         </button>
+      </Card>
+
+      <Card>
+        <SectionTitle>Datos del Sistema</SectionTitle>
+        <div className="space-y-2">
+          {loadDemoData && (
+            <button
+              onClick={() => { loadDemoData(); showToast("Demo cargado ✓"); }}
+              className="w-full bg-slate-50 border border-slate-200 text-slate-700 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+            >
+              Cargar datos de prueba
+            </button>
+          )}
+
+          {clearAllData && (
+            <button
+              onClick={clearAllData}
+              className="w-full flex items-center justify-center gap-2 bg-red-50 border border-red-100 text-red-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+            >
+              <Trash2 size={14} /> Borrar todos los datos
+            </button>
+          )}
+        </div>
+      </Card>
+
+      {handleLogout && (
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-5 rounded-3xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg"
+        >
+          <LogOut size={16} /> Cerrar sesión
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── MAIN ───────────────────────────────────────────────────────────────────────
+export default function ConfigView({ setView, showToast, orders = [], bikes = [], clients = [], handleLogout, loadDemoData, clearAllData }) {
+  const [activeTab, setActiveTab] = useState("resumen");
+  const [cfg, setCfg] = useState(() => LS.getDoc("config", "global") || CONFIG_DEFAULT);
+  const [bkpEstado, setBkpEstado] = useState(() => estadoBackup());
+  const fileInputRef = useRef(null);
+  const caja = useCollection("caja");
+
+  const handleRestaurarArchivo = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const resultado = restaurarDesdeTexto(ev.target.result);
+      if (resultado.ok) {
+        showToast(`Restaurado ✓ (${resultado.restaurados} colecciones)`);
+        setTimeout(() => window.location.reload(), 1200);
+      } else {
+        showToast(`Error: ${resultado.error}`);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const handleRestaurarAuto = () => {
+    const resultado = restaurarAutoBackup();
+    if (resultado.ok) {
+      showToast("Restaurado desde copia automática ✓");
+      setTimeout(() => window.location.reload(), 1200);
+    } else {
+      showToast(`Error: ${resultado.error}`);
+    }
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "resumen": return <PantallaResumen orders={orders} caja={caja} />;
+      case "taller":  return <PantallaTaller cfg={cfg} setCfg={setCfg} showToast={showToast} />;
+      case "datos":   return <PantallaDatos orders={orders} bikes={bikes} clients={clients} cfg={cfg} showToast={showToast} bkpEstado={bkpEstado} setBkpEstado={setBkpEstado} fileInputRef={fileInputRef} handleRestaurarArchivo={handleRestaurarArchivo} handleRestaurarAuto={handleRestaurarAuto} />;
+      case "sistema": return <PantallaSistema loadDemoData={loadDemoData} clearAllData={clearAllData} handleLogout={handleLogout} showToast={showToast} />;
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full animate-in slide-in-from-right duration-300">
+      {/* Header */}
+      <div className="px-6 pt-6 pb-4 bg-slate-950">
+        <h1 className="text-3xl font-black text-white tracking-tighter uppercase">Cuenta</h1>
       </div>
 
-      {/* ── MI CUENTA ───────────────────────────────────────────────── */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl mb-4 space-y-4">
-        <div className="flex items-center gap-3 mb-1">
-          <User size={18} className="text-slate-400" />
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mi Cuenta</p>
+      {/* Tab bar */}
+      <div className="px-4 pb-3 bg-slate-950">
+        <div className="flex gap-1 bg-slate-800 p-1 rounded-2xl">
+          {TABS.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all ${
+                activeTab === id
+                  ? "bg-white shadow-sm"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Icon size={15} className={activeTab === id ? "text-slate-800" : ""} />
+              <span className={`text-[9px] font-black uppercase tracking-wide ${activeTab === id ? "text-slate-800" : ""}`}>
+                {label}
+              </span>
+            </button>
+          ))}
         </div>
-
-        <div className="bg-slate-50 rounded-2xl p-4">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Email actual</p>
-          <p className="text-sm font-black text-slate-700 mt-1 break-all">{auth.currentUser?.email}</p>
-        </div>
-
-        {suscripcion && (() => {
-          const ahora = Date.now();
-          const estado = suscripcion.estado;
-          const badge =
-            estado === "activo"  ? "bg-green-100 text-green-700" :
-            estado === "trial"   ? "bg-yellow-100 text-yellow-700" :
-                                   "bg-red-100 text-red-600";
-          const detalle =
-            estado === "activo" && !suscripcion.activoHasta ? "Sin vencimiento" :
-            estado === "activo" && suscripcion.activoHasta  ? `Hasta ${new Date(suscripcion.activoHasta).toLocaleDateString("es-AR")}` :
-            estado === "trial"  && suscripcion.trialFin     ? (suscripcion.trialFin > ahora ? `Vence ${new Date(suscripcion.trialFin).toLocaleString("es-AR")}` : "Trial vencido") :
-            "---";
-          return (
-            <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between">
-              <div>
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Suscripción</p>
-                <p className="text-[10px] font-bold text-slate-500">{detalle}</p>
-              </div>
-              <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full ${badge}`}>{estado}</span>
-            </div>
-          );
-        })()}
-
-        <div id="recaptcha-link-container" />
-
-        {/* Teléfono vinculado */}
-        {linkedPhone && (
-          <div className="bg-green-50 border border-green-100 rounded-2xl p-4 flex items-center justify-between">
-            <div>
-              <p className="text-[9px] font-black text-green-600 uppercase tracking-widest">Teléfono vinculado</p>
-              <p className="text-sm font-black text-slate-700 mt-0.5">{linkedPhone}</p>
-            </div>
-            <button onClick={handleUnlinkPhone}
-              className="text-[9px] font-black text-red-400 uppercase tracking-wide border border-red-100 bg-red-50 rounded-xl px-3 py-2">
-              Desvincular
-            </button>
-          </div>
-        )}
-
-        {/* Botones acción */}
-        {!accountAction && (
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => resetAccountForm("password")}
-              className="flex flex-col items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl p-4 active:scale-[0.98] transition-all">
-              <Lock size={18} className="text-slate-500" />
-              <p className="text-[10px] font-black text-slate-700 uppercase tracking-wide text-center">Cambiar contraseña</p>
-            </button>
-            <button onClick={() => resetAccountForm("email")}
-              className="flex flex-col items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl p-4 active:scale-[0.98] transition-all">
-              <Mail size={18} className="text-slate-500" />
-              <p className="text-[10px] font-black text-slate-700 uppercase tracking-wide text-center">Cambiar email</p>
-            </button>
-            {!linkedPhone && (
-              <button onClick={() => resetAccountForm("phone")}
-                className="col-span-2 flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl p-4 active:scale-[0.98] transition-all">
-                <Phone size={16} className="text-slate-500" />
-                <p className="text-[10px] font-black text-slate-700 uppercase tracking-wide">Vincular teléfono</p>
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Formulario cambiar contraseña */}
-        {accountAction === "password" && (
-          <div className="space-y-3 border border-slate-100 rounded-2xl p-5">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nueva contraseña</p>
-            {[
-              { placeholder: "Contraseña actual",    value: currentPass, set: setCurrentPass },
-              { placeholder: "Nueva contraseña",     value: newPass,     set: setNewPass },
-              { placeholder: "Confirmar contraseña", value: confirmPass, set: setConfirmPass },
-            ].map(({ placeholder, value, set }) => (
-              <input key={placeholder} type="password" placeholder={placeholder} value={value}
-                onChange={e => set(e.target.value)}
-                className="w-full border-2 border-slate-100 rounded-xl p-3 font-black text-sm outline-none focus:border-blue-500" />
-            ))}
-            {accountMsg.text && (
-              <p className={`text-[11px] font-bold ${accountMsg.ok ? "text-green-600" : "text-red-500"}`}>{accountMsg.text}</p>
-            )}
-            <button onClick={handleChangePassword} disabled={accountLoading}
-              className="w-full bg-blue-600 text-white py-3 rounded-xl font-black text-[11px] uppercase active:scale-95 transition-all disabled:opacity-50">
-              {accountLoading ? "Guardando..." : "Guardar contraseña"}
-            </button>
-            <button onClick={() => setAccountAction(null)}
-              className="w-full text-slate-400 font-black text-[10px] uppercase py-2">
-              Cancelar
-            </button>
-          </div>
-        )}
-
-        {/* Formulario cambiar email */}
-        {accountAction === "email" && (
-          <div className="space-y-3 border border-slate-100 rounded-2xl p-5">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Cambiar email</p>
-            <p className="text-[10px] text-slate-400">Se enviará un link de verificación al nuevo email. Solo se actualiza al confirmar.</p>
-            {[
-              { placeholder: "Contraseña actual", value: currentPass, set: setCurrentPass, type: "password" },
-              { placeholder: "Nuevo email",        value: newEmail,   set: setNewEmail,    type: "email"    },
-            ].map(({ placeholder, value, set, type }) => (
-              <input key={placeholder} type={type} placeholder={placeholder} value={value}
-                onChange={e => set(e.target.value)}
-                className="w-full border-2 border-slate-100 rounded-xl p-3 font-black text-sm outline-none focus:border-blue-500" />
-            ))}
-            {accountMsg.text && (
-              <p className={`text-[11px] font-bold ${accountMsg.ok ? "text-green-600" : "text-red-500"}`}>{accountMsg.text}</p>
-            )}
-            <button onClick={handleChangeEmail} disabled={accountLoading}
-              className="w-full bg-blue-600 text-white py-3 rounded-xl font-black text-[11px] uppercase active:scale-95 transition-all disabled:opacity-50">
-              {accountLoading ? "Enviando..." : "Enviar verificación"}
-            </button>
-            <button onClick={() => setAccountAction(null)}
-              className="w-full text-slate-400 font-black text-[10px] uppercase py-2">
-              Cancelar
-            </button>
-          </div>
-        )}
-
-        {/* Formulario vincular teléfono */}
-        {accountAction === "phone" && (
-          <div className="space-y-3 border border-slate-100 rounded-2xl p-5">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Vincular teléfono</p>
-            <p className="text-[10px] text-slate-400">Podrás iniciar sesión con tu número de celular además del email.</p>
-            <div className="flex gap-2">
-              <select value={phoneCC} onChange={e => setPhoneCC(e.target.value)}
-                className="border-2 border-slate-100 rounded-xl p-3 font-black text-sm outline-none focus:border-blue-500 bg-white">
-                {["+54","+598","+56","+55","+1"].map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <input type="tel" placeholder="Número sin 0 ni 15" value={phoneInput}
-                onChange={e => setPhoneInput(e.target.value)}
-                className="flex-1 border-2 border-slate-100 rounded-xl p-3 font-black text-sm outline-none focus:border-blue-500" />
-            </div>
-            {accountMsg.text && (
-              <p className={`text-[11px] font-bold ${accountMsg.ok ? "text-green-600" : "text-red-500"}`}>{accountMsg.text}</p>
-            )}
-            <button onClick={handleSendPhoneLink} disabled={accountLoading}
-              className="w-full bg-blue-600 text-white py-3 rounded-xl font-black text-[11px] uppercase active:scale-95 transition-all disabled:opacity-50">
-              {accountLoading ? "Enviando..." : "Enviar código SMS"}
-            </button>
-            <button onClick={() => setAccountAction(null)}
-              className="w-full text-slate-400 font-black text-[10px] uppercase py-2">
-              Cancelar
-            </button>
-          </div>
-        )}
-
-        {/* OTP para vincular teléfono */}
-        {accountAction === "phone-otp" && (
-          <div className="space-y-3 border border-slate-100 rounded-2xl p-5">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Código SMS</p>
-            <p className="text-[10px] text-slate-400">Ingresá el código que recibiste por mensaje de texto.</p>
-            <input type="number" placeholder="Código de 6 dígitos" value={otpInput}
-              onChange={e => setOtpInput(e.target.value)}
-              className="w-full border-2 border-slate-100 rounded-xl p-3 font-black text-xl text-center outline-none focus:border-blue-500 tracking-widest" />
-            {accountMsg.text && (
-              <p className={`text-[11px] font-bold ${accountMsg.ok ? "text-green-600" : "text-red-500"}`}>{accountMsg.text}</p>
-            )}
-            <button onClick={handleVerifyPhoneLink} disabled={accountLoading}
-              className="w-full bg-blue-600 text-white py-3 rounded-xl font-black text-[11px] uppercase active:scale-95 transition-all disabled:opacity-50">
-              {accountLoading ? "Verificando..." : "Confirmar"}
-            </button>
-            <button onClick={() => setAccountAction("phone")}
-              className="w-full text-slate-400 font-black text-[10px] uppercase py-2">
-              Cambiar número
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* ── SISTEMA ─────────────────────────────────────────────────── */}
-      <div className="bg-white p-8 rounded-[2.5rem] shadow-xl mb-4 space-y-3">
-        <div className="flex items-center gap-3 mb-1">
-          <Database size={18} className="text-slate-400" />
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sistema</p>
-        </div>
-
-        {loadDemoData && (
-          <button onClick={() => { loadDemoData(); showToast("Demo cargado ✓"); }}
-            className="w-full bg-slate-50 border border-slate-200 text-slate-700 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
-            Cargar datos de prueba
-          </button>
-        )}
-
-        {clearAllData && (
-          <button onClick={clearAllData}
-            className="w-full flex items-center justify-center gap-2 bg-red-50 border border-red-100 text-red-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
-            <Trash2 size={14} /> Borrar todos los datos
-          </button>
-        )}
-
-        {handleLogout && (
-          <button onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
-            <LogOut size={14} /> Cerrar sesión
-          </button>
-        )}
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 pb-28 space-y-4">
+        {renderContent()}
       </div>
-
     </div>
   );
 }
