@@ -11,7 +11,7 @@ export default function PaymentView({ order, setView, showToast }) {
   const [comprobante, setComprobante] = useState("");
 
   const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
-  const totalOrden  = calcularResultadosOrden(order).total;
+  const totalOrden = calcularResultadosOrden(order).total;
   const saldoActual = totalOrden - totalPagado;
 
   const registrar = () => {

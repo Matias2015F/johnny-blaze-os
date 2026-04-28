@@ -93,7 +93,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     const t = lista === "tareas"    ? nuevaLista : order.tareas;
     const r = lista === "repuestos" ? nuevaLista : order.repuestos;
     const f = lista === "fletes"    ? nuevaLista : order.fletes;
-    const i = lista === "insumos"   ? nuevaLista : order.insumos;
+    const i = lista === "insumos" ? nuevaLista : order.insumos;
     const nTotal = calcularNuevoTotal(t, r, f, i);
     LS.updateDoc("ordenes", order.id, { [lista]: nuevaLista, total: nTotal });
     showToast("Eliminado ✓");

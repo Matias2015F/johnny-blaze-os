@@ -103,7 +103,6 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
     const totalCosto  = moCosto + repCosto + fleCosto + insCosto;
     const totalCobrar = moPrecio + repPrecio + flePrecio + insPrecio;
-
     const margen      = moPrecio - moCosto;
     const rentabilidad = moCosto > 0 ? (margen / moCosto) * 100 : 0;
 
@@ -115,8 +114,6 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     if (!nombreTarea) { showToast("¡Falta el nombre!"); return; }
 
     const tareaId = nombreTarea.toLowerCase();
-    const k = 1 + margenPct / 100;
-
     // Repuestos: precio final tal como lo ingresó el usuario
     const repuestosGuardados = editForm.repuestos.map(r => ({ ...r, _tareaId: tareaId }));
     const insumosGuardados = editForm.insumos.map(i => ({ ...i, _tareaId: tareaId }));
@@ -356,6 +353,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             <div className="flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 font-bold mt-2">
               {stats.moPrecio > 0  && <span>MO {formatMoney(stats.moPrecio)}</span>}
               {stats.repPrecio > 0 && <><span className="text-slate-700">+</span><span>Rep {formatMoney(stats.repPrecio)}</span></>}
+              {stats.flePrecio > 0 && <><span className="text-slate-700">+</span><span>Fle {formatMoney(stats.flePrecio)}</span></>}
               {stats.insPrecio > 0 && <><span className="text-slate-700">+</span><span>Ins {formatMoney(stats.insPrecio)}</span></>}
             </div>
           </div>
