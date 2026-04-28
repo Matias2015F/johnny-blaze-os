@@ -4,7 +4,7 @@ import {
   RotateCcw, FileSpreadsheet, ChevronRight, BarChart2,
   Settings, HardDrive, Wrench, Plus, Minus,
 } from "lucide-react";
-import { LS, useCollection, migrateFromRootCollections } from "../lib/storage.js";
+import { LS, useCollection, migrateFromRootCollections, forceSyncCacheToFirestore } from "../lib/storage.js";
 import { auth } from "../firebase.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
@@ -332,9 +332,23 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast }
       const uid = auth.currentUser?.uid;
       if (!uid) throw new Error("Sin sesión");
       const n = await migrateFromRootCollections(uid);
-      showToast(n > 0 ? `Migración completa: ${n} registros movidos ✓` : "Sin datos para migrar en colecciones raíz");
+      showToast(n > 0 ? `Migración completa: ${n} registros movidos ✓` : "Sin datos en colecciones raíz");
     } catch (e) {
-      showToast("Error en migración: " + e.message);
+      showToast("Error: " + e.message);
+    } finally {
+      setMigrando(false);
+    }
+  };
+
+  const handleForzarSync = async () => {
+    setMigrando(true);
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid) throw new Error("Sin sesión");
+      const n = await forceSyncCacheToFirestore(uid);
+      showToast(n > 0 ? `Sincronizado: ${n} registros guardados en la nube ✓` : "No hay datos en memoria para sincronizar");
+    } catch (e) {
+      showToast("Error: " + e.message);
     } finally {
       setMigrando(false);
     }
@@ -372,11 +386,19 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast }
           )}
 
           <button
-            onClick={handleMigrarRaiz}
+            onClick={handleForzarSync}
             disabled={migrando}
             className="w-full flex items-center justify-center gap-2 bg-blue-50 border border-blue-100 text-blue-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
           >
-            <Database size={14} /> {migrando ? "Migrando..." : "Migrar datos a mi cuenta"}
+            <Database size={14} /> {migrando ? "Sincronizando..." : "Forzar sincronización a la nube"}
+          </button>
+
+          <button
+            onClick={handleMigrarRaiz}
+            disabled={migrando}
+            className="w-full flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 text-slate-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
+          >
+            <Database size={14} /> {migrando ? "Migrando..." : "Migrar datos legado"}
           </button>
 
           {clearAllData && (

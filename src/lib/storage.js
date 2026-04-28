@@ -159,6 +159,23 @@ export async function migrateFromRootCollections(uid) {
   return count;
 }
 
+// Fuerza escritura del cache actual a Firestore
+export async function forceSyncCacheToFirestore(uid) {
+  let count = 0;
+  for (const col of DATA_COLS) {
+    const items = _cache[col];
+    if (!items?.length) continue;
+    const batch = writeBatch(db);
+    items.forEach((item) => {
+      if (!item.id) return;
+      batch.set(doc(db, "users", uid, col, item.id), item);
+    });
+    await batch.commit();
+    count += items.length;
+  }
+  return count;
+}
+
 // Borra todas las colecciones del usuario en Firestore
 export async function clearFirestoreData(uid) {
   for (const col of DATA_COLS) {
