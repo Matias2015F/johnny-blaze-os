@@ -180,57 +180,79 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             </div>
           </div>
 
-          <div className="p-5 space-y-2">
+          <div className="p-5 space-y-3">
+
+            {/* Totales */}
             <div className="flex justify-between items-center py-2 border-b border-slate-100">
-              <span className="text-sm font-black text-slate-500">Lo que cobrás</span>
+              <span className="text-sm font-black text-slate-500">Total cobrado</span>
               <span className="text-sm font-black text-slate-900">{formatMoney(res.total)}</span>
             </div>
-            <div className="flex justify-between items-center py-2 border-b border-slate-100">
-              <span className="text-sm font-black text-slate-500">Lo que te cuesta</span>
-              <span className="text-sm font-black text-slate-500">{formatMoney(res.costoInterno)}</span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-sm font-black text-slate-900">Tu ganancia</span>
-              <span className={`text-sm font-black ${res.margen >= 0 ? "text-green-600" : "text-red-600"}`}>{formatMoney(res.margen)}</span>
-            </div>
 
-            {/* Desglose por categoría */}
-            {(res.desglose.moCliente > 0 || res.desglose.repuestosCliente > 0 || res.desglose.fletesCliente > 0 || res.desglose.insumosCliente > 0) && (
-              <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Cómo se compone</p>
-                {[
-                  res.desglose.moCliente > 0        && { label: "Mano de obra",      cobrado: res.desglose.moCliente,        margen: res.desglose.margenMO },
-                  res.desglose.repuestosCliente > 0  && { label: "Repuestos",          cobrado: res.desglose.repuestosCliente,  margen: res.desglose.margenRepuestos },
-                  res.desglose.fletesCliente > 0     && { label: "Fletes",             cobrado: res.desglose.fletesCliente,     margen: res.desglose.margenFletes },
-                  res.desglose.insumosCliente > 0    && { label: "Insumos / Terceros", cobrado: res.desglose.insumosCliente,    margen: 0 },
-                ].filter(Boolean).map(({ label, cobrado, margen }) => (
-                  <div key={label} className="flex justify-between items-center text-[10px]">
-                    <span className="text-slate-400 font-bold">{label}</span>
-                    <span className="font-black text-slate-700">
-                      {formatMoney(cobrado)}
-                      <span className={`ml-2 text-[9px] ${margen > 0 ? "text-green-500" : margen < 0 ? "text-red-500" : "text-slate-400"}`}>
-                        {margen > 0 ? `+${formatMoney(margen)}` : margen < 0 ? formatMoney(margen) : "al costo"}
-                      </span>
-                    </span>
-                  </div>
-                ))}
+            {/* Fórmula de ganancia — solo si hay MO */}
+            {res.desglose.moCliente > 0 && (
+              <div className="bg-slate-50 rounded-2xl p-4 space-y-1.5">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cómo se calcula tu ganancia</p>
+                <p className="text-[11px] font-black text-slate-700">
+                  {formatMoney(res.desglose.moCliente)}
+                  <span className="text-slate-400 font-bold mx-1">MO cobrada ×</span>
+                  {Math.round(res.rentabilidad)}%
+                  <span className="text-slate-400 font-bold mx-1">=</span>
+                  <span className={res.margen >= 0 ? "text-green-600" : "text-red-600"}>
+                    {formatMoney(Math.abs(res.margen))} ganancia
+                  </span>
+                </p>
               </div>
             )}
 
+            {/* Costos trasladados al cliente */}
+            {(res.desglose.repuestosCliente > 0 || res.desglose.fletesCliente > 0 || res.desglose.insumosCliente > 0) && (
+              <div className="space-y-1.5">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Costos trasladados al cliente</p>
+                {res.desglose.repuestosCliente > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-bold text-slate-500">Repuestos</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-black text-slate-700">{formatMoney(res.desglose.repuestosCliente)}</span>
+                      <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">al costo</span>
+                    </div>
+                  </div>
+                )}
+                {res.desglose.fletesCliente > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-bold text-slate-500">Fletes</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-black text-slate-700">{formatMoney(res.desglose.fletesCliente)}</span>
+                      <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">al costo</span>
+                    </div>
+                  </div>
+                )}
+                {res.desglose.insumosCliente > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] font-bold text-slate-500">Insumos / Terceros</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-black text-slate-700">{formatMoney(res.desglose.insumosCliente)}</span>
+                      <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">al costo</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Saldo */}
             {saldoPendiente > 0 && (
-              <div className="bg-red-50 rounded-2xl p-3 flex justify-between items-center border border-red-100 mt-2">
-                <span className="text-[9px] font-black text-red-500 uppercase">Saldo pendiente</span>
+              <div className="bg-red-50 rounded-2xl p-3 flex justify-between items-center border border-red-100">
+                <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">Saldo pendiente</span>
                 <span className="text-sm font-black text-red-600">{formatMoney(saldoPendiente)}</span>
               </div>
             )}
             {totalPagado > 0 && saldoPendiente <= 0 && (
-              <div className="bg-green-50 rounded-2xl p-3 flex justify-between items-center border border-green-100 mt-2">
-                <span className="text-[9px] font-black text-green-600 uppercase">Pagado completo</span>
+              <div className="bg-green-50 rounded-2xl p-3 flex justify-between items-center border border-green-100">
+                <span className="text-[9px] font-black text-green-600 uppercase tracking-widest">Pagado completo</span>
                 <span className="text-sm font-black text-green-600">{formatMoney(totalPagado)} ✓</span>
               </div>
             )}
             {res.sinCostoCargado && res.desglose.repuestosCliente > 0 && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-3 mt-2">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-3">
                 <p className="text-[8px] font-black text-yellow-700 uppercase tracking-wide">⚠️ Repuestos sin precio de costo — la ganancia real puede ser mayor</p>
               </div>
             )}

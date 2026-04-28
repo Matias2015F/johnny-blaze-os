@@ -12,7 +12,7 @@ const ESTADO_BADGE = {
   ALERTA:   "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
   BLOQUEADO:"bg-red-500/20 text-red-400 border-red-500/30",
 };
-const ESTADO_ICONO = { NORMAL: "🟢", ALERTA: "⚠️", BLOQUEADO: "⛔" };
+const ESTADO_LABEL_CRON = { NORMAL: "Normal", ALERTA: "Alerta", BLOQUEADO: "Detenido" };
 const ORDEN_ESTADO = { BLOQUEADO: 0, ALERTA: 1, NORMAL: 2 };
 
 export default function HomeView({ stats, setView, bikes, orders, setSelectedOrderId, handleLogout }) {
@@ -53,13 +53,13 @@ export default function HomeView({ stats, setView, bikes, orders, setSelectedOrd
           </div>
           <div className="grid grid-cols-3 gap-3">
             {[
-              ["Activas", ordenesActivas.length, "text-blue-400"],
-              ["Alerta",  alerta,                "text-yellow-400"],
-              ["Stop",    bloqueado,             "text-red-400"],
+              ["Órdenes activas", ordenesActivas.length, "text-blue-400"],
+              ["En alerta",       alerta,                "text-yellow-400"],
+              ["Detenidos",       bloqueado,             "text-red-400"],
             ].map(([l, v, c]) => (
               <div key={l} className="bg-black/40 border border-white/5 p-3 rounded-2xl text-center">
                 <div className={`text-2xl font-black ${c}`}>{v}</div>
-                <div className="text-[10px] uppercase font-bold text-slate-300 tracking-wider">{l}</div>
+                <div className="text-[9px] uppercase font-bold text-slate-400 tracking-wider mt-0.5 leading-tight">{l}</div>
               </div>
             ))}
           </div>
@@ -94,7 +94,7 @@ export default function HomeView({ stats, setView, bikes, orders, setSelectedOrd
                     {bike.patente || "---"} · {bike.marca || ""} {bike.modelo || ""}
                   </p>
                   <span className={`inline-block mt-1 text-[9px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-widest ${ESTADO_BADGE[o.estadoCron]}`}>
-                    {ESTADO_ICONO[o.estadoCron]} {o.estadoCron}
+                    {ESTADO_LABEL_CRON[o.estadoCron]}
                   </span>
                 </div>
                 {o.maxAutorizado > 0 && (
@@ -111,13 +111,13 @@ export default function HomeView({ stats, setView, bikes, orders, setSelectedOrd
 
       {/* NAVEGACIÓN */}
       <div className="grid grid-cols-2 gap-4 font-bold">
-        <button onClick={() => setView("ordenes")} className="bg-white p-6 rounded-3xl border-2 border-slate-100 flex flex-col gap-3 shadow-sm active:scale-95 transition-all text-left">
-          <Clock className="text-blue-600" size={24} />
-          <span className="font-black uppercase text-xs tracking-widest text-slate-900">Trabajos</span>
+        <button onClick={() => setView("ordenes")} className="bg-[#141414] border border-white/5 p-6 rounded-3xl flex flex-col gap-3 active:scale-95 transition-all text-left">
+          <Clock className="text-blue-500" size={24} />
+          <span className="font-black uppercase text-xs tracking-widest text-white">Trabajos</span>
         </button>
-        <button onClick={() => setView("historial")} className="bg-white p-6 rounded-3xl border-2 border-slate-100 flex flex-col gap-3 shadow-sm active:scale-95 transition-all text-left">
-          <History className="text-blue-600" size={24} />
-          <span className="font-black uppercase text-xs tracking-widest text-slate-900">Historial</span>
+        <button onClick={() => setView("historial")} className="bg-[#141414] border border-white/5 p-6 rounded-3xl flex flex-col gap-3 active:scale-95 transition-all text-left">
+          <History className="text-blue-500" size={24} />
+          <span className="font-black uppercase text-xs tracking-widest text-white">Historial</span>
         </button>
       </div>
 
