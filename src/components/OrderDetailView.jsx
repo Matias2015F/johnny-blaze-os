@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ArrowLeft, Wrench, DollarSign, FileText, Truck, Trash2, Edit2, ShieldCheck } from "lucide-react";
 import { LS } from "../lib/storage.js";
 import { ESTADO_LABEL, ESTADO_CSS, CONFIG_DEFAULT } from "../lib/constants.js";
-import { calcularResultadosOrden, calcularNuevoRango } from "../lib/calc.js";
+import { calcularResultadosOrden, calcularNuevoRango, calcularNuevoTotal } from "../lib/calc.js";
 import { obtenerAprendizaje } from "../lib/priceLearning.js";
 import { iniciarCronometro, pausarCronometro, obtenerTiempoActual, formatTiempo, formatTiempoCorto } from "../lib/timer.js";
 import { mensajeBloqueo, mensajePresupuesto, abrirWhatsApp } from "../lib/messages.js";
@@ -93,10 +93,8 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     const t = lista === "tareas"    ? nuevaLista : order.tareas;
     const r = lista === "repuestos" ? nuevaLista : order.repuestos;
     const f = lista === "fletes"    ? nuevaLista : order.fletes;
-    const nTotal =
-      (t || []).reduce((s, x) => s + (x.monto || 0), 0) +
-      (r || []).reduce((s, x) => s + ((x.monto || 0) * (x.cantidad || 1)), 0) +
-      (f || []).reduce((s, x) => s + (x.monto || 0), 0);
+    const i = lista === "insumos" ? nuevaLista : order.insumos;
+    const nTotal = calcularNuevoTotal(t, r, f, i);
     LS.updateDoc("ordenes", order.id, { [lista]: nuevaLista, total: nTotal });
     showToast("Eliminado ✓");
   };

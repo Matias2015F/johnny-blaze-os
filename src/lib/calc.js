@@ -3,6 +3,7 @@ import { CONFIG_DEFAULT } from "./constants.js";
 import { formatMoney } from "../utils/format.js";
 
 export const calcularNuevoTotal = (tareas = [], repuestos = [], fletes = [], insumos = []) => {
+  if (!tareas.length) return 0;
   const t = tareas.reduce((s, x) => s + (x.monto || 0), 0);
   const r = repuestos.reduce((s, x) => s + ((x.monto || 0) * (x.cantidad || 1)), 0);
   const f = fletes.reduce((s, x) => s + (x.monto || 0), 0);
@@ -11,6 +12,32 @@ export const calcularNuevoTotal = (tareas = [], repuestos = [], fletes = [], ins
 };
 
 export const calcularResultadosOrden = (order) => {
+  const sinTareas = !(order.tareas?.length > 0);
+  if (sinTareas) {
+    return {
+      total: 0,
+      costoInterno: 0,
+      margen: 0,
+      rentabilidad: 0,
+      tareasAnalizadas: [],
+      sinCostoCargado: false,
+      desglose: {
+        moCliente: 0,
+        moCosto: 0,
+        margenMO: 0,
+        repuestosCliente: 0,
+        repuestosCosto: 0,
+        margenRepuestos: 0,
+        fletesCliente: 0,
+        fletesCosto: 0,
+        margenFletes: 0,
+        insumosCliente: 0,
+        insumosCosto: 0,
+        margenInsumos: 0,
+      },
+    };
+  }
+
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const vHoraInt = config.valorHoraInterno || 12000;
 

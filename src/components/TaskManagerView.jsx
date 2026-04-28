@@ -6,7 +6,7 @@ import { calcularNuevoTotal } from "../lib/calc.js";
 import { obtenerAprendizaje, evaluarConfianza } from "../lib/priceLearning.js";
 import { formatMoney } from "../utils/format.js";
 
-const MARGEN_PASOS = [10, 20, 30, 50, 80];
+const PRESETS = [10, 20, 30, 50, 80];
 
 export default function TaskManagerView({ order, setView, showToast, serviceToEdit, setServiceToEdit }) {
   const catalogData = useCollection("serviciosCatalogo");
@@ -23,6 +23,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   });
   const [sugerencia, setSugerencia] = useState(null);
   const [margenPct, setMargenPct] = useState(defaultMargen);
+  const [customMode, setCustomMode] = useState(false);
 
   // Cargar datos de tarea existente al editar — FIX: incluye repuestos e insumos guardados
   useEffect(() => {
@@ -79,35 +80,40 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     setEditForm({ ...editForm, [lista]: list });
   };
 
-  // MODELO UNIFICADO: costo real × (1 + margen%) = precio al cliente
   const stats = useMemo(() => {
     const factor  = (config.factorDificultad || CONFIG_DEFAULT.factorDificultad)[editForm.dificultad] || 1;
-    const k       = 1 + margenPct / 100;
+    const pct     = Number(margenPct || 0);
 
-    const moCosto  = editForm.horasBase * (config.valorHoraInterno || 12000) * factor;
-    const moPrecio = Math.round(moCosto * k);
+    // Mano de obra: costo real → precio con margen (0 si no hay nombre de tarea)
+    const activa   = editForm.nombre.trim().length > 0;
+    const moCosto  = activa ? editForm.horasBase * (config.valorHoraInterno || 12000) * factor : 0;
+    const moPrecio = Math.round(moCosto * (1 + pct / 100));
 
-    const repPrecio = editForm.repuestos.reduce((s, r) => s + ((r.monto || 0) * (r.cantidad || 1)), 0);
+    // Repuestos: al cliente al costo (sin markup)
     const repCosto  = editForm.repuestos.reduce((s, r) => s + ((r.montoCosto || r.monto || 0) * (r.cantidad || 1)), 0);
+    const repPrecio = repCosto;
 
+    // Fletes: al cliente al costo
+    const fleCosto  = (order.fletes || []).reduce((s, f) => s + (f.monto || 0), 0);
+    const flePrecio = fleCosto;
+
+    // Insumos/terceros: al cliente al costo
     const insCosto  = editForm.insumos.reduce((s, i) => s + (i.monto || 0), 0);
-    const insPrecio = insCosto; // pasan al cliente al mismo costo
+    const insPrecio = insCosto;
 
-    const totalCosto  = moCosto + repCosto + insCosto;
-    const totalCobrar = moPrecio + repPrecio + insPrecio; // repuestos e insumos ya son precio final
-    const margen      = totalCobrar - totalCosto;
-    const rentabilidad = totalCobrar > 0 ? (margen / totalCobrar) * 100 : 0;
+    const totalCosto  = moCosto + repCosto + fleCosto + insCosto;
+    const totalCobrar = moPrecio + repPrecio + flePrecio + insPrecio;
+    const margen      = moPrecio - moCosto;
+    const rentabilidad = moCosto > 0 ? (margen / moCosto) * 100 : 0;
 
-    return { moCosto, moPrecio, repCosto, repPrecio, insCosto, insPrecio, totalCosto, totalCobrar, margen, rentabilidad };
-  }, [editForm, config, margenPct]);
+    return { moCosto, moPrecio, repCosto, repPrecio, fleCosto, flePrecio, insCosto, insPrecio, totalCosto, totalCobrar, margen, rentabilidad };
+  }, [editForm, config, margenPct, order.fletes]);
 
   const aplicar = () => {
     const nombreTarea = editForm.nombre.trim();
     if (!nombreTarea) { showToast("¡Falta el nombre!"); return; }
 
     const tareaId = nombreTarea.toLowerCase();
-    const k = 1 + margenPct / 100;
-
     // Repuestos: precio final tal como lo ingresó el usuario
     const repuestosGuardados = editForm.repuestos.map(r => ({ ...r, _tareaId: tareaId }));
     const insumosGuardados = editForm.insumos.map(i => ({ ...i, _tareaId: tareaId }));
@@ -347,53 +353,45 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             <div className="flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 font-bold mt-2">
               {stats.moPrecio > 0  && <span>MO {formatMoney(stats.moPrecio)}</span>}
               {stats.repPrecio > 0 && <><span className="text-slate-700">+</span><span>Rep {formatMoney(stats.repPrecio)}</span></>}
+              {stats.flePrecio > 0 && <><span className="text-slate-700">+</span><span>Fle {formatMoney(stats.flePrecio)}</span></>}
               {stats.insPrecio > 0 && <><span className="text-slate-700">+</span><span>Ins {formatMoney(stats.insPrecio)}</span></>}
             </div>
           </div>
 
           {/* Control de margen */}
           <div className="px-6 pb-4 space-y-3">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Margen de ganancia</p>
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Margen de ganancia (solo MO)</p>
 
-            <div className="flex items-center gap-3">
-              <div className="flex-1 flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2">
-                <input
-                  type="number" min="0" max="200"
-                  value={margenPct}
-                  onChange={e => { const v = Number(e.target.value); setMargenPct(isNaN(v) ? 0 : Math.max(0, Math.min(200, v))); }}
-                  className="w-full bg-transparent text-white font-black text-lg text-center outline-none"
-                />
-                <span className="text-slate-400 font-black text-sm">%</span>
-              </div>
-              {margenPct !== defaultMargen && (
-                <button onClick={() => setMargenPct(defaultMargen)}
-                  className="text-[9px] text-slate-500 font-black uppercase active:text-blue-400 transition-all whitespace-nowrap">
-                  Def {defaultMargen}%
-                </button>
-              )}
-            </div>
-
-            <input
-              type="range" min="0" max="100" step="1"
-              value={Math.min(margenPct, 100)}
-              onChange={e => setMargenPct(Number(e.target.value))}
-              className="w-full accent-green-500"
-            />
-            <div className="flex justify-between text-[9px] text-slate-600 font-bold px-0.5">
-              <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
-            </div>
-
-            <div className="flex gap-2 justify-center flex-wrap">
-              {MARGEN_PASOS.map(p => (
+            <div className="grid grid-cols-3 gap-2">
+              {PRESETS.map(p => (
                 <button key={p}
-                  onClick={() => setMargenPct(prev => prev === p ? 0 : p)}
-                  className={`px-3 py-1.5 rounded-xl text-[10px] font-black transition-all active:scale-95 ${
-                    margenPct === p ? "bg-green-500 text-white" : "bg-slate-800 border border-slate-700 text-slate-400"
+                  onClick={() => { setMargenPct(p); setCustomMode(false); }}
+                  className={`py-3 rounded-2xl text-sm font-black transition-all active:scale-95 ${
+                    !customMode && margenPct === p ? "bg-green-500 text-white" : "bg-slate-800 border border-slate-700 text-slate-400"
                   }`}>
                   {p}%
                 </button>
               ))}
+              <button
+                onClick={() => setCustomMode(true)}
+                className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+                  customMode ? "bg-blue-600 text-white" : "bg-slate-800 border border-slate-700 text-slate-400"
+                }`}>
+                Custom
+              </button>
             </div>
+
+            {customMode && (
+              <div className="flex items-center gap-2 bg-slate-800 border border-blue-500 rounded-2xl px-4 py-3">
+                <input
+                  type="number" min="0" max="500" autoFocus
+                  value={margenPct}
+                  onChange={e => { const v = Number(e.target.value); setMargenPct(isNaN(v) ? 0 : Math.max(0, v)); }}
+                  className="flex-1 bg-transparent text-white font-black text-xl text-center outline-none"
+                />
+                <span className="text-slate-400 font-black">%</span>
+              </div>
+            )}
           </div>
 
           {/* Resultado */}
@@ -403,10 +401,10 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
               <span className="font-black text-slate-500">{formatMoney(stats.totalCosto)}</span>
             </div>
             <div className="flex justify-between text-sm border-t border-slate-800 pt-2">
-              <span className="font-black text-white">Ganás</span>
+              <span className="font-black text-white">Mano de obra</span>
               <div className="flex items-baseline gap-2">
-                <span className={`font-black text-lg tracking-tighter ${stats.margen >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {formatMoney(stats.margen)}
+                <span className="font-black text-lg tracking-tighter text-green-400">
+                  {formatMoney(stats.moPrecio)}
                 </span>
                 <span className={`text-[10px] font-black ${stats.rentabilidad < 20 ? "text-red-400" : "text-slate-500"}`}>
                   {Math.round(stats.rentabilidad)}%

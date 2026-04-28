@@ -3,11 +3,13 @@ import { Printer } from "lucide-react";
 import { LS } from "../lib/storage.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { formatMoney } from "../utils/format.js";
+import { calcularResultadosOrden } from "../lib/calc.js";
 
 export default function ExportPdfView({ order, bike, client, setView, extraData }) {
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
-  const saldo = order.total - totalPagado;
+  const totalOrden = calcularResultadosOrden(order).total;
+  const saldo = totalOrden - totalPagado;
 
   return (
     <div className="bg-white min-h-screen p-0 font-sans text-slate-900 text-left animate-in fade-in">
@@ -68,7 +70,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         <div className="flex justify-end">
           <div className="w-1/2 space-y-2 border-t-2 border-slate-900 pt-4">
             <div className="flex justify-between text-xs font-bold uppercase">
-              <span>Total Servicio:</span><span>{formatMoney(order.total)}</span>
+              <span>Total Servicio:</span><span>{formatMoney(totalOrden)}</span>
             </div>
             {totalPagado > 0 && (
               <div className="flex justify-between text-xs font-bold text-green-600 uppercase">
