@@ -5,6 +5,7 @@ import {
   setDoc as fsSetDoc, deleteDoc as fsDeleteDoc,
   onSnapshot, writeBatch,
 } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
 // In-memory cache — updated by onSnapshot listeners
 const _cache = {};
@@ -57,9 +58,6 @@ export function useCollection(col) {
   const [data, setData] = useState(() => _cache[col] ?? []);
 
   useEffect(() => {
-    const uid = getUid();
-    if (!uid) return;
-
     let unsub = null;
     let retryTimer = null;
     let retries = 0;
@@ -79,7 +77,6 @@ export function useCollection(col) {
         (err) => {
           console.error("[FS snapshot]", col, err);
           if (cancelled) return;
-          // Reintento con backoff exponencial: 2s, 4s, 8s … máx 30s
           const delay = Math.min(2000 * 2 ** retries, 30000);
           retries++;
           retryTimer = setTimeout(subscribe, delay);
@@ -87,12 +84,24 @@ export function useCollection(col) {
       );
     };
 
-    subscribe();
+    // Suscribirse cuando auth esté listo — resuelve race condition en móvil
+    const unsubAuth = onAuthStateChanged(auth, (user) => {
+      if (unsub) { unsub(); unsub = null; }
+      if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
+      retries = 0;
+      if (user) {
+        subscribe();
+      } else {
+        _cache[col] = [];
+        setData([]);
+      }
+    });
 
     return () => {
       cancelled = true;
       if (unsub) unsub();
       if (retryTimer) clearTimeout(retryTimer);
+      unsubAuth();
     };
   }, [col]);
 
