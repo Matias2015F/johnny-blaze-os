@@ -141,6 +141,24 @@ export async function migrateFromLocalStorage(uid) {
   return count;
 }
 
+// Migración: colecciones raíz de Firestore → users/{uid}/...
+export async function migrateFromRootCollections(uid) {
+  let count = 0;
+  for (const col of DATA_COLS) {
+    const rootSnap = await getDocs(collection(db, col));
+    if (rootSnap.empty) continue;
+    const destSnap = await getDocs(collection(db, "users", uid, col));
+    if (!destSnap.empty) continue; // ya tiene datos, no pisar
+    const batch = writeBatch(db);
+    rootSnap.docs.forEach((d) => {
+      batch.set(doc(db, "users", uid, col, d.id), d.data());
+    });
+    await batch.commit();
+    count += rootSnap.docs.length;
+  }
+  return count;
+}
+
 // Borra todas las colecciones del usuario en Firestore
 export async function clearFirestoreData(uid) {
   for (const col of DATA_COLS) {

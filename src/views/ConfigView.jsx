@@ -4,7 +4,8 @@ import {
   RotateCcw, FileSpreadsheet, ChevronRight, BarChart2,
   Settings, HardDrive, Wrench, Plus, Minus,
 } from "lucide-react";
-import { LS, useCollection } from "../lib/storage.js";
+import { LS, useCollection, migrateFromRootCollections } from "../lib/storage.js";
+import { auth } from "../firebase.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { formatMoney } from "../utils/format.js";
@@ -323,6 +324,22 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
 
 // ── PANTALLA: Sistema ──────────────────────────────────────────────────────────
 function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast }) {
+  const [migrando, setMigrando] = React.useState(false);
+
+  const handleMigrarRaiz = async () => {
+    setMigrando(true);
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid) throw new Error("Sin sesión");
+      const n = await migrateFromRootCollections(uid);
+      showToast(n > 0 ? `Migración completa: ${n} registros movidos ✓` : "Sin datos para migrar en colecciones raíz");
+    } catch (e) {
+      showToast("Error en migración: " + e.message);
+    } finally {
+      setMigrando(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -353,6 +370,14 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast }
               Cargar datos de prueba
             </button>
           )}
+
+          <button
+            onClick={handleMigrarRaiz}
+            disabled={migrando}
+            className="w-full flex items-center justify-center gap-2 bg-blue-50 border border-blue-100 text-blue-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
+          >
+            <Database size={14} /> {migrando ? "Migrando..." : "Migrar datos a mi cuenta"}
+          </button>
 
           {clearAllData && (
             <button
