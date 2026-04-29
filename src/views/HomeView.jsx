@@ -1,135 +1,198 @@
 import React from "react";
-import { PlusCircle, Clock, History, LogOut, Bell, MessageCircle } from "lucide-react";
+import { Bell, Clock, History, LogOut, MessageCircle, PlusCircle, ReceiptText, Wrench } from "lucide-react";
 import { auth } from "../firebase.js";
-import { LS, useCollection } from "../lib/storage.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { evaluarEstado } from "../lib/calc.js";
+import { evaluarEstadoRecordatorio, generarMensajeWhatsApp } from "../lib/proximoControl.js";
+import { LS, useCollection } from "../lib/storage.js";
 import { obtenerTiempoActual } from "../lib/timer.js";
 import { formatMoney } from "../utils/format.js";
-import { evaluarEstadoRecordatorio, generarMensajeWhatsApp } from "../lib/proximoControl.js";
 
 const ESTADO_BADGE = {
-  NORMAL:   "bg-green-500/20 text-green-400 border-green-500/30",
-  ALERTA:   "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-  BLOQUEADO:"bg-red-500/20 text-red-400 border-red-500/30",
+  NORMAL: "bg-green-500/20 text-green-400 border-green-500/30",
+  ALERTA: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+  BLOQUEADO: "bg-red-500/20 text-red-400 border-red-500/30",
 };
-const ESTADO_LABEL_CRON = { NORMAL: "Normal", ALERTA: "Alerta", BLOQUEADO: "Detenido" };
+
+const ESTADO_LABEL_CRON = {
+  NORMAL: "Normal",
+  ALERTA: "Atención",
+  BLOQUEADO: "Detenido",
+};
+
 const ORDEN_ESTADO = { BLOQUEADO: 0, ALERTA: 1, NORMAL: 2 };
 
-export default function HomeView({ stats, setView, bikes, orders, setSelectedOrderId, handleLogout }) {
-  const config      = LS.getDoc("config", "global") || CONFIG_DEFAULT;
+export default function HomeView({ setView, bikes, orders, setSelectedOrderId, handleLogout }) {
+  const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const recordatorios = useCollection("recordatorios");
-  const clients     = useCollection("clientes");
-  const user        = auth.currentUser;
-  const userLabel   = user?.email || user?.phoneNumber || "";
-  const valorHora   = config.valorHoraCliente || 15000;
+  const clients = useCollection("clientes");
+  const user = auth.currentUser;
+  const userLabel = user?.email || user?.phoneNumber || "";
+  const valorHora = config.valorHoraCliente || 15000;
 
   const ordenesActivas = (orders || [])
-    .filter(o => o.estado !== "cerrado_emitido")
-    .map(o => {
-      const tiempoHoras = obtenerTiempoActual(o);
+    .filter((order) => order.estado !== "cerrado_emitido")
+    .map((order) => {
+      const tiempoHoras = obtenerTiempoActual(order);
       const { estadoCron, costoActual } = evaluarEstado({
         tiempoHoras,
         valorHora,
-        maxAutorizado: o.maxAutorizado || 0,
+        maxAutorizado: order.maxAutorizado || 0,
       });
-      return { ...o, estadoCron, costoActual };
+      return { ...order, estadoCron, costoActual };
     })
     .sort((a, b) => ORDEN_ESTADO[a.estadoCron] - ORDEN_ESTADO[b.estadoCron]);
 
-  // Alertas de próximo service — solo pendientes y activas
   const alertasService = (recordatorios || [])
-    .filter(r => r.estado === "pendiente" || r.estado === "avisado")
-    .map(r => {
-      const moto    = bikes?.find(b => b.id === r.motoId);
-      const cliente = clients?.find(c => c.id === r.clienteId);
+    .filter((recordatorio) => recordatorio.estado === "pendiente" || recordatorio.estado === "avisado")
+    .map((recordatorio) => {
+      const moto = bikes?.find((item) => item.id === recordatorio.motoId);
+      const cliente = clients?.find((item) => item.id === recordatorio.clienteId);
       const kmActual = moto?.kilometrajeActual || moto?.km;
-      const estado  = evaluarEstadoRecordatorio(r, kmActual);
-      return { ...r, moto, cliente, estado };
+      const estado = evaluarEstadoRecordatorio(recordatorio, kmActual);
+      return { ...recordatorio, moto, cliente, estado };
     })
-    .filter(r => r.estado === "proximo_service" || r.estado === "service_vencido")
+    .filter((recordatorio) => recordatorio.estado === "proximo_service" || recordatorio.estado === "service_vencido")
     .sort((a, b) => (a.estado === "service_vencido" ? -1 : 1));
 
-  const alerta   = ordenesActivas.filter(o => o.estadoCron === "ALERTA").length;
-  const bloqueado= ordenesActivas.filter(o => o.estadoCron === "BLOQUEADO").length;
+  const alerta = ordenesActivas.filter((order) => order.estadoCron === "ALERTA").length;
+  const bloqueado = ordenesActivas.filter((order) => order.estadoCron === "BLOQUEADO").length;
+  const totalPendienteCobro = ordenesActivas.reduce((sum, order) => {
+    const totalPagado = (order.pagos || []).reduce((acc, pago) => acc + (pago.monto || 0), 0);
+    const saldo = (order.total || 0) - totalPagado;
+    return sum + Math.max(saldo, 0);
+  }, 0);
 
   return (
-    <div className="p-4 space-y-5 pb-28 text-left animate-in fade-in duration-500">
-
-      {/* HEADER */}
-      <header className="bg-slate-900 border border-slate-800 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
-        <div className="relative z-10 text-left font-bold">
-          <p className="text-blue-500 font-black text-xs uppercase tracking-[0.4em] mb-1">Taller OS</p>
-          <h1 className="text-4xl font-black text-white tracking-tighter leading-none mb-1">JOHNNY BLAZE</h1>
-          <div className="flex items-center justify-between mb-5">
-            <p className="text-[10px] text-slate-400 font-normal truncate max-w-[75%]">{userLabel}</p>
-            <button onClick={handleLogout} className="flex items-center gap-1 text-slate-500 hover:text-red-400 active:scale-95 transition-all text-[10px] font-black uppercase tracking-widest">
+    <div className="space-y-5 p-4 pb-28 text-left animate-in fade-in duration-500">
+      <header className="rounded-[2.5rem] border border-slate-800 bg-slate-900 p-8 shadow-2xl">
+        <div className="font-bold">
+          <p className="mb-1 text-xs font-black uppercase tracking-[0.4em] text-blue-500">Taller OS</p>
+          <h1 className="mb-1 text-4xl font-black leading-none tracking-tighter text-white">JOHNNY BLAZE</h1>
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <p className="max-w-[75%] truncate text-[10px] font-normal text-slate-400">{userLabel}</p>
+            <button onClick={handleLogout} className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-500 transition-all hover:text-red-400 active:scale-95">
               <LogOut size={13} /> Salir
             </button>
           </div>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              ["Trabajos activos", ordenesActivas.length, "text-blue-400"],
-              ["En alerta",       alerta,                "text-yellow-400"],
-              ["Detenidos",       bloqueado,             "text-red-400"],
-            ].map(([l, v, c]) => (
-              <div key={l} className="bg-black/40 border border-white/5 p-3 rounded-2xl text-center">
-                <div className={`text-2xl font-black ${c}`}>{v}</div>
-                <div className="text-[9px] uppercase font-bold text-slate-400 tracking-wider mt-0.5 leading-tight">{l}</div>
-              </div>
-            ))}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
+              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Trabajos activos</p>
+              <p className="mt-2 text-2xl font-black text-blue-400">{ordenesActivas.length}</p>
+              <p className="mt-1 text-[10px] font-bold text-slate-500">En movimiento hoy</p>
+            </div>
+            <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
+              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Pendiente de cobro</p>
+              <p className="mt-2 text-2xl font-black text-green-400">{formatMoney(totalPendienteCobro)}</p>
+              <p className="mt-1 text-[10px] font-bold text-slate-500">Saldo total</p>
+            </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
+              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Atención</p>
+              <p className="mt-2 text-2xl font-black text-yellow-400">{alerta}</p>
+              <p className="mt-1 text-[10px] font-bold text-slate-500">Cerca del límite</p>
+            </div>
+            <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
+              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Detenidos</p>
+              <p className="mt-2 text-2xl font-black text-red-400">{bloqueado}</p>
+              <p className="mt-1 text-[10px] font-bold text-slate-500">Necesitan acción</p>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* ALERTAS DE PRÓXIMO SERVICE */}
+      <button onClick={() => setView("nuevaOrden")} className="w-full rounded-[2.5rem] bg-blue-600 p-8 text-white shadow-xl transition-all active:scale-[0.98]">
+        <div className="flex items-center gap-5 text-left font-bold">
+          <div className="rounded-3xl bg-white/20 p-4"><PlusCircle size={32} /></div>
+          <div>
+            <p className="mb-1 text-2xl font-black uppercase leading-none tracking-tighter">Nuevo ingreso</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-white/80">Ingresar moto al taller</p>
+          </div>
+        </div>
+      </button>
+
+      <div className="grid grid-cols-2 gap-4">
+        <button onClick={() => setView("ordenes")} className="rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all active:scale-95">
+          <Clock className="text-blue-500" size={24} />
+          <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-900">Trabajos</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Ver y seguir trabajos activos</p>
+        </button>
+        <button onClick={() => setView("pagosView")} className="rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all active:scale-95">
+          <ReceiptText className="text-green-600" size={24} />
+          <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-900">Pagos</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Cobrar y emitir comprobantes</p>
+        </button>
+        <button onClick={() => setView("historial")} className="rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all active:scale-95">
+          <History className="text-blue-500" size={24} />
+          <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-900">Historial</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Buscar patente, cliente o comprobante</p>
+        </button>
+        <button onClick={() => setView("config")} className="rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all active:scale-95">
+          <Wrench className="text-slate-700" size={24} />
+          <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-900">Más</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Configuración y herramientas</p>
+        </button>
+      </div>
+
       {alertasService.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-[10px] font-black text-yellow-400 uppercase tracking-widest flex items-center gap-2">
+        <div className="space-y-3">
+          <p className="flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-widest text-yellow-500">
             <Bell size={12} /> Próximos service
           </p>
-          {alertasService.map(r => (
-            <div key={r.id} className={`rounded-[2rem] p-4 border space-y-3 ${r.estado === "service_vencido" ? "bg-red-500/10 border-red-500/40" : "bg-yellow-500/10 border-yellow-500/40"}`}>
-              <div className="flex items-start justify-between">
+          {alertasService.map((recordatorio) => (
+            <div
+              key={recordatorio.id}
+              className={`space-y-3 rounded-[2rem] border p-4 ${
+                recordatorio.estado === "service_vencido"
+                  ? "border-red-500/30 bg-red-500/10"
+                  : "border-yellow-500/30 bg-yellow-500/10"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-black text-white uppercase tracking-tight">
-                    {r.moto?.patente || "---"} · {r.moto?.marca || ""} {r.moto?.modelo || ""}
+                  <p className="text-sm font-black uppercase tracking-tight text-slate-900">
+                    {recordatorio.moto?.patente || "---"} · {recordatorio.moto?.marca || ""} {recordatorio.moto?.modelo || ""}
                   </p>
-                  <p className={`text-[10px] font-black uppercase mt-0.5 ${r.estado === "service_vencido" ? "text-red-400" : "text-yellow-400"}`}>
-                    {r.estado === "service_vencido" ? "⛔ Service vencido" : "⚠️ Próximo service"} · {r.descripcion}
+                  <p className={`mt-1 text-[10px] font-black uppercase ${recordatorio.estado === "service_vencido" ? "text-red-500" : "text-yellow-600"}`}>
+                    {recordatorio.estado === "service_vencido" ? "Service vencido" : "Próximo service"} · {recordatorio.descripcion}
                   </p>
-                  {r.testMode && (
-                    <span className="bg-purple-500 text-white text-[8px] font-black px-2 py-0.5 rounded mt-1 inline-block uppercase">PRUEBA</span>
+                  {recordatorio.testMode && (
+                    <span className="mt-1 inline-block rounded bg-purple-500 px-2 py-0.5 text-[8px] font-black uppercase text-white">Prueba</span>
                   )}
                 </div>
                 <button
                   onClick={() => {
-                    const msg = generarMensajeWhatsApp(r.cliente, r.moto, r, config);
-                    const tel = r.cliente?.whatsapp || r.cliente?.telefono || r.cliente?.tel || "";
+                    const msg = generarMensajeWhatsApp(recordatorio.cliente, recordatorio.moto, recordatorio, config);
+                    const tel = recordatorio.cliente?.whatsapp || recordatorio.cliente?.telefono || recordatorio.cliente?.tel || "";
                     window.open(`https://wa.me/${tel.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
-                    LS.updateDoc("recordatorios", r.id, { estado: "avisado", enviado: true });
+                    LS.updateDoc("recordatorios", recordatorio.id, { estado: "avisado", enviado: true });
                   }}
-                  className="bg-green-600 text-white px-3 py-2 rounded-xl font-black text-[9px] uppercase flex items-center gap-1 active:scale-95 flex-shrink-0"
+                  className="flex shrink-0 items-center gap-1 rounded-xl bg-green-600 px-3 py-2 text-[9px] font-black uppercase text-white active:scale-95"
                 >
                   <MessageCircle size={12} /> WhatsApp
                 </button>
               </div>
-              {r.kmObjetivo && (
-                <p className="text-[9px] font-bold text-slate-400">
-                  Km actual: {(r.moto?.kilometrajeActual || r.moto?.km || 0).toLocaleString("es-AR")} · Objetivo: {r.kmObjetivo.toLocaleString("es-AR")} km
+
+              {recordatorio.kmObjetivo && (
+                <p className="text-[9px] font-bold text-slate-500">
+                  Km actual: {(recordatorio.moto?.kilometrajeActual || recordatorio.moto?.km || 0).toLocaleString("es-AR")} · Objetivo: {recordatorio.kmObjetivo.toLocaleString("es-AR")} km
                 </p>
               )}
+
               <div className="flex gap-2">
                 <button
-                  onClick={() => LS.updateDoc("recordatorios", r.id, { estado: "hecho" })}
-                  className="flex-1 py-2 rounded-xl bg-white/10 text-white text-[9px] font-black uppercase active:scale-95"
+                  onClick={() => LS.updateDoc("recordatorios", recordatorio.id, { estado: "hecho" })}
+                  className="flex-1 rounded-xl bg-white/50 py-2 text-[9px] font-black uppercase text-slate-800 active:scale-95"
                 >
                   Marcar hecho
                 </button>
-                {r.testMode && (
+                {recordatorio.testMode && (
                   <button
-                    onClick={() => LS.deleteDoc("recordatorios", r.id)}
-                    className="py-2 px-3 rounded-xl bg-red-500/20 text-red-400 text-[9px] font-black uppercase active:scale-95"
+                    onClick={() => LS.deleteDoc("recordatorios", recordatorio.id)}
+                    className="rounded-xl bg-red-500/20 px-3 py-2 text-[9px] font-black uppercase text-red-500 active:scale-95"
                   >
                     Eliminar prueba
                   </button>
@@ -140,41 +203,32 @@ export default function HomeView({ stats, setView, bikes, orders, setSelectedOrd
         </div>
       )}
 
-      {/* NUEVO INGRESO */}
-      <button onClick={() => setView("nuevaOrden")} className="w-full bg-blue-600 text-white p-8 rounded-[2.5rem] flex items-center justify-between shadow-xl active:scale-[0.98] transition-all">
-        <div className="flex items-center gap-5 text-left font-bold">
-          <div className="bg-white/20 p-4 rounded-3xl"><PlusCircle size={32} /></div>
-          <div>
-            <p className="text-2xl font-black uppercase tracking-tighter leading-none mb-1">Nuevo Ingreso</p>
-            <p className="text-xs font-bold uppercase tracking-widest text-white/80">Ingresar moto al taller</p>
-          </div>
-        </div>
-      </button>
-
-      {/* TRABAJOS ACTIVOS CON ESTADO */}
       {ordenesActivas.length > 0 && (
-        <div className="bg-slate-900 rounded-[2rem] p-5 space-y-3 border border-slate-800">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Trabajos en curso</p>
-          {ordenesActivas.map(o => {
-            const bike = bikes?.find(b => b.id === o.bikeId) || {};
+        <div className="space-y-3 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Trabajos en curso</p>
+          {ordenesActivas.map((order) => {
+            const bike = bikes?.find((item) => item.id === order.bikeId) || {};
             return (
               <button
-                key={o.id}
-                onClick={() => { setSelectedOrderId(o.id); setView("detalleOrden"); }}
-                className="w-full bg-slate-800 hover:bg-slate-700 rounded-2xl p-4 flex items-center justify-between active:scale-[0.98] transition-all border border-slate-700"
+                key={order.id}
+                onClick={() => {
+                  setSelectedOrderId(order.id);
+                  setView("detalleOrden");
+                }}
+                className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition-all active:scale-[0.98]"
               >
-                <div className="text-left">
-                  <p className="text-sm font-black text-white uppercase tracking-tight">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-tight text-slate-900">
                     {bike.patente || "---"} · {bike.marca || ""} {bike.modelo || ""}
                   </p>
-                  <span className={`inline-block mt-1 text-[9px] font-black px-2 py-0.5 rounded-lg border uppercase tracking-widest ${ESTADO_BADGE[o.estadoCron]}`}>
-                    {ESTADO_LABEL_CRON[o.estadoCron]}
+                  <span className={`mt-2 inline-block rounded-lg border px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${ESTADO_BADGE[order.estadoCron]}`}>
+                    {ESTADO_LABEL_CRON[order.estadoCron]}
                   </span>
                 </div>
-                {o.maxAutorizado > 0 && (
+                {order.maxAutorizado > 0 && (
                   <div className="text-right">
-                    <p className="text-[9px] font-black text-slate-500 uppercase">Acumulado</p>
-                    <p className="text-sm font-black text-white">{formatMoney(o.costoActual)}</p>
+                    <p className="text-[9px] font-black uppercase text-slate-400">Acumulado</p>
+                    <p className="text-sm font-black text-slate-900">{formatMoney(order.costoActual)}</p>
                   </div>
                 )}
               </button>
@@ -182,20 +236,6 @@ export default function HomeView({ stats, setView, bikes, orders, setSelectedOrd
           })}
         </div>
       )}
-
-      {/* NAVEGACIÓN */}
-      <div className="grid grid-cols-2 gap-4 font-bold">
-        <button onClick={() => setView("ordenes")} className="bg-[#141414] border border-white/5 p-6 rounded-3xl flex flex-col gap-3 active:scale-95 transition-all text-left">
-          <Clock className="text-blue-500" size={24} />
-          <span className="font-black uppercase text-xs tracking-widest text-white">Trabajos</span>
-        </button>
-        <button onClick={() => setView("historial")} className="bg-[#141414] border border-white/5 p-6 rounded-3xl flex flex-col gap-3 active:scale-95 transition-all text-left">
-          <History className="text-blue-500" size={24} />
-          <span className="font-black uppercase text-xs tracking-widest text-white">Historial</span>
-        </button>
-      </div>
-
-
     </div>
   );
 }
