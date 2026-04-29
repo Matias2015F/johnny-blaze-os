@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Bell, Clock, History, LogOut, MessageCircle, PlusCircle, ReceiptText, Wrench } from "lucide-react";
 import { auth } from "../firebase.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
@@ -21,6 +21,21 @@ const ESTADO_LABEL_CRON = {
 };
 
 const ORDEN_ESTADO = { BLOQUEADO: 0, ALERTA: 1, NORMAL: 2 };
+const ALERTAS_NOTIFICADAS_KEY = "jbos_alertas_notificadas_v1";
+
+function leerAlertasNotificadas() {
+  try {
+    return JSON.parse(localStorage.getItem(ALERTAS_NOTIFICADAS_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function guardarAlertaNotificada(id, estado) {
+  const actuales = leerAlertasNotificadas();
+  actuales[id] = estado;
+  localStorage.setItem(ALERTAS_NOTIFICADAS_KEY, JSON.stringify(actuales));
+}
 
 export default function HomeView({ setView, bikes, orders, setSelectedOrderId, handleLogout }) {
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
@@ -54,6 +69,39 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
     })
     .filter((recordatorio) => recordatorio.estado === "proximo_service" || recordatorio.estado === "service_vencido")
     .sort((a, b) => (a.estado === "service_vencido" ? -1 : 1));
+
+  useEffect(() => {
+    const habilitadas = config.alertasNavegadorActivas ?? true;
+    if (!habilitadas || typeof window === "undefined" || !("Notification" in window)) return;
+    if (!alertasService.length) return;
+
+    const lanzar = () => {
+      const yaNotificadas = leerAlertasNotificadas();
+      alertasService.forEach((recordatorio) => {
+        const claveEstado = `${recordatorio.estado}-${recordatorio.enviado ? "avisado" : "pendiente"}`;
+        if (yaNotificadas[recordatorio.id] === claveEstado) return;
+
+        const titulo = recordatorio.estado === "service_vencido"
+          ? "Service vencido"
+          : "Proximo service";
+        const cuerpo = `${recordatorio.moto?.patente || "---"} · ${recordatorio.descripcion}`;
+        const notification = new Notification(titulo, { body: cuerpo, silent: false });
+        notification.onclick = () => window.focus();
+        guardarAlertaNotificada(recordatorio.id, claveEstado);
+      });
+    };
+
+    if (Notification.permission === "granted") {
+      lanzar();
+      return;
+    }
+
+    if (Notification.permission === "default") {
+      Notification.requestPermission().then((permiso) => {
+        if (permiso === "granted") lanzar();
+      }).catch(() => {});
+    }
+  }, [alertasService, config.alertasNavegadorActivas]);
 
   const alerta = ordenesActivas.filter((order) => order.estadoCron === "ALERTA").length;
   const bloqueado = ordenesActivas.filter((order) => order.estadoCron === "BLOQUEADO").length;

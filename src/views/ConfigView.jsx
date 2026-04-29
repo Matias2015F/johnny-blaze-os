@@ -31,6 +31,7 @@ const TABS = [
 
 // ── Stepper component ──────────────────────────────────────────────────────────
 function Stepper({ value, onChange, step = 1, min = 0, max = Infinity, format = v => v, suffix = "" }) {
+
   return (
     <div className="flex items-center gap-3">
       <button
@@ -450,6 +451,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
 
   const handleForzarSync = async () => {
     setMigrando(true);
+
     try {
       const uid = auth.currentUser?.uid;
       if (!uid) throw new Error("Sin sesión");
@@ -469,8 +471,47 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
     showToast(nuevo.testModeRecordatorios ? "Modo prueba activado ✓" : "Modo prueba desactivado");
   };
 
+  const toggleAlertasNavegador = async () => {
+    const activar = !(cfg.alertasNavegadorActivas ?? true);
+    if (activar && typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      try {
+        const permiso = await Notification.requestPermission();
+        if (permiso !== "granted") {
+          showToast("El navegador no dio permiso para notificar");
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    const nuevo = { ...cfg, alertasNavegadorActivas: activar };
+    setCfg(nuevo);
+    LS.setDoc("config", "global", nuevo);
+    showToast(activar ? "Alertas del navegador activadas ?" : "Alertas del navegador desactivadas");
+  };
+
   return (
     <div className="space-y-4">
+
+      <Card>
+        <SectionTitle>Alertas del navegador</SectionTitle>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-black text-slate-800">Notificaciones de próximo service</p>
+            <p className="text-[10px] text-slate-400 font-bold mt-0.5">Muestran un aviso real del navegador cuando un recordatorio entra en próximo o vencido.</p>
+          </div>
+          <button
+            onClick={toggleAlertasNavegador}
+            className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${(cfg.alertasNavegadorActivas ?? true) ? "bg-blue-500" : "bg-slate-200"}`}
+          >
+            <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-200 ${(cfg.alertasNavegadorActivas ?? true) ? "left-8" : "left-1"}`} />
+          </button>
+        </div>
+        <div className="mt-3 bg-slate-50 border border-slate-200 rounded-2xl p-3">
+          <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">
+            Estado del permiso: {typeof window !== "undefined" && "Notification" in window ? Notification.permission : "no soportado"}
+          </p>
+        </div>
+      </Card>
 
       <Card>
         <SectionTitle>Modo Prueba de Recordatorios</SectionTitle>

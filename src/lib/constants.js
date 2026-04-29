@@ -19,6 +19,7 @@ export const CONFIG_DEFAULT = {
   valorHoraInterno: 12000,
   margenPolitica: 25,
   valorHoraCliente: 15000,
+  alertasNavegadorActivas: true,
   factorDificultad: { facil: 1, normal: 1.3, dificil: 1.7, complicado: 2.2 },
   cronometroAlertas: { activo: true, frecuenciaMin: 30 },
 };
