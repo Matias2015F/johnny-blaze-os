@@ -15,6 +15,7 @@ export default function PaymentView({ order, setView, showToast }) {
   const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
   const totalOrden = calcularResultadosOrden(order).total;
   const saldoActual = totalOrden - totalPagado;
+  const completarTotal = () => setMonto(String(Math.max(saldoActual, 0)));
 
   const registrar = () => {
     const montoNum = parseMonto(monto);
@@ -30,20 +31,22 @@ export default function PaymentView({ order, setView, showToast }) {
     };
     const nuevosPagos = [...(order.pagos || []), nuevoPago];
     const pagadoAcum = nuevosPagos.reduce((s, p) => s + p.monto, 0);
+    const saldoRestante = totalOrden - pagadoAcum;
 
-    LS.updateDoc("ordenes", order.id, {
+    LS.updateDoc("trabajos", order.id, {
       pagos: nuevosPagos,
-      estado: pagadoAcum >= totalOrden ? "entregada" : order.estado,
+      estado: saldoRestante <= 0 ? "listo_para_emitir" : "finalizada",
     });
     LS.addDoc("caja", {
       fecha: hoyEstable(),
       tipo: "ingreso",
-      concepto: `Entrega Moto: ${order.id.slice(-4).toUpperCase()}`,
+      concepto: `Pago trabajo ${order.numeroTrabajo || order.id.slice(-4).toUpperCase()}`,
       monto: montoNum,
       metodo,
+      comprobante,
     });
 
-    showToast(`✅ Recibido ${formatMoney(montoNum)}`);
+    showToast(saldoRestante <= 0 ? "Pago completo registrado ✓" : `Recibido ${formatMoney(montoNum)}`);
     setMonto("");
     setComprobante("");
   };
@@ -59,6 +62,11 @@ export default function PaymentView({ order, setView, showToast }) {
           <p className="text-5xl font-black text-slate-900 tracking-tighter">{formatMoney(saldoActual)}</p>
         </div>
         <div className="space-y-4">
+          {saldoActual > 0 && (
+            <button onClick={completarTotal} className="w-full bg-green-50 text-green-700 border border-green-200 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all">
+              Cliente paga el total
+            </button>
+          )}
           <div className="grid grid-cols-3 gap-2">
             {["efectivo", "transferencia", "mercadopago"].map((m) => (
               <button key={m} onClick={() => setMetodo(m)} className={`py-3 rounded-2xl text-[10px] font-black uppercase border-2 transition-all ${metodo === m ? "border-blue-500 bg-blue-50 text-blue-600" : "border-slate-100 text-slate-400"}`}>
@@ -74,6 +82,11 @@ export default function PaymentView({ order, setView, showToast }) {
           <button onClick={registrar} className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black uppercase shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
             <Check size={20} /> Registrar Pago
           </button>
+          {saldoActual <= 0 && (
+            <button onClick={() => setView("prePdf")} className="w-full bg-blue-600 text-white py-4 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all">
+              Revisar garantía y emitir comprobante
+            </button>
+          )}
         </div>
         <div className="pt-4">
           <p className="text-[10px] font-black text-slate-400 uppercase mb-3">Pagos registrados</p>
@@ -83,7 +96,7 @@ export default function PaymentView({ order, setView, showToast }) {
                 <div key={i} className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
                   <div>
                     <p className="text-xs font-black text-slate-700 uppercase">{METODO_LABEL[p.metodo] || p.metodo}</p>
-                    <p className="text-[8px] font-bold text-slate-400">{p.fecha} — {p.hora}</p>
+                    <p className="text-[8px] font-bold text-slate-400">{p.fecha} — {p.hora}{p.comprobante ? ` • ${p.comprobante}` : ""}</p>
                   </div>
                   <p className="font-black text-green-600">{formatMoney(p.monto)}</p>
                 </div>

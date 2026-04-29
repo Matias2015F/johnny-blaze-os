@@ -156,7 +156,7 @@ export function useSyncStatus() {
 }
 
 // ── Colecciones y migraciones ─────────────────────────────────────────────────
-export const DATA_COLS = ["trabajos", "clientes", "motos", "caja", "config", "catalogoTareas", "titularidades", "precioHistorial"];
+export const DATA_COLS = ["trabajos", "clientes", "motos", "caja", "config", "catalogoTareas", "titularidades", "precioHistorial", "recordatorios"];
 
 const LS_PREFIX     = "jbos_johnny-blaze-os_";
 const MIGRATION_KEY = "jbos_fs_migrated_v1";

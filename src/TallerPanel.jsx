@@ -21,6 +21,7 @@ const OrderDetailView= lazy(() => import("./components/OrderDetailView.jsx"));
 const TaskManagerView= lazy(() => import("./components/TaskManagerView.jsx"));
 const LogisticsView  = lazy(() => import("./components/LogisticsView.jsx"));
 const PaymentView    = lazy(() => import("./components/PaymentView.jsx"));
+const PagosView      = lazy(() => import("./views/PagosView.jsx"));
 const PrePdfView     = lazy(() => import("./components/PrePdfView.jsx"));
 const ExportPdfView  = lazy(() => import("./components/ExportPdfView.jsx"));
 
@@ -41,7 +42,7 @@ class ChunkErrorBoundary extends React.Component {
   }
 }
 
-const NAV_VIEWS = ["home", "ordenes", "historial", "precios", "config"];
+const NAV_VIEWS = ["home", "ordenes", "historial", "pagosView", "config"];
 
 export default function TallerPanel() {
   const [view, setView] = useState("home");
@@ -220,7 +221,7 @@ export default function TallerPanel() {
   // ── Datos derivados ────────────────────────────────────────────────────────
   const selectedOrder = orders.find((o) => o.id === selectedOrderId);
   const stats = {
-    activas: orders.filter((o) => o.estado !== "entregada").length,
+    activas: orders.filter((o) => o.estado !== "cerrado_emitido").length,
     hoy: orders.filter((o) => o.fechaIngreso === hoyEstable()).length,
   };
 
@@ -237,6 +238,7 @@ export default function TallerPanel() {
       {view === "gestionarTareas" && selectedOrder && <TaskManagerView order={selectedOrder} setView={setView} showToast={showToast} serviceToEdit={serviceToEdit} setServiceToEdit={setServiceToEdit} />}
       {view === "logistica" && selectedOrder && <LogisticsView order={selectedOrder} setView={setView} showToast={showToast} />}
       {view === "pagos" && selectedOrder && <PaymentView order={selectedOrder} setView={setView} showToast={showToast} />}
+      {view === "pagosView" && <PagosView orders={orders} bikes={bikes} clients={clients} setSelectedOrderId={setSelectedOrderId} setView={setView} />}
       {view === "prePdf" && selectedOrder && <PrePdfView order={selectedOrder} setView={setView} setFinalPdfData={setFinalPdfData} />}
       {view === "imprimirOrden" && selectedOrder && (
         <ExportPdfView
@@ -281,7 +283,7 @@ export default function TallerPanel() {
             {syncStatus === "synced" ? "Guardado" : syncStatus === "syncing" ? "Guardando..." : "Error al guardar"}
           </div>
           <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "home" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
-            <Wrench size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Taller</span>
+            <Wrench size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Inicio</span>
           </button>
           <button onClick={() => setView("ordenes")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "ordenes" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
             <Clock size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Trabajos</span>
@@ -289,11 +291,11 @@ export default function TallerPanel() {
           <button onClick={() => setView("historial")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "historial" || view === "perfilMoto" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
             <History size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Historial</span>
           </button>
-          <button onClick={() => setView("precios")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "precios" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
-            <DollarSign size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Precios</span>
+          <button onClick={() => setView("pagosView")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "pagosView" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
+            <DollarSign size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Pagos</span>
           </button>
           <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "config" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
-            <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Cuenta</span>
+            <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Más</span>
           </button>
         </nav>
       )}

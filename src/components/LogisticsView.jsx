@@ -14,7 +14,7 @@ export default function LogisticsView({ order, setView, showToast }) {
     if (!m) return;
     const nuevos = [...(order.fletes || []), { nombre: motivo, monto: m, fecha: hoyEstable() }];
     const nTotal = calcularNuevoTotal(order.tareas || [], order.repuestos || [], nuevos, order.insumos || []);
-    LS.updateDoc("ordenes", order.id, { fletes: nuevos, total: nTotal });
+    LS.updateDoc("trabajos", order.id, { fletes: nuevos, total: nTotal });
     LS.addDoc("caja", { fecha: hoyEstable(), tipo: "egreso", concepto: `VIAJE: ${motivo}`, monto: m });
     showToast("Viaje cargado ✓");
     setView("detalleOrden");

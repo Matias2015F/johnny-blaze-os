@@ -1,12 +1,32 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Plus, X, Sparkles } from "lucide-react";
+import { ArrowLeft, Plus, X, Sparkles, Bell } from "lucide-react";
 import { LS, useCollection, generateId } from "../lib/storage.js";
 import { CONFIG_DEFAULT, SERVICIOS_DEFAULT } from "../lib/constants.js";
 import { calcularNuevoTotal } from "../lib/calc.js";
 import { obtenerAprendizaje, evaluarConfianza } from "../lib/priceLearning.js";
 import { formatMoney } from "../utils/format.js";
+import { TIPOS_SERVICIO, detectarProximoControl, buildProximoControl } from "../lib/proximoControl.js";
 
 const PRESETS = [10, 20, 30, 50, 80];
+
+const TIPOS_RAPIDOS = [
+  { id: null,            label: "Sin recordatorio" },
+  { id: "cambio_aceite", label: "Cambio de aceite" },
+  { id: "frenos",        label: "Frenos" },
+  { id: "transmision",   label: "Transmisión" },
+  { id: "control_general", label: "Control general" },
+  { id: "otro",          label: "Otro" },
+];
+
+const PLAZOS_KM  = [1000, 2500, 3000, 5000];
+const PLAZOS_DIAS= [30, 60, 90];
+const PLAZOS_TEST= [
+  { label: "Alerta inmediata", unidad: "km",      valor: 0,   test: true },
+  { label: "+10 km",           unidad: "km",      valor: 10,  test: true },
+  { label: "+50 km",           unidad: "km",      valor: 50,  test: true },
+  { label: "En 1 min",         unidad: "minutos", valor: 1,   test: true },
+  { label: "En 5 min",         unidad: "minutos", valor: 5,   test: true },
+];
 
 export default function TaskManagerView({ order, setView, showToast, serviceToEdit, setServiceToEdit }) {
   const catalogData = useCollection("catalogoTareas");
@@ -14,6 +34,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   const config      = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const servicios   = [...SERVICIOS_DEFAULT, ...catalogData];
   const bike        = bikes.find(b => b.id === order.bikeId) || {};
+  const testMode    = config.testModeRecordatorios || false;
 
   const defaultMargen = config.margenPolitica ?? 25;
 
@@ -24,6 +45,13 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   const [sugerencia, setSugerencia] = useState(null);
   const [margenPct, setMargenPct] = useState(defaultMargen);
   const [customMode, setCustomMode] = useState(false);
+
+  // Próximo control
+  const [proximoTipo, setProximoTipo] = useState(order.proximoControl?.tipo || null);
+  const [proximoUnidad, setProximoUnidad] = useState("km");
+  const [proximoValor, setProximoValor] = useState(null);
+  const [proximoDesc, setProximoDesc] = useState("");
+  const [deteccion, setDeteccion] = useState(null); // {tipo,descripcion,unidad,valorObjetivo,textoOrigen}
 
   // Cargar datos de tarea existente al editar — FIX: incluye repuestos e insumos guardados
   useEffect(() => {
@@ -41,6 +69,16 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
       setMargenPct(serviceToEdit.margenPct ?? defaultMargen);
     }
   }, [serviceToEdit]);
+
+  // Auto-detectar próximo control desde observaciones
+  useEffect(() => {
+    const texto = editForm.observacionesProxima;
+    if (!texto?.trim()) { setDeteccion(null); return; }
+    // Solo detectar si el usuario no seleccionó algo manualmente
+    if (proximoTipo) return;
+    const d = detectarProximoControl(texto);
+    setDeteccion(d || null);
+  }, [editForm.observacionesProxima]);
 
   const aplicarHistorial = (nombre, horasBase) => {
     const apr = obtenerAprendizaje(nombre, bike.cilindrada);
@@ -109,12 +147,74 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     return { moCosto, moPrecio, repCosto, repPrecio, fleCosto, flePrecio, insCosto, insPrecio, totalCosto, totalCobrar, margen, rentabilidad };
   }, [editForm, config, margenPct, order.fletes]);
 
+  const guardarProximoControl = (tipoOverride, unidadOverride, valorOverride, esTest = false, testLabel = "") => {
+    const tipo  = tipoOverride   ?? proximoTipo;
+    const unidad= unidadOverride ?? proximoUnidad;
+    const valor = valorOverride  ?? proximoValor;
+    if (!tipo || !valor) return;
+
+    const kmBase = bike.kilometrajeActual || bike.km || order.kmIngreso || 0;
+    const desc   = tipo === "otro" ? (proximoDesc || "Otro control") : (TIPOS_SERVICIO[tipo] || tipo);
+
+    let rec;
+    if (esTest) {
+      const ahora = Date.now();
+      if (unidad === "minutos") {
+        rec = {
+          activo: true, origen: "test", tipo, descripcion: desc, unidad: "minutos",
+          valorObjetivo: valor,
+          kmBase: null, kmObjetivo: null, kmAviso: null,
+          fechaBase: new Date(ahora).toISOString().slice(0, 10),
+          fechaObjetivo: new Date(ahora + valor * 60000).toISOString(),
+          textoOrigen: testLabel,
+        };
+      } else {
+        rec = {
+          activo: true, origen: "test", tipo, descripcion: desc, unidad: "km",
+          valorObjetivo: valor,
+          kmBase, kmObjetivo: kmBase + valor, kmAviso: kmBase + valor,
+          fechaBase: null, fechaObjetivo: null,
+          textoOrigen: testLabel,
+        };
+      }
+    } else {
+      const unidadFinal = unidad === "km" ? "km" : "dias";
+      rec = buildProximoControl({ tipo, descripcion: desc, unidad: unidadFinal, valorObjetivo: valor, kmBase, textoOrigen: "" });
+    }
+
+    // Guardar en el trabajo
+    const patch = {
+      proximoControl: rec,
+      notasProximoService: desc,
+    };
+    LS.updateDoc("trabajos", order.id, patch);
+
+    // Crear recordatorio en colección separada
+    const clienteId = order.clientId;
+    const motoId    = order.bikeId;
+    LS.addDoc("recordatorios", {
+      trabajoId: order.id,
+      clienteId,
+      motoId,
+      tipo:   "service_" + (rec.unidad === "km" ? "km" : "fecha"),
+      subtipo: tipo,
+      estado: "pendiente",
+      enviado: false,
+      testMode: esTest,
+      testLabel: esTest ? testLabel : "",
+      ...(rec.unidad === "km" ? { kmAviso: rec.kmAviso, kmObjetivo: rec.kmObjetivo } : {}),
+      ...(rec.unidad === "minutos" ? { fechaObjetivo: rec.fechaObjetivo, unidad: "minutos" } : {}),
+      ...(rec.unidad === "dias" ? { fechaObjetivo: rec.fechaObjetivo } : {}),
+      descripcion: desc,
+      createdAt: Date.now(),
+    });
+  };
+
   const aplicar = () => {
     const nombreTarea = editForm.nombre.trim();
     if (!nombreTarea) { showToast("¡Falta el nombre!"); return; }
 
     const tareaId = nombreTarea.toLowerCase();
-    // Repuestos: precio final tal como lo ingresó el usuario
     const repuestosGuardados = editForm.repuestos.map(r => ({ ...r, _tareaId: tareaId }));
     const insumosGuardados = editForm.insumos.map(i => ({ ...i, _tareaId: tareaId }));
 
@@ -124,7 +224,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
       horasBase: editForm.horasBase,
       dificultad: editForm.dificultad,
       horasReal: editForm.horasBase,
-      repuestos: editForm.repuestos,   // guardado en la tarea para recargar al editar
+      repuestos: editForm.repuestos,
       insumos: editForm.insumos,
       margenPct,
     };
@@ -134,14 +234,13 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     if (idx !== -1) { nuevasTareas[idx] = datosTarea; showToast("Actualizado ✓"); }
     else            { nuevasTareas.push(datosTarea);  showToast("Agregado ✓"); }
 
-    // Reemplaza los repuestos/insumos anteriores de esta tarea sin tocar los de logística
     const prevRepuestos = (order.repuestos || []).filter(r => r._tareaId !== tareaId);
     const prevInsumos   = (order.insumos   || []).filter(i => i._tareaId !== tareaId);
     const nuevosRepuestos = [...prevRepuestos, ...repuestosGuardados];
     const nuevosInsumos   = [...prevInsumos,   ...insumosGuardados];
 
     const nTotal = calcularNuevoTotal(nuevasTareas, nuevosRepuestos, order.fletes, nuevosInsumos);
-    LS.updateDoc("ordenes", order.id, {
+    LS.updateDoc("trabajos", order.id, {
       tareas: nuevasTareas,
       repuestos: nuevosRepuestos,
       insumos: nuevosInsumos,
@@ -149,7 +248,12 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
       observacionesProxima: editForm.observacionesProxima || order.observacionesProxima,
     });
 
-    // Catálogo: solo datos del servicio, no repuestos específicos de la orden
+    // Guardar próximo control si el usuario seleccionó uno
+    if (proximoTipo && proximoValor) {
+      guardarProximoControl();
+    }
+
+    // Catálogo: solo datos del servicio
     const existente = catalogData.find(s => s.nombre.trim().toLowerCase() === tareaId);
     const idCat = existente?.id || generateId();
     LS.setDoc("catalogoTareas", idCat, {
@@ -428,6 +532,130 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             className="w-full border-2 border-slate-100 rounded-2xl p-4 font-bold text-sm outline-none focus:border-blue-500"
             placeholder="Ej: Revisar transmisión en 2000km..."
           />
+        </div>
+
+        {/* Próximo control */}
+        <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-4">
+          <div className="flex items-center gap-2">
+            <Bell size={16} className="text-yellow-500" />
+            <p className="text-[10px] font-black uppercase text-slate-700 tracking-widest">Próximo control</p>
+          </div>
+          <p className="text-[10px] text-slate-400 font-bold -mt-2">Dejá avisado si esta moto tiene que volver por revisión o service</p>
+
+          {/* Detección automática */}
+          {deteccion && !proximoTipo && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 space-y-3">
+              <p className="text-[10px] font-black text-yellow-700 uppercase">
+                Detectamos: {deteccion.descripcion} en {deteccion.valorObjetivo} {deteccion.unidad}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setProximoTipo(deteccion.tipo);
+                    setProximoUnidad(deteccion.unidad);
+                    setProximoValor(deteccion.valorObjetivo);
+                    setDeteccion(null);
+                  }}
+                  className="flex-1 bg-yellow-500 text-white py-2.5 rounded-xl font-black text-[10px] uppercase active:scale-95"
+                >
+                  Usar
+                </button>
+                <button
+                  onClick={() => setDeteccion(null)}
+                  className="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl font-black text-[10px] uppercase active:scale-95"
+                >
+                  Ignorar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Tipo */}
+          <div className="grid grid-cols-3 gap-2">
+            {TIPOS_RAPIDOS.map(t => (
+              <button key={String(t.id)}
+                onClick={() => { setProximoTipo(t.id); if (!t.id) { setProximoValor(null); setProximoUnidad("km"); } }}
+                className={`py-3 px-2 rounded-2xl text-[10px] font-black uppercase text-center transition-all active:scale-95 leading-tight ${
+                  proximoTipo === t.id
+                    ? (t.id ? "bg-yellow-500 text-white" : "bg-slate-200 text-slate-700")
+                    : "bg-slate-50 border border-slate-100 text-slate-600"
+                }`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Campo libre para "Otro" */}
+          {proximoTipo === "otro" && (
+            <input
+              value={proximoDesc}
+              onChange={e => setProximoDesc(e.target.value)}
+              placeholder="¿Qué hay que controlar?"
+              className="w-full border-2 border-slate-100 rounded-2xl p-3 text-sm font-bold outline-none focus:border-yellow-500"
+            />
+          )}
+
+          {/* Plazo — solo si eligió un tipo */}
+          {proximoTipo && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">¿Cuándo avisar?</p>
+              <div className="grid grid-cols-3 gap-2">
+                {PLAZOS_KM.map(v => (
+                  <button key={v}
+                    onClick={() => { setProximoUnidad("km"); setProximoValor(v); }}
+                    className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
+                      proximoUnidad === "km" && proximoValor === v ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
+                    }`}>
+                    {v.toLocaleString("es-AR")} km
+                  </button>
+                ))}
+                {PLAZOS_DIAS.map(v => (
+                  <button key={v}
+                    onClick={() => { setProximoUnidad("dias"); setProximoValor(v); }}
+                    className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
+                      proximoUnidad === "dias" && proximoValor === v ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
+                    }`}>
+                    {v} días
+                  </button>
+                ))}
+              </div>
+
+              {proximoValor && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-3 flex items-center justify-between">
+                  <p className="text-[10px] font-black text-yellow-800">
+                    {TIPOS_SERVICIO[proximoTipo] || proximoDesc || "Control"} en {proximoValor.toLocaleString("es-AR")} {proximoUnidad === "km" ? "km" : "días"} ✓
+                  </p>
+                  <button onClick={() => { setProximoTipo(null); setProximoValor(null); }}
+                    className="text-yellow-600 active:scale-90 p-1">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Pruebas rápidas — solo en modo prueba */}
+          {testMode && (
+            <div className="border-t border-slate-100 pt-4 space-y-2">
+              <p className="text-[9px] font-black text-purple-500 uppercase tracking-widest flex items-center gap-1">
+                <span className="bg-purple-500 text-white px-2 py-0.5 rounded text-[8px]">PRUEBA</span>
+                Opciones de test
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {PLAZOS_TEST.map(t => (
+                  <button key={t.label}
+                    onClick={() => {
+                      const tipo = proximoTipo || "control_general";
+                      guardarProximoControl(tipo, t.unidad, t.valor, true, t.label);
+                      showToast(`Recordatorio de prueba creado: ${t.label} ✓`);
+                    }}
+                    className="py-2.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 text-[9px] font-black uppercase active:scale-95 transition-all">
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

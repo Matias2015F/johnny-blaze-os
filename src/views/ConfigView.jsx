@@ -220,6 +220,20 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
         </div>
       </Card>
 
+      {/* Plantilla WhatsApp */}
+      <Card>
+        <SectionTitle>Plantilla WhatsApp — Próximo control</SectionTitle>
+        <p className="text-[10px] text-slate-400 font-bold mb-3 leading-relaxed">
+          Variables: {"{nombreCliente}"} {"{nombreTaller}"} {"{marca}"} {"{modelo}"} {"{patente}"} {"{tipoControl}"}
+        </p>
+        <textarea
+          rows="5"
+          value={cfg.whatsappPlantillas?.recordatorioService ?? "Hola {nombreCliente}, te escribimos de {nombreTaller}.\n\nTu moto {marca} {modelo} patente {patente} puede estar cerca del próximo control recomendado: {tipoControl}.\n\nSi querés, podés pasar por el taller y la revisamos para verificarlo."}
+          onChange={e => setCfg({ ...cfg, whatsappPlantillas: { ...(cfg.whatsappPlantillas || {}), recordatorioService: e.target.value } })}
+          className="w-full border-2 border-slate-100 rounded-2xl p-4 font-bold text-xs outline-none focus:border-blue-500 resize-none"
+        />
+      </Card>
+
       <button
         onClick={guardar}
         className="w-full bg-blue-600 text-white py-4 rounded-3xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
@@ -417,7 +431,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
 }
 
 // ── PANTALLA: Sistema ──────────────────────────────────────────────────────────
-function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast }) {
+function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, cfg, setCfg }) {
   const [migrando, setMigrando] = React.useState(false);
 
   const handleMigrarRaiz = async () => {
@@ -448,8 +462,39 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast }
     }
   };
 
+  const toggleTestMode = () => {
+    const nuevo = { ...cfg, testModeRecordatorios: !cfg.testModeRecordatorios };
+    setCfg(nuevo);
+    LS.setDoc("config", "global", nuevo);
+    showToast(nuevo.testModeRecordatorios ? "Modo prueba activado ✓" : "Modo prueba desactivado");
+  };
+
   return (
     <div className="space-y-4">
+
+      <Card>
+        <SectionTitle>Modo Prueba de Recordatorios</SectionTitle>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-black text-slate-800">Modo prueba</p>
+            <p className="text-[10px] text-slate-400 font-bold mt-0.5">Permite crear alertas rápidas para probar recordatorios y WhatsApp</p>
+          </div>
+          <button
+            onClick={toggleTestMode}
+            className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${cfg.testModeRecordatorios ? "bg-purple-500" : "bg-slate-200"}`}
+          >
+            <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-200 ${cfg.testModeRecordatorios ? "left-8" : "left-1"}`} />
+          </button>
+        </div>
+        {cfg.testModeRecordatorios && (
+          <div className="mt-3 bg-purple-50 border border-purple-200 rounded-2xl p-3">
+            <p className="text-[9px] font-black text-purple-600 uppercase tracking-wider">
+              Modo prueba activo — las opciones de test aparecen en "Próximo control" al cargar un trabajo. Los recordatorios de prueba se marcan con badge PRUEBA.
+            </p>
+          </div>
+        )}
+      </Card>
+
       <Card>
         <SectionTitle>Versión de la App</SectionTitle>
         <div className="flex justify-between items-center mb-3">
@@ -558,7 +603,7 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
       case "resumen": return <PantallaResumen orders={orders} caja={caja} />;
       case "taller":  return <PantallaTaller cfg={cfg} setCfg={setCfg} showToast={showToast} />;
       case "datos":   return <PantallaDatos orders={orders} bikes={bikes} clients={clients} cfg={cfg} showToast={showToast} bkpEstado={bkpEstado} setBkpEstado={setBkpEstado} fileInputRef={fileInputRef} handleRestaurarArchivo={handleRestaurarArchivo} handleRestaurarAuto={handleRestaurarAuto} />;
-      case "sistema": return <PantallaSistema loadDemoData={loadDemoData} clearAllData={clearAllData} handleLogout={handleLogout} showToast={showToast} />;
+      case "sistema": return <PantallaSistema loadDemoData={loadDemoData} clearAllData={clearAllData} handleLogout={handleLogout} showToast={showToast} cfg={cfg} setCfg={setCfg} />;
       default: return null;
     }
   };

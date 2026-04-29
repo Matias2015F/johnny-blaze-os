@@ -11,7 +11,12 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
     orders.forEach((o) => {
       const b = bikes.find((bx) => bx.id === o.bikeId);
       const c = clients.find((cx) => cx.id === o.clientId);
-      if (b?.patente?.toLowerCase().includes(q) || c?.nombre?.toLowerCase().includes(q)) {
+      const match =
+        b?.patente?.toLowerCase().includes(q) ||
+        c?.nombre?.toLowerCase().includes(q) ||
+        o?.numeroTrabajo?.toLowerCase().includes(q) ||
+        o?.numeroComprobante?.toLowerCase().includes(q);
+      if (match) {
         if (b && !unique.has(b.id)) unique.set(b.id, { bike: b, client: c });
       }
     });
@@ -29,7 +34,7 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
         <input
-          placeholder="Buscar patente o cliente..."
+          placeholder="Buscar patente, cliente, trabajo o comprobante..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full bg-white border-2 border-slate-200 p-5 pl-12 rounded-3xl font-black text-black outline-none focus:border-blue-500"

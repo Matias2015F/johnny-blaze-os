@@ -4,7 +4,7 @@ import { LS } from "../lib/storage.js";
 import { ESTADO_LABEL, ESTADO_CSS, CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden, calcularNuevoRango, calcularNuevoTotal } from "../lib/calc.js";
 import { obtenerAprendizaje } from "../lib/priceLearning.js";
-import { iniciarCronometro, pausarCronometro, obtenerTiempoActual, formatTiempo, formatTiempoCorto } from "../lib/timer.js";
+import { iniciarCronometro, pausarCronometro, detenerCronometro, trabajarSinCronometro, obtenerTiempoActual, formatTiempo, formatTiempoCorto } from "../lib/timer.js";
 import { mensajeBloqueo, mensajePresupuesto, abrirWhatsApp } from "../lib/messages.js";
 import { MOTIVOS_BLOQUEO } from "../lib/theme.js";
 import { formatMoney } from "../utils/format.js";
@@ -25,11 +25,38 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const [motivoBloqueo, setMotivoBloqueo] = useState(MOTIVOS_BLOQUEO[0]);
   const [motivoManual, setMotivoManual] = useState("");
   const [maxInput, setMaxInput] = useState("");
+  const [ultimoAviso, setUltimoAviso] = useState(0);
 
   useEffect(() => {
     const id = setInterval(() => setTiempoActual(obtenerTiempoActual(order)), 1000);
     return () => clearInterval(id);
   }, [order]);
+
+  useEffect(() => {
+    if (!order?.cronometroActivo || order?.trabajoSinCronometro) return;
+    const cfgCron = config.cronometroAlertas || {};
+    const activo = cfgCron.activo ?? true;
+    const frecuenciaMin = cfgCron.frecuenciaMin ?? 30;
+    if (!activo || frecuenciaMin <= 0) return;
+    const minutosActuales = Math.floor(tiempoActual * 60);
+    if (minutosActuales === 0 || minutosActuales === ultimoAviso) return;
+    if (minutosActuales % frecuenciaMin !== 0) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.value = 0.03;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.18);
+    } catch (e) {
+      console.error(e);
+    }
+    setUltimoAviso(minutosActuales);
+  }, [tiempoActual, order, ultimoAviso, config]);
 
   if (!order) return null;
 
@@ -82,7 +109,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
   const cambiarEstado = (nuevo) => {
     if (isLocked) { showToast("No se puede modificar: ya se generó el comprobante"); return; }
-    LS.updateDoc("ordenes", order.id, { estado: nuevo });
+    LS.updateDoc("trabajos", order.id, { estado: nuevo });
     showToast(`Estado: ${ESTADO_LABEL[nuevo]} ✓`);
   };
 
@@ -95,7 +122,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     const f = lista === "fletes"    ? nuevaLista : order.fletes;
     const i = lista === "insumos" ? nuevaLista : order.insumos;
     const nTotal = calcularNuevoTotal(t, r, f, i);
-    LS.updateDoc("ordenes", order.id, { [lista]: nuevaLista, total: nTotal });
+    LS.updateDoc("trabajos", order.id, { [lista]: nuevaLista, total: nTotal });
     showToast("Eliminado ✓");
   };
 
@@ -113,12 +140,14 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   // Registra la aprobación del cliente y avanza el estado
   const confirmarAprobacion = () => {
     const max = nivelRiesgo === "bajo" ? presBase : presMax;
-    LS.updateDoc("ordenes", order.id, { maxAutorizado: max, estado: "aprobacion" });
+    LS.updateDoc("trabajos", order.id, { maxAutorizado: max, estado: "aprobacion" });
     showToast(`Aprobado: ${formatMoney(max)} ✓`);
   };
 
-  const handleStart = () => LS.updateDoc("ordenes", order.id, iniciarCronometro(order));
-  const handlePause = () => LS.updateDoc("ordenes", order.id, pausarCronometro(order));
+  const handleStart = () => LS.updateDoc("trabajos", order.id, iniciarCronometro(order));
+  const handlePause = () => LS.updateDoc("trabajos", order.id, pausarCronometro(order));
+  const handleStop = () => LS.updateDoc("trabajos", order.id, detenerCronometro(order));
+  const handleSinCronometro = () => LS.updateDoc("trabajos", order.id, trabajarSinCronometro(order));
 
   // ── UI ────────────────────────────────────────────────────────────────────
 
@@ -136,7 +165,10 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               <h2 className="text-4xl font-black tracking-tighter leading-none">{b?.patente || "---"}</h2>
               {isLocked && <ShieldCheck className="text-blue-500" size={24} />}
             </div>
-            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{c?.nombre || "Cliente Desconocido"}</p>
+            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mt-1">
+              {order.numeroTrabajo || `#${order.id.slice(-4).toUpperCase()}`}
+            </p>
+            <p className="text-xs font-bold text-slate-400 mt-0.5 uppercase tracking-widest">{c?.nombre || "Cliente Desconocido"}</p>
             <div className="mt-3">
               <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${ESTADO_CSS[order.estado]}`}>
                 {ESTADO_LABEL[order.estado]}
@@ -260,13 +292,14 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
         </div>
 
         {/* ── BOTONES DE ESTADO ───────────────────────────────────────────────── */}
-        {order.estado !== "entregada" && !isLocked && (
+        {order.estado !== "cerrado_emitido" && !isLocked && (
           <div className="flex gap-2 overflow-x-auto pb-2">
             {order.estado === "diagnostico" && <button onClick={() => cambiarEstado("presupuesto")} className="bg-purple-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Pasar a Presupuesto</button>}
             {order.estado === "presupuesto"  && <button onClick={() => cambiarEstado("aprobacion")} className="bg-yellow-500 text-black px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Esperando Aprobación</button>}
             {order.estado === "aprobacion"   && <button onClick={() => cambiarEstado("reparacion")} className="bg-blue-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Iniciar Reparación</button>}
-            {order.estado === "reparacion"   && <button onClick={() => cambiarEstado("finalizada")} className="bg-green-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Finalizar Trabajo</button>}
-            {order.estado === "finalizada"   && <button onClick={() => cambiarEstado("entregada")}  className="bg-black text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Marcar Entregado</button>}
+            {order.estado === "reparacion"   && <button onClick={() => cambiarEstado("finalizada")} className="bg-green-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Listo para cobrar</button>}
+            {order.estado === "finalizada"   && <button onClick={() => setView("pagos")}  className="bg-black text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Ir a cobro</button>}
+            {order.estado === "listo_para_emitir"   && <button onClick={() => setView("prePdf")}  className="bg-emerald-600 text-white px-6 py-4 rounded-2xl text-[10px] uppercase font-black flex-shrink-0 active:scale-95">Emitir comprobante</button>}
           </div>
         )}
 
@@ -384,7 +417,12 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
               <div className="flex justify-between items-center px-1">
                 <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{formatMoney(valorHora)}/hora</p>
-                <p className="text-xl font-black text-white font-mono tracking-widest">{formatTiempo(tiempoActual)}</p>
+                <div className="text-right">
+                  <p className="text-xl font-black text-white font-mono tracking-widest">{formatTiempo(tiempoActual)}</p>
+                  {order.trabajoSinCronometro && (
+                    <p className="text-[8px] font-black uppercase text-slate-500 mt-1">Trabajando sin cronómetro</p>
+                  )}
+                </div>
               </div>
 
               {estadoCron === "ALERTA" && (
@@ -443,6 +481,22 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   ⏸ Pausar
                 </button>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={handleStop}
+                  className="py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 bg-red-600 text-white">
+                  ■ Stop
+                </button>
+                <button onClick={handleSinCronometro}
+                  className={`py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 ${order.trabajoSinCronometro ? "bg-slate-800 text-slate-300 border border-slate-600" : "bg-slate-200 text-slate-800"}`}>
+                  Trabajar sin cronómetro
+                </button>
+              </div>
+              <div className="bg-slate-800 rounded-2xl p-3">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Alerta sonora</p>
+                <p className="text-[10px] font-bold text-slate-500 mt-1">
+                  Aviso automático cada {(config.cronometroAlertas?.frecuenciaMin ?? 30)} min mientras el cronómetro está corriendo.
+                </p>
+              </div>
 
               {order.maxAutorizado > 0 && res.costoInterno > order.maxAutorizado * 0.85 && (
                 <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-3">
@@ -457,8 +511,8 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
         {/* ── ACCIONES ────────────────────────────────────────────────────────── */}
         <div className="flex justify-center">
-          <button onClick={() => setView("prePdf")} className="bg-red-600 text-white px-8 py-5 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2 active:scale-95 transition-all">
-            <FileText size={16} /> Generar PDF
+          <button onClick={() => setView(totalPagado >= res.total && res.total > 0 ? "prePdf" : "pagos")} className="bg-red-600 text-white px-8 py-5 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2 active:scale-95 transition-all">
+            <FileText size={16} /> {totalPagado >= res.total && res.total > 0 ? "Emitir comprobante" : "Ir a cobro"}
           </button>
         </div>
 

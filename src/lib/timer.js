@@ -1,12 +1,22 @@
 export function iniciarCronometro(orden) {
-  if (orden.cronometroActivo) return orden;
-  return { ...orden, cronometroActivo: true, inicioCronometro: Date.now() };
+  if (orden.cronometroActivo || orden.trabajoSinCronometro) return orden;
+  return { ...orden, cronometroActivo: true, inicioCronometro: Date.now(), trabajoSinCronometro: false };
 }
 
 export function pausarCronometro(orden) {
   if (!orden.cronometroActivo) return orden;
   const horas = (Date.now() - orden.inicioCronometro) / 3600000;
   return { ...orden, cronometroActivo: false, inicioCronometro: null, tiempoReal: (orden.tiempoReal || 0) + horas };
+}
+
+export function detenerCronometro(orden) {
+  const pausada = pausarCronometro(orden);
+  return { ...pausada, cronometroActivo: false, inicioCronometro: null, tiempoReal: 0 };
+}
+
+export function trabajarSinCronometro(orden) {
+  const pausada = pausarCronometro(orden);
+  return { ...pausada, trabajoSinCronometro: true };
 }
 
 export function obtenerTiempoActual(orden) {
