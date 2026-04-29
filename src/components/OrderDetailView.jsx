@@ -240,7 +240,9 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   {res.margen >= 0 ? "Ganás " : "Perdés "}{formatMoney(Math.abs(res.margen))}
                 </p>
               </div>
-              <span className={`rounded-full px-3 py-1 text-sm font-black ${rentColor}`}>{Math.round(res.rentabilidad)}%</span>
+              <span className={`rounded-full px-3 py-1 text-[11px] font-black ${rentColor}`}>
+                Margen {Math.round(res.rentabilidad)}%
+              </span>
             </div>
           </div>
 
@@ -263,13 +265,17 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             {res.desglose.moCliente > 0 && (
               <div className="rounded-2xl bg-slate-50 p-4">
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Tu ganancia sale de la mano de obra</p>
-                <p className="mt-2 text-[12px] font-black leading-relaxed text-slate-700">
-                  {formatMoney(res.desglose.moCliente)}
-                  <span className="text-slate-400"> de mano de obra x {Math.round(res.rentabilidad)}%</span>
-                  <span className={`ml-1 ${res.margen >= 0 ? "text-green-600" : "text-red-600"}`}>
-                    = {formatMoney(Math.abs(res.margen))}
-                  </span>
-                </p>
+                <div className="mt-2 space-y-1 text-[12px] font-black leading-relaxed">
+                  <p className="text-slate-700">
+                    Cobrás <span className="text-slate-950">{formatMoney(res.desglose.moCliente)}</span> de mano de obra.
+                  </p>
+                  <p className="text-slate-500">
+                    Tu costo interno estimado es <span className="text-slate-700">{formatMoney(res.desglose.moCosto)}</span>.
+                  </p>
+                  <p className={res.desglose.margenMO >= 0 ? "text-green-600" : "text-red-600"}>
+                    Te quedan {formatMoney(Math.abs(res.desglose.margenMO))} de ganancia en mano de obra.
+                  </p>
+                </div>
               </div>
             )}
 
@@ -304,24 +310,6 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             )}
           </div>
         </div>
-
-        {!isLocked && accionPrincipal && (
-          <div className="rounded-[2rem] border-2 border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Paso actual</p>
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-lg font-black leading-none text-slate-950">{ESTADO_LABEL[order.estado]}</p>
-                <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500">{estadoPaso}</p>
-              </div>
-              <span className={`inline-block rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${ESTADO_CSS[order.estado]}`}>
-                {ESTADO_LABEL[order.estado]}
-              </span>
-            </div>
-            <button onClick={accionPrincipal.action} className={`mt-4 w-full rounded-2xl py-4 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 ${accionPrincipal.className}`}>
-              {accionPrincipal.label}
-            </button>
-          </div>
-        )}
 
         {order.estado === "presupuesto" && (
           <div className="space-y-4 rounded-3xl border border-slate-700 bg-slate-900 p-5">
@@ -619,6 +607,24 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             <DollarSign size={14} /> Cobrar
           </button>
         </div>
+
+        {!isLocked && accionPrincipal && (
+          <div className="rounded-[2rem] border-2 border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Paso actual</p>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-lg font-black leading-none text-slate-950">{ESTADO_LABEL[order.estado]}</p>
+                <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500">{estadoPaso}</p>
+              </div>
+              <span className={`inline-block rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${ESTADO_CSS[order.estado]}`}>
+                {ESTADO_LABEL[order.estado]}
+              </span>
+            </div>
+            <button onClick={accionPrincipal.action} className={`mt-4 w-full rounded-2xl py-4 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 ${accionPrincipal.className}`}>
+              {accionPrincipal.label}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
