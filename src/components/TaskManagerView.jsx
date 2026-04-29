@@ -28,9 +28,26 @@ const PLAZOS_TEST= [
   { label: "En 5 min",         unidad: "minutos", valor: 5,   test: true },
 ];
 
+function normalizarTexto(value = "") {
+  return String(value).trim().toLowerCase();
+}
+
+function mismaMoto(a = {}, b = {}) {
+  return (
+    normalizarTexto(a.marca) === normalizarTexto(b.marca) &&
+    normalizarTexto(a.modelo) === normalizarTexto(b.modelo) &&
+    Number(a.cilindrada || 0) === Number(b.cilindrada || 0)
+  );
+}
+
+function clonarLista(items = []) {
+  return items.map((item) => ({ ...item }));
+}
+
 export default function TaskManagerView({ order, setView, showToast, serviceToEdit, setServiceToEdit }) {
   const catalogData = useCollection("catalogoTareas");
   const bikes       = useCollection("motos");
+  const orders      = useCollection("trabajos");
   const config      = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const servicios   = [...SERVICIOS_DEFAULT, ...catalogData];
   const bike        = bikes.find(b => b.id === order.bikeId) || {};
@@ -82,6 +99,30 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     setDeteccion(d || null);
   }, [editForm.observacionesProxima]);
 
+  useEffect(() => {
+    const nombre = editForm.nombre?.trim();
+    if (!nombre || selectedId) return;
+    const previo = obtenerServicioPrevio(nombre);
+    if (!previo) return;
+    if ((editForm.repuestos?.length || 0) > 0 || (editForm.insumos?.length || 0) > 0) return;
+
+    setEditForm((actual) => ({
+      ...actual,
+      horasBase: previo.tarea?.horasBase || actual.horasBase,
+      dificultad: previo.tarea?.dificultad || actual.dificultad,
+      repuestos: clonarLista(previo.tarea?.repuestos || []),
+      insumos: clonarLista(previo.tarea?.insumos || []),
+      observacionesProxima: actual.observacionesProxima || previo.trabajo?.observacionesProxima || "",
+    }));
+    setMargenPct(previo.tarea?.margenPct ?? defaultMargen);
+    if (previo?.trabajo?.proximoControl) {
+      setProximoTipo(previo.trabajo.proximoControl.tipo || null);
+      setProximoUnidad(previo.trabajo.proximoControl.unidad === "dias" ? "dias" : "km");
+      setProximoValor(previo.trabajo.proximoControl.valorObjetivo || null);
+      setProximoDesc(previo.trabajo.proximoControl.descripcion || "");
+    }
+  }, [editForm.nombre, selectedId]);
+
   const aplicarHistorial = (nombre, horasBase) => {
     const apr = obtenerAprendizaje(nombre, bike.cilindrada);
     if (apr) {
@@ -90,6 +131,31 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     }
     setSugerencia(null);
     return horasBase;
+  };
+
+  const obtenerServicioPrevio = (nombreServicio) => {
+    const servicioBuscado = normalizarTexto(nombreServicio);
+    if (!servicioBuscado || !bike?.marca || !bike?.modelo || !bike?.cilindrada) return null;
+
+    const historial = (orders || [])
+      .filter((trabajo) => trabajo.id !== order.id && trabajo.bikeId)
+      .map((trabajo) => {
+        const motoTrabajo = bikes.find((item) => item.id === trabajo.bikeId);
+        return { trabajo, motoTrabajo };
+      })
+      .filter(({ motoTrabajo }) => mismaMoto(motoTrabajo, bike))
+      .flatMap(({ trabajo }) =>
+        (trabajo.tareas || [])
+          .filter((tarea) => normalizarTexto(tarea.nombre) === servicioBuscado)
+          .map((tarea) => ({
+            tarea,
+            trabajo,
+            fecha: trabajo.updatedAt || trabajo.createdAt || 0,
+          }))
+      )
+      .sort((a, b) => b.fecha - a.fecha);
+
+    return historial[0] || null;
   };
 
   const handleSelect = (id) => {
@@ -101,15 +167,23 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     }
     const s = servicios.find(x => x.id === id);
     if (s) {
-      const horasBase = aplicarHistorial(s.nombre, s.horasBase || 1);
+      const previo = obtenerServicioPrevio(s.nombre);
+      const horasBase = previo?.tarea?.horasBase || aplicarHistorial(s.nombre, s.horasBase || 1);
       setEditForm({
         nombre: s.nombre,
         horasBase,
-        dificultad: s.dificultad || "normal",
-        repuestos: [],
-        insumos: [],
-        observacionesProxima: order.observacionesProxima || "",
+        dificultad: previo?.tarea?.dificultad || s.dificultad || "normal",
+        repuestos: clonarLista(previo?.tarea?.repuestos || []),
+        insumos: clonarLista(previo?.tarea?.insumos || []),
+        observacionesProxima: previo?.trabajo?.observacionesProxima || order.observacionesProxima || "",
       });
+      setMargenPct(previo?.tarea?.margenPct ?? defaultMargen);
+      if (previo?.trabajo?.proximoControl) {
+        setProximoTipo(previo.trabajo.proximoControl.tipo || null);
+        setProximoUnidad(previo.trabajo.proximoControl.unidad === "dias" ? "dias" : "km");
+        setProximoValor(previo.trabajo.proximoControl.valorObjetivo || null);
+        setProximoDesc(previo.trabajo.proximoControl.descripcion || "");
+      }
     }
   };
 
@@ -138,7 +212,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     const flePrecio = fleCosto;
 
     // Insumos/terceros: al cliente al costo
-    const insCosto  = editForm.insumos.reduce((s, i) => s + (i.monto || 0), 0);
+    const insCosto  = editForm.insumos.reduce((s, i) => s + ((i.monto || 0) * (i.cantidad || 1)), 0);
     const insPrecio = insCosto;
 
     const totalCosto  = moCosto + repCosto + fleCosto + insCosto;
@@ -376,6 +450,13 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 value={item.nombre}
                 onChange={e => updateListItem("repuestos", idx, "nombre", e.target.value)}
               />
+              <input
+                type="number"
+                min="1"
+                className="w-14 rounded-xl bg-white text-xs font-black text-center text-slate-700 outline-none border border-slate-200 p-2"
+                value={item.cantidad || 1}
+                onChange={e => updateListItem("repuestos", idx, "cantidad", Math.max(1, Number(e.target.value) || 1))}
+              />
               <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
                 <span className="text-[10px] font-black text-slate-300">$</span>
                 <input
@@ -388,6 +469,10 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                   }}
                   placeholder="0"
                 />
+              </div>
+              <div className="w-20 text-right">
+                <p className="text-[9px] font-black text-slate-300 uppercase">Total</p>
+                <p className="text-[11px] font-black text-blue-700">{formatMoney((item.monto || 0) * (item.cantidad || 1))}</p>
               </div>
               <button onClick={() => setEditForm({ ...editForm, repuestos: editForm.repuestos.filter((_, i) => i !== idx) })}
                 className="p-1 text-slate-300 active:text-red-500">
@@ -411,7 +496,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
               <p className="text-[9px] text-slate-300 font-bold">Se cobran al cliente sin ganancia adicional</p>
             </div>
             <button
-              onClick={() => setEditForm({ ...editForm, insumos: [...editForm.insumos, { nombre: "", monto: 0 }] })}
+              onClick={() => setEditForm({ ...editForm, insumos: [...editForm.insumos, { nombre: "", monto: 0, cantidad: 1 }] })}
               className="p-2 rounded-xl bg-orange-50 text-orange-500">
               <Plus size={18} />
             </button>
@@ -427,6 +512,13 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 value={item.nombre}
                 onChange={e => updateListItem("insumos", idx, "nombre", e.target.value)}
               />
+              <input
+                type="number"
+                min="1"
+                className="w-14 rounded-xl bg-white text-xs font-black text-center text-slate-700 outline-none border border-slate-200 p-2"
+                value={item.cantidad || 1}
+                onChange={e => updateListItem("insumos", idx, "cantidad", Math.max(1, Number(e.target.value) || 1))}
+              />
               <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
                 <span className="text-[10px] font-black text-slate-300">$</span>
                 <input
@@ -440,88 +532,22 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                   placeholder="0"
                 />
               </div>
+              <div className="w-20 text-right">
+                <p className="text-[9px] font-black text-slate-300 uppercase">Total</p>
+                <p className="text-[11px] font-black text-orange-600">{formatMoney((item.monto || 0) * (item.cantidad || 1))}</p>
+              </div>
               <button onClick={() => setEditForm({ ...editForm, insumos: editForm.insumos.filter((_, i) => i !== idx) })}
                 className="p-1 text-slate-300 active:text-red-500">
                 <X size={16} />
               </button>
             </div>
           ))}
-        </div>
-
-        {/* HÉROE: Precio total + Margen */}
-        <div className="bg-slate-900 rounded-[2rem] overflow-hidden shadow-2xl">
-
-          <div className="p-6 text-center space-y-1">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Precio total al cliente</p>
-            <p className="text-5xl font-black text-white tracking-tighter leading-none">
-              {formatMoney(stats.totalCobrar)}
-            </p>
-            <div className="flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 font-bold mt-2">
-              {stats.moPrecio > 0  && <span>MO {formatMoney(stats.moPrecio)}</span>}
-              {stats.repPrecio > 0 && <><span className="text-slate-700">+</span><span>Rep {formatMoney(stats.repPrecio)}</span></>}
-              {stats.flePrecio > 0 && <><span className="text-slate-700">+</span><span>Fle {formatMoney(stats.flePrecio)}</span></>}
-              {stats.insPrecio > 0 && <><span className="text-slate-700">+</span><span>Ins {formatMoney(stats.insPrecio)}</span></>}
+          {editForm.insumos.length > 0 && stats.insPrecio > 0 && (
+            <div className="flex justify-between text-[10px] font-black px-1 pt-1 border-t border-slate-100">
+              <span className="text-slate-400">Total gastos e insumos</span>
+              <span className="text-orange-600">{formatMoney(stats.insPrecio)}</span>
             </div>
-          </div>
-
-          {/* Control de margen */}
-          <div className="px-6 pb-4 space-y-3">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Margen de ganancia (solo MO)</p>
-
-            <div className="grid grid-cols-3 gap-2">
-              {PRESETS.map(p => (
-                <button key={p}
-                  onClick={() => { setMargenPct(p); setCustomMode(false); }}
-                  className={`py-3 rounded-2xl text-sm font-black transition-all active:scale-95 ${
-                    !customMode && margenPct === p ? "bg-green-500 text-white" : "bg-slate-800 border border-slate-700 text-slate-400"
-                  }`}>
-                  {p}%
-                </button>
-              ))}
-              <button
-                onClick={() => setCustomMode(true)}
-                className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
-                  customMode ? "bg-blue-600 text-white" : "bg-slate-800 border border-slate-700 text-slate-400"
-                }`}>
-                Otro %
-              </button>
-            </div>
-
-            {customMode && (
-              <div className="flex items-center gap-2 bg-slate-800 border border-blue-500 rounded-2xl px-4 py-3">
-                <input
-                  type="number" min="0" max="500" autoFocus
-                  value={margenPct}
-                  onChange={e => { const v = Number(e.target.value); setMargenPct(isNaN(v) ? 0 : Math.max(0, v)); }}
-                  className="flex-1 bg-transparent text-white font-black text-xl text-center outline-none"
-                />
-                <span className="text-slate-400 font-black">%</span>
-              </div>
-            )}
-          </div>
-
-          {/* Resultado */}
-          <div className="border-t border-slate-800 p-6 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="font-black text-slate-400">Costo total</span>
-              <span className="font-black text-slate-500">{formatMoney(stats.totalCosto)}</span>
-            </div>
-            <div className="flex justify-between text-sm border-t border-slate-800 pt-2">
-              <span className="font-black text-white">Mano de obra</span>
-              <div className="flex items-baseline gap-2">
-                <span className="font-black text-lg tracking-tighter text-green-400">
-                  {formatMoney(stats.moPrecio)}
-                </span>
-                <span className={`text-[10px] font-black ${stats.rentabilidad < 20 ? "text-red-400" : "text-slate-500"}`}>
-                  {Math.round(stats.rentabilidad)}%
-                </span>
-              </div>
-            </div>
-            <button onClick={aplicar}
-              className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all mt-2">
-              Confirmar y agregar a la orden
-            </button>
-          </div>
+          )}
         </div>
 
         {/* Observaciones */}
@@ -749,6 +775,78 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
               </div>
             </div>
           )}
+        </div>
+
+        <div className="bg-slate-900 rounded-[2rem] overflow-hidden shadow-2xl">
+          <div className="p-6 text-center space-y-1">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Precio total al cliente</p>
+            <p className="text-5xl font-black text-white tracking-tighter leading-none">
+              {formatMoney(stats.totalCobrar)}
+            </p>
+            <div className="flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 font-bold mt-2">
+              {stats.moPrecio > 0  && <span>MO {formatMoney(stats.moPrecio)}</span>}
+              {stats.repPrecio > 0 && <><span className="text-slate-700">+</span><span>Rep {formatMoney(stats.repPrecio)}</span></>}
+              {stats.flePrecio > 0 && <><span className="text-slate-700">+</span><span>Fle {formatMoney(stats.flePrecio)}</span></>}
+              {stats.insPrecio > 0 && <><span className="text-slate-700">+</span><span>Ins {formatMoney(stats.insPrecio)}</span></>}
+            </div>
+          </div>
+
+          <div className="px-6 pb-4 space-y-3">
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Margen de ganancia (solo mano de obra)</p>
+
+            <div className="grid grid-cols-3 gap-2">
+              {PRESETS.map(p => (
+                <button key={p}
+                  onClick={() => { setMargenPct(p); setCustomMode(false); }}
+                  className={`py-3 rounded-2xl text-sm font-black transition-all active:scale-95 ${
+                    !customMode && margenPct === p ? "bg-green-500 text-white" : "bg-slate-800 border border-slate-700 text-slate-400"
+                  }`}>
+                  {p}%
+                </button>
+              ))}
+              <button
+                onClick={() => setCustomMode(true)}
+                className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+                  customMode ? "bg-blue-600 text-white" : "bg-slate-800 border border-slate-700 text-slate-400"
+                }`}>
+                Otro %
+              </button>
+            </div>
+
+            {customMode && (
+              <div className="flex items-center gap-2 bg-slate-800 border border-blue-500 rounded-2xl px-4 py-3">
+                <input
+                  type="number" min="0" max="500" autoFocus
+                  value={margenPct}
+                  onChange={e => { const v = Number(e.target.value); setMargenPct(isNaN(v) ? 0 : Math.max(0, v)); }}
+                  className="flex-1 bg-transparent text-white font-black text-xl text-center outline-none"
+                />
+                <span className="text-slate-400 font-black">%</span>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-slate-800 p-6 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="font-black text-slate-400">Costo total</span>
+              <span className="font-black text-slate-500">{formatMoney(stats.totalCosto)}</span>
+            </div>
+            <div className="flex justify-between text-sm border-t border-slate-800 pt-2">
+              <span className="font-black text-white">Mano de obra</span>
+              <div className="flex items-baseline gap-2">
+                <span className="font-black text-lg tracking-tighter text-green-400">
+                  {formatMoney(stats.moPrecio)}
+                </span>
+                <span className={`text-[10px] font-black ${stats.rentabilidad < 20 ? "text-red-400" : "text-slate-500"}`}>
+                  {Math.round(stats.rentabilidad)}%
+                </span>
+              </div>
+            </div>
+            <button onClick={aplicar}
+              className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all mt-2">
+              Guardar y volver
+            </button>
+          </div>
         </div>
 
       </div>
