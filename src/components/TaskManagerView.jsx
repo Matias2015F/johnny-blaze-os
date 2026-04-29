@@ -179,7 +179,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
         <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-4">
           <select value={selectedId || ""} onChange={e => handleSelect(e.target.value)}
             className="w-full border-2 border-slate-100 rounded-2xl p-4 font-black bg-white outline-none text-sm">
-            <option value="">-- Nuevo / Manual --</option>
+            <option value="">-- Escribir manualmente --</option>
             {servicios.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
           </select>
           <div className="space-y-1">
@@ -260,7 +260,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             </button>
           </div>
           {editForm.repuestos.length === 0 && (
-            <p className="text-[10px] text-slate-300 font-bold text-center py-1">Sin repuestos</p>
+            <p className="text-[10px] text-slate-300 font-bold text-center py-1">Sin repuestos cargados</p>
           )}
           {editForm.repuestos.map((item, idx) => (
             <div key={idx} className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -301,8 +301,8 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
         <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-3">
           <div className="flex justify-between items-center">
             <div>
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Insumos / Terceros</p>
-              <p className="text-[9px] text-slate-300 font-bold">Se trasladan al cliente sin markup</p>
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Otros gastos (insumos / servicios externos)</p>
+              <p className="text-[9px] text-slate-300 font-bold">Se cobran al cliente sin ganancia adicional</p>
             </div>
             <button
               onClick={() => setEditForm({ ...editForm, insumos: [...editForm.insumos, { nombre: "", monto: 0 }] })}
@@ -311,7 +311,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             </button>
           </div>
           {editForm.insumos.length === 0 && (
-            <p className="text-[10px] text-slate-300 font-bold text-center py-1">Sin insumos</p>
+            <p className="text-[10px] text-slate-300 font-bold text-center py-1">Sin insumos cargados</p>
           )}
           {editForm.insumos.map((item, idx) => (
             <div key={idx} className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
@@ -377,7 +377,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
                   customMode ? "bg-blue-600 text-white" : "bg-slate-800 border border-slate-700 text-slate-400"
                 }`}>
-                Custom
+                Otro %
               </button>
             </div>
 
@@ -420,7 +420,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
         {/* Observaciones */}
         <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-1">
-          <label className="text-[10px] uppercase text-slate-400 ml-1 font-black tracking-widest">Obs. próxima visita</label>
+          <label className="text-[10px] uppercase text-slate-400 ml-1 font-black tracking-widest">Notas para la próxima visita</label>
           <textarea
             value={editForm.observacionesProxima}
             onChange={e => setEditForm({ ...editForm, observacionesProxima: e.target.value })}

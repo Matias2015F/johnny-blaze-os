@@ -54,7 +54,7 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
           ))
         ) : (
           <p className="text-center py-20 text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em]">
-            Escribí para buscar una moto...
+            Escribí el nombre del cliente o la patente para ver el historial
           </p>
         )}
       </div>

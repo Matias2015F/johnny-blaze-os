@@ -60,7 +60,7 @@ function PantallaBloqueo({ snapData }) {
         {/* Header */}
         <div className="bg-red-950/40 border-b border-red-900/30 p-8 text-center">
           <div className="text-5xl mb-3">🔒</div>
-          <h2 className="text-2xl font-black text-red-400 uppercase tracking-tighter">Acceso Restringido</h2>
+          <h2 className="text-2xl font-black text-red-400 uppercase tracking-tighter">Tu acceso está suspendido</h2>
           <p className="text-red-400/60 text-[10px] font-bold uppercase tracking-widest mt-1">Johnny Blaze OS</p>
         </div>
 
@@ -69,7 +69,7 @@ function PantallaBloqueo({ snapData }) {
           {/* Info vencimiento */}
           <div className="bg-slate-900 rounded-2xl p-4 text-center space-y-1">
             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-              {snapData?.estado === "trial" ? "Trial vencido" : "Suscripción vencida"}
+              {snapData?.estado === "trial" ? "Período de prueba vencido" : "Suscripción vencida"}
             </p>
             {vencioStr && <p className="text-sm font-black text-slate-300">{vencioStr}</p>}
             {userLabel  && <p className="text-[10px] text-slate-500 truncate">{userLabel}</p>}
@@ -195,7 +195,7 @@ export default function App() {
   if (estado === "loading") {
     return (
       <div className="min-h-screen bg-[#0b0b0b] flex items-center justify-center text-white font-black uppercase text-[10px]">
-        Iniciando sistema...
+        Verificando tu acceso...
       </div>
     );
   }

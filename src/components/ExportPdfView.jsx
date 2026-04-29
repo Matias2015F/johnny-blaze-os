@@ -33,12 +33,12 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
       <div className="p-10 space-y-8">
         <div className="grid grid-cols-2 gap-8 bg-slate-50 p-4 rounded-xl">
           <div>
-            <p className="text-[9px] font-black uppercase text-slate-400">Datos Cliente</p>
+            <p className="text-[9px] font-black uppercase text-slate-400">Cliente</p>
             <p className="text-sm font-black uppercase">{client?.nombre}</p>
             <p className="text-xs">{client?.tel}</p>
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase text-slate-400">Unidad Intervenida</p>
+            <p className="text-[9px] font-black uppercase text-slate-400">Vehículo</p>
             <p className="text-sm font-black uppercase">{bike?.marca} {bike?.modelo}</p>
             <p className="text-xs font-black">{bike?.patente} | {order.km || bike?.km} KM</p>
           </div>
@@ -47,7 +47,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         <table className="w-full">
           <thead>
             <tr className="border-b-2 border-slate-900 text-[10px] uppercase font-black text-slate-400">
-              <th className="py-2 text-left">Descripción de la Intervención</th>
+              <th className="py-2 text-left">Detalle del servicio</th>
               <th className="py-2 text-right">Monto</th>
             </tr>
           </thead>
@@ -74,7 +74,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
             </div>
             {totalPagado > 0 && (
               <div className="flex justify-between text-xs font-bold text-green-600 uppercase">
-                <span>Adelantos Recibidos:</span><span>{formatMoney(totalPagado)}</span>
+                <span>Pagos a cuenta:</span><span>{formatMoney(totalPagado)}</span>
               </div>
             )}
             <div className={`flex justify-between text-xl font-black p-3 rounded-xl mt-2 ${saldo <= 0 ? "bg-green-600 text-white" : "bg-slate-900 text-white"}`}>

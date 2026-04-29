@@ -55,10 +55,10 @@ export default function LoginScreen() {
         });
       }
     } catch (e) {
-      if (e.code === "auth/user-not-found")      err("El usuario no existe");
-      else if (e.code === "auth/wrong-password" || e.code === "auth/invalid-credential") err("Contraseña incorrecta");
-      else if (e.code === "auth/email-already-in-use") err("El mail ya tiene cuenta");
-      else err("Error: " + e.code);
+      if (e.code === "auth/user-not-found")      err("No encontramos una cuenta con ese correo");
+      else if (e.code === "auth/wrong-password" || e.code === "auth/invalid-credential") err("Contraseña incorrecta — revisá y volvé a intentar");
+      else if (e.code === "auth/email-already-in-use") err("Ese correo ya tiene una cuenta — ingresá con tu contraseña");
+      else err("No se pudo iniciar sesión. Revisá tu correo y contraseña.");
     }
     setLoading(false);
   };
@@ -106,9 +106,9 @@ export default function LoginScreen() {
       setMsg({ text: "", ok: false });
     } catch (e) {
       clearRecaptcha();
-      if (e.code === "auth/invalid-phone-number")  err("Número inválido — incluí el código de área sin 0");
-      else if (e.code === "auth/too-many-requests") err("Demasiados intentos, esperá unos minutos");
-      else err("Error: " + e.code);
+      if (e.code === "auth/invalid-phone-number")  err("Número inválido — incluí el código de área sin el 0");
+      else if (e.code === "auth/too-many-requests") err("Demasiados intentos — esperá unos minutos y volvé a intentar");
+      else err("No se pudo enviar el código. Verificá el número e intentá de nuevo.");
     }
     setLoading(false);
   };
@@ -121,9 +121,9 @@ export default function LoginScreen() {
       await confirmResult.confirm(otpCode);
       // App.jsx creará el doc de Firestore si el usuario es nuevo
     } catch (e) {
-      if (e.code === "auth/invalid-verification-code") err("Código incorrecto");
-      else if (e.code === "auth/code-expired")          err("Código expirado — pedí uno nuevo");
-      else err("Error: " + e.code);
+      if (e.code === "auth/invalid-verification-code") err("Código incorrecto — revisá el SMS y volvé a escribirlo");
+      else if (e.code === "auth/code-expired")          err("El código venció — pedí uno nuevo");
+      else err("No se pudo verificar el código. Intentá de nuevo.");
     }
     setLoading(false);
   };
@@ -132,7 +132,7 @@ export default function LoginScreen() {
   const Header = () => (
     <div style={{ marginBottom: "28px" }}>
       <h2 style={s.title}>JOHNNY BLAZE</h2>
-      <p style={s.sub}>WORKSHOP OS</p>
+      <p style={s.sub}>Sistema de Gestión para Talleres</p>
     </div>
   );
 
@@ -250,13 +250,13 @@ export default function LoginScreen() {
         <MsgLine />
 
         <button onClick={handleAuth} style={s.button} disabled={loading}>
-          {loading ? "PROCESANDO..." : modo === "login" ? "INGRESAR AL TALLER" : "CREAR CUENTA TRIAL"}
+          {loading ? "PROCESANDO..." : modo === "login" ? "INGRESAR AL TALLER" : "CREAR MI CUENTA GRATIS"}
         </button>
 
         <p style={s.switch}>
           {modo === "login" ? "¿Sos nuevo?" : "¿Ya tenés cuenta?"}
           <span onClick={() => reset(modo === "login" ? "registro" : "login")} style={s.link}>
-            {modo === "login" ? " EMPEZAR TRIAL" : " INGRESA AQUÍ"}
+            {modo === "login" ? " PROBAR GRATIS" : " INGRESAR AQUÍ"}
           </span>
         </p>
 

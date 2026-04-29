@@ -63,7 +63,7 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
               {isExpanded && (
                 <div className="px-6 pb-6 pt-2 border-t border-slate-50 space-y-4 animate-in fade-in slide-in-from-top-2">
                   <div className="space-y-3">
-                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Tareas &amp; Repuestos</p>
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Trabajos realizados y repuestos</p>
                     <div className="space-y-1">
                       {order.tareas?.map((t, i) => (
                         <div key={i} className="text-xs font-bold text-slate-700 uppercase flex items-center gap-2">
@@ -85,7 +85,7 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
                   )}
                   {order.observacionesProxima && (
                     <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-                      <p className="text-[8px] font-black uppercase text-blue-400 mb-1">Obs. Próxima Visita</p>
+                      <p className="text-[8px] font-black uppercase text-blue-400 mb-1">Notas para la próxima visita</p>
                       <p className="text-xs font-bold italic text-blue-900">"{order.observacionesProxima}"</p>
                     </div>
                   )}

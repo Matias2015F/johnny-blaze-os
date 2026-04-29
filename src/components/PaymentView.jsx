@@ -6,6 +6,8 @@ import { formatMoney, parseMonto } from "../utils/format.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 
 export default function PaymentView({ order, setView, showToast }) {
+  const METODO_LABEL = { efectivo: "Efectivo", transferencia: "Transferencia", mercadopago: "Mercado Pago" };
+
   const [monto, setMonto] = useState("");
   const [metodo, setMetodo] = useState("efectivo");
   const [comprobante, setComprobante] = useState("");
@@ -16,7 +18,7 @@ export default function PaymentView({ order, setView, showToast }) {
 
   const registrar = () => {
     const montoNum = parseMonto(monto);
-    if (montoNum <= 0) { showToast("Monto inválido"); return; }
+    if (montoNum <= 0) { showToast("Ingresá un monto válido"); return; }
 
     const nuevoPago = {
       id: generateId(),
@@ -60,7 +62,7 @@ export default function PaymentView({ order, setView, showToast }) {
           <div className="grid grid-cols-3 gap-2">
             {["efectivo", "transferencia", "mercadopago"].map((m) => (
               <button key={m} onClick={() => setMetodo(m)} className={`py-3 rounded-2xl text-[10px] font-black uppercase border-2 transition-all ${metodo === m ? "border-blue-500 bg-blue-50 text-blue-600" : "border-slate-100 text-slate-400"}`}>
-                {m}
+                {METODO_LABEL[m]}
               </button>
             ))}
           </div>
@@ -70,17 +72,17 @@ export default function PaymentView({ order, setView, showToast }) {
           </div>
           <input value={comprobante} onChange={(e) => setComprobante(e.target.value)} placeholder="N° Comprobante / Ref (Opcional)" className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-xs font-bold outline-none focus:border-blue-500" />
           <button onClick={registrar} className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black uppercase shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
-            <Check size={20} /> Confirmar Entrega
+            <Check size={20} /> Registrar Pago
           </button>
         </div>
         <div className="pt-4">
-          <p className="text-[10px] font-black text-slate-400 uppercase mb-3">Entregas realizadas</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase mb-3">Pagos registrados</p>
           <div className="space-y-2">
             {order.pagos?.length > 0 ? (
               order.pagos.map((p, i) => (
                 <div key={i} className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl border border-slate-100">
                   <div>
-                    <p className="text-xs font-black text-slate-700 uppercase">{p.metodo}</p>
+                    <p className="text-xs font-black text-slate-700 uppercase">{METODO_LABEL[p.metodo] || p.metodo}</p>
                     <p className="text-[8px] font-bold text-slate-400">{p.fecha} — {p.hora}</p>
                   </div>
                   <p className="font-black text-green-600">{formatMoney(p.monto)}</p>

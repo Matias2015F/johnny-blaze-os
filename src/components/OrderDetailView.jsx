@@ -81,13 +81,13 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   : "text-red-700 bg-red-100";
 
   const cambiarEstado = (nuevo) => {
-    if (isLocked) { showToast("Orden bloqueada (PDF enviado)"); return; }
+    if (isLocked) { showToast("No se puede modificar: ya se generó el comprobante"); return; }
     LS.updateDoc("ordenes", order.id, { estado: nuevo });
     showToast(`Estado: ${ESTADO_LABEL[nuevo]} ✓`);
   };
 
   const eliminarItem = (lista, index) => {
-    if (isLocked) { showToast("Orden bloqueada"); return; }
+    if (isLocked) { showToast("No se puede modificar: ya se generó el comprobante"); return; }
     const nuevaLista = [...(order[lista] || [])];
     nuevaLista.splice(index, 1);
     const t = lista === "tareas"    ? nuevaLista : order.tareas;
@@ -160,7 +160,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
         {isLocked && (
           <div className="bg-blue-50 border-2 border-blue-200 p-4 rounded-3xl flex items-center gap-3">
             <div className="bg-blue-500 p-2 rounded-xl text-white"><ShieldCheck size={20} /></div>
-            <p className="text-[10px] font-black text-blue-700 uppercase leading-tight">Orden bloqueada — PDF entregado. No se pueden editar tareas ni montos.</p>
+            <p className="text-[10px] font-black text-blue-700 uppercase leading-tight">Orden cerrada — ya se generó el comprobante. No se pueden editar tareas ni montos.</p>
           </div>
         )}
 
@@ -194,7 +194,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Cómo se calcula tu ganancia</p>
                 <p className="text-[11px] font-black text-slate-700">
                   {formatMoney(res.desglose.moCliente)}
-                  <span className="text-slate-400 font-bold mx-1">MO cobrada ×</span>
+                  <span className="text-slate-400 font-bold mx-1">Mano de obra cobrada ×</span>
                   {Math.round(res.rentabilidad)}%
                   <span className="text-slate-400 font-bold mx-1">=</span>
                   <span className={res.margen >= 0 ? "text-green-600" : "text-red-600"}>
@@ -207,13 +207,13 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             {/* Costos trasladados al cliente */}
             {(res.desglose.repuestosCliente > 0 || res.desglose.fletesCliente > 0 || res.desglose.insumosCliente > 0) && (
               <div className="space-y-1.5">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Costos trasladados al cliente</p>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Costos que paga el cliente</p>
                 {res.desglose.repuestosCliente > 0 && (
                   <div className="flex justify-between items-center">
                     <span className="text-[11px] font-bold text-slate-500">Repuestos</span>
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-black text-slate-700">{formatMoney(res.desglose.repuestosCliente)}</span>
-                      <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">al costo</span>
+                      <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">sin ganancia</span>
                     </div>
                   </div>
                 )}
@@ -222,7 +222,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                     <span className="text-[11px] font-bold text-slate-500">Fletes</span>
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-black text-slate-700">{formatMoney(res.desglose.fletesCliente)}</span>
-                      <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">al costo</span>
+                      <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">sin ganancia</span>
                     </div>
                   </div>
                 )}
@@ -231,7 +231,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                     <span className="text-[11px] font-bold text-slate-500">Insumos / Terceros</span>
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-black text-slate-700">{formatMoney(res.desglose.insumosCliente)}</span>
-                      <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">al costo</span>
+                      <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">sin ganancia</span>
                     </div>
                   </div>
                 )}
@@ -362,8 +362,8 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 </div>
               ) : (
                 <div className="bg-slate-800 rounded-2xl p-4 text-center">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sin límite definido</p>
-                  <p className="text-[9px] text-slate-600 mt-1">Definí un máximo para activar el control</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sin tope de tiempo aprobado</p>
+                  <p className="text-[9px] text-slate-600 mt-1">Cuando el cliente apruebe un monto máximo, el sistema te avisará al acercarte</p>
                 </div>
               )}
 
@@ -468,7 +468,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             <h3 className="text-xs font-black uppercase text-slate-400 tracking-tighter">Trabajos y Materiales</h3>
             {!isLocked && (
               <button onClick={() => setView("logistica")} className="text-[10px] font-black uppercase text-blue-600 flex items-center gap-1 active:scale-90">
-                <Truck size={14} /> + Logística
+                <Truck size={14} /> + Flete / Traslado
               </button>
             )}
           </div>
@@ -478,7 +478,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               <div key={idx} className={`flex items-center p-4 rounded-2xl border-2 shadow-sm transition-all ${t.perdida ? "border-red-300 bg-red-50" : "border-slate-100 bg-white"}`}>
                 <div className="flex-1 min-w-0">
                   <p className={`text-[9px] font-black uppercase tracking-tighter ${t.perdida ? "text-red-600" : "text-blue-500"}`}>
-                    {t.perdida ? "⚠️ Baja rentabilidad" : "Mano de Obra"}
+                    {t.perdida ? "⚠️ Ganancia baja en este trabajo" : "Mano de Obra"}
                   </p>
                   <p className="text-sm font-black text-slate-800 truncate pr-2 leading-none mt-1 uppercase">{t.nombre}</p>
                 </div>
@@ -538,7 +538,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             disabled={isLocked}
             onClick={() => setView("gestionarTareas")}
             className={`py-5 rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-sm flex items-center justify-center gap-2 active:scale-95 transition-all ${isLocked ? "bg-slate-50 text-slate-300" : "bg-slate-200 text-slate-900"}`}>
-            <Wrench size={14} /> Editar Tareas
+            <Wrench size={14} /> Editar Trabajos
           </button>
           <button
             onClick={() => setView("pagos")}
