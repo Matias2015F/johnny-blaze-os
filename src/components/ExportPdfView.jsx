@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Printer } from "lucide-react";
 import { LS } from "../lib/storage.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
@@ -20,8 +20,6 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
   const snapshot = order.snapshotFinal || {};
   const tareas = snapshot.tareas || order.tareas || [];
   const repuestos = snapshot.repuestos || order.repuestos || [];
-  const insumos = snapshot.insumos || order.insumos || [];
-  const fletes = snapshot.fletes || order.fletes || [];
   const pagos = snapshot.pagos || order.pagos || [];
   const totalOrden = snapshot.total || calcularResultadosOrden(order).total;
   const totalPagado = pagos.reduce((s, p) => s + (p.monto || 0), 0);
@@ -29,6 +27,14 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
   const numeroComprobante = extraData?.numeroComprobante || order.numeroComprobante || `COMP-${order.id.slice(-6).toUpperCase()}`;
   const kilometraje = order.kmIngreso || order.km || bike?.kilometrajeActual || bike?.km;
   const proximoControl = order.proximoControl || null;
+
+  useEffect(() => {
+    const tituloAnterior = document.title;
+    document.title = numeroComprobante;
+    return () => {
+      document.title = tituloAnterior;
+    };
+  }, [numeroComprobante]);
 
   return (
     <div className="min-h-screen bg-slate-100 p-0 font-sans text-left text-slate-900 animate-in fade-in">
@@ -105,11 +111,11 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               </div>
             </div>
 
-            {(repuestos.length > 0 || insumos.length > 0 || fletes.length > 0) && (
+            {repuestos.length > 0 && (
               <div className="overflow-hidden rounded-2xl border border-slate-200">
                 <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                    Materiales y adicionales
+                    Repuestos
                   </p>
                 </div>
                 <div className="divide-y divide-slate-100">
@@ -124,28 +130,6 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                       <p className="shrink-0 font-black text-blue-700">
                         {formatMoney((r.monto || 0) * (r.cantidad || 1))}
                       </p>
-                    </div>
-                  ))}
-                  {insumos.map((ins, i) => (
-                    <div key={`ins-${i}`} className="flex items-start justify-between gap-4 px-4 py-4 text-sm">
-                      <div className="min-w-0">
-                        <p className="font-black uppercase text-orange-900">{ins.nombre}</p>
-                        <p className="text-[10px] font-bold uppercase text-slate-400">
-                          Insumo / servicio externo · {ins.cantidad || 1} x {formatMoney(ins.monto || 0)}
-                        </p>
-                      </div>
-                      <p className="shrink-0 font-black text-orange-700">
-                        {formatMoney((ins.monto || 0) * (ins.cantidad || 1))}
-                      </p>
-                    </div>
-                  ))}
-                  {fletes.map((f, i) => (
-                    <div key={`fle-${i}`} className="flex items-start justify-between gap-4 px-4 py-4 text-sm">
-                      <div className="min-w-0">
-                        <p className="font-black uppercase text-slate-900">{f.nombre}</p>
-                        <p className="text-[10px] font-bold uppercase text-slate-400">Flete / cadeteria</p>
-                      </div>
-                      <p className="shrink-0 font-black text-slate-900">{formatMoney(f.monto || 0)}</p>
                     </div>
                   ))}
                 </div>

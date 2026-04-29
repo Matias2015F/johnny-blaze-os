@@ -1,7 +1,11 @@
-import React, { useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { ArrowLeft, Info } from "lucide-react";
 
-export default function NewOrderView({ handleCreateAll, setView, prefill }) {
+function normalizar(value = "") {
+  return String(value).trim().toUpperCase();
+}
+
+export default function NewOrderView({ handleCreateAll, setView, prefill, bikes = [], clients = [] }) {
   const [f, setF] = useState({
     nombre: prefill?.client?.nombre || "",
     tel: prefill?.client?.tel || "",
@@ -12,6 +16,37 @@ export default function NewOrderView({ handleCreateAll, setView, prefill }) {
     km: prefill?.bike?.km || "",
     falla: "",
   });
+  const [ignorarSugerencia, setIgnorarSugerencia] = useState(false);
+
+  const coincidenciaMoto = useMemo(() => {
+    if (prefill) return null;
+    const patente = normalizar(f.patente);
+    const marca = normalizar(f.marca);
+    const modelo = normalizar(f.modelo);
+    const cilindrada = Number(f.cilindrada || 0);
+    if (!patente || !marca || !modelo || !cilindrada) return null;
+
+    const moto = bikes.find((bike) =>
+      normalizar(bike.patenteNormalizada || bike.patente) === patente &&
+      normalizar(bike.marca) === marca &&
+      normalizar(bike.modelo) === modelo &&
+      Number(bike.cilindrada || 0) === cilindrada
+    );
+    if (!moto) return null;
+    const cliente = clients.find((client) => client.id === moto.clienteId) || null;
+    return { moto, cliente };
+  }, [bikes, clients, f.cilindrada, f.marca, f.modelo, f.patente, prefill]);
+
+  const usarHistorial = () => {
+    if (!coincidenciaMoto) return;
+    setF((actual) => ({
+      ...actual,
+      nombre: coincidenciaMoto.cliente?.nombre || actual.nombre,
+      tel: coincidenciaMoto.cliente?.tel || coincidenciaMoto.cliente?.telefono || actual.tel,
+      km: actual.km || coincidenciaMoto.moto?.kilometrajeActual || coincidenciaMoto.moto?.km || "",
+    }));
+    setIgnorarSugerencia(false);
+  };
 
   return (
     <div className="p-6 text-left animate-in slide-in-from-bottom duration-300">
@@ -24,6 +59,39 @@ export default function NewOrderView({ handleCreateAll, setView, prefill }) {
         </h1>
       </div>
       <div className="bg-[#141414] p-8 rounded-[2.5rem] space-y-4 border border-white/5 shadow-2xl">
+        {coincidenciaMoto && !ignorarSugerencia && (
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-[2rem] p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="bg-blue-500 text-white p-2 rounded-xl flex-shrink-0">
+                <Info size={16} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Moto encontrada en el historial</p>
+                <p className="mt-1 text-sm font-black text-white uppercase">
+                  {coincidenciaMoto.moto?.patente} · {coincidenciaMoto.moto?.marca} {coincidenciaMoto.moto?.modelo}
+                </p>
+                <p className="mt-1 text-[10px] font-bold text-slate-400">
+                  Cliente guardado: {coincidenciaMoto.cliente?.nombre || "Sin cliente"} · {coincidenciaMoto.cliente?.tel || coincidenciaMoto.cliente?.telefono || "---"}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={usarHistorial}
+                className="bg-blue-600 text-white py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95"
+              >
+                Usar historial
+              </button>
+              <button
+                onClick={() => setIgnorarSugerencia(true)}
+                className="bg-zinc-900 border border-white/10 text-zinc-300 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95"
+              >
+                Seguir con lo escrito
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Patente</label>
