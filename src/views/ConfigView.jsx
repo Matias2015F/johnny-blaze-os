@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { LS, useCollection, migrateFromRootCollections, forceSyncCacheToFirestore } from "../lib/storage.js";
 import { auth } from "../firebase.js";
+import { createCloudBackup, listCloudBackups, restoreCloudBackup } from "../lib/cloudBackup.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { formatMoney } from "../utils/format.js";
@@ -231,6 +232,55 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
 
 // ── PANTALLA: Datos ────────────────────────────────────────────────────────────
 function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setBkpEstado, fileInputRef, handleRestaurarArchivo, handleRestaurarAuto }) {
+  const [backups, setBackups] = React.useState([]);
+  const [loadingBackups, setLoadingBackups] = React.useState(false);
+  const [guardandoBkp, setGuardandoBkp] = React.useState(false);
+  const [restaurando, setRestaurando] = React.useState(null);
+
+  const cargarBackups = async () => {
+    setLoadingBackups(true);
+    try {
+      const uid = auth.currentUser?.uid;
+      const lista = await listCloudBackups(uid);
+      setBackups(lista);
+    } catch (e) {
+      showToast("Error al cargar copias: " + e.message);
+    } finally {
+      setLoadingBackups(false);
+    }
+  };
+
+  const handleGuardarEnNube = async () => {
+    setGuardandoBkp(true);
+    try {
+      const uid = auth.currentUser?.uid;
+      const r = await createCloudBackup(uid);
+      showToast(r ? `Copia guardada en la nube (${r.total} registros) ✓` : "No hay datos para guardar");
+      cargarBackups();
+    } catch (e) {
+      showToast("Error: " + e.message);
+    } finally {
+      setGuardandoBkp(false);
+    }
+  };
+
+  const handleRestaurarNube = async (backupId, fecha) => {
+    if (!window.confirm(`¿Restaurar la copia del ${new Date(fecha).toLocaleString("es-AR")}?\n\nEsto reemplaza TODOS los datos actuales.`)) return;
+    setRestaurando(backupId);
+    try {
+      const uid = auth.currentUser?.uid;
+      const n = await restoreCloudBackup(uid, backupId);
+      showToast(`Restaurado: ${n} registros recuperados ✓`);
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e) {
+      showToast("Error al restaurar: " + e.message);
+    } finally {
+      setRestaurando(null);
+    }
+  };
+
+  React.useEffect(() => { cargarBackups(); }, []);
+
   return (
     <div className="space-y-4">
       {/* Exportar */}
@@ -317,6 +367,50 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
             </button>
           )}
         </div>
+      </Card>
+
+      {/* Backup en la nube */}
+      <Card>
+        <SectionTitle>Copias en la Nube</SectionTitle>
+        <p className="text-[10px] text-slate-400 font-bold mb-3 leading-relaxed">
+          Se guarda automáticamente 1 vez por día. Podés guardar ahora o restaurar una copia anterior desde cualquier dispositivo.
+        </p>
+        <button
+          onClick={handleGuardarEnNube}
+          disabled={guardandoBkp}
+          className="w-full flex items-center justify-between bg-blue-600 text-white rounded-2xl p-5 active:scale-[0.98] transition-all shadow-md mb-3 disabled:opacity-50"
+        >
+          <div className="text-left">
+            <p className="text-sm font-black uppercase">{guardandoBkp ? "Guardando..." : "Guardar copia ahora"}</p>
+            <p className="text-[10px] font-bold text-blue-100 mt-0.5">Guarda todos los datos en la nube</p>
+          </div>
+          <HardDrive size={20} />
+        </button>
+
+        {loadingBackups ? (
+          <p className="text-center text-[10px] text-slate-400 font-bold py-4">Cargando copias...</p>
+        ) : backups.length === 0 ? (
+          <p className="text-center text-[10px] text-slate-400 font-bold py-4">No hay copias guardadas en la nube todavía</p>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Copias disponibles (últimas {backups.length})</p>
+            {backups.map((b) => (
+              <div key={b.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                <div>
+                  <p className="text-xs font-black text-slate-800">{new Date(b.fecha).toLocaleString("es-AR", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}</p>
+                  <p className="text-[9px] font-bold text-slate-400">{b.total} registros</p>
+                </div>
+                <button
+                  onClick={() => handleRestaurarNube(b.id, b.fecha)}
+                  disabled={restaurando === b.id}
+                  className="bg-slate-800 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {restaurando === b.id ? "..." : "Restaurar"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   );

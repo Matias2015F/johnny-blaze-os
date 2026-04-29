@@ -17,11 +17,52 @@ const getUid  = () => auth.currentUser?.uid ?? null;
 const userCol = (col) => collection(db, "users", getUid(), col);
 const userDoc = (col, id) => doc(db, "users", getUid(), col, id);
 
-function fsWrite(op) {
-  op().catch((e) => console.error("[FS write]", e));
+// ── Sync status ───────────────────────────────────────────────────────────────
+let _pending = 0;
+let _syncError = false;
+const _syncListeners = new Set();
+
+function notifySync() {
+  const status = _pending > 0 ? "syncing" : _syncError ? "error" : "synced";
+  _syncListeners.forEach((fn) => fn(status));
 }
 
-// ── LS API — misma firma que antes, optimistic writes a Firestore ────────────
+export function onSyncStatus(fn) {
+  _syncListeners.add(fn);
+  return () => _syncListeners.delete(fn);
+}
+
+export function getSyncStatus() {
+  return _pending > 0 ? "syncing" : _syncError ? "error" : "synced";
+}
+
+// Escribe a Firestore con 3 reintentos — falla visible si persiste
+async function fsWrite(op) {
+  const uid = getUid();
+  if (!uid) return;
+  _pending++;
+  _syncError = false;
+  notifySync();
+  let lastErr;
+  for (let i = 0; i < 3; i++) {
+    try {
+      await op();
+      lastErr = null;
+      break;
+    } catch (e) {
+      lastErr = e;
+      if (i < 2) await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+    }
+  }
+  _pending--;
+  if (lastErr) {
+    _syncError = true;
+    console.error("[FS write failed]", lastErr);
+  }
+  notifySync();
+}
+
+// ── LS API ────────────────────────────────────────────────────────────────────
 export const LS = {
   getAll: (col) => _cache[col] ?? [],
 
@@ -30,7 +71,7 @@ export const LS = {
   setDoc: (col, id, data) => {
     const entry = { id, ...data };
     _cache[col] = [...(_cache[col] ?? []).filter((d) => d.id !== id), entry];
-    if (getUid()) fsWrite(() => fsSetDoc(userDoc(col, id), entry));
+    fsWrite(() => fsSetDoc(userDoc(col, id), entry));
     return { id };
   },
 
@@ -38,22 +79,22 @@ export const LS = {
     const id = generateId();
     const entry = { id, ...data };
     _cache[col] = [...(_cache[col] ?? []), entry];
-    if (getUid()) fsWrite(() => fsSetDoc(userDoc(col, id), entry));
+    fsWrite(() => fsSetDoc(userDoc(col, id), entry));
     return { id };
   },
 
   updateDoc: (col, id, patch) => {
     _cache[col] = (_cache[col] ?? []).map((d) => (d.id === id ? { ...d, ...patch } : d));
-    if (getUid()) fsWrite(() => fsSetDoc(userDoc(col, id), patch, { merge: true }));
+    fsWrite(() => fsSetDoc(userDoc(col, id), patch, { merge: true }));
   },
 
   deleteDoc: (col, id) => {
     _cache[col] = (_cache[col] ?? []).filter((d) => d.id !== id);
-    if (getUid()) fsWrite(() => fsDeleteDoc(userDoc(col, id)));
+    fsWrite(() => fsDeleteDoc(userDoc(col, id)));
   },
 };
 
-// ── useCollection — tiempo real via onSnapshot con reintento automático ────────
+// ── useCollection ─────────────────────────────────────────────────────────────
 export function useCollection(col) {
   const [data, setData] = useState(() => _cache[col] ?? []);
 
@@ -84,7 +125,6 @@ export function useCollection(col) {
       );
     };
 
-    // Suscribirse cuando auth esté listo — resuelve race condition en móvil
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       if (unsub) { unsub(); unsub = null; }
       if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
@@ -108,14 +148,20 @@ export function useCollection(col) {
   return data;
 }
 
-// ── Migración única: localStorage → Firestore ────────────────────────────────
+// ── Hook sync status ──────────────────────────────────────────────────────────
+export function useSyncStatus() {
+  const [status, setStatus] = useState(getSyncStatus);
+  useEffect(() => onSyncStatus(setStatus), []);
+  return status;
+}
+
+// ── Migraciones ───────────────────────────────────────────────────────────────
+export const DATA_COLS = ["ordenes", "clientes", "motos", "caja", "config", "serviciosCatalogo"];
 const LS_PREFIX     = "jbos_johnny-blaze-os_";
 const MIGRATION_KEY = "jbos_fs_migrated_v1";
-const DATA_COLS     = ["ordenes", "clientes", "motos", "caja", "config", "serviciosCatalogo"];
 
 export async function migrateFromLocalStorage(uid) {
   if (localStorage.getItem(MIGRATION_KEY)) return 0;
-
   let count = 0;
   for (const col of DATA_COLS) {
     const raw = localStorage.getItem(LS_PREFIX + col);
@@ -123,11 +169,8 @@ export async function migrateFromLocalStorage(uid) {
     let items;
     try { items = JSON.parse(raw); } catch { continue; }
     if (!Array.isArray(items) || !items.length) continue;
-
-    // No sobrescribir si ya hay datos en Firestore
     const snap = await getDocs(collection(db, "users", uid, col));
     if (!snap.empty) continue;
-
     const batch = writeBatch(db);
     for (const item of items) {
       if (!item.id) continue;
@@ -136,30 +179,25 @@ export async function migrateFromLocalStorage(uid) {
     await batch.commit();
     count += items.length;
   }
-
   localStorage.setItem(MIGRATION_KEY, "1");
   return count;
 }
 
-// Migración: colecciones raíz de Firestore → users/{uid}/...
 export async function migrateFromRootCollections(uid) {
   let count = 0;
   for (const col of DATA_COLS) {
     const rootSnap = await getDocs(collection(db, col));
     if (rootSnap.empty) continue;
     const destSnap = await getDocs(collection(db, "users", uid, col));
-    if (!destSnap.empty) continue; // ya tiene datos, no pisar
+    if (!destSnap.empty) continue;
     const batch = writeBatch(db);
-    rootSnap.docs.forEach((d) => {
-      batch.set(doc(db, "users", uid, col, d.id), d.data());
-    });
+    rootSnap.docs.forEach((d) => batch.set(doc(db, "users", uid, col, d.id), d.data()));
     await batch.commit();
     count += rootSnap.docs.length;
   }
   return count;
 }
 
-// Fuerza escritura del cache actual a Firestore
 export async function forceSyncCacheToFirestore(uid) {
   let count = 0;
   for (const col of DATA_COLS) {
@@ -176,7 +214,6 @@ export async function forceSyncCacheToFirestore(uid) {
   return count;
 }
 
-// Borra todas las colecciones del usuario en Firestore
 export async function clearFirestoreData(uid) {
   for (const col of DATA_COLS) {
     const snap = await getDocs(collection(db, "users", uid, col));
@@ -185,6 +222,5 @@ export async function clearFirestoreData(uid) {
     snap.docs.forEach((d) => batch.delete(d.ref));
     await batch.commit();
   }
-  // Limpiar cache local también
   DATA_COLS.forEach((col) => { delete _cache[col]; });
 }

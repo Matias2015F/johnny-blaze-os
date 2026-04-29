@@ -3,7 +3,8 @@ import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { Wrench, Clock, History, Settings, DollarSign } from "lucide-react";
 
-import { LS, useCollection, generateId, migrateFromLocalStorage, clearFirestoreData } from "./lib/storage.js";
+import { LS, useCollection, generateId, migrateFromLocalStorage, clearFirestoreData, useSyncStatus } from "./lib/storage.js";
+import { autoCloudBackup } from "./lib/cloudBackup.js";
 import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
 
 // HomeView se carga de forma eager — es la pantalla inicial
@@ -57,7 +58,9 @@ export default function TallerPanel() {
   const clients = useCollection("clientes");
   const bikes   = useCollection("motos");
   const orders  = useCollection("ordenes");
-  useCollection("config"); // mantiene config en cache para lecturas síncronas
+  useCollection("config");
+
+  const syncStatus = useSyncStatus();
 
   const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 2500); };
   const handleLogout = async () => { try { await signOut(auth); } catch (e) { console.error(e); } };
@@ -67,13 +70,14 @@ export default function TallerPanel() {
     return () => unsub();
   }, []);
 
-  // Migración única: sube datos de localStorage a Firestore al primer login
+  // Migración localStorage → Firestore y backup automático diario
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
     migrateFromLocalStorage(uid)
       .then((n) => { if (n > 0) showToast(`Datos sincronizados (${n} registros) ✓`); })
       .catch(console.error);
+    autoCloudBackup(uid).catch(console.error);
   }, []);
 
   // ── Crear orden nueva ──────────────────────────────────────────────────────
@@ -226,6 +230,11 @@ export default function TallerPanel() {
 
       {NAV_VIEWS.includes(view) && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-black/95 backdrop-blur-3xl border-t border-white/10 px-2 py-4 flex justify-around items-center z-50 rounded-t-[3rem] shadow-2xl">
+          {/* Indicador de sincronización */}
+          <div className={`absolute top-2 right-4 flex items-center gap-1 text-[8px] font-black uppercase tracking-widest ${syncStatus === "synced" ? "text-green-500" : syncStatus === "syncing" ? "text-yellow-400" : "text-red-400"}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${syncStatus === "synced" ? "bg-green-500" : syncStatus === "syncing" ? "bg-yellow-400 animate-pulse" : "bg-red-400"}`} />
+            {syncStatus === "synced" ? "Guardado" : syncStatus === "syncing" ? "Guardando..." : "Error al guardar"}
+          </div>
           <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "home" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
             <Wrench size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Taller</span>
           </button>
