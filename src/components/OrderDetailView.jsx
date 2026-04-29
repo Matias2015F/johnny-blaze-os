@@ -26,6 +26,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const [motivoManual, setMotivoManual] = useState("");
   const [maxInput, setMaxInput] = useState("");
   const [ultimoAviso, setUltimoAviso] = useState(0);
+  const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
 
   useEffect(() => {
     const id = setInterval(() => setTiempoActual(obtenerTiempoActual(order)), 1000);
@@ -62,7 +63,6 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
   const b      = bikes.find(x => x.id === order.bikeId)   || {};
   const c      = clients.find(x => x.id === order.clientId) || {};
-  const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const res    = calcularResultadosOrden(order);
   const valorHora = config.valorHoraCliente || 15000;
 
