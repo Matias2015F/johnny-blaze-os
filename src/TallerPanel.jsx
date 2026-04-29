@@ -142,7 +142,8 @@ export default function TallerPanel() {
         LS.updateDoc("titularidades", titActual.id, { titularActual: false, fechaHasta: hoyEstable() });
       }
       LS.addDoc("titularidades", {
-        clienteId, motoId: bikeId,
+        clienteId: clientId,
+        motoId: bikeId,
         fechaDesde: hoyEstable(),
         fechaHasta: null,
         titularActual: true,
