@@ -49,7 +49,6 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   const bikes       = useCollection("motos");
   const orders      = useCollection("trabajos");
   const config      = LS.getDoc("config", "global") || CONFIG_DEFAULT;
-  const servicios   = [...SERVICIOS_DEFAULT, ...catalogData];
   const bike        = bikes.find(b => b.id === order.bikeId) || {};
   const testMode    = config.testModeRecordatorios || false;
 
@@ -133,7 +132,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     return horasBase;
   };
 
-  const obtenerServicioPrevio = (nombreServicio) => {
+  function obtenerServicioPrevio(nombreServicio) {
     const servicioBuscado = normalizarTexto(nombreServicio);
     if (!servicioBuscado || !bike?.marca || !bike?.modelo || !bike?.cilindrada) return null;
 
@@ -156,7 +155,57 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
       .sort((a, b) => b.fecha - a.fecha);
 
     return historial[0] || null;
-  };
+  }
+
+  const serviciosDisponibles = useMemo(() => {
+    const porNombre = new Map();
+    const agregar = (servicio, prioridad = 0) => {
+      const nombre = servicio?.nombre?.trim();
+      if (!nombre) return;
+      const clave = normalizarTexto(nombre);
+      const actual = porNombre.get(clave);
+      if (!actual || prioridad > actual.prioridad) {
+        porNombre.set(clave, { ...servicio, prioridad });
+      }
+    };
+
+    const historialMismaMoto = (orders || [])
+      .filter((trabajo) => trabajo.id !== order.id && trabajo.bikeId)
+      .map((trabajo) => ({
+        trabajo,
+        motoTrabajo: bikes.find((item) => item.id === trabajo.bikeId),
+      }))
+      .filter(({ motoTrabajo }) => mismaMoto(motoTrabajo, bike))
+      .flatMap(({ trabajo }) =>
+        (trabajo.tareas || []).map((tarea) => ({
+          id: `hist-${normalizarTexto(tarea.nombre)}`,
+          nombre: tarea.nombre,
+          horasBase: tarea.horasBase || 1,
+          dificultad: tarea.dificultad || "normal",
+          repuestos: clonarLista(tarea.repuestos || []),
+          insumos: clonarLista(tarea.insumos || []),
+          observacionesProxima: trabajo.observacionesProxima || "",
+          proximoControl: trabajo.proximoControl || null,
+          margenPct: tarea.margenPct ?? defaultMargen,
+        }))
+      );
+
+    historialMismaMoto.forEach((servicio) => agregar(servicio, 3));
+
+    catalogData.forEach((servicio) => {
+      const coincideMoto =
+        !servicio.marca ||
+        (normalizarTexto(servicio.marca) === normalizarTexto(bike.marca) &&
+          normalizarTexto(servicio.modelo) === normalizarTexto(bike.modelo) &&
+          Number(servicio.cilindrada || 0) === Number(bike.cilindrada || 0));
+      if (!coincideMoto) return;
+      agregar(servicio, servicio.marca ? 2 : 1);
+    });
+
+    SERVICIOS_DEFAULT.forEach((servicio) => agregar(servicio, 0));
+
+    return Array.from(porNombre.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [bike, bikes, catalogData, defaultMargen, order.id, orders]);
 
   const handleSelect = (id) => {
     setSelectedId(id);
@@ -165,24 +214,27 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
       setSugerencia(null);
       return;
     }
-    const s = servicios.find(x => x.id === id);
+    const s = serviciosDisponibles.find(x => x.id === id);
     if (s) {
       const previo = obtenerServicioPrevio(s.nombre);
+      const repuestosBase = previo?.tarea?.repuestos || s.repuestos || [];
+      const insumosBase = previo?.tarea?.insumos || s.insumos || [];
       const horasBase = previo?.tarea?.horasBase || aplicarHistorial(s.nombre, s.horasBase || 1);
       setEditForm({
         nombre: s.nombre,
         horasBase,
         dificultad: previo?.tarea?.dificultad || s.dificultad || "normal",
-        repuestos: clonarLista(previo?.tarea?.repuestos || []),
-        insumos: clonarLista(previo?.tarea?.insumos || []),
-        observacionesProxima: previo?.trabajo?.observacionesProxima || order.observacionesProxima || "",
+        repuestos: clonarLista(repuestosBase),
+        insumos: clonarLista(insumosBase),
+        observacionesProxima: previo?.trabajo?.observacionesProxima || s.observacionesProxima || order.observacionesProxima || "",
       });
-      setMargenPct(previo?.tarea?.margenPct ?? defaultMargen);
-      if (previo?.trabajo?.proximoControl) {
-        setProximoTipo(previo.trabajo.proximoControl.tipo || null);
-        setProximoUnidad(previo.trabajo.proximoControl.unidad === "dias" ? "dias" : "km");
-        setProximoValor(previo.trabajo.proximoControl.valorObjetivo || null);
-        setProximoDesc(previo.trabajo.proximoControl.descripcion || "");
+      setMargenPct(previo?.tarea?.margenPct ?? s.margenPct ?? defaultMargen);
+      const proximoBase = previo?.trabajo?.proximoControl || s.proximoControl;
+      if (proximoBase) {
+        setProximoTipo(proximoBase.tipo || null);
+        setProximoUnidad(proximoBase.unidad === "dias" ? "dias" : "km");
+        setProximoValor(proximoBase.valorObjetivo || null);
+        setProximoDesc(proximoBase.descripcion || "");
       }
     }
   };
@@ -335,9 +387,23 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     LS.setDoc("catalogoTareas", idCat, {
       id: idCat,
       nombre: nombreTarea,
+      marca: bike.marca || "",
+      modelo: bike.modelo || "",
+      cilindrada: bike.cilindrada || "",
       horasBase: editForm.horasBase,
       dificultad: editForm.dificultad,
       margenPct,
+      repuestos: editForm.repuestos,
+      insumos: editForm.insumos,
+      observacionesProxima: editForm.observacionesProxima || "",
+      proximoControl: proximoTipo && proximoValor
+        ? {
+            tipo: proximoTipo,
+            unidad: proximoUnidad,
+            valorObjetivo: proximoValor,
+            descripcion: proximoTipo === "otro" ? proximoDesc : (TIPOS_SERVICIO[proximoTipo] || proximoTipo),
+          }
+        : null,
     });
 
     setServiceToEdit(null);
@@ -360,7 +426,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           <select value={selectedId || ""} onChange={e => handleSelect(e.target.value)}
             className="w-full border-2 border-slate-100 rounded-2xl p-4 font-black bg-white outline-none text-sm">
             <option value="">-- Escribir manualmente --</option>
-            {servicios.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+            {serviciosDisponibles.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
           </select>
           <div className="space-y-1">
             <label className="text-[10px] uppercase text-slate-400 ml-1 font-black tracking-widest">Nombre del servicio</label>
@@ -443,41 +509,49 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             <p className="text-[10px] text-slate-300 font-bold text-center py-1">Sin repuestos cargados</p>
           )}
           {editForm.repuestos.map((item, idx) => (
-            <div key={idx} className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-3">
               <input
-                className="flex-1 border-none bg-transparent text-xs font-black uppercase text-slate-700 outline-none"
+                className="w-full border-none bg-transparent text-xs font-black uppercase text-slate-700 outline-none"
                 placeholder="Nombre del repuesto..."
                 value={item.nombre}
                 onChange={e => updateListItem("repuestos", idx, "nombre", e.target.value)}
               />
-              <input
-                type="number"
-                min="1"
-                className="w-14 rounded-xl bg-white text-xs font-black text-center text-slate-700 outline-none border border-slate-200 p-2"
-                value={item.cantidad || 1}
-                onChange={e => updateListItem("repuestos", idx, "cantidad", Math.max(1, Number(e.target.value) || 1))}
-              />
-              <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
-                <span className="text-[10px] font-black text-slate-300">$</span>
-                <input
-                  type="text" inputMode="numeric"
-                  className="w-20 text-xs text-right font-black outline-none bg-transparent text-blue-600"
-                  value={item.monto > 0 ? item.monto.toLocaleString("es-AR") : ""}
-                  onChange={e => {
-                    const digits = e.target.value.replace(/\D/g, "");
-                    updateListItem("repuestos", idx, "monto", digits ? Number(digits) : 0);
-                  }}
-                  placeholder="0"
-                />
+              <div className="grid grid-cols-[80px_minmax(0,1fr)_auto] gap-2 items-end">
+                <div>
+                  <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Cant.</p>
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-full rounded-xl bg-white text-xs font-black text-center text-slate-700 outline-none border border-slate-200 p-2"
+                    value={item.cantidad || 1}
+                    onChange={e => updateListItem("repuestos", idx, "cantidad", Math.max(1, Number(e.target.value) || 1))}
+                  />
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Precio unit.</p>
+                  <div className="flex items-center gap-1 rounded-xl bg-white border border-slate-200 px-3 py-2">
+                    <span className="text-[10px] font-black text-slate-300">$</span>
+                    <input
+                      type="text" inputMode="numeric"
+                      className="w-full min-w-0 text-xs text-right font-black outline-none bg-transparent text-blue-600"
+                      value={item.monto > 0 ? item.monto.toLocaleString("es-AR") : ""}
+                      onChange={e => {
+                        const digits = e.target.value.replace(/\D/g, "");
+                        updateListItem("repuestos", idx, "monto", digits ? Number(digits) : 0);
+                      }}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                <button onClick={() => setEditForm({ ...editForm, repuestos: editForm.repuestos.filter((_, i) => i !== idx) })}
+                  className="p-1 text-slate-300 active:text-red-500 self-center">
+                  <X size={16} />
+                </button>
               </div>
-              <div className="w-20 text-right">
-                <p className="text-[9px] font-black text-slate-300 uppercase">Total</p>
+              <div className="flex justify-between items-center border-t border-slate-200 pt-2">
+                <p className="text-[9px] font-black text-slate-300 uppercase">Total repuesto</p>
                 <p className="text-[11px] font-black text-blue-700">{formatMoney((item.monto || 0) * (item.cantidad || 1))}</p>
               </div>
-              <button onClick={() => setEditForm({ ...editForm, repuestos: editForm.repuestos.filter((_, i) => i !== idx) })}
-                className="p-1 text-slate-300 active:text-red-500">
-                <X size={16} />
-              </button>
             </div>
           ))}
           {editForm.repuestos.length > 0 && stats.repPrecio > 0 && (
@@ -505,41 +579,49 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             <p className="text-[10px] text-slate-300 font-bold text-center py-1">Sin insumos cargados</p>
           )}
           {editForm.insumos.map((item, idx) => (
-            <div key={idx} className="flex items-center gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-3">
               <input
-                className="flex-1 border-none bg-transparent text-xs font-black uppercase text-slate-700 outline-none"
+                className="w-full border-none bg-transparent text-xs font-black uppercase text-slate-700 outline-none"
                 placeholder="Nombre..."
                 value={item.nombre}
                 onChange={e => updateListItem("insumos", idx, "nombre", e.target.value)}
               />
-              <input
-                type="number"
-                min="1"
-                className="w-14 rounded-xl bg-white text-xs font-black text-center text-slate-700 outline-none border border-slate-200 p-2"
-                value={item.cantidad || 1}
-                onChange={e => updateListItem("insumos", idx, "cantidad", Math.max(1, Number(e.target.value) || 1))}
-              />
-              <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
-                <span className="text-[10px] font-black text-slate-300">$</span>
-                <input
-                  type="text" inputMode="numeric"
-                  className="w-20 text-xs text-right font-black outline-none bg-transparent text-orange-500"
-                  value={item.monto > 0 ? item.monto.toLocaleString("es-AR") : ""}
-                  onChange={e => {
-                    const digits = e.target.value.replace(/\D/g, "");
-                    updateListItem("insumos", idx, "monto", digits ? Number(digits) : 0);
-                  }}
-                  placeholder="0"
-                />
+              <div className="grid grid-cols-[80px_minmax(0,1fr)_auto] gap-2 items-end">
+                <div>
+                  <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Cant.</p>
+                  <input
+                    type="number"
+                    min="1"
+                    className="w-full rounded-xl bg-white text-xs font-black text-center text-slate-700 outline-none border border-slate-200 p-2"
+                    value={item.cantidad || 1}
+                    onChange={e => updateListItem("insumos", idx, "cantidad", Math.max(1, Number(e.target.value) || 1))}
+                  />
+                </div>
+                <div>
+                  <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Costo unit.</p>
+                  <div className="flex items-center gap-1 rounded-xl bg-white border border-slate-200 px-3 py-2">
+                    <span className="text-[10px] font-black text-slate-300">$</span>
+                    <input
+                      type="text" inputMode="numeric"
+                      className="w-full min-w-0 text-xs text-right font-black outline-none bg-transparent text-orange-500"
+                      value={item.monto > 0 ? item.monto.toLocaleString("es-AR") : ""}
+                      onChange={e => {
+                        const digits = e.target.value.replace(/\D/g, "");
+                        updateListItem("insumos", idx, "monto", digits ? Number(digits) : 0);
+                      }}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                <button onClick={() => setEditForm({ ...editForm, insumos: editForm.insumos.filter((_, i) => i !== idx) })}
+                  className="p-1 text-slate-300 active:text-red-500 self-center">
+                  <X size={16} />
+                </button>
               </div>
-              <div className="w-20 text-right">
-                <p className="text-[9px] font-black text-slate-300 uppercase">Total</p>
+              <div className="flex justify-between items-center border-t border-slate-200 pt-2">
+                <p className="text-[9px] font-black text-slate-300 uppercase">Total gasto</p>
                 <p className="text-[11px] font-black text-orange-600">{formatMoney((item.monto || 0) * (item.cantidad || 1))}</p>
               </div>
-              <button onClick={() => setEditForm({ ...editForm, insumos: editForm.insumos.filter((_, i) => i !== idx) })}
-                className="p-1 text-slate-300 active:text-red-500">
-                <X size={16} />
-              </button>
             </div>
           ))}
           {editForm.insumos.length > 0 && stats.insPrecio > 0 && (
