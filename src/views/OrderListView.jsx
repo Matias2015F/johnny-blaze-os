@@ -5,7 +5,8 @@ import { formatMoney } from "../utils/format.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 
 export default function OrderListView({ orders, bikes, clients, setSelectedOrderId, setView }) {
-  const activas = orders.filter((o) => o.estado !== "entregada");
+  const ESTADOS_CERRADOS = new Set(["entregada", "cerrado_emitido"]);
+  const activas = orders.filter((o) => !ESTADOS_CERRADOS.has(o.estado));
   return (
     <div className="p-4 space-y-4 pb-28 text-left animate-in fade-in duration-500">
       <div className="bg-[#141414] p-5 border border-white/5 flex items-center gap-4 sticky top-0 z-40 mb-4 rounded-[2.5rem]">
