@@ -1,146 +1,73 @@
-// Wrapper de backup.js (en inglés) para compatibilidad con ConfigView.jsx
-// Este archivo actúa como capa de traducción entre los nombres en español
-// que usa la UI y las funciones reales en inglés de ../lib/backup.js
+import { LS } from "../lib/storage.js";
+import { exportBackup, getMeta, setMeta, shouldAutoBackup } from "../lib/backup.js";
 
-import {
-  exportBackup,
-  importBackup,
-  getMeta,
-  setMeta,
-  shouldAutoBackup
-} from "../lib/backup.js";
+const COLS_ACTUALES = ["trabajos", "clientes", "motos", "config", "caja", "catalogoTareas"];
+const LEGACY_MAP    = { ordenes: "trabajos", serviciosCatalogo: "catalogoTareas" };
 
-/**
- * Formatea un timestamp ISO en texto relativo (ej: "hace 2 días")
- */
 export function tiempoDesde(timestamp) {
   if (!timestamp) return null;
-  const now = Date.now();
-  const then = new Date(timestamp).getTime();
-  const diff = now - then;
-
-  const minutos = Math.floor(diff / 60000);
-  const horas = Math.floor(diff / 3600000);
+  const diff = Date.now() - new Date(timestamp).getTime();
+  const min = Math.floor(diff / 60000);
+  const hs  = Math.floor(diff / 3600000);
   const dias = Math.floor(diff / 86400000);
-
-  if (minutos < 1) return "ahora mismo";
-  if (minutos < 60) return `hace ${minutos} min`;
-  if (horas < 24) return `hace ${horas} h`;
+  if (min < 1)  return "ahora mismo";
+  if (min < 60) return `hace ${min} min`;
+  if (hs  < 24) return `hace ${hs} h`;
   return `hace ${dias} d`;
 }
 
-/**
- * Obtiene el estado actual de los backups
- * @returns {object} Estado con ultimoManual, ultimoAuto, autoHabilitado
- */
 export function estadoBackup() {
   const meta = getMeta();
   return {
-    ultimoManual: meta.lastBackup || null,
-    ultimoAuto: meta.lastAutoBackup || null,
+    ultimoManual:  meta.lastBackup      || null,
+    ultimoAuto:    meta.lastAutoBackup  || null,
+    tieneAuto:     !!meta.lastAutoBackup,
     autoHabilitado: meta.autoBackupEnabled || false,
-    frecuenciaAuto: meta.autoBackupDays || 1
+    frecuenciaAuto: meta.autoBackupDays   || 1,
   };
 }
 
-/**
- * Descarga una copia de seguridad (wrapper de exportBackup)
- */
 export function descargarBackup() {
   exportBackup();
+  setMeta({ lastBackup: new Date().toISOString() });
 }
 
-/**
- * Restaura desde un string JSON
- * @param {string} texto - Contenido JSON del backup
- * @returns {object} Resultado con ok, fecha, errores
- */
+// Sincrónico — restaura desde un string JSON al cache + Firestore via LS
 export function restaurarDesdeTexto(texto) {
-  return new Promise((resolve) => {
-    try {
-      const parsed = JSON.parse(texto);
-      const data = parsed.data || parsed;
-      const cols = ["clientes", "motos", "ordenes", "config", "caja", "serviciosCatalogo"];
-      
-      cols.forEach((col) => {
-        if (Array.isArray(data[col])) {
-          data[col].forEach((item) => {
-            if (item.id) {
-              const storage = window.localStorage;
-              const key = `j bos_${col}_${item.id}`;
-              storage.setItem(key, JSON.stringify(item));
-            }
-          });
-        }
-      });
+  try {
+    const parsed = JSON.parse(texto);
+    const data   = parsed.data || parsed;
+    let restaurados = 0;
 
-      resolve({
-        ok: true,
-        fecha: parsed.fecha || "desconocida",
-        items: cols.reduce((sum, col) => sum + (data[col]?.length || 0), 0)
-      });
-    } catch (err) {
-      resolve({
-        ok: false,
-        error: err.message
-      });
+    for (const col of COLS_ACTUALES) {
+      // Intentar con nombre actual
+      const legacyName = Object.entries(LEGACY_MAP).find(([, v]) => v === col)?.[0];
+      const items = data[col] || (legacyName ? data[legacyName] : null);
+      if (!Array.isArray(items) || !items.length) continue;
+      items.forEach(item => { if (item.id) LS.setDoc(col, item.id, item); });
+      restaurados++;
     }
-  });
+
+    return { ok: true, fecha: parsed.fecha || "desconocida", restaurados };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 }
 
-/**
- * Restaura desde el auto backup guardado
- * @returns {object} Resultado con ok, fecha, errores
- */
+// Sincrónico — restaura desde el auto backup en localStorage
 export function restaurarAutoBackup() {
-  return new Promise((resolve) => {
-    try {
-      const autoKey = "jbos_auto_backup";
-      const storage = window.localStorage;
-      const autoData = storage.getItem(autoKey);
+  try {
+    const raw = localStorage.getItem("jbos_auto_backup");
+    if (!raw) return { ok: false, error: "No hay auto backup disponible" };
 
-      if (!autoData) {
-        resolve({
-          ok: false,
-          error: "No hay auto backup disponible"
-        });
-        return;
-      }
-
-      const parsed = JSON.parse(autoData);
-      const data = parsed.data || parsed;
-      const cols = ["clientes", "motos", "ordenes", "config", "caja", "serviciosCatalogo"];
-
-      cols.forEach((col) => {
-        if (Array.isArray(data[col])) {
-          data[col].forEach((item) => {
-            if (item.id) {
-              const key = `j bos_${col}_${item.id}`;
-              storage.setItem(key, JSON.stringify(item));
-            }
-          });
-        }
-      });
-
-      setMeta({ lastAutoBackup: new Date().toISOString() });
-
-      resolve({
-        ok: true,
-        fecha: parsed.fecha || "desconocida",
-        items: cols.reduce((sum, col) => sum + (data[col]?.length || 0), 0)
-      });
-    } catch (err) {
-      resolve({
-        ok: false,
-        error: err.message
-      });
-    }
-  });
+    const result = restaurarDesdeTexto(raw);
+    if (result.ok) setMeta({ lastAutoBackup: new Date().toISOString() });
+    return result;
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 }
 
-/**
- * Verifica si se debe hacer un auto backup
- */
 export function debeAutoBackup() {
   return shouldAutoBackup();
 }

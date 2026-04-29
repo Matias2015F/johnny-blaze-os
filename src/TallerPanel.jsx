@@ -3,7 +3,7 @@ import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { Wrench, Clock, History, Settings, DollarSign } from "lucide-react";
 
-import { LS, useCollection, generateId, migrateFromLocalStorage, clearFirestoreData, useSyncStatus } from "./lib/storage.js";
+import { LS, useCollection, generateId, migrateFromLocalStorage, migrateRenamedCollections, clearFirestoreData, useSyncStatus } from "./lib/storage.js";
 import { autoCloudBackup } from "./lib/cloudBackup.js";
 import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
 
@@ -55,9 +55,10 @@ export default function TallerPanel() {
   const [serviceToEdit, setServiceToEdit] = useState(null);
   const [finalPdfData, setFinalPdfData] = useState({ garantia: "" });
 
-  const clients = useCollection("clientes");
-  const bikes   = useCollection("motos");
-  const orders  = useCollection("ordenes");
+  const clients       = useCollection("clientes");
+  const bikes         = useCollection("motos");
+  const orders        = useCollection("trabajos");
+  const titularidades = useCollection("titularidades");
   useCollection("config");
 
   const syncStatus = useSyncStatus();
@@ -74,6 +75,9 @@ export default function TallerPanel() {
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
+    migrateRenamedCollections(uid)
+      .then((n) => { if (n > 0) showToast(`Estructura actualizada (${n} registros migrados) ✓`); })
+      .catch(console.error);
     migrateFromLocalStorage(uid)
       .then((n) => { if (n > 0) showToast(`Datos sincronizados (${n} registros) ✓`); })
       .catch(console.error);
@@ -89,7 +93,15 @@ export default function TallerPanel() {
     const ec = clients.find(
       (c) => c.nombre?.trim().toLowerCase() === payload.nombre?.trim().toLowerCase() && c.tel === payload.tel
     );
-    const clientId = ec ? ec.id : LS.addDoc("clientes", { nombre: payload.nombre, tel: payload.tel }).id;
+    const clientId = ec ? ec.id : LS.addDoc("clientes", {
+      nombre: payload.nombre,
+      tel: payload.tel,
+      telefono: payload.tel,
+      whatsapp: payload.tel,
+      etiquetas: [],
+      activo: true,
+      createdAt: Date.now(),
+    }).id;
 
     // Moto
     const eb = bikes.find((b) => b.patente === payload.patente.toUpperCase());
@@ -98,6 +110,7 @@ export default function TallerPanel() {
       bikeId = eb.id;
       LS.updateDoc("motos", bikeId, {
         km: kmActual,
+        kilometrajeActual: kmActual,
         clienteId: clientId,
         ultimaVisita: hoyEstable(),
         proximoService: kmActual + (config.offsetServiceKm || 2500),
@@ -105,22 +118,50 @@ export default function TallerPanel() {
     } else {
       bikeId = LS.addDoc("motos", {
         patente: payload.patente.toUpperCase(),
+        patenteNormalizada: payload.patente.toUpperCase(),
         marca: payload.marca,
         modelo: payload.modelo,
         cilindrada: Number(payload.cilindrada),
+        anio: null,
+        color: null,
+        estado: "activa",
         km: kmActual,
+        kilometrajeActual: kmActual,
         clienteId: clientId,
         ultimaVisita: hoyEstable(),
         proximoService: kmActual + (config.offsetServiceKm || 2500),
+        createdAt: Date.now(),
       }).id;
     }
 
-    const orden = LS.addDoc("ordenes", {
+    // Titularidad: relación histórica cliente ↔ moto
+    const titActual = titularidades.find(t => t.motoId === bikeId && t.titularActual === true);
+    if (!titActual || titActual.clienteId !== clientId) {
+      if (titActual) {
+        LS.updateDoc("titularidades", titActual.id, { titularActual: false, fechaHasta: hoyEstable() });
+      }
+      LS.addDoc("titularidades", {
+        clienteId, motoId: bikeId,
+        fechaDesde: hoyEstable(),
+        fechaHasta: null,
+        titularActual: true,
+        createdAt: Date.now(),
+      });
+    }
+
+    const numeroTrabajo = `OT-${String(orders.length + 1).padStart(6, "0")}`;
+    const orden = LS.addDoc("trabajos", {
+      numeroTrabajo,
       clientId, bikeId,
       estado: "diagnostico",
+      prioridad: "normal",
       fechaIngreso: hoyEstable(),
+      fechaEntrega: null,
+      motivoIngreso: payload.falla,
       diagnostico: payload.falla,
       km: kmActual,
+      kmIngreso: kmActual,
+      kmEntrega: null,
       total: 0,
       pagos: [], tareas: [], repuestos: [], insumos: [], fletes: [],
       margen: 0, costoInterno: 0,
@@ -130,6 +171,7 @@ export default function TallerPanel() {
       cronometroActivo: false,
       inicioCronometro: null,
       maxAutorizado: 0,
+      createdAt: Date.now(),
     });
 
     setSelectedOrderId(orden.id);
@@ -146,19 +188,22 @@ export default function TallerPanel() {
   // ── Demo / Reset ───────────────────────────────────────────────────────────
   const loadDemoData = () => {
     const hoy = hoyEstable();
-    const c1 = LS.addDoc("clientes", { nombre: "Juan Pérez", tel: "3434111222" });
-    const b1 = LS.addDoc("motos", { patente: "A123ABC", marca: "Honda", modelo: "Tornado 250", cilindrada: 250, km: 12500, clienteId: c1.id, ultimaVisita: hoy, proximoService: 15000 });
-    LS.addDoc("ordenes", {
-      clientId: c1.id, bikeId: b1.id, estado: "reparacion",
-      fechaIngreso: hoy, total: 65000,
+    const c1 = LS.addDoc("clientes", { nombre: "Juan Pérez", tel: "3434111222", telefono: "3434111222", whatsapp: "3434111222", etiquetas: [], activo: true, createdAt: Date.now() });
+    const b1 = LS.addDoc("motos", { patente: "A123ABC", patenteNormalizada: "A123ABC", marca: "Honda", modelo: "Tornado 250", cilindrada: 250, km: 12500, kilometrajeActual: 12500, estado: "activa", clienteId: c1.id, ultimaVisita: hoy, proximoService: 15000, createdAt: Date.now() });
+    LS.addDoc("titularidades", { clienteId: c1.id, motoId: b1.id, fechaDesde: hoy, fechaHasta: null, titularActual: true, createdAt: Date.now() });
+    LS.addDoc("trabajos", {
+      numeroTrabajo: "OT-000001",
+      clientId: c1.id, bikeId: b1.id, estado: "reparacion", prioridad: "normal",
+      fechaIngreso: hoy, fechaEntrega: null, total: 65000,
       pagos: [{ id: generateId(), fecha: hoy, monto: 20000, metodo: "efectivo", hora: "14:30" }],
       tareas: [{ nombre: "Regulación de válvulas", monto: 25000, horasBase: 2 }],
       repuestos: [{ nombre: "Junta de tapa", monto: 15000, cantidad: 1 }, { nombre: "Aceite Motul 5100", monto: 25000, cantidad: 1 }],
       insumos: [{ nombre: "Limpia carburador", monto: 3500 }],
-      fletes: [], km: 12500,
+      fletes: [], km: 12500, kmIngreso: 12500, kmEntrega: null,
+      motivoIngreso: "Le cuesta arrancar en frío y regula mal.",
       diagnostico: "Le cuesta arrancar en frío y regula mal.",
       observacionesProxima: "Revisar transmisión en 2000km.",
-      pdfEntregado: false,
+      pdfEntregado: false, createdAt: Date.now(),
     });
     showToast("Demo cargado ✓");
   };

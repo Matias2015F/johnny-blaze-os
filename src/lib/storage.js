@@ -155,31 +155,65 @@ export function useSyncStatus() {
   return status;
 }
 
-// ── Migraciones ───────────────────────────────────────────────────────────────
-export const DATA_COLS = ["ordenes", "clientes", "motos", "caja", "config", "serviciosCatalogo"];
+// ── Colecciones y migraciones ─────────────────────────────────────────────────
+export const DATA_COLS = ["trabajos", "clientes", "motos", "caja", "config", "catalogoTareas", "titularidades", "precioHistorial"];
+
 const LS_PREFIX     = "jbos_johnny-blaze-os_";
 const MIGRATION_KEY = "jbos_fs_migrated_v1";
+const RENAME_KEY    = "jbos_collections_renamed_v1";
+
+// Mapa clave localStorage → colección Firestore (para migración desde LS)
+const LS_LEGACY_MAP = [
+  ["ordenes",           "trabajos"],
+  ["clientes",          "clientes"],
+  ["motos",             "motos"],
+  ["caja",              "caja"],
+  ["config",            "config"],
+  ["serviciosCatalogo", "catalogoTareas"],
+];
 
 export async function migrateFromLocalStorage(uid) {
   if (localStorage.getItem(MIGRATION_KEY)) return 0;
   let count = 0;
-  for (const col of DATA_COLS) {
-    const raw = localStorage.getItem(LS_PREFIX + col);
+  for (const [lsKey, fsCol] of LS_LEGACY_MAP) {
+    const raw = localStorage.getItem(LS_PREFIX + lsKey);
     if (!raw) continue;
     let items;
     try { items = JSON.parse(raw); } catch { continue; }
     if (!Array.isArray(items) || !items.length) continue;
-    const snap = await getDocs(collection(db, "users", uid, col));
+    const snap = await getDocs(collection(db, "users", uid, fsCol));
     if (!snap.empty) continue;
     const batch = writeBatch(db);
     for (const item of items) {
       if (!item.id) continue;
-      batch.set(doc(db, "users", uid, col, item.id), item);
+      batch.set(doc(db, "users", uid, fsCol, item.id), item);
     }
     await batch.commit();
     count += items.length;
   }
   localStorage.setItem(MIGRATION_KEY, "1");
+  return count;
+}
+
+// Renombra colecciones en Firestore: ordenes→trabajos, serviciosCatalogo→catalogoTareas
+export async function migrateRenamedCollections(uid) {
+  if (localStorage.getItem(RENAME_KEY)) return 0;
+  const renames = [
+    ["ordenes",           "trabajos"],
+    ["serviciosCatalogo", "catalogoTareas"],
+  ];
+  let count = 0;
+  for (const [from, to] of renames) {
+    const src = await getDocs(collection(db, "users", uid, from));
+    if (src.empty) continue;
+    const dst = await getDocs(collection(db, "users", uid, to));
+    if (!dst.empty) continue;
+    const batch = writeBatch(db);
+    src.docs.forEach(d => batch.set(doc(db, "users", uid, to, d.id), d.data()));
+    await batch.commit();
+    count += src.docs.length;
+  }
+  localStorage.setItem(RENAME_KEY, "1");
   return count;
 }
 

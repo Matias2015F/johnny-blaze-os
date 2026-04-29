@@ -10,7 +10,7 @@ import { createCloudBackup, listCloudBackups, restoreCloudBackup } from "../lib/
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { formatMoney } from "../utils/format.js";
-import { exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
+import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
 
 const APP_VERSION = "1.0.0";
@@ -95,7 +95,7 @@ function PantallaResumen({ orders, caja }) {
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
             <p className="text-3xl font-black text-blue-500">{ordenesMes.length}</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase mt-1">Órdenes</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase mt-1">Trabajos</p>
           </div>
           <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
             <p className="text-xl font-black text-slate-800">{formatMoney(totalMes)}</p>
@@ -287,12 +287,12 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
       <Card>
         <SectionTitle>Exportar Datos</SectionTitle>
         <button
-          onClick={() => { exportarExcel(orders, bikes, clients, cfg); showToast("Exportando Excel..."); }}
+          onClick={() => { exportarOrdenes(orders, bikes, clients); showToast("Exportando CSV..."); }}
           className="w-full flex items-center justify-between bg-green-600 text-white rounded-2xl p-5 active:scale-[0.98] transition-all shadow-md mb-4"
         >
           <div className="text-left">
-            <p className="text-sm font-black uppercase">Exportar a Excel</p>
-            <p className="text-[10px] font-bold text-green-100 mt-0.5">2 hojas · Trabajos + Resumen</p>
+            <p className="text-sm font-black uppercase">Exportar trabajos (CSV)</p>
+            <p className="text-[10px] font-bold text-green-100 mt-0.5">Todos los trabajos con detalle</p>
           </div>
           <FileSpreadsheet size={22} />
         </button>

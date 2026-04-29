@@ -1,6 +1,8 @@
 import { LS } from "./storage.js";
 
-const COLS = ["clientes", "motos", "ordenes", "config", "caja", "serviciosCatalogo"];
+const COLS = ["trabajos", "clientes", "motos", "caja", "config", "catalogoTareas"];
+// Mapa para leer backups antiguos (ordenes→trabajos, etc.)
+const LEGACY_MAP = { ordenes: "trabajos", serviciosCatalogo: "catalogoTareas" };
 const META_KEY = "jbos_backup_meta";
 
 export function getMeta() {
@@ -34,11 +36,16 @@ export function importBackup(file) {
       try {
         const parsed = JSON.parse(e.target.result);
         const data = parsed.data || parsed;
+        // Importar con nombres actuales
         COLS.forEach((col) => {
           if (Array.isArray(data[col])) {
-            data[col].forEach((item) => {
-              if (item.id) LS.setDoc(col, item.id, item);
-            });
+            data[col].forEach((item) => { if (item.id) LS.setDoc(col, item.id, item); });
+          }
+        });
+        // Compatibilidad con backups viejos (ordenes, serviciosCatalogo)
+        Object.entries(LEGACY_MAP).forEach(([oldCol, newCol]) => {
+          if (Array.isArray(data[oldCol]) && !data[newCol]) {
+            data[oldCol].forEach((item) => { if (item.id) LS.setDoc(newCol, item.id, item); });
           }
         });
         resolve(parsed.fecha || "desconocida");

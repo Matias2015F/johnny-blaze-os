@@ -1,0 +1,16 @@
+export const common = {
+  volver:          "Volver",
+  cancelar:        "Cancelar",
+  guardar:         "Guardar cambios",
+  confirmar:       "Confirmar",
+  guardado:        "Guardado ✓",
+  eliminado:       "Eliminado ✓",
+  actualizado:     "Actualizado ✓",
+  agregado:        "Agregado ✓",
+  cargando:        "Cargando...",
+  procesando:      "Procesando...",
+  sincronizando:   "Sincronizando...",
+  verificandoAcceso: "Verificando tu acceso...",
+  sinDatos:        "Sin datos",
+  errorGenerico:   "Algo salió mal. Intentá de nuevo.",
+};

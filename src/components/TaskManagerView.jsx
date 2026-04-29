@@ -9,7 +9,7 @@ import { formatMoney } from "../utils/format.js";
 const PRESETS = [10, 20, 30, 50, 80];
 
 export default function TaskManagerView({ order, setView, showToast, serviceToEdit, setServiceToEdit }) {
-  const catalogData = useCollection("serviciosCatalogo");
+  const catalogData = useCollection("catalogoTareas");
   const bikes       = useCollection("motos");
   const config      = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const servicios   = [...SERVICIOS_DEFAULT, ...catalogData];
@@ -152,7 +152,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     // Catálogo: solo datos del servicio, no repuestos específicos de la orden
     const existente = catalogData.find(s => s.nombre.trim().toLowerCase() === tareaId);
     const idCat = existente?.id || generateId();
-    LS.setDoc("serviciosCatalogo", idCat, {
+    LS.setDoc("catalogoTareas", idCat, {
       id: idCat,
       nombre: nombreTarea,
       horasBase: editForm.horasBase,
