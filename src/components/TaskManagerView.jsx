@@ -18,8 +18,8 @@ const TIPOS_RAPIDOS = [
   { id: "otro",          label: "Otro" },
 ];
 
-const PLAZOS_KM  = [1000, 2500, 3000, 5000];
-const PLAZOS_DIAS= [30, 60, 90];
+const PLAZOS_KM  = [1000, 2500];
+const PLAZOS_DIAS= [30, 60];
 const PLAZOS_TEST= [
   { label: "Alerta inmediata", unidad: "km",      valor: 0,   test: true },
   { label: "+10 km",           unidad: "km",      valor: 10,  test: true },
@@ -51,6 +51,8 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   const [proximoUnidad, setProximoUnidad] = useState("km");
   const [proximoValor, setProximoValor] = useState(null);
   const [proximoDesc, setProximoDesc] = useState("");
+  const [proximoCustom, setProximoCustom] = useState(false);
+  const [proximoCustomInput, setProximoCustomInput] = useState("");
   const [deteccion, setDeteccion] = useState(null); // {tipo,descripcion,unidad,valorObjetivo,textoOrigen}
 
   // Cargar datos de tarea existente al editar — FIX: incluye repuestos e insumos guardados
@@ -535,12 +537,12 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
         </div>
 
         {/* Próximo control */}
-        <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-4">
-          <div className="flex items-center gap-2">
-            <Bell size={16} className="text-yellow-500" />
-            <p className="text-[10px] font-black uppercase text-slate-700 tracking-widest">Próximo control</p>
-          </div>
-          <p className="text-[10px] text-slate-400 font-bold -mt-2">Dejá avisado si esta moto tiene que volver por revisión o service</p>
+          <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-5">
+            <div className="flex items-center gap-2">
+              <Bell size={16} className="text-yellow-500" />
+              <p className="text-[10px] font-black uppercase text-slate-700 tracking-widest">Próximo control</p>
+            </div>
+            <p className="text-[10px] text-slate-400 font-bold -mt-2">Dejá avisado si esta moto tiene que volver por revisión o service</p>
 
           {/* Detección automática */}
           {deteccion && !proximoTipo && (
@@ -570,11 +572,20 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             </div>
           )}
 
-          {/* Tipo */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className="space-y-2">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paso 1: qué hay que controlar</p>
+            <div className="grid grid-cols-3 gap-2">
             {TIPOS_RAPIDOS.map(t => (
               <button key={String(t.id)}
-                onClick={() => { setProximoTipo(t.id); if (!t.id) { setProximoValor(null); setProximoUnidad("km"); } }}
+                onClick={() => {
+                  setProximoTipo(t.id);
+                  if (!t.id) {
+                    setProximoValor(null);
+                    setProximoUnidad("km");
+                    setProximoCustom(false);
+                    setProximoCustomInput("");
+                  }
+                }}
                 className={`py-3 px-2 rounded-2xl text-[10px] font-black uppercase text-center transition-all active:scale-95 leading-tight ${
                   proximoTipo === t.id
                     ? (t.id ? "bg-yellow-500 text-white" : "bg-slate-200 text-slate-700")
@@ -583,49 +594,131 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 {t.label}
               </button>
             ))}
+            </div>
           </div>
 
           {/* Campo libre para "Otro" */}
           {proximoTipo === "otro" && (
-            <input
-              value={proximoDesc}
-              onChange={e => setProximoDesc(e.target.value)}
-              placeholder="¿Qué hay que controlar?"
-              className="w-full border-2 border-slate-100 rounded-2xl p-3 text-sm font-bold outline-none focus:border-yellow-500"
-            />
+            <div className="space-y-2">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paso 2: escribí el control</p>
+              <input
+                value={proximoDesc}
+                onChange={e => setProximoDesc(e.target.value)}
+                placeholder="¿Qué hay que controlar?"
+                className="w-full border-2 border-slate-100 rounded-2xl p-3 text-sm font-bold outline-none focus:border-yellow-500"
+              />
+            </div>
           )}
 
           {/* Plazo — solo si eligió un tipo */}
           {proximoTipo && (
-            <div className="space-y-2">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">¿Cuándo avisar?</p>
-              <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-3">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                {proximoTipo === "otro" ? "Paso 3: cuándo avisar" : "Paso 2: cuándo avisar"}
+              </p>
+
+              <div className="space-y-2">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Por kilómetros</p>
+                <div className="grid grid-cols-3 gap-2">
                 {PLAZOS_KM.map(v => (
                   <button key={v}
-                    onClick={() => { setProximoUnidad("km"); setProximoValor(v); }}
+                    onClick={() => {
+                      setProximoUnidad("km");
+                      setProximoValor(v);
+                      setProximoCustom(false);
+                      setProximoCustomInput("");
+                    }}
                     className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
                       proximoUnidad === "km" && proximoValor === v ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
                     }`}>
                     {v.toLocaleString("es-AR")} km
                   </button>
                 ))}
+                <button
+                  onClick={() => {
+                    setProximoUnidad("km");
+                    setProximoValor(null);
+                    setProximoCustom(true);
+                    setProximoCustomInput("");
+                  }}
+                  className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
+                    proximoCustom && proximoUnidad === "km"
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-50 border border-slate-100 text-slate-600"
+                  }`}
+                >
+                  Personalizado
+                </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Por días</p>
+                <div className="grid grid-cols-3 gap-2">
                 {PLAZOS_DIAS.map(v => (
                   <button key={v}
-                    onClick={() => { setProximoUnidad("dias"); setProximoValor(v); }}
+                    onClick={() => {
+                      setProximoUnidad("dias");
+                      setProximoValor(v);
+                      setProximoCustom(false);
+                      setProximoCustomInput("");
+                    }}
                     className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
                       proximoUnidad === "dias" && proximoValor === v ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
                     }`}>
                     {v} días
                   </button>
                 ))}
+                <button
+                  onClick={() => {
+                    setProximoUnidad("dias");
+                    setProximoValor(null);
+                    setProximoCustom(true);
+                    setProximoCustomInput("");
+                  }}
+                  className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
+                    proximoCustom && proximoUnidad === "dias"
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-50 border border-slate-100 text-slate-600"
+                  }`}
+                >
+                  Personalizado
+                </button>
+                </div>
               </div>
+
+              {proximoCustom && (
+                <div className="grid grid-cols-[1fr_auto] gap-2">
+                  <input
+                    value={proximoCustomInput}
+                    onChange={e => setProximoCustomInput(e.target.value)}
+                    placeholder={proximoUnidad === "km" ? "Ej: 1800" : "Ej: 45"}
+                    className="w-full border-2 border-slate-100 rounded-2xl p-3 text-sm font-bold outline-none focus:border-blue-500"
+                  />
+                  <button
+                    onClick={() => {
+                      const valor = Number(String(proximoCustomInput).replace(/\D/g, ""));
+                      if (!valor) return;
+                      setProximoValor(valor);
+                    }}
+                    className="px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase active:scale-95"
+                  >
+                    Usar
+                  </button>
+                </div>
+              )}
 
               {proximoValor && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-3 flex items-center justify-between">
                   <p className="text-[10px] font-black text-yellow-800">
-                    {TIPOS_SERVICIO[proximoTipo] || proximoDesc || "Control"} en {proximoValor.toLocaleString("es-AR")} {proximoUnidad === "km" ? "km" : "días"} ✓
+                    {proximoTipo === "otro" ? "Paso 4" : "Paso 3"}: {TIPOS_SERVICIO[proximoTipo] || proximoDesc || "Control"} en {proximoValor.toLocaleString("es-AR")} {proximoUnidad === "km" ? "km" : "días"} ✓
                   </p>
-                  <button onClick={() => { setProximoTipo(null); setProximoValor(null); }}
+                  <button onClick={() => {
+                    setProximoTipo(null);
+                    setProximoValor(null);
+                    setProximoCustom(false);
+                    setProximoCustomInput("");
+                  }}
                     className="text-yellow-600 active:scale-90 p-1">
                     <X size={14} />
                   </button>
