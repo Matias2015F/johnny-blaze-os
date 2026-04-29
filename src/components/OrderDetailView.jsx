@@ -113,8 +113,6 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const presBase = res.total > 0 ? res.total : Math.round(promedioHoras * valorHora);
   const presMaxDefault = Math.round(presBase * RANGO_FACTOR[nivelRiesgo]);
   const presMax = Number(maxInput) > 0 ? Number(maxInput) : presMaxDefault;
-  const rentColor = res.rentabilidad >= 30 ? "text-green-700 bg-green-100" : res.rentabilidad >= 15 ? "text-yellow-700 bg-yellow-100" : "text-red-700 bg-red-100";
-
   const estadoPaso = {
     diagnostico: "Siguiente paso: armar presupuesto",
     presupuesto: "Siguiente paso: esperar aprobación",
@@ -233,16 +231,13 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
         <div className="overflow-hidden rounded-[2rem] border-2 border-slate-200 bg-white shadow-sm">
           <div className={`p-5 ${res.margen >= 0 ? "bg-green-50" : "bg-red-50"}`}>
-            <div className="flex items-start justify-between gap-3">
+            <div>
               <div>
                 <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-slate-500">Resultado del trabajo</p>
                 <p className={`text-3xl font-black tracking-tighter ${res.margen >= 0 ? "text-green-600" : "text-red-600"}`}>
                   {res.margen >= 0 ? "Ganás " : "Perdés "}{formatMoney(Math.abs(res.margen))}
                 </p>
               </div>
-              <span className={`rounded-full px-3 py-1 text-[11px] font-black ${rentColor}`}>
-                Margen {Math.round(res.rentabilidad)}%
-              </span>
             </div>
           </div>
 
@@ -264,16 +259,16 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
             {res.desglose.moCliente > 0 && (
               <div className="rounded-2xl bg-slate-50 p-4">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Tu ganancia sale de la mano de obra</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Tu ganancia real sale de la mano de obra</p>
                 <div className="mt-2 space-y-1 text-[12px] font-black leading-relaxed">
                   <p className="text-slate-700">
                     Cobrás <span className="text-slate-950">{formatMoney(res.desglose.moCliente)}</span> de mano de obra.
                   </p>
                   <p className="text-slate-500">
-                    Tu costo interno estimado es <span className="text-slate-700">{formatMoney(res.desglose.moCosto)}</span>.
+                    Entre repuestos, insumos y otros costos cargados tenés <span className="text-slate-700">{formatMoney(res.costoInterno)}</span> de costo total.
                   </p>
-                  <p className={res.desglose.margenMO >= 0 ? "text-green-600" : "text-red-600"}>
-                    Te quedan {formatMoney(Math.abs(res.desglose.margenMO))} de ganancia en mano de obra.
+                  <p className={res.margen >= 0 ? "text-green-600" : "text-red-600"}>
+                    Después de descontar esos costos, te quedan {formatMoney(Math.abs(res.margen))} netos para el taller.
                   </p>
                 </div>
               </div>
