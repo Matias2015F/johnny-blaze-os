@@ -160,7 +160,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
         {isLocked && (
           <div className="bg-blue-50 border-2 border-blue-200 p-4 rounded-3xl flex items-center gap-3">
             <div className="bg-blue-500 p-2 rounded-xl text-white"><ShieldCheck size={20} /></div>
-            <p className="text-[10px] font-black text-blue-700 uppercase leading-tight">Orden cerrada — ya se generó el comprobante. No se pueden editar tareas ni montos.</p>
+            <p className="text-[10px] font-black text-blue-700 uppercase leading-tight">Orden cerrada — ya se generó el comprobante. No se pueden editar trabajos ni montos.</p>
           </div>
         )}
 
@@ -468,7 +468,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             <h3 className="text-xs font-black uppercase text-slate-400 tracking-tighter">Trabajos y Materiales</h3>
             {!isLocked && (
               <button onClick={() => setView("logistica")} className="text-[10px] font-black uppercase text-blue-600 flex items-center gap-1 active:scale-90">
-                <Truck size={14} /> + Flete / Traslado
+                <Truck size={14} /> + Flete / Cadetería
               </button>
             )}
           </div>

@@ -191,7 +191,7 @@ export default function PreciosView({ setView }) {
       ) : (
         <div className="bg-gray-800/30 border-2 border-dashed border-gray-800 rounded-3xl p-16 text-center">
           <p className="text-gray-700 text-[10px] font-black uppercase italic tracking-widest leading-relaxed">
-            {busqueda ? "Sin registros para esta tarea" : "Consultá el historial técnico"}
+            {busqueda ? "Sin registros para este trabajo" : "Consultá el historial técnico"}
           </p>
         </div>
       )}
@@ -201,11 +201,11 @@ export default function PreciosView({ setView }) {
         <div className="fixed inset-0 bg-black/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <form onSubmit={handleGuardar} className="bg-gray-800 w-full max-w-sm rounded-3xl p-6 border border-gray-700 shadow-2xl space-y-5">
             <div className="flex justify-between items-center mb-2">
-              <h3 className="text-xl font-black italic uppercase tracking-tighter">Cargar Tarea</h3>
+              <h3 className="text-xl font-black italic uppercase tracking-tighter">Cargar Trabajo</h3>
               <button type="button" onClick={() => setMostrandoForm(false)} className="bg-gray-700 text-white w-8 h-8 rounded-full flex items-center justify-center">×</button>
             </div>
             <div className="space-y-4">
-              <input type="text" placeholder="TAREA" required
+              <input type="text" placeholder="TRABAJO" required
                 className="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 font-black uppercase outline-none focus:border-blue-500"
                 value={form.tarea} onChange={e => setForm({ ...form, tarea: e.target.value })}
               />

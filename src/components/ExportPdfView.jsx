@@ -38,7 +38,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
             <p className="text-xs">{client?.tel}</p>
           </div>
           <div>
-            <p className="text-[9px] font-black uppercase text-slate-400">Vehículo</p>
+            <p className="text-[9px] font-black uppercase text-slate-400">Moto</p>
             <p className="text-sm font-black uppercase">{bike?.marca} {bike?.modelo}</p>
             <p className="text-xs font-black">{bike?.patente} | {order.km || bike?.km} KM</p>
           </div>
