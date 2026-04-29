@@ -1,11 +1,13 @@
 ﻿import React, { useState, useEffect, lazy, Suspense } from "react";
 import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
-import { Wrench, Clock, History, Settings, DollarSign } from "lucide-react";
+import { Wrench, Clock, History, Settings, DollarSign, HelpCircle, RefreshCw } from "lucide-react";
 
 import { LS, useCollection, generateId, migrateFromLocalStorage, migrateRenamedCollections, clearFirestoreData, useSyncStatus } from "./lib/storage.js";
 import { autoCloudBackup } from "./lib/cloudBackup.js";
 import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
+import { APP_BUILD } from "./generated/appVersion.js";
+import { fetchRemoteVersion, isNewerBuild } from "./lib/appUpdate.js";
 
 // HomeView se carga de forma eager — es la pantalla inicial
 import HomeView from "./views/HomeView.jsx";
@@ -43,6 +45,48 @@ class ChunkErrorBoundary extends React.Component {
 }
 
 const NAV_VIEWS = ["home", "ordenes", "historial", "pagosView", "config"];
+const HELP_CONTENT = {
+  home: {
+    titulo: "Ayuda de Inicio",
+    items: [
+      "Usá Nuevo ingreso para cargar una moto al taller.",
+      "Trabajos activos muestra lo que hoy está en movimiento.",
+      "Próximos service te avisa cuándo conviene contactar al cliente.",
+    ],
+  },
+  ordenes: {
+    titulo: "Ayuda de Trabajos",
+    items: [
+      "Tocá una tarjeta para abrir el detalle completo del trabajo.",
+      "El estado te dice en qué parte del flujo está cada moto.",
+      "Si necesitás cobrar o emitir comprobante, entrá al detalle.",
+    ],
+  },
+  historial: {
+    titulo: "Ayuda de Historial",
+    items: [
+      "Buscá por patente, cliente, número de trabajo o comprobante.",
+      "Entrando a una moto ves trabajos anteriores, repuestos y gastos.",
+      "Te sirve para no repetir cargas y tomar referencias reales.",
+    ],
+  },
+  pagosView: {
+    titulo: "Ayuda de Pagos",
+    items: [
+      "Primero revisá el saldo pendiente.",
+      "Entrá a un trabajo para registrar pago total o parcial.",
+      "Cuando el saldo llega a cero, ya podés emitir comprobante.",
+    ],
+  },
+  config: {
+    titulo: "Ayuda de Configuración",
+    items: [
+      "Acá ajustás datos del taller, alertas y copias de seguridad.",
+      "Modo prueba sirve para validar recordatorios rápido.",
+      "Alertas del navegador deben quedar permitidas para avisos reales.",
+    ],
+  },
+};
 
 export default function TallerPanel() {
   const [view, setView] = useState("home");
@@ -55,6 +99,8 @@ export default function TallerPanel() {
   const [prefillData, setPrefillData] = useState(null);
   const [serviceToEdit, setServiceToEdit] = useState(null);
   const [finalPdfData, setFinalPdfData] = useState({ garantia: "" });
+  const [showHelp, setShowHelp] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState(null);
 
   const clients       = useCollection("clientes");
   const bikes         = useCollection("motos");
@@ -70,6 +116,35 @@ export default function TallerPanel() {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => { if (u) setView("home"); });
     return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+
+    const checkForUpdates = async () => {
+      try {
+        const remote = await fetchRemoteVersion();
+        if (!alive) return;
+        if (isNewerBuild(APP_BUILD, remote)) {
+          setUpdateInfo(remote);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    checkForUpdates();
+    const intervalId = setInterval(checkForUpdates, 5 * 60 * 1000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") checkForUpdates();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      alive = false;
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, []);
 
   // Migración localStorage → Firestore y backup automático diario
@@ -221,9 +296,24 @@ export default function TallerPanel() {
 
   // ── Datos derivados ────────────────────────────────────────────────────────
   const selectedOrder = orders.find((o) => o.id === selectedOrderId);
+  const helpInfo = HELP_CONTENT[view] || null;
   const stats = {
     activas: orders.filter((o) => o.estado !== "cerrado_emitido").length,
     hoy: orders.filter((o) => o.fechaIngreso === hoyEstable()).length,
+  };
+
+  const aplicarActualizacion = async () => {
+    try {
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => caches.delete(key)));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("update", String(Date.now()));
+    window.location.replace(url.toString());
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -256,6 +346,83 @@ export default function TallerPanel() {
       {view === "perfilMoto" && <BikeProfileView bikeId={selectedBikeId} orders={orders} bikes={bikes} clients={clients} setView={setView} handleStartNewService={handleStartNewService} />}
       </Suspense>
       </ChunkErrorBoundary>
+
+      {NAV_VIEWS.includes(view) && helpInfo && (
+        <button
+          onClick={() => setShowHelp(true)}
+          className="fixed right-4 top-4 z-[120] flex items-center gap-2 rounded-full border border-blue-500/30 bg-slate-950/95 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-blue-400 shadow-xl active:scale-95"
+        >
+          <HelpCircle size={14} /> Ayuda
+        </button>
+      )}
+
+      {updateInfo && (
+        <div className="fixed inset-0 z-[190] flex items-center justify-center bg-black/70 p-6">
+          <div className="w-full max-w-sm rounded-[2rem] border border-blue-500/20 bg-[#151515] p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-blue-600 p-3 text-white">
+                <RefreshCw size={18} />
+              </div>
+              <div>
+                <p className="text-sm font-black uppercase tracking-widest text-white">Actualización disponible</p>
+                <p className="text-[10px] font-bold text-slate-400">Versión nueva detectada en Vercel</p>
+              </div>
+            </div>
+            <div className="rounded-2xl bg-slate-900 p-4 space-y-1">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Versión actual</p>
+              <p className="text-sm font-black text-white">{APP_BUILD.version}</p>
+              <p className="mt-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Último deploy</p>
+              <p className="text-sm font-black text-blue-400">{updateInfo.version}</p>
+            </div>
+            <p className="text-[10px] font-bold leading-relaxed text-slate-400">
+              Si aceptás, la app recarga la última versión publicada para que la instalación quede actualizada como una app profesional.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setUpdateInfo(null)}
+                className="rounded-2xl bg-slate-800 py-4 text-[10px] font-black uppercase tracking-widest text-slate-300 active:scale-95"
+              >
+                Después
+              </button>
+              <button
+                onClick={aplicarActualizacion}
+                className="rounded-2xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
+              >
+                Actualizar ahora
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showHelp && helpInfo && (
+        <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/70 p-6">
+          <div className="w-full max-w-sm rounded-[2rem] border border-slate-700 bg-[#151515] p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-blue-600 p-3 text-white">
+                <HelpCircle size={18} />
+              </div>
+              <div>
+                <p className="text-sm font-black uppercase tracking-widest text-white">{helpInfo.titulo}</p>
+                <p className="text-[10px] font-bold text-slate-400">Guía rápida y simple</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {helpInfo.items.map((item) => (
+                <div key={item} className="rounded-2xl bg-slate-900 p-4 text-[11px] font-bold leading-relaxed text-slate-200">
+                  {item}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowHelp(false)}
+              className="w-full rounded-2xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal de confirmación — reemplaza window.confirm */}
       {confirm && (
