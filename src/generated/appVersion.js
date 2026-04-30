@@ -1,5 +1,5 @@
 export const APP_BUILD = {
-  "version": "1.0.0-69528c7",
-  "sha": "69528c7",
-  "buildTime": "2026-04-30T00:00:07.594Z"
+  "version": "1.0.0-e822e8d",
+  "sha": "e822e8d",
+  "buildTime": "2026-04-30T00:07:03.473Z"
 };

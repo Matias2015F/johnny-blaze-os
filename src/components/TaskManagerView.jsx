@@ -859,76 +859,13 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           )}
         </div>
 
-        <div className="bg-slate-900 rounded-[2rem] overflow-hidden shadow-2xl">
-          <div className="p-6 text-center space-y-1">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Precio total al cliente</p>
-            <p className="text-5xl font-black text-white tracking-tighter leading-none">
-              {formatMoney(stats.totalCobrar)}
-            </p>
-            <div className="flex flex-wrap justify-center gap-x-3 gap-y-0.5 text-[10px] text-slate-500 font-bold mt-2">
-              {stats.moPrecio > 0  && <span>MO {formatMoney(stats.moPrecio)}</span>}
-              {stats.repPrecio > 0 && <><span className="text-slate-700">+</span><span>Rep {formatMoney(stats.repPrecio)}</span></>}
-              {stats.flePrecio > 0 && <><span className="text-slate-700">+</span><span>Fle {formatMoney(stats.flePrecio)}</span></>}
-              {stats.insPrecio > 0 && <><span className="text-slate-700">+</span><span>Ins {formatMoney(stats.insPrecio)}</span></>}
-            </div>
-          </div>
-
-          <div className="px-6 pb-4 space-y-3">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Margen de ganancia (solo mano de obra)</p>
-
-            <div className="grid grid-cols-3 gap-2">
-              {PRESETS.map(p => (
-                <button key={p}
-                  onClick={() => { setMargenPct(p); setCustomMode(false); }}
-                  className={`py-3 rounded-2xl text-sm font-black transition-all active:scale-95 ${
-                    !customMode && margenPct === p ? "bg-green-500 text-white" : "bg-slate-800 border border-slate-700 text-slate-400"
-                  }`}>
-                  {p}%
-                </button>
-              ))}
-              <button
-                onClick={() => setCustomMode(true)}
-                className={`py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
-                  customMode ? "bg-blue-600 text-white" : "bg-slate-800 border border-slate-700 text-slate-400"
-                }`}>
-                Otro %
-              </button>
-            </div>
-
-            {customMode && (
-              <div className="flex items-center gap-2 bg-slate-800 border border-blue-500 rounded-2xl px-4 py-3">
-                <input
-                  type="number" min="0" max="500" autoFocus
-                  value={margenPct}
-                  onChange={e => { const v = Number(e.target.value); setMargenPct(isNaN(v) ? 0 : Math.max(0, v)); }}
-                  className="flex-1 bg-transparent text-white font-black text-xl text-center outline-none"
-                />
-                <span className="text-slate-400 font-black">%</span>
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-slate-800 p-6 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="font-black text-slate-400">Costo total</span>
-              <span className="font-black text-slate-500">{formatMoney(stats.totalCosto)}</span>
-            </div>
-            <div className="flex justify-between text-sm border-t border-slate-800 pt-2">
-              <span className="font-black text-white">Mano de obra</span>
-              <div className="flex items-baseline gap-2">
-                <span className="font-black text-lg tracking-tighter text-green-400">
-                  {formatMoney(stats.moPrecio)}
-                </span>
-                <span className={`text-[10px] font-black ${stats.rentabilidad < 20 ? "text-red-400" : "text-slate-500"}`}>
-                  {Math.round(stats.rentabilidad)}%
-                </span>
-              </div>
-            </div>
-            <button onClick={aplicar}
-              className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all mt-2">
-              Guardar y volver
-            </button>
-          </div>
+        <div className="pb-4">
+          <button
+            onClick={aplicar}
+            className="w-full rounded-2xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl transition-all active:scale-95"
+          >
+            Guardar y volver
+          </button>
         </div>
 
       </div>
