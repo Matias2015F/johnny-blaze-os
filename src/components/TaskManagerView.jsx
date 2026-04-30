@@ -495,8 +495,11 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="ml-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">Horas</label>
-              <input type="number" step="0.5" min="0.5" value={editForm.horasBase}
-                onChange={e => setEditForm({ ...editForm, horasBase: Number(e.target.value) })}
+              <input type="text" inputMode="decimal" value={editForm.horasBase || ""}
+                onChange={e => {
+                  const cleaned = e.target.value.replace(",", ".").replace(/[^0-9.]/g, "");
+                  setEditForm({ ...editForm, horasBase: cleaned === "" ? 0 : Number(cleaned) });
+                }}
                 className="w-full rounded-xl border border-white/10 bg-black/20 p-3 text-center font-black text-white outline-none focus:border-blue-500" />
             </div>
             <div className="space-y-1">
@@ -545,11 +548,14 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 <div>
                   <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Cant.</p>
                   <input
-                    type="number"
-                    min="1"
+                    type="text"
+                    inputMode="numeric"
                     className="w-full rounded-xl border border-white/10 bg-slate-950/80 p-2 text-center text-xs font-black text-white outline-none"
                     value={item.cantidad || 1}
-                    onChange={e => updateListItem("repuestos", idx, "cantidad", Math.max(1, Number(e.target.value) || 1))}
+                    onChange={e => {
+                      const digits = e.target.value.replace(/\D/g, "");
+                      updateListItem("repuestos", idx, "cantidad", Math.max(1, Number(digits) || 1));
+                    }}
                   />
                 </div>
                 <div>
@@ -615,11 +621,14 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 <div>
                   <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Cant.</p>
                   <input
-                    type="number"
-                    min="1"
+                    type="text"
+                    inputMode="numeric"
                     className="w-full rounded-xl border border-white/10 bg-slate-950/80 p-2 text-center text-xs font-black text-white outline-none"
                     value={item.cantidad || 1}
-                    onChange={e => updateListItem("insumos", idx, "cantidad", Math.max(1, Number(e.target.value) || 1))}
+                    onChange={e => {
+                      const digits = e.target.value.replace(/\D/g, "");
+                      updateListItem("insumos", idx, "cantidad", Math.max(1, Number(digits) || 1));
+                    }}
                   />
                 </div>
                 <div>

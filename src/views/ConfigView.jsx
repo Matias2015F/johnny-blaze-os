@@ -10,7 +10,7 @@ import { createCloudBackup, listCloudBackups, restoreCloudBackup } from "../lib/
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { APP_BUILD } from "../generated/appVersion.js";
-import { applyRemoteUpdate, ensureNotificationPermission, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, sendTestNotification } from "../lib/appUpdate.js";
+import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, ensureNotificationPermission, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, promptInstallApp, sendTestNotification } from "../lib/appUpdate.js";
 import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS, guardarAdminSettings, leerAdminSettings } from "../services/saasService.js";
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
@@ -250,10 +250,10 @@ function PantallaAdmin({ showToast }) {
       <Card>
         <SectionTitle>Admin settings</SectionTitle>
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">duracionTrialDias</p><input type="number" value={Number(settings.duracionTrialDias || 14)} onChange={(e) => setSettings((prev) => ({ ...prev, duracionTrialDias: Number(e.target.value || 14) }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">graceDaysDefault</p><input type="number" value={Number(settings.graceDaysDefault || 3)} onChange={(e) => setSettings((prev) => ({ ...prev, graceDaysDefault: Number(e.target.value || 3) }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">precios.base</p><input type="number" value={Number(settings.precios?.base || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, precios: { ...(prev.precios || {}), base: Number(e.target.value || 0) } }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">precios.pro</p><input type="number" value={Number(settings.precios?.pro || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, precios: { ...(prev.precios || {}), pro: Number(e.target.value || 0) } }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">duracionTrialDias</p><input type="text" inputMode="numeric" value={String(settings.duracionTrialDias || 14)} onChange={(e) => setSettings((prev) => ({ ...prev, duracionTrialDias: Number(e.target.value.replace(/\D/g, "") || 14) }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">graceDaysDefault</p><input type="text" inputMode="numeric" value={String(settings.graceDaysDefault || 3)} onChange={(e) => setSettings((prev) => ({ ...prev, graceDaysDefault: Number(e.target.value.replace(/\D/g, "") || 3) }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">precios.base</p><input type="text" inputMode="numeric" value={String(settings.precios?.base || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, precios: { ...(prev.precios || {}), base: Number(e.target.value.replace(/\D/g, "") || 0) } }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">precios.pro</p><input type="text" inputMode="numeric" value={String(settings.precios?.pro || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, precios: { ...(prev.precios || {}), pro: Number(e.target.value.replace(/\D/g, "") || 0) } }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
         </div>
         <div className="mt-3 bg-slate-50 border border-slate-100 rounded-2xl p-4">
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">pricing</p>
@@ -762,12 +762,17 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
   const [remoteBuild, setRemoteBuild] = React.useState(null);
   const [checkingUpdate, setCheckingUpdate] = React.useState(false);
   const [updatingApp, setUpdatingApp] = React.useState(false);
+  const [installAvailable, setInstallAvailable] = React.useState(false);
   const displayMode = getDisplayModeInfo();
   const permissionLabel =
     typeof window !== "undefined" && "Notification" in window ? window.Notification.permission : "no soportado";
   const hasRemoteUpdate = isNewerBuild(APP_BUILD, remoteBuild);
 
   React.useEffect(() => {
+    const unbind = bindInstallPromptCapture();
+    const syncInstallState = () => setInstallAvailable(canPromptInstall());
+    syncInstallState();
+    window.addEventListener("jbos-install-available", syncInstallState);
     const checkRemoteBuild = async () => {
       try {
         const remote = await fetchRemoteVersion();
@@ -778,6 +783,10 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
     };
 
     checkRemoteBuild();
+    return () => {
+      unbind();
+      window.removeEventListener("jbos-install-available", syncInstallState);
+    };
   }, []);
 
   const handleMigrarRaiz = async () => {
@@ -875,6 +884,20 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
     }
   };
 
+  const instalarApp = async () => {
+    const result = await promptInstallApp();
+    if (result.ok) {
+      setInstallAvailable(false);
+      showToast("Instalacion iniciada");
+      return;
+    }
+    if (result.reason === "unavailable") {
+      showToast("El instalador no esta disponible en este navegador o dispositivo");
+      return;
+    }
+    showToast("La instalacion fue cancelada");
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -970,6 +993,12 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
             <p className="text-xs font-black text-slate-700 mt-1">{displayMode.label}</p>
           </div>
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Instalador PWA</p>
+            <p className="text-xs font-black text-slate-700 mt-1">
+              {installAvailable ? "Disponible para instalar en este navegador" : "No disponible ahora"}
+            </p>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
             <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Ultima compilacion local</p>
             <p className="text-xs font-black text-slate-700 mt-1">{new Date(APP_BUILD.buildTime).toLocaleString("es-AR")}</p>
           </div>
@@ -1004,6 +1033,15 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
             {updatingApp ? "Actualizando..." : hasRemoteUpdate ? "Instalar version nueva" : "Recargar app"}
           </button>
         </div>
+        {!displayMode.installed && (
+          <button
+            onClick={instalarApp}
+            disabled={!installAvailable}
+            className={`mt-3 w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 ${installAvailable ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500"}`}
+          >
+            Instalar app
+          </button>
+        )}
       </Card>
 
       <Card>

@@ -207,8 +207,14 @@ export default function LoginScreen() {
           Revisá tus mensajes de texto (SMS).
         </p>
 
-        <input type="number" placeholder="Código de 6 dígitos" value={otpCode}
-          onChange={e => setOtpCode(e.target.value)} style={{ ...s.input, textAlign: "center", fontSize: "22px", letterSpacing: "8px" }} />
+                <input
+          type="text"
+          inputMode="numeric"
+          placeholder="Código de 6 dígitos"
+          value={otpCode}
+          onChange={e => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+          style={{ ...s.input, textAlign: "center", fontSize: "22px", letterSpacing: "8px" }}
+        />
 
         <MsgLine />
         <button onClick={handleVerifyOTP} style={s.button} disabled={loading}>
@@ -286,3 +292,5 @@ const s = {
   back:      { marginTop: "14px", background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "11px", fontWeight: "bold" },
   msg:       { fontSize: "11px", marginBottom: "12px", fontWeight: "bold" },
 };
+
+

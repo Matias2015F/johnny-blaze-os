@@ -7,6 +7,35 @@ export async function fetchRemoteVersion() {
   return res.json();
 }
 
+let deferredInstallPrompt = null;
+
+export function bindInstallPromptCapture() {
+  if (typeof window === "undefined") return () => {};
+  const handler = (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    window.dispatchEvent(new CustomEvent("jbos-install-available"));
+  };
+  window.addEventListener("beforeinstallprompt", handler);
+  return () => window.removeEventListener("beforeinstallprompt", handler);
+}
+
+export function canPromptInstall() {
+  return Boolean(deferredInstallPrompt);
+}
+
+export async function promptInstallApp() {
+  if (!deferredInstallPrompt) {
+    return { ok: false, reason: "unavailable" };
+  }
+
+  const promptEvent = deferredInstallPrompt;
+  deferredInstallPrompt = null;
+  await promptEvent.prompt();
+  const outcome = await promptEvent.userChoice;
+  return { ok: outcome?.outcome === "accepted", outcome: outcome?.outcome || "dismissed" };
+}
+
 export function isNewerBuild(localBuild, remoteBuild) {
   if (!localBuild?.version || !remoteBuild?.version) return false;
   return localBuild.version !== remoteBuild.version;

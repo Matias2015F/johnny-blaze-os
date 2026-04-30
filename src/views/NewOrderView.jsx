@@ -106,9 +106,10 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Km Actual</label>
             <input
               className="w-full border border-white/5 rounded-2xl p-4 font-black text-white outline-none focus:border-blue-600 bg-zinc-900"
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={f.km}
-              onChange={(e) => setF({ ...f, km: e.target.value })}
+              onChange={(e) => setF({ ...f, km: e.target.value.replace(/\D/g, "") })}
               placeholder="Ej: 15400"
             />
           </div>

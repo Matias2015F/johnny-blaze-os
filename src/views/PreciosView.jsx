@@ -132,9 +132,9 @@ export default function PreciosView({ setView }) {
             </button>
           ))}
         </div>
-        <input type="number" placeholder="OTRA CC..."
+        <input type="text" inputMode="numeric" placeholder="OTRA CC..."
           className="w-full mt-3 bg-gray-900 border-b border-gray-800 p-2 text-center text-xs font-bold focus:border-blue-500 outline-none text-gray-500"
-          onChange={e => setCcFiltro(Number(e.target.value))}
+          onChange={e => setCcFiltro(Number(e.target.value.replace(/\D/g, "")))}
         />
       </div>
 
@@ -210,13 +210,13 @@ export default function PreciosView({ setView }) {
                 value={form.tarea} onChange={e => setForm({ ...form, tarea: e.target.value })}
               />
               <div className="grid grid-cols-2 gap-3">
-                <input type="number" placeholder="PRECIO $" required
+                <input type="text" inputMode="numeric" placeholder="PRECIO $" required
                   className="bg-gray-900 border border-gray-700 rounded-xl p-4 font-black outline-none focus:border-blue-500"
-                  value={form.precio} onChange={e => setForm({ ...form, precio: e.target.value })}
+                  value={form.precio} onChange={e => setForm({ ...form, precio: e.target.value.replace(/\D/g, "") })}
                 />
-                <input type="number" placeholder="CC" required
+                <input type="text" inputMode="numeric" placeholder="CC" required
                   className="bg-gray-900 border border-gray-700 rounded-xl p-4 font-black outline-none focus:border-blue-500"
-                  value={form.cilindrada} onChange={e => setForm({ ...form, cilindrada: e.target.value })}
+                  value={form.cilindrada} onChange={e => setForm({ ...form, cilindrada: e.target.value.replace(/\D/g, "") })}
                 />
               </div>
             </div>

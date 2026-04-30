@@ -373,10 +373,11 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               <div className="flex items-baseline gap-2 rounded-[1.5rem] border border-slate-700 bg-slate-950 px-4 py-4 shadow-lg">
                 <span className="text-lg font-black text-slate-500">$</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   placeholder={String(presBase)}
                   value={maxInput}
-                  onChange={(e) => setMaxInput(e.target.value)}
+                  onChange={(e) => setMaxInput(e.target.value.replace(/\D/g, ""))}
                   className="w-full bg-transparent text-3xl font-black tracking-tighter text-green-400 outline-none"
                 />
               </div>
