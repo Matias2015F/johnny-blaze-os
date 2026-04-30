@@ -104,10 +104,9 @@ function getInstallGuide() {
       platform: "ios",
       title: "Instalar en iPhone o iPad",
       steps: [
-        "Abrí esta app en Safari.",
-        "Tocá Compartir.",
-        "Elegí Agregar a pantalla de inicio.",
-        "Confirmá Agregar para dejarla como app.",
+        { title: "Abrí Safari", detail: "Esta instalación en iPhone funciona desde Safari." },
+        { title: "Tocá Compartir", detail: "Buscá el botón Compartir abajo o arriba del navegador." },
+        { title: "Agregala al inicio", detail: "Elegí Agregar a pantalla de inicio y confirmá Agregar." },
       ],
     };
   }
@@ -117,9 +116,9 @@ function getInstallGuide() {
       platform: "android",
       title: "Instalar en Android",
       steps: [
-        "Si el botón Instalar app está disponible, tocá ese botón.",
-        "Si no aparece, abrí el menú de Chrome.",
-        "Elegí Instalar aplicación o Agregar a pantalla principal.",
+        { title: "Probá instalar desde acá", detail: "Tocá Instalar app si el botón está habilitado." },
+        { title: "Abrí el menú", detail: "Si no aparece, abrí el menú de Chrome." },
+        { title: "Confirmá la instalación", detail: "Elegí Instalar aplicación o Agregar a pantalla principal." },
       ],
     };
   }
@@ -128,9 +127,9 @@ function getInstallGuide() {
     platform: "desktop",
     title: "Instalar en PC",
     steps: [
-      "Si el botón Instalar app está disponible, tocá ese botón.",
-      "Si no aparece, abrí el menú del navegador.",
-      "Buscá Instalar aplicación o Apps.",
+      { title: "Probá instalar desde acá", detail: "Tocá Instalar app si el botón está habilitado." },
+      { title: "Abrí el menú del navegador", detail: "Si no aparece, usá el menú de Chrome o Edge." },
+      { title: "Instalala como app", detail: "Buscá Instalar aplicación o Apps y confirmá." },
     ],
   };
 }
@@ -382,10 +381,9 @@ export default function TallerPanel() {
           platform: "ios",
           title: "Instalar en iPhone o iPad",
           steps: [
-            "Abrí esta app en Safari.",
-            "Tocá Compartir.",
-            "Elegí Agregar a pantalla de inicio.",
-            "Confirmá Agregar para dejarla como app.",
+            { title: "Abrí Safari", detail: "Esta instalación en iPhone funciona desde Safari." },
+            { title: "Tocá Compartir", detail: "Buscá el botón Compartir abajo o arriba del navegador." },
+            { title: "Agregala al inicio", detail: "Elegí Agregar a pantalla de inicio y confirmá Agregar." },
           ],
         }
       : selectedInstallPlatform === "android"
@@ -393,9 +391,9 @@ export default function TallerPanel() {
             platform: "android",
             title: "Instalar en Android",
             steps: [
-              "Tocá Instalar app si el botón está habilitado.",
-              "Si no aparece, abrí el menú de Chrome.",
-              "Elegí Instalar aplicación o Agregar a pantalla principal.",
+              { title: "Probá instalar desde acá", detail: "Tocá Instalar app si el botón está habilitado." },
+              { title: "Abrí el menú", detail: "Si no aparece, abrí el menú de Chrome." },
+              { title: "Confirmá la instalación", detail: "Elegí Instalar aplicación o Agregar a pantalla principal." },
             ],
           }
         : selectedInstallPlatform === "desktop"
@@ -403,9 +401,9 @@ export default function TallerPanel() {
               platform: "desktop",
               title: "Instalar en PC",
               steps: [
-                "Tocá Instalar app si el botón está habilitado.",
-                "Si no aparece, abrí el menú del navegador.",
-                "Buscá Instalar aplicación o Apps.",
+                { title: "Probá instalar desde acá", detail: "Tocá Instalar app si el botón está habilitado." },
+                { title: "Abrí el menú del navegador", detail: "Si no aparece, usá el menú de Chrome o Edge." },
+                { title: "Instalala como app", detail: "Buscá Instalar aplicación o Apps y confirmá." },
               ],
             }
           : installGuide;
@@ -503,7 +501,10 @@ export default function TallerPanel() {
 
       {NAV_VIEWS.includes(view) && helpInfo && (
         <button
-          onClick={() => setShowHelp(true)}
+          onClick={() => {
+            setSelectedInstallPlatform("auto");
+            setShowHelp(true);
+          }}
           className="fixed right-4 top-4 z-[120] flex items-center gap-2 rounded-full border border-blue-500/30 bg-slate-950/95 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-blue-400 shadow-xl active:scale-95"
         >
           <HelpCircle size={14} /> Ayuda
@@ -604,9 +605,15 @@ export default function TallerPanel() {
                 ))}
               </div>
               <div className="space-y-2">
-                {activeInstallGuide.steps.map((step) => (
-                  <div key={step} className="rounded-2xl bg-slate-900 p-3 text-[11px] font-bold leading-relaxed text-slate-200">
-                    {step}
+                {activeInstallGuide.steps.map((step, index) => (
+                  <div key={`${index}-${step.title}`} className="rounded-2xl bg-slate-900 p-4">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-blue-400">
+                      Paso {index + 1}
+                    </p>
+                    <p className="mt-1 text-sm font-black text-white">{step.title}</p>
+                    <p className="mt-1 text-[11px] font-bold leading-relaxed text-slate-300">
+                      {step.detail}
+                    </p>
                   </div>
                 ))}
               </div>
