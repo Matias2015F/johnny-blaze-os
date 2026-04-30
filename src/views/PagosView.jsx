@@ -64,7 +64,7 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
       if (filtro === "hoy") return pago.fechaNormalizada === hoy;
       if (filtro === "periodo") {
         const fecha = pago.fechaNormalizada;
-        return (!!fecha && fecha >= desde && fecha <= hasta);
+        return !!fecha && fecha >= desde && fecha <= hasta;
       }
       return true;
     });
@@ -98,7 +98,7 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
           </div>
           <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
             <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Cobrado hoy</p>
-            <p className="mt-2 text-2xl font-black text-green-400">{formatMoney(cobradoHoy)}</p>
+            <p className="mt-2 text-2xl font-black text-emerald-400">{formatMoney(cobradoHoy)}</p>
             <p className="mt-1 text-[10px] font-bold text-slate-500">Ingresos del día</p>
           </div>
         </div>
@@ -106,7 +106,7 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
 
       {sinCobrar.length > 0 && (
         <div className="space-y-3">
-          <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400">Falta cobrar</p>
+          <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Falta cobrar</p>
           {sinCobrar.map((order) => (
             <button
               key={order.id}
@@ -114,27 +114,29 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
                 setSelectedOrderId(order.id);
                 setView("pagos");
               }}
-              className="w-full rounded-[2rem] border border-slate-100 bg-white p-5 text-left shadow-sm transition-all active:scale-[0.98]"
+              className="w-full rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-[0.98]"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-400">
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">
                     {order.numeroTrabajo || `#${order.id.slice(-4).toUpperCase()}`}
                   </p>
-                  <p className="mt-1 text-xl font-black leading-tight text-slate-900">{order.bike?.patente || "---"}</p>
-                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">{order.client?.nombre || "—"}</p>
+                  <p className="mt-1 text-xl font-black leading-tight text-white">{order.bike?.patente || "---"}</p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    {order.client?.nombre || "—"}
+                  </p>
                 </div>
-                <ArrowRight size={18} className="shrink-0 text-slate-300" />
+                <ArrowRight size={18} className="shrink-0 text-slate-600" />
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-slate-50 p-3">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Saldo</p>
-                  <p className="mt-1 text-lg font-black text-red-500">{formatMoney(order.saldo)}</p>
+                <div className="rounded-[1.5rem] border border-white/5 bg-black/20 p-3">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Saldo</p>
+                  <p className="mt-1 text-lg font-black text-red-400">{formatMoney(order.saldo)}</p>
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-3">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Ya pagado</p>
-                  <p className="mt-1 text-lg font-black text-green-600">{formatMoney(order.pagado)}</p>
+                <div className="rounded-[1.5rem] border border-white/5 bg-black/20 p-3">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Ya cobrado</p>
+                  <p className="mt-1 text-lg font-black text-emerald-400">{formatMoney(order.pagado)}</p>
                 </div>
               </div>
             </button>
@@ -144,7 +146,9 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
 
       {pagosCompletos.length > 0 && (
         <div className="space-y-3">
-          <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-400">Pagado, listo para comprobante</p>
+          <p className="px-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+            Pagado, listo para comprobante
+          </p>
           {pagosCompletos.map((order) => (
             <button
               key={order.id}
@@ -152,24 +156,26 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
                 setSelectedOrderId(order.id);
                 setView("prePdf");
               }}
-              className="w-full rounded-[2rem] border border-green-200 bg-green-50 p-5 text-left transition-all active:scale-[0.98]"
+              className="w-full rounded-[2.5rem] border border-emerald-500/20 bg-emerald-500/10 p-5 text-left transition-all active:scale-[0.98]"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-black uppercase tracking-widest text-green-500">
+                  <p className="text-xs font-black uppercase tracking-widest text-emerald-300">
                     {order.numeroTrabajo || `#${order.id.slice(-4).toUpperCase()}`}
                   </p>
-                  <p className="mt-1 text-lg font-black text-slate-900">{order.bike?.patente || "---"}</p>
-                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">{order.client?.nombre || "—"}</p>
+                  <p className="mt-1 text-lg font-black text-white">{order.bike?.patente || "---"}</p>
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-emerald-100/70">
+                    {order.client?.nombre || "—"}
+                  </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className="flex items-center justify-end gap-1 text-[9px] font-black uppercase text-green-500">
+                    <p className="flex items-center justify-end gap-1 text-[9px] font-black uppercase text-emerald-300">
                       <CheckCircle size={10} /> Pagado
                     </p>
-                    <p className="mt-1 text-base font-black text-slate-700">{formatMoney(order.total)}</p>
+                    <p className="mt-1 text-base font-black text-white">{formatMoney(order.total)}</p>
                   </div>
-                  <ArrowRight size={18} className="shrink-0 text-slate-300" />
+                  <ArrowRight size={18} className="shrink-0 text-emerald-200/50" />
                 </div>
               </div>
             </button>
@@ -177,15 +183,15 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
         </div>
       )}
 
-      <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Historial de pagos</p>
-            <p className="mt-1 text-[11px] font-bold text-slate-500">Todos los pagos recibidos y registrados</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Historial de pagos</p>
+            <p className="mt-1 text-[11px] font-bold text-slate-400">Todos los pagos recibidos y registrados</p>
           </div>
           <div className="text-right">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Total filtrado</p>
-            <p className="mt-1 text-lg font-black text-slate-900">{formatMoney(totalHistorialFiltrado)}</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Total filtrado</p>
+            <p className="mt-1 text-lg font-black text-white">{formatMoney(totalHistorialFiltrado)}</p>
           </div>
         </div>
 
@@ -196,8 +202,8 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
               onClick={() => setFiltro(item.id)}
               className={`rounded-2xl border px-3 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
                 filtro === item.id
-                  ? "border-blue-500 bg-blue-50 text-blue-600"
-                  : "border-slate-100 bg-slate-50 text-slate-500"
+                  ? "border-blue-500 bg-blue-600 text-white"
+                  : "border-white/10 bg-black/20 text-slate-400"
               }`}
             >
               {item.label}
@@ -207,59 +213,59 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
 
         {filtro === "periodo" && (
           <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Desde</p>
+            <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-3">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Desde</p>
               <input
                 type="date"
                 value={desde}
                 onChange={(e) => setDesde(e.target.value)}
-                className="mt-2 w-full bg-transparent text-sm font-black text-slate-900 outline-none"
+                className="mt-2 w-full bg-transparent text-sm font-black text-white outline-none"
               />
             </div>
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Hasta</p>
+            <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-3">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Hasta</p>
               <input
                 type="date"
                 value={hasta}
                 onChange={(e) => setHasta(e.target.value)}
-                className="mt-2 w-full bg-transparent text-sm font-black text-slate-900 outline-none"
+                className="mt-2 w-full bg-transparent text-sm font-black text-white outline-none"
               />
             </div>
           </div>
         )}
 
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-3">
           {historialPagos.length > 0 ? (
             historialPagos.map((pago) => (
-              <div key={pago.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <div key={pago.id} className="rounded-[1.75rem] border border-white/10 bg-black/20 p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-black uppercase text-slate-900">{pago.clientName}</p>
-                    <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-blue-500">{pago.numeroTrabajo}</p>
-                    <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">{pago.bikePlate}</p>
+                    <p className="text-[11px] font-black uppercase text-white">{pago.clientName}</p>
+                    <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-blue-400">{pago.numeroTrabajo}</p>
+                    <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">{pago.bikePlate}</p>
                   </div>
-                  <p className="text-lg font-black text-green-600">{formatMoney(pago.monto)}</p>
+                  <p className="text-lg font-black text-emerald-400">{formatMoney(pago.monto)}</p>
                 </div>
 
                 <div className="mt-3 grid grid-cols-3 gap-2">
-                  <div className="rounded-xl bg-white px-3 py-2">
-                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Fecha</p>
-                    <p className="mt-1 text-[10px] font-black text-slate-700">{pago.fecha || "—"}</p>
+                  <div className="rounded-xl border border-white/5 bg-slate-950/70 px-3 py-2">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Fecha</p>
+                    <p className="mt-1 text-[10px] font-black text-white">{pago.fecha || "—"}</p>
                   </div>
-                  <div className="rounded-xl bg-white px-3 py-2">
-                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Comprobante</p>
-                    <p className="mt-1 text-[10px] font-black text-slate-700">{pago.comprobante || "Sin número"}</p>
+                  <div className="rounded-xl border border-white/5 bg-slate-950/70 px-3 py-2">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Comprobante</p>
+                    <p className="mt-1 text-[10px] font-black text-white">{pago.comprobante || "Sin número"}</p>
                   </div>
-                  <div className="rounded-xl bg-white px-3 py-2">
-                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Método</p>
-                    <p className="mt-1 text-[10px] font-black text-slate-700 capitalize">{pago.metodo || "—"}</p>
+                  <div className="rounded-xl border border-white/5 bg-slate-950/70 px-3 py-2">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Método</p>
+                    <p className="mt-1 text-[10px] font-black capitalize text-white">{pago.metodo || "—"}</p>
                   </div>
                 </div>
               </div>
             ))
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
-              <ReceiptText size={36} className="mx-auto mb-3 text-slate-400" />
+            <div className="rounded-[1.75rem] border border-dashed border-slate-700 bg-black/10 px-4 py-10 text-center">
+              <ReceiptText size={36} className="mx-auto mb-3 text-slate-500" />
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">No hay pagos para este filtro</p>
             </div>
           )}

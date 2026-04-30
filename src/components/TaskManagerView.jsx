@@ -413,28 +413,28 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   const factor = (config.factorDificultad || CONFIG_DEFAULT.factorDificultad)[editForm.dificultad] || 1;
 
   return (
-    <div className="p-6 text-left animate-in slide-in-from-bottom duration-300 pb-32">
+    <div className="animate-in slide-in-from-bottom duration-300 bg-slate-950 px-4 pb-32 pt-4 text-left">
       <button onClick={() => { setServiceToEdit(null); setView("detalleOrden"); }}
-        className="mb-6 text-blue-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
+        className="mb-5 flex items-center gap-2 text-xs font-black uppercase text-blue-400 transition-all active:scale-90">
         <ArrowLeft size={16} /> Volver
       </button>
 
       <div className="space-y-4">
 
         {/* Selector + nombre */}
-        <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-4">
+        <div className="space-y-4 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
           <select value={selectedId || ""} onChange={e => handleSelect(e.target.value)}
-            className="w-full border-2 border-slate-100 rounded-2xl p-4 font-black bg-white outline-none text-sm">
+            className="w-full rounded-[1.5rem] border border-white/10 bg-black/20 p-4 text-sm font-black text-white outline-none">
             <option value="">-- Escribir manualmente --</option>
             {serviciosDisponibles.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
           </select>
           <div className="space-y-1">
-            <label className="text-[10px] uppercase text-slate-400 ml-1 font-black tracking-widest">Nombre del servicio</label>
+            <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre del servicio</label>
             <input
               value={editForm.nombre}
               onChange={e => setEditForm({ ...editForm, nombre: e.target.value })}
               placeholder="Ej: Cambio de cubierta"
-              className="w-full border-2 border-slate-100 rounded-2xl p-4 font-black outline-none focus:border-blue-500"
+              className="w-full rounded-[1.5rem] border border-white/10 bg-black/20 p-4 font-black text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
             />
           </div>
         </div>
@@ -465,19 +465,19 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
         )}
 
         {/* Mano de obra */}
-        <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-3">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mano de obra</p>
+        <div className="space-y-3 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Mano de obra</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[9px] uppercase text-slate-400 font-bold ml-1 tracking-widest">Horas</label>
+              <label className="ml-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">Horas</label>
               <input type="number" step="0.5" min="0.5" value={editForm.horasBase}
                 onChange={e => setEditForm({ ...editForm, horasBase: Number(e.target.value) })}
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3 font-black text-center outline-none focus:border-blue-500" />
+                className="w-full rounded-xl border border-white/10 bg-black/20 p-3 text-center font-black text-white outline-none focus:border-blue-500" />
             </div>
             <div className="space-y-1">
-              <label className="text-[9px] uppercase text-slate-400 font-bold ml-1 tracking-widest">Dificultad</label>
+              <label className="ml-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">Dificultad</label>
               <select value={editForm.dificultad} onChange={e => setEditForm({ ...editForm, dificultad: e.target.value })}
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl p-3 font-black text-xs uppercase outline-none focus:border-blue-500">
+                className="w-full rounded-xl border border-white/10 bg-black/20 p-3 text-xs font-black uppercase text-white outline-none focus:border-blue-500">
                 <option value="facil">Fácil</option>
                 <option value="normal">Normal</option>
                 <option value="dificil">Difícil</option>
@@ -485,7 +485,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
               </select>
             </div>
           </div>
-          <div className="bg-slate-50 rounded-xl p-3 text-center space-y-0.5">
+          <div className="space-y-0.5 rounded-[1.5rem] border border-white/10 bg-black/20 p-3 text-center">
             <p className="text-[9px] text-slate-400 font-bold">
               {editForm.horasBase}h × {formatMoney(config.valorHoraInterno || 12000)}/h × {factor.toFixed(1)} = costo {formatMoney(stats.moCosto)}
             </p>
@@ -496,12 +496,12 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
         </div>
 
         {/* Repuestos — se ingresa el costo, el precio se deriva del margen */}
-        <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-3">
+        <div className="space-y-3 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
           <div className="flex justify-between items-center">
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Repuestos</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Repuestos</p>
             <button
               onClick={() => setEditForm({ ...editForm, repuestos: [...editForm.repuestos, { nombre: "", monto: 0, cantidad: 1 }] })}
-              className="p-2 rounded-xl bg-blue-50 text-blue-600">
+              className="rounded-xl bg-blue-500/10 p-2 text-blue-400">
               <Plus size={18} />
             </button>
           </div>
@@ -509,7 +509,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             <p className="text-[10px] text-slate-300 font-bold text-center py-1">Sin repuestos cargados</p>
           )}
           {editForm.repuestos.map((item, idx) => (
-            <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-3">
+            <div key={idx} className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-3">
               <input
                 className="w-full border-none bg-transparent text-xs font-black uppercase text-slate-700 outline-none"
                 placeholder="Nombre del repuesto..."
@@ -522,18 +522,18 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                   <input
                     type="number"
                     min="1"
-                    className="w-full rounded-xl bg-white text-xs font-black text-center text-slate-700 outline-none border border-slate-200 p-2"
+                    className="w-full rounded-xl border border-white/10 bg-slate-950/80 p-2 text-center text-xs font-black text-white outline-none"
                     value={item.cantidad || 1}
                     onChange={e => updateListItem("repuestos", idx, "cantidad", Math.max(1, Number(e.target.value) || 1))}
                   />
                 </div>
                 <div>
                   <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Precio unit.</p>
-                  <div className="flex items-center gap-1 rounded-xl bg-white border border-slate-200 px-3 py-2">
+                  <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
                     <span className="text-[10px] font-black text-slate-300">$</span>
                     <input
                       type="text" inputMode="numeric"
-                      className="w-full min-w-0 text-xs text-right font-black outline-none bg-transparent text-blue-600"
+                      className="w-full min-w-0 bg-transparent text-right text-xs font-black text-blue-400 outline-none"
                       value={item.monto > 0 ? item.monto.toLocaleString("es-AR") : ""}
                       onChange={e => {
                         const digits = e.target.value.replace(/\D/g, "");
@@ -544,34 +544,34 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                   </div>
                 </div>
                 <button onClick={() => setEditForm({ ...editForm, repuestos: editForm.repuestos.filter((_, i) => i !== idx) })}
-                  className="p-1 text-slate-300 active:text-red-500 self-center">
+                  className="self-center p-1 text-slate-500 active:text-red-400">
                   <X size={16} />
                 </button>
               </div>
-              <div className="flex justify-between items-center border-t border-slate-200 pt-2">
+              <div className="flex justify-between items-center border-t border-white/10 pt-2">
                 <p className="text-[9px] font-black text-slate-300 uppercase">Total repuesto</p>
-                <p className="text-[11px] font-black text-blue-700">{formatMoney((item.monto || 0) * (item.cantidad || 1))}</p>
+                <p className="text-[11px] font-black text-blue-400">{formatMoney((item.monto || 0) * (item.cantidad || 1))}</p>
               </div>
             </div>
           ))}
           {editForm.repuestos.length > 0 && stats.repPrecio > 0 && (
-            <div className="flex justify-between text-[10px] font-black px-1 pt-1 border-t border-slate-100">
-              <span className="text-slate-400">Total repuestos</span>
-              <span className="text-blue-600">{formatMoney(stats.repPrecio)}</span>
+            <div className="flex justify-between border-t border-white/10 px-1 pt-1 text-[10px] font-black">
+              <span className="text-slate-500">Total repuestos</span>
+              <span className="text-blue-400">{formatMoney(stats.repPrecio)}</span>
             </div>
           )}
         </div>
 
         {/* Insumos / Terceros — pasan al cliente sin markup */}
-        <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-3">
+        <div className="space-y-3 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
           <div className="flex justify-between items-center">
             <div>
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Otros gastos (insumos / servicios externos)</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Otros gastos (insumos / servicios externos)</p>
               <p className="text-[9px] text-slate-300 font-bold">Se cobran al cliente sin ganancia adicional</p>
             </div>
             <button
               onClick={() => setEditForm({ ...editForm, insumos: [...editForm.insumos, { nombre: "", monto: 0, cantidad: 1 }] })}
-              className="p-2 rounded-xl bg-orange-50 text-orange-500">
+               className="rounded-xl bg-orange-500/10 p-2 text-orange-400">
               <Plus size={18} />
             </button>
           </div>
@@ -579,7 +579,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             <p className="text-[10px] text-slate-300 font-bold text-center py-1">Sin insumos cargados</p>
           )}
           {editForm.insumos.map((item, idx) => (
-            <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-3">
+            <div key={idx} className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-3">
               <input
                 className="w-full border-none bg-transparent text-xs font-black uppercase text-slate-700 outline-none"
                 placeholder="Nombre..."
@@ -592,18 +592,18 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                   <input
                     type="number"
                     min="1"
-                    className="w-full rounded-xl bg-white text-xs font-black text-center text-slate-700 outline-none border border-slate-200 p-2"
+                    className="w-full rounded-xl border border-white/10 bg-slate-950/80 p-2 text-center text-xs font-black text-white outline-none"
                     value={item.cantidad || 1}
                     onChange={e => updateListItem("insumos", idx, "cantidad", Math.max(1, Number(e.target.value) || 1))}
                   />
                 </div>
                 <div>
                   <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Costo unit.</p>
-                  <div className="flex items-center gap-1 rounded-xl bg-white border border-slate-200 px-3 py-2">
+                  <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
                     <span className="text-[10px] font-black text-slate-300">$</span>
                     <input
                       type="text" inputMode="numeric"
-                      className="w-full min-w-0 text-xs text-right font-black outline-none bg-transparent text-orange-500"
+                      className="w-full min-w-0 bg-transparent text-right text-xs font-black text-orange-400 outline-none"
                       value={item.monto > 0 ? item.monto.toLocaleString("es-AR") : ""}
                       onChange={e => {
                         const digits = e.target.value.replace(/\D/g, "");
@@ -614,38 +614,38 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                   </div>
                 </div>
                 <button onClick={() => setEditForm({ ...editForm, insumos: editForm.insumos.filter((_, i) => i !== idx) })}
-                  className="p-1 text-slate-300 active:text-red-500 self-center">
+                  className="self-center p-1 text-slate-500 active:text-red-400">
                   <X size={16} />
                 </button>
               </div>
-              <div className="flex justify-between items-center border-t border-slate-200 pt-2">
+              <div className="flex justify-between items-center border-t border-white/10 pt-2">
                 <p className="text-[9px] font-black text-slate-300 uppercase">Total gasto</p>
-                <p className="text-[11px] font-black text-orange-600">{formatMoney((item.monto || 0) * (item.cantidad || 1))}</p>
+                <p className="text-[11px] font-black text-orange-400">{formatMoney((item.monto || 0) * (item.cantidad || 1))}</p>
               </div>
             </div>
           ))}
           {editForm.insumos.length > 0 && stats.insPrecio > 0 && (
-            <div className="flex justify-between text-[10px] font-black px-1 pt-1 border-t border-slate-100">
-              <span className="text-slate-400">Total gastos e insumos</span>
-              <span className="text-orange-600">{formatMoney(stats.insPrecio)}</span>
+            <div className="flex justify-between border-t border-white/10 px-1 pt-1 text-[10px] font-black">
+              <span className="text-slate-500">Total gastos e insumos</span>
+              <span className="text-orange-400">{formatMoney(stats.insPrecio)}</span>
             </div>
           )}
         </div>
 
         {/* Observaciones */}
-        <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-1">
+        <div className="space-y-1 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
           <label className="text-[10px] uppercase text-slate-400 ml-1 font-black tracking-widest">Notas para la próxima visita</label>
           <textarea
             value={editForm.observacionesProxima}
             onChange={e => setEditForm({ ...editForm, observacionesProxima: e.target.value })}
             rows="2"
-            className="w-full border-2 border-slate-100 rounded-2xl p-4 font-bold text-sm outline-none focus:border-blue-500"
+            className="w-full rounded-2xl border border-white/10 bg-black/20 p-4 font-bold text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
             placeholder="Ej: Revisar transmisión en 2000km..."
           />
         </div>
 
         {/* Próximo control */}
-          <div className="bg-white p-6 rounded-[2rem] shadow-sm space-y-5">
+          <div className="space-y-5 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
             <div className="flex items-center gap-2">
               <Bell size={16} className="text-yellow-500" />
               <p className="text-[10px] font-black uppercase text-slate-700 tracking-widest">Próximo control</p>
@@ -862,7 +862,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
         <div className="pb-4">
           <button
             onClick={aplicar}
-            className="w-full rounded-2xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl transition-all active:scale-95"
+            className="w-full rounded-[2rem] bg-blue-600 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white shadow-xl transition-all active:scale-95"
           >
             Guardar y volver
           </button>

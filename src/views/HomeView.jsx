@@ -9,9 +9,9 @@ import { obtenerTiempoActual } from "../lib/timer.js";
 import { formatMoney } from "../utils/format.js";
 
 const ESTADO_BADGE = {
-  NORMAL: "bg-green-500/20 text-green-400 border-green-500/30",
-  ALERTA: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-  BLOQUEADO: "bg-red-500/20 text-red-400 border-red-500/30",
+  NORMAL: "bg-green-500/20 text-green-300 border-green-500/30",
+  ALERTA: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  BLOQUEADO: "bg-red-500/20 text-red-300 border-red-500/30",
 };
 
 const ESTADO_LABEL_CRON = {
@@ -81,9 +81,7 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
         const claveEstado = `${recordatorio.estado}-${recordatorio.enviado ? "avisado" : "pendiente"}`;
         if (yaNotificadas[recordatorio.id] === claveEstado) return;
 
-        const titulo = recordatorio.estado === "service_vencido"
-          ? "Service vencido"
-          : "Proximo service";
+        const titulo = recordatorio.estado === "service_vencido" ? "Service vencido" : "Próximo service";
         const cuerpo = `${recordatorio.moto?.patente || "---"} · ${recordatorio.descripcion}`;
         const notification = new Notification(titulo, { body: cuerpo, silent: false });
         notification.onclick = () => window.focus();
@@ -119,7 +117,10 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
           <h1 className="mb-1 text-4xl font-black leading-none tracking-tighter text-white">JOHNNY BLAZE</h1>
           <div className="mb-5 flex items-center justify-between gap-3">
             <p className="max-w-[75%] truncate text-[10px] font-normal text-slate-400">{userLabel}</p>
-            <button onClick={handleLogout} className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-500 transition-all hover:text-red-400 active:scale-95">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-500 transition-all hover:text-red-400 active:scale-95"
+            >
               <LogOut size={13} /> Salir
             </button>
           </div>
@@ -132,7 +133,7 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
             </div>
             <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
               <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Pendiente de cobro</p>
-              <p className="mt-2 text-2xl font-black text-green-400">{formatMoney(totalPendienteCobro)}</p>
+              <p className="mt-2 text-2xl font-black text-emerald-400">{formatMoney(totalPendienteCobro)}</p>
               <p className="mt-1 text-[10px] font-bold text-slate-500">Saldo total</p>
             </div>
           </div>
@@ -163,31 +164,31 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
       </button>
 
       <div className="grid grid-cols-2 gap-4">
-        <button onClick={() => setView("ordenes")} className="rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all active:scale-95">
-          <Clock className="text-blue-500" size={24} />
-          <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-900">Trabajos</p>
+        <button onClick={() => setView("ordenes")} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
+          <Clock className="text-blue-400" size={24} />
+          <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Trabajos</p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Ver y seguir trabajos activos</p>
         </button>
-        <button onClick={() => setView("pagosView")} className="rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all active:scale-95">
-          <ReceiptText className="text-green-600" size={24} />
-          <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-900">Pagos</p>
+        <button onClick={() => setView("pagosView")} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
+          <ReceiptText className="text-emerald-400" size={24} />
+          <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Pagos</p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Cobrar y emitir comprobantes</p>
         </button>
-        <button onClick={() => setView("historial")} className="rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all active:scale-95">
-          <History className="text-blue-500" size={24} />
-          <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-900">Historial</p>
+        <button onClick={() => setView("historial")} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
+          <History className="text-blue-400" size={24} />
+          <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Historial</p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Buscar patente, cliente o comprobante</p>
         </button>
-        <button onClick={() => setView("config")} className="rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all active:scale-95">
-          <Wrench className="text-slate-700" size={24} />
-          <p className="mt-4 text-xs font-black uppercase tracking-widest text-slate-900">Más</p>
+        <button onClick={() => setView("config")} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
+          <Wrench className="text-slate-300" size={24} />
+          <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Más</p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Configuración y herramientas</p>
         </button>
       </div>
 
       {alertasService.length > 0 && (
         <div className="space-y-3">
-          <p className="flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-widest text-yellow-500">
+          <p className="flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-widest text-yellow-400">
             <Bell size={12} /> Próximos service
           </p>
           {alertasService.map((recordatorio) => (
@@ -201,10 +202,10 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-black uppercase tracking-tight text-slate-900">
+                  <p className="text-sm font-black uppercase tracking-tight text-white">
                     {recordatorio.moto?.patente || "---"} · {recordatorio.moto?.marca || ""} {recordatorio.moto?.modelo || ""}
                   </p>
-                  <p className={`mt-1 text-[10px] font-black uppercase ${recordatorio.estado === "service_vencido" ? "text-red-500" : "text-yellow-600"}`}>
+                  <p className={`mt-1 text-[10px] font-black uppercase ${recordatorio.estado === "service_vencido" ? "text-red-300" : "text-yellow-300"}`}>
                     {recordatorio.estado === "service_vencido" ? "Service vencido" : "Próximo service"} · {recordatorio.descripcion}
                   </p>
                   {recordatorio.testMode && (
@@ -218,14 +219,14 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
                     window.open(`https://wa.me/${tel.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
                     LS.updateDoc("recordatorios", recordatorio.id, { estado: "avisado", enviado: true });
                   }}
-                  className="flex shrink-0 items-center gap-1 rounded-xl bg-green-600 px-3 py-2 text-[9px] font-black uppercase text-white active:scale-95"
+                  className="flex shrink-0 items-center gap-1 rounded-xl bg-emerald-500 px-3 py-2 text-[9px] font-black uppercase text-white active:scale-95"
                 >
                   <MessageCircle size={12} /> WhatsApp
                 </button>
               </div>
 
               {recordatorio.kmObjetivo && (
-                <p className="text-[9px] font-bold text-slate-500">
+                <p className="text-[9px] font-bold text-slate-300">
                   Km actual: {(recordatorio.moto?.kilometrajeActual || recordatorio.moto?.km || 0).toLocaleString("es-AR")} · Objetivo: {recordatorio.kmObjetivo.toLocaleString("es-AR")} km
                 </p>
               )}
@@ -233,14 +234,14 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
               <div className="flex gap-2">
                 <button
                   onClick={() => LS.updateDoc("recordatorios", recordatorio.id, { estado: "hecho" })}
-                  className="flex-1 rounded-xl bg-white/50 py-2 text-[9px] font-black uppercase text-slate-800 active:scale-95"
+                  className="flex-1 rounded-xl bg-white/10 py-2 text-[9px] font-black uppercase text-white active:scale-95"
                 >
                   Marcar hecho
                 </button>
                 {recordatorio.testMode && (
                   <button
                     onClick={() => LS.deleteDoc("recordatorios", recordatorio.id)}
-                    className="rounded-xl bg-red-500/20 px-3 py-2 text-[9px] font-black uppercase text-red-500 active:scale-95"
+                    className="rounded-xl bg-red-500/20 px-3 py-2 text-[9px] font-black uppercase text-red-300 active:scale-95"
                   >
                     Eliminar prueba
                   </button>
@@ -252,8 +253,8 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
       )}
 
       {ordenesActivas.length > 0 && (
-        <div className="space-y-3 rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Trabajos en curso</p>
+        <div className="space-y-3 rounded-[2rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Trabajos en curso</p>
           {ordenesActivas.map((order) => {
             const bike = bikes?.find((item) => item.id === order.bikeId) || {};
             return (
@@ -263,10 +264,10 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
                   setSelectedOrderId(order.id);
                   setView("detalleOrden");
                 }}
-                className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition-all active:scale-[0.98]"
+                className="flex w-full items-center justify-between rounded-[1.5rem] border border-white/10 bg-black/20 p-4 text-left transition-all active:scale-[0.98]"
               >
                 <div>
-                  <p className="text-sm font-black uppercase tracking-tight text-slate-900">
+                  <p className="text-sm font-black uppercase tracking-tight text-white">
                     {bike.patente || "---"} · {bike.marca || ""} {bike.modelo || ""}
                   </p>
                   <span className={`mt-2 inline-block rounded-lg border px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${ESTADO_BADGE[order.estadoCron]}`}>
@@ -275,8 +276,8 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
                 </div>
                 {order.maxAutorizado > 0 && (
                   <div className="text-right">
-                    <p className="text-[9px] font-black uppercase text-slate-400">Acumulado</p>
-                    <p className="text-sm font-black text-slate-900">{formatMoney(order.costoActual)}</p>
+                    <p className="text-[9px] font-black uppercase text-slate-500">Acumulado</p>
+                    <p className="text-sm font-black text-white">{formatMoney(order.costoActual)}</p>
                   </div>
                 )}
               </button>
