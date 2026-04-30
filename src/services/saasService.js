@@ -177,13 +177,24 @@ export function resolveSaasAccess(usuario) {
 }
 
 export async function leerAdminSettings() {
-  const [newSnap, legacySnap] = await Promise.all([
-    getDoc(doc(db, SAAS_COLLECTIONS.adminSettings, "global")),
-    getDoc(doc(db, SAAS_COLLECTIONS.legacyAdminSettings, "global")),
-  ]);
-
+  const newRef = doc(db, SAAS_COLLECTIONS.adminSettings, "global");
+  const newSnap = await getDoc(newRef);
   if (newSnap.exists()) return normalizeAdminSettings(newSnap.data());
-  if (legacySnap.exists()) return normalizeAdminSettings(legacySnap.data());
+
+  const legacySnap = await getDoc(doc(db, SAAS_COLLECTIONS.legacyAdminSettings, "global"));
+  if (legacySnap.exists()) {
+    const normalized = normalizeAdminSettings(legacySnap.data());
+    await setDoc(newRef, {
+      precios: normalized.precios,
+      duracionTrialDias: normalized.duracionTrialDias,
+      graceDaysDefault: normalized.graceDaysDefault,
+      applyPricingToNewAccountsOnly: normalized.applyPricingToNewAccountsOnly,
+      features: normalized.features,
+      migratedFromLegacyAt: serverTimestamp(),
+    }, { merge: true });
+    return normalized;
+  }
+
   return normalizeAdminSettings(DEFAULT_SAAS_ADMIN_SETTINGS);
 }
 
@@ -200,31 +211,41 @@ export async function guardarAdminSettings(settings, actor = {}) {
     updatedByEmail: actor.email || "",
   };
 
-  await Promise.all([
-    setDoc(doc(db, SAAS_COLLECTIONS.adminSettings, "global"), payload, { merge: true }),
-    setDoc(doc(db, SAAS_COLLECTIONS.legacyAdminSettings, "global"), {
-      trialDaysDefault: normalized.duracionTrialDias,
-      graceDaysDefault: normalized.graceDaysDefault,
-      subscriptionPrice: normalized.precios.base,
-      subscriptionCurrency: normalized.precios.currency,
-      applyPricingToNewAccountsOnly: normalized.applyPricingToNewAccountsOnly,
-      featureFlags: normalized.features,
-      plans: normalized.plans,
-      updatedAt: serverTimestamp(),
-      updatedByUid: actor.uid || "",
-      updatedByEmail: actor.email || "",
-    }, { merge: true }),
-  ]);
+  await setDoc(doc(db, SAAS_COLLECTIONS.adminSettings, "global"), payload, { merge: true });
 }
 
 export async function leerUsuarioSaas(uid) {
-  const [newSnap, legacySnap] = await Promise.all([
-    getDoc(doc(db, SAAS_COLLECTIONS.usuarios, uid)),
-    getDoc(doc(db, SAAS_COLLECTIONS.legacyUsuarios, uid)),
-  ]);
-
+  const newRef = doc(db, SAAS_COLLECTIONS.usuarios, uid);
+  const newSnap = await getDoc(newRef);
   if (newSnap.exists()) return normalizeSaasUser(newSnap.data(), { uid });
-  if (legacySnap.exists()) return normalizeSaasUser(legacySnap.data(), { uid });
+
+  const legacySnap = await getDoc(doc(db, SAAS_COLLECTIONS.legacyUsuarios, uid));
+  if (legacySnap.exists()) {
+    const normalized = normalizeSaasUser(legacySnap.data(), { uid });
+    await setDoc(newRef, {
+      uid: normalized.uid,
+      email: normalized.email,
+      estado: normalized.estado,
+      activoHasta: normalized.activoHasta,
+      rol: normalized.rol,
+      plan: normalized.plan,
+      pagoEstado: normalized.pagoEstado,
+      currentPlanKey: normalized.currentPlanKey,
+      isPlatformAdmin: normalized.isPlatformAdmin,
+      graceEndsAt: normalized.graceEndsAt || null,
+      trialEndsAt: normalized.trialEndsAt || null,
+      nextBillingAt: normalized.nextBillingAt || null,
+      featureFlags: normalized.featureFlags,
+      features: normalized.features,
+      nombreTaller: normalized.nombreTaller,
+      lastSeenAt: normalized.lastSeenAt || null,
+      createdAt: normalized.createdAt || serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      migratedFromLegacyAt: serverTimestamp(),
+    }, { merge: true });
+    return normalized;
+  }
+
   return null;
 }
 
@@ -314,13 +335,9 @@ export async function ensureSaasUserProfile(authUser, extras = {}) {
 
   if (!existing) {
     canonicalPayload.createdAt = serverTimestamp();
-    legacyPayload.createdAt = serverTimestamp();
   }
 
-  await Promise.all([
-    setDoc(doc(db, SAAS_COLLECTIONS.usuarios, authUser.uid), canonicalPayload, { merge: true }),
-    setDoc(doc(db, SAAS_COLLECTIONS.legacyUsuarios, authUser.uid), legacyPayload, { merge: true }),
-  ]);
+  await setDoc(doc(db, SAAS_COLLECTIONS.usuarios, authUser.uid), canonicalPayload, { merge: true });
 
   return normalizeSaasUser({ ...legacyPayload, ...canonicalPayload }, { uid: authUser.uid });
 }

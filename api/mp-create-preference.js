@@ -32,14 +32,40 @@ module.exports = async function handler(req, res) {
   const { uid, plan: requestedPlanKey } = req.body || {};
   if (!uid) return res.status(400).json({ error: "uid es requerido" });
 
-  const accountRef = db.collection("accounts").doc(uid);
+  const accountRef = db.collection("usuarios").doc(uid);
   const accountSnap = await accountRef.get();
   if (!accountSnap.exists) return res.status(404).json({ error: "Cuenta no encontrada" });
   const account = accountSnap.data();
 
-  const settingsSnap = await db.collection("adminSettings").doc("global").get();
+  let settingsSnap = await db.collection("admin_settings").doc("global").get();
+  if (!settingsSnap.exists) {
+    const legacySettingsSnap = await db.collection("adminSettings").doc("global").get();
+    if (legacySettingsSnap.exists) {
+      const legacy = legacySettingsSnap.data() || {};
+      settingsSnap = { exists: true, data: () => ({
+        precios: {
+          base: Number(legacy.subscriptionPrice ?? legacy.plans?.base?.price ?? DEFAULT_PLANS.base.price),
+          pro: Number(legacy.plans?.pro?.price ?? DEFAULT_PLANS.pro.price),
+          currency: legacy.subscriptionCurrency || legacy.plans?.base?.currency || "ARS",
+        },
+        duracionTrialDias: Number(legacy.trialDaysDefault || 14),
+        features: legacy.featureFlags || {},
+      }) };
+    }
+  }
   const settings = settingsSnap.exists ? settingsSnap.data() : {};
-  const plans = settings.plans || DEFAULT_PLANS;
+  const plans = {
+    base: {
+      ...DEFAULT_PLANS.base,
+      price: Number(settings.precios?.base ?? DEFAULT_PLANS.base.price),
+      currency: settings.precios?.currency || DEFAULT_PLANS.base.currency,
+    },
+    pro: {
+      ...DEFAULT_PLANS.pro,
+      price: Number(settings.precios?.pro ?? DEFAULT_PLANS.pro.price),
+      currency: settings.precios?.currency || DEFAULT_PLANS.pro.currency,
+    },
+  };
   const planKey = plans[requestedPlanKey] ? requestedPlanKey : (account.currentPlanKey || "base");
   const plan = plans[planKey];
 

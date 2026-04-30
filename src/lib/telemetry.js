@@ -91,7 +91,7 @@ export async function trackEvent(action, payload = {}) {
       [`topActions.${action}`]: increment(1),
       [`metrics.${action}`]: increment(1),
     }, { merge: true }),
-    setDoc(doc(db, "accounts", user.uid), {
+    setDoc(doc(db, "usuarios", user.uid), {
       lastSeenAt: serverTimestamp(),
       appVersion: APP_BUILD.version,
       updatedAt: serverTimestamp(),

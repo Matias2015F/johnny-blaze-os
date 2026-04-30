@@ -61,10 +61,38 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: "Sin uid" });
   }
 
-  const accountRef = db.collection("accounts").doc(uid);
-  const settingsSnap = await db.collection("adminSettings").doc("global").get();
+  const accountRef = db.collection("usuarios").doc(uid);
+  let settingsSnap = await db.collection("admin_settings").doc("global").get();
+  if (!settingsSnap.exists) {
+    const legacySettingsSnap = await db.collection("adminSettings").doc("global").get();
+    if (legacySettingsSnap.exists) {
+      const legacy = legacySettingsSnap.data() || {};
+      settingsSnap = { exists: true, data: () => ({
+        precios: {
+          base: Number(legacy.subscriptionPrice ?? legacy.plans?.base?.price ?? DEFAULT_PLANS.base.price),
+          pro: Number(legacy.plans?.pro?.price ?? DEFAULT_PLANS.pro.price),
+          currency: legacy.subscriptionCurrency || legacy.plans?.base?.currency || "ARS",
+        },
+        graceDaysDefault: Number(legacy.graceDaysDefault || 3),
+        features: legacy.featureFlags || {},
+      }) };
+    }
+  }
   const settings = settingsSnap.exists ? settingsSnap.data() : {};
-  const plans = settings.plans || DEFAULT_PLANS;
+  const plans = {
+    base: {
+      ...DEFAULT_PLANS.base,
+      price: Number(settings.precios?.base ?? DEFAULT_PLANS.base.price),
+      currency: settings.precios?.currency || DEFAULT_PLANS.base.currency,
+      features: { ...DEFAULT_PLANS.base.features, ...(settings.features || {}) },
+    },
+    pro: {
+      ...DEFAULT_PLANS.pro,
+      price: Number(settings.precios?.pro ?? DEFAULT_PLANS.pro.price),
+      currency: settings.precios?.currency || DEFAULT_PLANS.pro.currency,
+      features: { ...DEFAULT_PLANS.pro.features, ...(settings.features || {}), multiusuario: true },
+    },
+  };
 
   const invoiceRef = invoiceId ? db.collection("billingInvoices").doc(invoiceId) : null;
   const invoiceSnap = invoiceRef ? await invoiceRef.get() : null;
@@ -99,11 +127,14 @@ module.exports = async function handler(req, res) {
   const graceEndsAt = nextBillingAt + graceDays * 24 * 60 * 60 * 1000;
 
   await accountRef.set({
-    plan: "activo",
+    estado: "activo",
+    rol: "user",
+    plan: planKey,
     pagoEstado: "pagado",
+    activoHasta: nextBillingAt,
     currentPlanKey: planKey,
     features: plan.features || {},
-    featureFlags: settings.featureFlags || {},
+    featureFlags: settings.features || {},
     nextBillingAt,
     graceEndsAt,
     billingCadenceDays: billingDays,
