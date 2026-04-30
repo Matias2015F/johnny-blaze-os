@@ -1,9 +1,29 @@
-import React, { useMemo } from "react";
-import { ArrowRight, CheckCircle, CreditCard } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { ArrowRight, CheckCircle, CreditCard, ReceiptText } from "lucide-react";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { formatMoney } from "../utils/format.js";
 
+const FILTROS = [
+  { id: "hoy", label: "Hoy" },
+  { id: "periodo", label: "Período" },
+  { id: "todo", label: "Historial completo" },
+];
+
+function normalizarFecha(value) {
+  if (!value) return "";
+  return String(value).slice(0, 10);
+}
+
+function sinCobrarTotal(orders) {
+  return orders.filter((order) => order.saldo > 0).reduce((sum, order) => sum + order.saldo, 0);
+}
+
 export default function PagosView({ orders, bikes, clients, setSelectedOrderId, setView }) {
+  const hoy = new Date().toLocaleDateString("sv-SE");
+  const [filtro, setFiltro] = useState("hoy");
+  const [desde, setDesde] = useState(hoy);
+  const [hasta, setHasta] = useState(hoy);
+
   const pendientes = useMemo(() => {
     return (orders || [])
       .filter((order) => order.estado !== "cerrado_emitido")
@@ -19,13 +39,46 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
       .sort((a, b) => b.saldo - a.saldo);
   }, [orders, bikes, clients]);
 
+  const historialPagos = useMemo(() => {
+    const pagos = (orders || [])
+      .flatMap((order) => {
+        const bike = bikes?.find((item) => item.id === order.bikeId) || {};
+        const client = clients?.find((item) => item.id === order.clientId) || {};
+        return (order.pagos || []).map((pago) => ({
+          ...pago,
+          orderId: order.id,
+          numeroTrabajo: order.numeroTrabajo || `#${order.id.slice(-4).toUpperCase()}`,
+          clientName: client?.nombre || "Sin cliente",
+          bikePlate: bike?.patente || "---",
+          fechaNormalizada: normalizarFecha(pago.fecha),
+        }));
+      })
+      .sort((a, b) => {
+        const fechaA = `${a.fechaNormalizada || ""} ${a.hora || ""}`;
+        const fechaB = `${b.fechaNormalizada || ""} ${b.hora || ""}`;
+        return fechaB.localeCompare(fechaA);
+      });
+
+    return pagos.filter((pago) => {
+      if (filtro === "todo") return true;
+      if (filtro === "hoy") return pago.fechaNormalizada === hoy;
+      if (filtro === "periodo") {
+        const fecha = pago.fechaNormalizada;
+        return (!!fecha && fecha >= desde && fecha <= hasta);
+      }
+      return true;
+    });
+  }, [orders, bikes, clients, filtro, hoy, desde, hasta]);
+
   const cobradoHoy = useMemo(() => {
-    const hoy = new Date().toLocaleDateString("sv-SE");
-    return (orders || [])
-      .flatMap((order) => order.pagos || [])
-      .filter((pago) => pago.fecha === hoy)
+    return historialPagos
+      .filter((pago) => pago.fechaNormalizada === hoy)
       .reduce((sum, pago) => sum + (pago.monto || 0), 0);
-  }, [orders]);
+  }, [historialPagos, hoy]);
+
+  const totalHistorialFiltrado = useMemo(() => {
+    return historialPagos.reduce((sum, pago) => sum + (pago.monto || 0), 0);
+  }, [historialPagos]);
 
   const saldoPendienteTotal = sinCobrarTotal(pendientes);
   const sinCobrar = pendientes.filter((order) => order.saldo > 0);
@@ -124,16 +177,94 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
         </div>
       )}
 
-      {sinCobrar.length === 0 && pagosCompletos.length === 0 && (
-        <div className="rounded-[2rem] border border-dashed border-slate-300 bg-white px-6 py-20 text-center shadow-sm">
-          <CreditCard size={40} className="mx-auto mb-4 text-slate-600" />
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Sin pagos pendientes</p>
+      <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Historial de pagos</p>
+            <p className="mt-1 text-[11px] font-bold text-slate-500">Todos los pagos recibidos y registrados</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Total filtrado</p>
+            <p className="mt-1 text-lg font-black text-slate-900">{formatMoney(totalHistorialFiltrado)}</p>
+          </div>
         </div>
-      )}
+
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {FILTROS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setFiltro(item.id)}
+              className={`rounded-2xl border px-3 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${
+                filtro === item.id
+                  ? "border-blue-500 bg-blue-50 text-blue-600"
+                  : "border-slate-100 bg-slate-50 text-slate-500"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {filtro === "periodo" && (
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Desde</p>
+              <input
+                type="date"
+                value={desde}
+                onChange={(e) => setDesde(e.target.value)}
+                className="mt-2 w-full bg-transparent text-sm font-black text-slate-900 outline-none"
+              />
+            </div>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Hasta</p>
+              <input
+                type="date"
+                value={hasta}
+                onChange={(e) => setHasta(e.target.value)}
+                className="mt-2 w-full bg-transparent text-sm font-black text-slate-900 outline-none"
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 space-y-2">
+          {historialPagos.length > 0 ? (
+            historialPagos.map((pago) => (
+              <div key={pago.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-black uppercase text-slate-900">{pago.clientName}</p>
+                    <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-blue-500">{pago.numeroTrabajo}</p>
+                    <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">{pago.bikePlate}</p>
+                  </div>
+                  <p className="text-lg font-black text-green-600">{formatMoney(pago.monto)}</p>
+                </div>
+
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  <div className="rounded-xl bg-white px-3 py-2">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Fecha</p>
+                    <p className="mt-1 text-[10px] font-black text-slate-700">{pago.fecha || "—"}</p>
+                  </div>
+                  <div className="rounded-xl bg-white px-3 py-2">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Comprobante</p>
+                    <p className="mt-1 text-[10px] font-black text-slate-700">{pago.comprobante || "Sin número"}</p>
+                  </div>
+                  <div className="rounded-xl bg-white px-3 py-2">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Método</p>
+                    <p className="mt-1 text-[10px] font-black text-slate-700 capitalize">{pago.metodo || "—"}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-10 text-center">
+              <ReceiptText size={36} className="mx-auto mb-3 text-slate-400" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">No hay pagos para este filtro</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
-}
-
-function sinCobrarTotal(orders) {
-  return orders.filter((order) => order.saldo > 0).reduce((sum, order) => sum + order.saldo, 0);
 }
