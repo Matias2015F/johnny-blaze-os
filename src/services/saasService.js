@@ -3,9 +3,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export const SAAS_COLLECTIONS = {
   usuarios: "usuarios",
-  legacyUsuarios: "accounts",
   adminSettings: "admin_settings",
-  legacyAdminSettings: "adminSettings",
 };
 
 export const PLATFORM_ADMIN_EMAILS = ["fefe@gmail.com"];
@@ -53,14 +51,13 @@ export function isPlatformAdminUser(userLike = {}) {
 
 export function normalizeAdminSettings(raw = {}) {
   const precios = raw.precios || {};
-  const legacyPlans = raw.plans || {};
-  const basePrice = Number(precios.base ?? raw.subscriptionPrice ?? legacyPlans.base?.price ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.base);
-  const proPrice = Number(precios.pro ?? legacyPlans.pro?.price ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.pro);
-  const currency = precios.currency || raw.subscriptionCurrency || legacyPlans.base?.currency || DEFAULT_SAAS_ADMIN_SETTINGS.precios.currency;
-  const duracionTrialDias = Number(raw.duracionTrialDias ?? raw.trialDaysDefault ?? DEFAULT_SAAS_ADMIN_SETTINGS.duracionTrialDias);
+  const basePrice = Number(precios.base ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.base);
+  const proPrice = Number(precios.pro ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.pro);
+  const currency = precios.currency || DEFAULT_SAAS_ADMIN_SETTINGS.precios.currency;
+  const duracionTrialDias = Number(raw.duracionTrialDias ?? DEFAULT_SAAS_ADMIN_SETTINGS.duracionTrialDias);
   const features = {
     ...DEFAULT_SAAS_FEATURES,
-    ...(raw.features || raw.featureFlags || {}),
+    ...(raw.features || {}),
   };
 
   return {
@@ -73,10 +70,6 @@ export function normalizeAdminSettings(raw = {}) {
     graceDaysDefault: Number(raw.graceDaysDefault ?? DEFAULT_SAAS_ADMIN_SETTINGS.graceDaysDefault),
     applyPricingToNewAccountsOnly: raw.applyPricingToNewAccountsOnly !== false,
     features,
-    trialDaysDefault: duracionTrialDias,
-    subscriptionPrice: basePrice,
-    subscriptionCurrency: currency,
-    featureFlags: features,
     plans: {
       base: {
         label: "Plan Base",
@@ -181,20 +174,6 @@ export async function leerAdminSettings() {
   const newSnap = await getDoc(newRef);
   if (newSnap.exists()) return normalizeAdminSettings(newSnap.data());
 
-  const legacySnap = await getDoc(doc(db, SAAS_COLLECTIONS.legacyAdminSettings, "global"));
-  if (legacySnap.exists()) {
-    const normalized = normalizeAdminSettings(legacySnap.data());
-    await setDoc(newRef, {
-      precios: normalized.precios,
-      duracionTrialDias: normalized.duracionTrialDias,
-      graceDaysDefault: normalized.graceDaysDefault,
-      applyPricingToNewAccountsOnly: normalized.applyPricingToNewAccountsOnly,
-      features: normalized.features,
-      migratedFromLegacyAt: serverTimestamp(),
-    }, { merge: true });
-    return normalized;
-  }
-
   return normalizeAdminSettings(DEFAULT_SAAS_ADMIN_SETTINGS);
 }
 
@@ -218,33 +197,6 @@ export async function leerUsuarioSaas(uid) {
   const newRef = doc(db, SAAS_COLLECTIONS.usuarios, uid);
   const newSnap = await getDoc(newRef);
   if (newSnap.exists()) return normalizeSaasUser(newSnap.data(), { uid });
-
-  const legacySnap = await getDoc(doc(db, SAAS_COLLECTIONS.legacyUsuarios, uid));
-  if (legacySnap.exists()) {
-    const normalized = normalizeSaasUser(legacySnap.data(), { uid });
-    await setDoc(newRef, {
-      uid: normalized.uid,
-      email: normalized.email,
-      estado: normalized.estado,
-      activoHasta: normalized.activoHasta,
-      rol: normalized.rol,
-      plan: normalized.plan,
-      pagoEstado: normalized.pagoEstado,
-      currentPlanKey: normalized.currentPlanKey,
-      isPlatformAdmin: normalized.isPlatformAdmin,
-      graceEndsAt: normalized.graceEndsAt || null,
-      trialEndsAt: normalized.trialEndsAt || null,
-      nextBillingAt: normalized.nextBillingAt || null,
-      featureFlags: normalized.featureFlags,
-      features: normalized.features,
-      nombreTaller: normalized.nombreTaller,
-      lastSeenAt: normalized.lastSeenAt || null,
-      createdAt: normalized.createdAt || serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      migratedFromLegacyAt: serverTimestamp(),
-    }, { merge: true });
-    return normalized;
-  }
 
   return null;
 }
@@ -312,32 +264,16 @@ export async function ensureSaasUserProfile(authUser, extras = {}) {
     updatedAt: serverTimestamp(),
   };
 
-  const legacyPayload = {
-    uid: merged.uid,
-    email: merged.email,
-    nombreTaller: merged.nombreTaller,
-    plan: merged.plan,
-    pagoEstado: merged.pagoEstado,
-    trialEndsAt: merged.estado === "trial" ? canonicalPayload.activoHasta : merged.trialEndsAt,
-    nextBillingAt: merged.estado === "activo" ? canonicalPayload.activoHasta : merged.nextBillingAt,
-    activoHasta: canonicalPayload.activoHasta,
-    rol: merged.rol,
-    isPlatformAdmin: merged.isPlatformAdmin,
-    featureFlags: merged.featureFlags,
-    features: merged.features,
-    currentPlanKey: merged.currentPlanKey,
-    subscriptionPriceAtSignup: existing?.subscriptionPriceAtSignup ?? defaultPrecio,
-    subscriptionCurrencyAtSignup: existing?.subscriptionCurrencyAtSignup ?? currency,
-    appVersion: extras.appVersion || existing?.appVersion || null,
-    lastSeenAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-
   if (!existing) {
     canonicalPayload.createdAt = serverTimestamp();
   }
 
   await setDoc(doc(db, SAAS_COLLECTIONS.usuarios, authUser.uid), canonicalPayload, { merge: true });
 
-  return normalizeSaasUser({ ...legacyPayload, ...canonicalPayload }, { uid: authUser.uid });
+  return normalizeSaasUser({
+    ...canonicalPayload,
+    subscriptionPriceAtSignup: existing?.subscriptionPriceAtSignup ?? defaultPrecio,
+    subscriptionCurrencyAtSignup: existing?.subscriptionCurrencyAtSignup ?? currency,
+    appVersion: extras.appVersion || existing?.appVersion || null,
+  }, { uid: authUser.uid });
 }

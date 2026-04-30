@@ -37,22 +37,7 @@ module.exports = async function handler(req, res) {
   if (!accountSnap.exists) return res.status(404).json({ error: "Cuenta no encontrada" });
   const account = accountSnap.data();
 
-  let settingsSnap = await db.collection("admin_settings").doc("global").get();
-  if (!settingsSnap.exists) {
-    const legacySettingsSnap = await db.collection("adminSettings").doc("global").get();
-    if (legacySettingsSnap.exists) {
-      const legacy = legacySettingsSnap.data() || {};
-      settingsSnap = { exists: true, data: () => ({
-        precios: {
-          base: Number(legacy.subscriptionPrice ?? legacy.plans?.base?.price ?? DEFAULT_PLANS.base.price),
-          pro: Number(legacy.plans?.pro?.price ?? DEFAULT_PLANS.pro.price),
-          currency: legacy.subscriptionCurrency || legacy.plans?.base?.currency || "ARS",
-        },
-        duracionTrialDias: Number(legacy.trialDaysDefault || 14),
-        features: legacy.featureFlags || {},
-      }) };
-    }
-  }
+  const settingsSnap = await db.collection("admin_settings").doc("global").get();
   const settings = settingsSnap.exists ? settingsSnap.data() : {};
   const plans = {
     base: {

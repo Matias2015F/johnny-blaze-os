@@ -21,20 +21,6 @@ service cloud.firestore {
       return signedIn() && request.resource.data[field] == request.auth.uid;
     }
 
-    // Perfil SaaS por cuenta
-    match /accounts/{uid} {
-      allow read: if isOwner(uid) || isPlatformAdmin();
-      allow create: if isOwner(uid);
-      allow update: if isOwner(uid) || isPlatformAdmin();
-      allow delete: if isPlatformAdmin();
-    }
-
-    // Reglas globales del producto
-    match /adminSettings/{docId} {
-      allow read: if signedIn();
-      allow write: if isPlatformAdmin();
-    }
-
     match /admin_settings/{docId} {
       allow read: if signedIn();
       allow write: if isPlatformAdmin();
@@ -79,7 +65,6 @@ service cloud.firestore {
       allow read, write: if isOwner(uid) || isPlatformAdmin();
     }
 
-    // Compatibilidad legacy
     match /usuarios/{uid} {
       allow read, write: if isOwner(uid) || isPlatformAdmin();
     }

@@ -62,22 +62,7 @@ module.exports = async function handler(req, res) {
   }
 
   const accountRef = db.collection("usuarios").doc(uid);
-  let settingsSnap = await db.collection("admin_settings").doc("global").get();
-  if (!settingsSnap.exists) {
-    const legacySettingsSnap = await db.collection("adminSettings").doc("global").get();
-    if (legacySettingsSnap.exists) {
-      const legacy = legacySettingsSnap.data() || {};
-      settingsSnap = { exists: true, data: () => ({
-        precios: {
-          base: Number(legacy.subscriptionPrice ?? legacy.plans?.base?.price ?? DEFAULT_PLANS.base.price),
-          pro: Number(legacy.plans?.pro?.price ?? DEFAULT_PLANS.pro.price),
-          currency: legacy.subscriptionCurrency || legacy.plans?.base?.currency || "ARS",
-        },
-        graceDaysDefault: Number(legacy.graceDaysDefault || 3),
-        features: legacy.featureFlags || {},
-      }) };
-    }
-  }
+  const settingsSnap = await db.collection("admin_settings").doc("global").get();
   const settings = settingsSnap.exists ? settingsSnap.data() : {};
   const plans = {
     base: {
