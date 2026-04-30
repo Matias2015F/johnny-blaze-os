@@ -6,6 +6,7 @@ import { calcularNuevoTotal } from "../lib/calc.js";
 import { obtenerAprendizaje, evaluarConfianza } from "../lib/priceLearning.js";
 import { formatMoney } from "../utils/format.js";
 import { TIPOS_SERVICIO, detectarProximoControl, buildProximoControl } from "../lib/proximoControl.js";
+import { trackEvent } from "../lib/telemetry.js";
 
 const PRESETS = [10, 20, 30, 50, 80];
 
@@ -70,6 +71,18 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   const [proximoCustom, setProximoCustom] = useState(false);
   const [proximoCustomInput, setProximoCustomInput] = useState("");
   const [deteccion, setDeteccion] = useState(null); // {tipo,descripcion,unidad,valorObjetivo,textoOrigen}
+
+  useEffect(() => {
+    trackEvent("open_gestionar_tareas", {
+      screen: "gestionarTareas",
+      entityType: "trabajo",
+      entityId: order.id,
+      metadata: {
+        bikeId: order.bikeId,
+        estado: order.estado || "",
+      },
+    }).catch(console.error);
+  }, [order.bikeId, order.estado, order.id]);
 
   // Cargar datos de tarea existente al editar — FIX: incluye repuestos e insumos guardados
   useEffect(() => {
@@ -405,6 +418,18 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           }
         : null,
     });
+
+    trackEvent("guardar_trabajo", {
+      screen: "gestionarTareas",
+      entityType: "trabajo",
+      entityId: order.id,
+      metadata: {
+        tareas: nuevasTareas.length,
+        repuestos: nuevosRepuestos.length,
+        insumos: nuevosInsumos.length,
+        total: nTotal,
+      },
+    }).catch(console.error);
 
     setServiceToEdit(null);
     setView("detalleOrden");

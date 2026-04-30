@@ -11,6 +11,7 @@ import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { APP_BUILD } from "../generated/appVersion.js";
 import { applyRemoteUpdate, ensureNotificationPermission, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, sendTestNotification } from "../lib/appUpdate.js";
+import { DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS } from "../lib/telemetry.js";
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
@@ -92,8 +93,11 @@ function formatAdminDate(value, fallback = "Sin dato") {
 function PantallaAdmin({ showToast }) {
   const [loading, setLoading] = React.useState(true);
   const [account, setAccount] = React.useState(null);
+  const [settings, setSettings] = React.useState(DEFAULT_ADMIN_SETTINGS);
   const [snapshots, setSnapshots] = React.useState([]);
   const [eventos, setEventos] = React.useState([]);
+  const user = auth.currentUser;
+  const isPlatformAdmin = PLATFORM_ADMIN_EMAILS.includes((user?.email || "").toLowerCase());
 
   const cargar = async () => {
     const uid = auth.currentUser?.uid;
@@ -112,6 +116,9 @@ function PantallaAdmin({ showToast }) {
             lastSeenAt: null,
           };
       setAccount(mine);
+
+      const settingsSnap = await getDoc(doc(db, "adminSettings", "global"));
+      setSettings(settingsSnap.exists() ? { ...DEFAULT_ADMIN_SETTINGS, ...settingsSnap.data() } : DEFAULT_ADMIN_SETTINGS);
 
       const snapshotsSnap = await getDocs(query(collection(db, "usageSnapshots")));
       const mineSnapshots = snapshotsSnap.docs
@@ -166,6 +173,25 @@ function PantallaAdmin({ showToast }) {
     [snapshots]
   );
 
+  const guardarSettings = async () => {
+    try {
+      await setDoc(doc(db, "adminSettings", "global"), {
+        trialDaysDefault: Number(settings.trialDaysDefault || DEFAULT_ADMIN_SETTINGS.trialDaysDefault),
+        subscriptionPrice: Number(settings.subscriptionPrice || 0),
+        subscriptionCurrency: settings.subscriptionCurrency || "ARS",
+        applyPricingToNewAccountsOnly: settings.applyPricingToNewAccountsOnly !== false,
+        updatedAt: new Date().toISOString(),
+        updatedByUid: user?.uid || "",
+        updatedByEmail: user?.email || "",
+      }, { merge: true });
+      showToast("Reglas guardadas para usuarios nuevos");
+      cargar();
+    } catch (error) {
+      console.error(error);
+      showToast("No se pudieron guardar las reglas");
+    }
+  };
+
   const extenderTrial = async (dias) => {
     if (!account?.uid) return;
     const actual = Number(account.trialEndsAt || Date.now());
@@ -198,6 +224,17 @@ function PantallaAdmin({ showToast }) {
           <p className="text-sm font-black text-slate-500">Cargando métricas y cuenta...</p>
         </Card>
       </div>
+    );
+  }
+
+  if (!(isPlatformAdmin || account?.isPlatformAdmin)) {
+    return (
+      <Card>
+        <SectionTitle>Admin</SectionTitle>
+        <p className="text-sm font-black text-slate-700">
+          Este panel es solo para vos como autor y administrador de Johnny Blaze OS.
+        </p>
+      </Card>
     );
   }
 
@@ -964,6 +1001,8 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
   const [bkpEstado, setBkpEstado] = useState(() => estadoBackup());
   const fileInputRef = useRef(null);
   const caja = useCollection("caja");
+  const canSeeAdminTab = PLATFORM_ADMIN_EMAILS.includes((auth.currentUser?.email || "").toLowerCase());
+  const visibleTabs = canSeeAdminTab ? TABS : TABS.filter((tab) => tab.id !== "admin");
 
   const handleRestaurarArchivo = (e) => {
     const file = e.target.files?.[0];
@@ -1013,7 +1052,7 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
       {/* Tab bar */}
       <div className="px-4 pb-3 bg-slate-950">
         <div className="flex gap-1 bg-slate-800 p-1 rounded-2xl">
-          {TABS.map(({ id, label, Icon }) => (
+          {visibleTabs.map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}

@@ -3,6 +3,7 @@ import { LS, generateId } from "./storage.js";
 import { APP_BUILD } from "../generated/appVersion.js";
 import {
   doc,
+  getDoc,
   setDoc,
   serverTimestamp,
   increment,
@@ -13,6 +14,15 @@ const DEFAULT_FEATURES = {
   recordatorios: true,
   analytics: true,
   multiusuario: false,
+};
+
+export const PLATFORM_ADMIN_EMAILS = ["fefe@gmail.com"];
+export const DEFAULT_ADMIN_SETTINGS = {
+  trialDaysDefault: 14,
+  subscriptionPrice: 0,
+  subscriptionCurrency: "ARS",
+  applyPricingToNewAccountsOnly: true,
+  updatedAt: null,
 };
 
 function getSessionId() {
@@ -51,20 +61,46 @@ export async function ensureAccountProfile() {
   if (!user) return;
 
   const ref = doc(db, "accounts", user.uid);
-  await setDoc(ref, {
+  const [existingSnap, settingsSnap] = await Promise.all([
+    getDoc(ref),
+    getDoc(doc(db, "adminSettings", "global")),
+  ]);
+
+  const existing = existingSnap.exists() ? existingSnap.data() : null;
+  const settings = settingsSnap.exists()
+    ? { ...DEFAULT_ADMIN_SETTINGS, ...settingsSnap.data() }
+    : DEFAULT_ADMIN_SETTINGS;
+  const trialDays = Number(settings.trialDaysDefault || DEFAULT_ADMIN_SETTINGS.trialDaysDefault);
+  const now = Date.now();
+  const isPlatformAdmin = PLATFORM_ADMIN_EMAILS.includes((user.email || "").toLowerCase());
+
+  const basePayload = {
     uid: user.uid,
     email: user.email || "",
-    nombreTaller: (LS.getDoc("config", "global") || {}).nombreTaller || "Johnny Blaze OS",
-    plan: "trial",
-    pagoEstado: "pendiente",
-    trialStartsAt: Date.now(),
-    trialEndsAt: Date.now() + 14 * 24 * 60 * 60 * 1000,
-    graceEndsAt: null,
-    adminUid: user.uid,
-    features: DEFAULT_FEATURES,
+    nombreTaller: (LS.getDoc("config", "global") || {}).nombreTaller || existing?.nombreTaller || "Johnny Blaze OS",
     lastSeenAt: serverTimestamp(),
     appVersion: APP_BUILD.version,
     updatedAt: serverTimestamp(),
+    isPlatformAdmin: existing?.isPlatformAdmin ?? isPlatformAdmin,
+  };
+
+  if (existing) {
+    await setDoc(ref, basePayload, { merge: true });
+    return;
+  }
+
+  await setDoc(ref, {
+    ...basePayload,
+    plan: "trial",
+    pagoEstado: "pendiente",
+    trialStartsAt: now,
+    trialEndsAt: now + trialDays * 24 * 60 * 60 * 1000,
+    graceEndsAt: null,
+    adminUid: user.uid,
+    features: DEFAULT_FEATURES,
+    subscriptionPriceAtSignup: Number(settings.subscriptionPrice || 0),
+    subscriptionCurrencyAtSignup: settings.subscriptionCurrency || "ARS",
+    pricingVersionAppliedAt: serverTimestamp(),
     createdAt: serverTimestamp(),
   }, { merge: true });
 }
