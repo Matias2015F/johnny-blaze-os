@@ -5,7 +5,7 @@ import {
   Settings, HardDrive, Wrench, Plus, Minus,
 } from "lucide-react";
 import { LS, useCollection, migrateFromRootCollections, forceSyncCacheToFirestore } from "../lib/storage.js";
-import { auth } from "../firebase.js";
+import { auth, db } from "../firebase.js";
 import { createCloudBackup, listCloudBackups, restoreCloudBackup } from "../lib/cloudBackup.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
@@ -14,6 +14,7 @@ import { ensureNotificationPermission, getDisplayModeInfo, sendTestNotification 
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
+import { collection, doc, getDocs, query, limit, orderBy, setDoc } from "firebase/firestore";
 
 const DIFICULTADES = [
   { key: "facil",      label: "Fácil",       color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
@@ -27,6 +28,7 @@ const TABS = [
   { id: "taller",  label: "Taller",   Icon: Wrench },
   { id: "datos",   label: "Datos",    Icon: HardDrive },
   { id: "sistema", label: "Sistema",  Icon: Settings },
+  { id: "admin",   label: "Admin",    Icon: Shield },
 ];
 
 // ── Stepper component ──────────────────────────────────────────────────────────
@@ -65,6 +67,181 @@ function Card({ children, className = "" }) {
 
 function SectionTitle({ children }) {
   return <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{children}</p>;
+}
+
+function PantallaAdmin({ showToast }) {
+  const [loading, setLoading] = React.useState(true);
+  const [account, setAccount] = React.useState(null);
+  const [snapshots, setSnapshots] = React.useState([]);
+  const [eventos, setEventos] = React.useState([]);
+
+  const cargar = async () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    setLoading(true);
+    try {
+      const accountSnap = await getDocs(query(collection(db, "accounts")));
+      const mine = accountSnap.docs.map((d) => ({ id: d.id, ...d.data() })).find((item) => item.uid === uid) || null;
+      setAccount(mine);
+
+      const snapshotsSnap = await getDocs(query(collection(db, "usageSnapshots")));
+      const mineSnapshots = snapshotsSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((item) => item.accountId === uid)
+        .sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || "")))
+        .slice(0, 7);
+      setSnapshots(mineSnapshots);
+
+      const eventosSnap = await getDocs(query(collection(db, "telemetryEvents"), orderBy("createdAt", "desc"), limit(40)));
+      const mineEvents = eventosSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((item) => item.uid === uid)
+        .slice(0, 15);
+      setEventos(mineEvents);
+    } catch (e) {
+      console.error(e);
+      showToast("No se pudo cargar el panel admin");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    cargar();
+  }, []);
+
+  const resumenUso = React.useMemo(() => {
+    return snapshots.reduce(
+      (acc, item) => {
+        const acciones = item.topActions || {};
+        Object.entries(acciones).forEach(([key, value]) => {
+          acc[key] = (acc[key] || 0) + Number(value || 0);
+        });
+        return acc;
+      },
+      {}
+    );
+  }, [snapshots]);
+
+  const topAcciones = Object.entries(resumenUso)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6);
+
+  const extenderTrial = async (dias) => {
+    if (!account?.uid) return;
+    const actual = Number(account.trialEndsAt || Date.now());
+    const base = actual > Date.now() ? actual : Date.now();
+    const nuevoTrial = base + dias * 24 * 60 * 60 * 1000;
+    await setDoc(doc(db, "accounts", account.uid), {
+      trialEndsAt: nuevoTrial,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+    showToast(`Trial extendido ${dias} días`);
+    cargar();
+  };
+
+  const cambiarPlan = async (plan, pagoEstado = "pendiente") => {
+    if (!account?.uid) return;
+    await setDoc(doc(db, "accounts", account.uid), {
+      plan,
+      pagoEstado,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+    showToast(`Plan actualizado: ${plan}`);
+    cargar();
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <SectionTitle>Admin</SectionTitle>
+          <p className="text-sm font-black text-slate-500">Cargando métricas y cuenta...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <SectionTitle>Cuenta actual</SectionTitle>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Plan</p>
+            <p className="mt-1 text-xl font-black text-slate-800 uppercase">{account?.plan || "trial"}</p>
+          </div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pago</p>
+            <p className="mt-1 text-xl font-black text-slate-800 uppercase">{account?.pagoEstado || "pendiente"}</p>
+          </div>
+        </div>
+        <div className="mt-3 bg-slate-50 border border-slate-100 rounded-2xl p-4">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Trial hasta</p>
+          <p className="mt-1 text-sm font-black text-slate-800">
+            {account?.trialEndsAt ? new Date(account.trialEndsAt).toLocaleString("es-AR") : "Sin fecha"}
+          </p>
+          <p className="mt-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Última actividad</p>
+          <p className="mt-1 text-sm font-black text-slate-800">
+            {account?.lastSeenAt?.toDate ? account.lastSeenAt.toDate().toLocaleString("es-AR") : "Sin dato"}
+          </p>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button onClick={() => extenderTrial(7)} className="rounded-2xl bg-blue-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
+            +7 días trial
+          </button>
+          <button onClick={() => extenderTrial(14)} className="rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
+            +14 días trial
+          </button>
+          <button onClick={() => cambiarPlan("activo", "pagado")} className="rounded-2xl bg-emerald-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
+            Activar plan
+          </button>
+          <button onClick={() => cambiarPlan("suspendido", "atrasado")} className="rounded-2xl bg-red-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
+            Suspender
+          </button>
+        </div>
+      </Card>
+
+      <Card>
+        <SectionTitle>Uso de los últimos 7 días</SectionTitle>
+        <div className="space-y-3">
+          {topAcciones.length > 0 ? topAcciones.map(([accion, total]) => (
+            <div key={accion} className="space-y-1">
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <span>{accion.replaceAll("_", " ")}</span>
+                <span className="text-slate-800">{total}</span>
+              </div>
+              <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-blue-500"
+                  style={{ width: `${Math.min((total / Math.max(topAcciones[0]?.[1] || 1, 1)) * 100, 100)}%` }}
+                />
+              </div>
+            </div>
+          )) : (
+            <p className="text-sm font-black text-slate-500">Todavía no hay datos de uso suficientes.</p>
+          )}
+        </div>
+      </Card>
+
+      <Card>
+        <SectionTitle>Actividad reciente</SectionTitle>
+        <div className="space-y-2">
+          {eventos.length > 0 ? eventos.map((evento) => (
+            <div key={evento.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">{evento.action?.replaceAll("_", " ")}</p>
+              <p className="mt-1 text-xs font-black text-slate-800">{evento.screen || "sin pantalla"} · {evento.entityType || "general"}</p>
+              <p className="mt-1 text-[10px] font-bold text-slate-400">
+                {evento.createdAt?.toDate ? evento.createdAt.toDate().toLocaleString("es-AR") : "Sin fecha"}
+              </p>
+            </div>
+          )) : (
+            <p className="text-sm font-black text-slate-500">Todavía no hay actividad reciente.</p>
+          )}
+        </div>
+      </Card>
+    </div>
+  );
 }
 
 // ── PANTALLA: Resumen ──────────────────────────────────────────────────────────
@@ -710,6 +887,7 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
       case "taller":  return <PantallaTaller cfg={cfg} setCfg={setCfg} showToast={showToast} />;
       case "datos":   return <PantallaDatos orders={orders} bikes={bikes} clients={clients} cfg={cfg} showToast={showToast} bkpEstado={bkpEstado} setBkpEstado={setBkpEstado} fileInputRef={fileInputRef} handleRestaurarArchivo={handleRestaurarArchivo} handleRestaurarAuto={handleRestaurarAuto} />;
       case "sistema": return <PantallaSistema loadDemoData={loadDemoData} clearAllData={clearAllData} handleLogout={handleLogout} showToast={showToast} cfg={cfg} setCfg={setCfg} />;
+      case "admin":   return <PantallaAdmin showToast={showToast} />;
       default: return null;
     }
   };
