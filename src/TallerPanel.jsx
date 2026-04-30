@@ -149,6 +149,7 @@ export default function TallerPanel() {
   const [showHelp, setShowHelp] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
   const [installAvailable, setInstallAvailable] = useState(false);
+  const [selectedInstallPlatform, setSelectedInstallPlatform] = useState("auto");
 
   const clients       = useCollection("clientes");
   const bikes         = useCollection("motos");
@@ -375,6 +376,39 @@ export default function TallerPanel() {
   const helpInfo = HELP_CONTENT[view] || null;
   const displayMode = getDisplayModeInfo();
   const installGuide = getInstallGuide();
+  const activeInstallGuide =
+    selectedInstallPlatform === "ios"
+      ? {
+          platform: "ios",
+          title: "Instalar en iPhone o iPad",
+          steps: [
+            "Abrí esta app en Safari.",
+            "Tocá Compartir.",
+            "Elegí Agregar a pantalla de inicio.",
+            "Confirmá Agregar para dejarla como app.",
+          ],
+        }
+      : selectedInstallPlatform === "android"
+        ? {
+            platform: "android",
+            title: "Instalar en Android",
+            steps: [
+              "Tocá Instalar app si el botón está habilitado.",
+              "Si no aparece, abrí el menú de Chrome.",
+              "Elegí Instalar aplicación o Agregar a pantalla principal.",
+            ],
+          }
+        : selectedInstallPlatform === "desktop"
+          ? {
+              platform: "desktop",
+              title: "Instalar en PC",
+              steps: [
+                "Tocá Instalar app si el botón está habilitado.",
+                "Si no aparece, abrí el menú del navegador.",
+                "Buscá Instalar aplicación o Apps.",
+              ],
+            }
+          : installGuide;
   const stats = {
     activas: orders.filter((o) => o.estado !== "cerrado_emitido").length,
     hoy: orders.filter((o) => o.fechaIngreso === hoyEstable()).length,
@@ -401,6 +435,39 @@ export default function TallerPanel() {
       return;
     }
     showToast("El instalador no esta disponible ahora");
+  };
+
+  const copiarEnlaceApp = async () => {
+    try {
+      const url = window.location.origin;
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        showToast("Enlace copiado");
+        return;
+      }
+      showToast("No se pudo copiar el enlace");
+    } catch (error) {
+      console.error(error);
+      showToast("No se pudo copiar el enlace");
+    }
+  };
+
+  const compartirDesdeAyuda = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Johnny Blaze OS",
+          text: "Abrí esta app y agregala a tu pantalla de inicio.",
+          url: window.location.origin,
+        });
+        showToast("Se abrio compartir");
+        return;
+      }
+      await copiarEnlaceApp();
+    } catch (error) {
+      console.error(error);
+      showToast("No se pudo abrir compartir");
+    }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -512,33 +579,60 @@ export default function TallerPanel() {
             <div className="space-y-3 rounded-2xl border border-blue-500/20 bg-slate-950/70 p-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Instalar app</p>
-                <p className="mt-1 text-sm font-black text-white">{installGuide.title}</p>
+                <p className="mt-1 text-sm font-black text-white">{activeInstallGuide.title}</p>
                 <p className="mt-1 text-[10px] font-bold text-slate-400">
                   {displayMode.installed ? "Esta app ya esta instalada en este dispositivo." : "Podés instalarla desde acá si tu navegador lo permite."}
                 </p>
               </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { key: "android", label: "Android" },
+                  { key: "ios", label: "iPhone" },
+                  { key: "desktop", label: "PC" },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => setSelectedInstallPlatform(item.key)}
+                    className={`rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest active:scale-95 ${
+                      selectedInstallPlatform === item.key
+                        ? "bg-blue-600 text-white"
+                        : "bg-slate-900 text-slate-300"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
               <div className="space-y-2">
-                {installGuide.steps.map((step) => (
+                {activeInstallGuide.steps.map((step) => (
                   <div key={step} className="rounded-2xl bg-slate-900 p-3 text-[11px] font-bold leading-relaxed text-slate-200">
                     {step}
                   </div>
                 ))}
               </div>
               {!displayMode.installed && (
-                <button
-                  onClick={instalarDesdeAyuda}
-                  className={`w-full rounded-2xl py-4 text-[10px] font-black uppercase tracking-widest active:scale-95 ${
-                    installAvailable || installGuide.platform === "ios"
-                      ? "bg-emerald-600 text-white"
-                      : "bg-slate-800 text-slate-400"
-                  }`}
-                >
-                  {installGuide.platform === "ios"
-                    ? "Ver como instalar en iPhone"
-                    : installAvailable
-                      ? "Instalar app"
-                      : "Instalador no disponible"}
-                </button>
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    onClick={activeInstallGuide.platform === "ios" ? compartirDesdeAyuda : instalarDesdeAyuda}
+                    className={`w-full rounded-2xl py-4 text-[10px] font-black uppercase tracking-widest active:scale-95 ${
+                      activeInstallGuide.platform === "ios" || installAvailable
+                        ? "bg-emerald-600 text-white"
+                        : "bg-slate-800 text-slate-400"
+                    }`}
+                  >
+                    {activeInstallGuide.platform === "ios"
+                      ? "Abrir compartir"
+                      : installAvailable
+                        ? "Instalar app"
+                        : "Intentar instalar"}
+                  </button>
+                  <button
+                    onClick={copiarEnlaceApp}
+                    className="w-full rounded-2xl bg-slate-900 py-4 text-[10px] font-black uppercase tracking-widest text-slate-200 active:scale-95"
+                  >
+                    Copiar enlace de la app
+                  </button>
+                </div>
               )}
             </div>
             <button
