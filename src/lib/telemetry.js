@@ -17,6 +17,7 @@ const DEFAULT_FEATURES = {
 };
 
 export const PLATFORM_ADMIN_EMAILS = ["fefe@gmail.com"];
+export const PLATFORM_ADMIN_UIDS = ["123456789"];
 export const DEFAULT_ADMIN_SETTINGS = {
   trialDaysDefault: 14,
   subscriptionPrice: 0,
@@ -72,7 +73,9 @@ export async function ensureAccountProfile() {
     : DEFAULT_ADMIN_SETTINGS;
   const trialDays = Number(settings.trialDaysDefault || DEFAULT_ADMIN_SETTINGS.trialDaysDefault);
   const now = Date.now();
-  const isPlatformAdmin = PLATFORM_ADMIN_EMAILS.includes((user.email || "").toLowerCase());
+  const isPlatformAdmin =
+    PLATFORM_ADMIN_EMAILS.includes((user.email || "").toLowerCase()) ||
+    PLATFORM_ADMIN_UIDS.includes(user.uid || "");
 
   const basePayload = {
     uid: user.uid,

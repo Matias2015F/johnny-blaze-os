@@ -11,7 +11,7 @@ import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { APP_BUILD } from "../generated/appVersion.js";
 import { applyRemoteUpdate, ensureNotificationPermission, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, sendTestNotification } from "../lib/appUpdate.js";
-import { DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS } from "../lib/telemetry.js";
+import { DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS } from "../lib/telemetry.js";
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
@@ -97,7 +97,9 @@ function PantallaAdmin({ showToast }) {
   const [snapshots, setSnapshots] = React.useState([]);
   const [eventos, setEventos] = React.useState([]);
   const user = auth.currentUser;
-  const isPlatformAdmin = PLATFORM_ADMIN_EMAILS.includes((user?.email || "").toLowerCase());
+  const isPlatformAdmin =
+    PLATFORM_ADMIN_EMAILS.includes((user?.email || "").toLowerCase()) ||
+    PLATFORM_ADMIN_UIDS.includes(user?.uid || "");
 
   const cargar = async () => {
     const uid = auth.currentUser?.uid;
@@ -1001,7 +1003,9 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
   const [bkpEstado, setBkpEstado] = useState(() => estadoBackup());
   const fileInputRef = useRef(null);
   const caja = useCollection("caja");
-  const canSeeAdminTab = PLATFORM_ADMIN_EMAILS.includes((auth.currentUser?.email || "").toLowerCase());
+  const canSeeAdminTab =
+    PLATFORM_ADMIN_EMAILS.includes((auth.currentUser?.email || "").toLowerCase()) ||
+    PLATFORM_ADMIN_UIDS.includes(auth.currentUser?.uid || "");
   const visibleTabs = canSeeAdminTab ? TABS : TABS.filter((tab) => tab.id !== "admin");
 
   const handleRestaurarArchivo = (e) => {
