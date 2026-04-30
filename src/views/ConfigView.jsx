@@ -9,11 +9,11 @@ import { auth } from "../firebase.js";
 import { createCloudBackup, listCloudBackups, restoreCloudBackup } from "../lib/cloudBackup.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
+import { APP_BUILD } from "../generated/appVersion.js";
+import { ensureNotificationPermission, getDisplayModeInfo, sendTestNotification } from "../lib/appUpdate.js";
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
-
-const APP_VERSION = "1.0.0";
 
 const DIFICULTADES = [
   { key: "facil",      label: "Fácil",       color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
@@ -434,6 +434,9 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
 // ── PANTALLA: Sistema ──────────────────────────────────────────────────────────
 function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, cfg, setCfg }) {
   const [migrando, setMigrando] = React.useState(false);
+  const displayMode = getDisplayModeInfo();
+  const permissionLabel =
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "no soportado";
 
   const handleMigrarRaiz = async () => {
     setMigrando(true);
@@ -473,20 +476,31 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
 
   const toggleAlertasNavegador = async () => {
     const activar = !(cfg.alertasNavegadorActivas ?? true);
-    if (activar && typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
-      try {
-        const permiso = await Notification.requestPermission();
-        if (permiso !== "granted") {
-          showToast("El navegador no dio permiso para notificar");
-        }
-      } catch (e) {
-        console.error(e);
+    if (activar) {
+      const permiso = await ensureNotificationPermission();
+      if (permiso !== "granted") {
+        showToast("El navegador no dio permiso para notificar");
       }
     }
     const nuevo = { ...cfg, alertasNavegadorActivas: activar };
     setCfg(nuevo);
     LS.setDoc("config", "global", nuevo);
-    showToast(activar ? "Alertas del navegador activadas ?" : "Alertas del navegador desactivadas");
+    showToast(activar ? "Alertas del navegador activadas" : "Alertas del navegador desactivadas");
+  };
+
+  const probarNotificacion = async () => {
+    const result = await sendTestNotification();
+    if (result.ok) {
+      showToast("Notificación de prueba enviada");
+      return;
+    }
+
+    if (result.permission === "denied") {
+      showToast("El navegador bloqueó las notificaciones");
+      return;
+    }
+
+    showToast("No se pudo enviar la notificación de prueba");
   };
 
   return (
@@ -508,7 +522,18 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         </div>
         <div className="mt-3 bg-slate-50 border border-slate-200 rounded-2xl p-3">
           <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">
-            Estado del permiso: {typeof window !== "undefined" && "Notification" in window ? Notification.permission : "no soportado"}
+            Estado del permiso: {permissionLabel}
+          </p>
+        </div>
+        <button
+          onClick={probarNotificacion}
+          className="mt-3 w-full bg-slate-900 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+        >
+          Enviar notificación de prueba
+        </button>
+        <div className="mt-3 bg-blue-50 border border-blue-200 rounded-2xl p-3">
+          <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider">
+            Probala con la app abierta, instalada y también en segundo plano para validar si tu dispositivo realmente la muestra.
           </p>
         </div>
       </Card>
@@ -540,11 +565,21 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         <SectionTitle>Versión de la App</SectionTitle>
         <div className="flex justify-between items-center mb-3">
           <span className="text-sm font-black text-slate-800">Johnny Blaze OS</span>
-          <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-3 py-1 rounded-full border border-blue-100">v{APP_VERSION}</span>
+          <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-3 py-1 rounded-full border border-blue-100">{APP_BUILD.version}</span>
         </div>
-        <p className="text-[10px] text-slate-400 font-bold mb-4">
-          Si la app no muestra los últimos cambios, recargá la página.
-        </p>
+        <div className="space-y-3 mb-4">
+          <p className="text-[10px] text-slate-400 font-bold">
+            Si la app no muestra los últimos cambios, recargá la página o aceptá la actualización cuando aparezca.
+          </p>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Modo de uso</p>
+            <p className="text-xs font-black text-slate-700 mt-1">{displayMode.label}</p>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Última compilación</p>
+            <p className="text-xs font-black text-slate-700 mt-1">{new Date(APP_BUILD.buildTime).toLocaleString("es-AR")}</p>
+          </div>
+        </div>
         <button
           onClick={() => window.location.reload()}
           className="w-full bg-slate-50 border border-slate-200 text-slate-600 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"

@@ -371,8 +371,16 @@ export default function TallerPanel() {
             <div className="rounded-2xl bg-slate-900 p-4 space-y-1">
               <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Versión actual</p>
               <p className="text-sm font-black text-white">{APP_BUILD.version}</p>
+              <p className="text-[10px] font-bold text-slate-500">
+                {new Date(APP_BUILD.buildTime).toLocaleString("es-AR")}
+              </p>
               <p className="mt-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Último deploy</p>
               <p className="text-sm font-black text-blue-400">{updateInfo.version}</p>
+              {updateInfo.buildTime && (
+                <p className="text-[10px] font-bold text-slate-500">
+                  {new Date(updateInfo.buildTime).toLocaleString("es-AR")}
+                </p>
+              )}
             </div>
             <p className="text-[10px] font-bold leading-relaxed text-slate-400">
               Si aceptás, la app recarga la última versión publicada para que la instalación quede actualizada como una app profesional.
