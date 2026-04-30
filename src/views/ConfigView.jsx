@@ -248,26 +248,26 @@ function PantallaAdmin({ showToast }) {
   return (
     <div className="space-y-4">
       <Card>
-        <SectionTitle>Monetización y reglas para usuarios nuevos</SectionTitle>
+        <SectionTitle>Admin settings</SectionTitle>
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Días trial</p><input type="number" value={Number(settings.trialDaysDefault || 14)} onChange={(e) => setSettings((prev) => ({ ...prev, trialDaysDefault: Number(e.target.value || 14) }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Días de gracia</p><input type="number" value={Number(settings.graceDaysDefault || 3)} onChange={(e) => setSettings((prev) => ({ ...prev, graceDaysDefault: Number(e.target.value || 3) }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Plan Base</p><input type="number" value={Number(settings.plans?.base?.price || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, plans: { ...(prev.plans || {}), base: { ...(prev.plans?.base || {}), price: Number(e.target.value || 0) } } }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Plan Pro</p><input type="number" value={Number(settings.plans?.pro?.price || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, plans: { ...(prev.plans || {}), pro: { ...(prev.plans?.pro || {}), price: Number(e.target.value || 0) } } }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">duracionTrialDias</p><input type="number" value={Number(settings.duracionTrialDias || 14)} onChange={(e) => setSettings((prev) => ({ ...prev, duracionTrialDias: Number(e.target.value || 14) }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">graceDaysDefault</p><input type="number" value={Number(settings.graceDaysDefault || 3)} onChange={(e) => setSettings((prev) => ({ ...prev, graceDaysDefault: Number(e.target.value || 3) }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">precios.base</p><input type="number" value={Number(settings.precios?.base || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, precios: { ...(prev.precios || {}), base: Number(e.target.value || 0) } }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">precios.pro</p><input type="number" value={Number(settings.precios?.pro || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, precios: { ...(prev.precios || {}), pro: Number(e.target.value || 0) } }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
         </div>
         <div className="mt-3 bg-slate-50 border border-slate-100 rounded-2xl p-4">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Aplicación a cuentas</p>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">pricing</p>
           <div className="mt-3 flex items-center justify-between">
-            <p className="text-sm font-black text-slate-800">No tocar cuentas viejas</p>
+            <p className="text-sm font-black text-slate-800">applyPricingToNewAccountsOnly</p>
             <button onClick={() => setSettings((prev) => ({ ...prev, applyPricingToNewAccountsOnly: !prev.applyPricingToNewAccountsOnly }))} className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest ${settings.applyPricingToNewAccountsOnly !== false ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700"}`}>{settings.applyPricingToNewAccountsOnly !== false ? "Sí" : "No"}</button>
           </div>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          {Object.entries(settings.featureFlags || {}).map(([key, value]) => (
-            <button key={key} onClick={() => setSettings((prev) => ({ ...prev, featureFlags: { ...(prev.featureFlags || {}), [key]: !value } }))} className={`rounded-2xl border px-3 py-3 text-[10px] font-black uppercase tracking-widest ${value ? "border-blue-200 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-500"}`}>{key}</button>
+          {Object.entries(settings.features || {}).map(([key, value]) => (
+            <button key={key} onClick={() => setSettings((prev) => ({ ...prev, features: { ...(prev.features || {}), [key]: !value } }))} className={`rounded-2xl border px-3 py-3 text-[10px] font-black uppercase tracking-widest ${value ? "border-blue-200 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-500"}`}>{`features.${key}`}</button>
           ))}
         </div>
-        <div className="mt-3"><button onClick={guardarSettings} className="w-full rounded-2xl bg-blue-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Guardar reglas globales</button></div>
+        <div className="mt-3"><button onClick={guardarSettings} className="w-full rounded-2xl bg-blue-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Guardar admin_settings</button></div>
       </Card>
 
       <Card>
@@ -358,16 +358,16 @@ function PantallaAdmin({ showToast }) {
       </Card>
 
       <Card>
-        <SectionTitle>Cuentas y licencias</SectionTitle>
+        <SectionTitle>Usuarios</SectionTitle>
         <div className="space-y-3">
           {accounts.slice(0, 10).map((item) => (
             <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div><p className="text-sm font-black text-slate-800">{item.nombreTaller || item.email || item.uid}</p><p className="text-[10px] font-bold text-slate-400">{item.email || item.uid}</p></div>
-                <div className="text-right"><p className="text-[10px] font-black uppercase tracking-widest text-blue-600">{item.plan || "trial"}</p><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{item.pagoEstado || "pendiente"}</p></div>
+                <div className="text-right"><p className="text-[10px] font-black uppercase tracking-widest text-blue-600">{item.estado || "trial"}</p><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{item.rol || "user"}</p></div>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3 text-[10px] font-black text-slate-500">
-                <div>Trial: <span className="text-slate-800">{formatAdminDate(item.trialEndsAt, "Sin fecha")}</span></div>
+                <div>activoHasta: <span className="text-slate-800">{formatAdminDate(item.activoHasta, "Sin fecha")}</span></div>
                 <div>Último uso: <span className="text-slate-800">{formatAdminDate(item.lastSeenAt, "Sin dato")}</span></div>
               </div>
             </div>
