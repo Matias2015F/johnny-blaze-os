@@ -201,14 +201,14 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const restante = Math.max(tiempoMax - tiempoActual, 0);
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] pb-32 text-left animate-in slide-in-from-right duration-300">
-      <div className="bg-slate-900 px-5 pb-8 pt-5 text-white shadow-lg">
+    <div className="min-h-screen bg-slate-950 pb-32 text-left text-slate-100 animate-in slide-in-from-right duration-300">
+      <div className="bg-gradient-to-b from-slate-800 to-slate-900 px-5 pb-8 pt-5 text-white shadow-2xl">
         <div className="mx-auto max-w-[440px]">
           <div className="mb-4 flex items-center justify-between">
-            <button onClick={() => setView("ordenes")} className="rounded-2xl p-2 text-blue-400 active:scale-90">
+            <button onClick={() => setView("ordenes")} className="rounded-2xl border border-slate-700/60 bg-slate-900/60 p-2 text-blue-400 shadow-lg backdrop-blur active:scale-90">
               <ArrowLeft size={20} />
             </button>
-            <div className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${ESTADO_CSS[order.estado]}`}>
+            <div className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest shadow-lg ${ESTADO_CSS[order.estado]}`}>
               {ESTADO_LABEL[order.estado]}
             </div>
           </div>
@@ -219,12 +219,14 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 <h2 className="text-4xl font-black leading-none tracking-tighter uppercase">{bike?.patente || "---"}</h2>
                 {isLocked && <ShieldCheck className="text-blue-400" size={22} />}
               </div>
-              <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-blue-400">{trabajoLabel}</p>
+              <p className="mt-1 text-[10px] font-black uppercase tracking-[0.25em] text-blue-400">{trabajoLabel}</p>
               <p className="mt-2 text-sm font-black uppercase tracking-tight text-slate-300">{client?.nombre || "Cliente desconocido"}</p>
             </div>
             <div className="text-right">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ganancia</p>
-              <p className="text-3xl font-black leading-none tracking-tighter text-emerald-400">{formatMoney(res.desglose.moCliente)}</p>
+              <div className="rounded-[1.5rem] border border-emerald-400/20 bg-slate-950/50 px-4 py-3 shadow-xl backdrop-blur">
+                <p className="text-3xl font-black leading-none tracking-tighter text-emerald-400">{formatMoney(res.desglose.moCliente)}</p>
+              </div>
             </div>
           </div>
 
@@ -245,12 +247,12 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               <button
                 key={step.id}
                 type="button"
-                className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border transition-all ${
+                className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[1.25rem] border transition-all shadow-lg ${
                   isCurrent
-                    ? "scale-105 border-blue-500 bg-blue-600 text-white shadow-lg"
+                    ? "scale-105 border-blue-400 bg-blue-600 text-white shadow-blue-500/40"
                     : isDone
                       ? "border-emerald-400 bg-emerald-500 text-white"
-                      : "border-slate-200 bg-white text-slate-400"
+                      : "border-slate-800 bg-slate-900 text-slate-500"
                 }`}
               >
                 {isDone ? <CheckCircle2 size={18} /> : <Icon size={16} />}
@@ -261,24 +263,24 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
         <div className="space-y-6">
         {isLocked && (
-          <div className="flex items-center gap-3 rounded-3xl border-2 border-blue-200 bg-blue-50 p-4">
+          <div className="flex items-center gap-3 rounded-[2rem] border border-blue-500/20 bg-blue-500/10 p-4 shadow-lg backdrop-blur">
             <div className="rounded-xl bg-blue-500 p-2 text-white"><ShieldCheck size={20} /></div>
-            <p className="text-[10px] font-black uppercase leading-tight text-blue-700">Trabajo cerrado: ya se generÃ³ el comprobante. No se pueden editar trabajos ni montos.</p>
+            <p className="text-[10px] font-black uppercase leading-tight text-blue-200">Trabajo cerrado: ya se generÃ³ el comprobante. No se pueden editar trabajos ni montos.</p>
           </div>
         )}
 
-        <div className="overflow-hidden rounded-[2rem] border-2 border-slate-200 bg-white shadow-sm">
-          <div className="bg-green-50 p-5">
-            <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-slate-500">Ganancia del taller</p>
+        <div className="overflow-hidden rounded-[2.5rem] border border-slate-800 bg-slate-900/80 shadow-2xl backdrop-blur">
+          <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 p-5">
+            <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-emerald-300/70">Ganancia del taller</p>
             <p className="text-3xl font-black tracking-tighter text-green-600">{formatMoney(res.desglose.moCliente)}</p>
           </div>
 
           <div className="space-y-4 p-5">
-            <div className="rounded-2xl bg-slate-50 p-4">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">La ganancia del taller sale de la mano de obra</p>
+            <div className="rounded-[1.75rem] border border-slate-800 bg-slate-800/70 p-4 shadow-inner">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">La ganancia del taller sale de la mano de obra</p>
               <div className="mt-2 space-y-1 text-[12px] font-black leading-relaxed">
-                <p className="text-slate-700">
-                  Cobrás <span className="text-slate-950">{formatMoney(res.desglose.moCliente)}</span> de mano de obra.
+                <p className="text-slate-300">
+                  Cobrás <span className="text-white">{formatMoney(res.desglose.moCliente)}</span> de mano de obra.
                 </p>
                 <p className="text-slate-500">
                   Repuestos, flete, cadetería, insumos y terceros se cobran aparte al cliente.
@@ -287,37 +289,37 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             </div>
 
             <div className="space-y-2">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Costos que paga el cliente</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Costos que paga el cliente</p>
               {res.desglose.repuestosCliente > 0 && (
-                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                  <span className="text-[11px] font-black text-slate-600">Repuestos</span>
-                  <span className="text-[11px] font-black text-slate-900">{formatMoney(res.desglose.repuestosCliente)}</span>
+                <div className="flex items-center justify-between rounded-[1.5rem] border border-slate-800 bg-slate-800/70 px-4 py-3 shadow-inner">
+                  <span className="text-[11px] font-black text-slate-300">Repuestos</span>
+                  <span className="text-[11px] font-black text-white">{formatMoney(res.desglose.repuestosCliente)}</span>
                 </div>
               )}
               {res.desglose.fletesCliente > 0 && (
-                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                  <span className="text-[11px] font-black text-slate-600">Flete / cadetería</span>
-                  <span className="text-[11px] font-black text-slate-900">{formatMoney(res.desglose.fletesCliente)}</span>
+                <div className="flex items-center justify-between rounded-[1.5rem] border border-slate-800 bg-slate-800/70 px-4 py-3 shadow-inner">
+                  <span className="text-[11px] font-black text-slate-300">Flete / cadetería</span>
+                  <span className="text-[11px] font-black text-white">{formatMoney(res.desglose.fletesCliente)}</span>
                 </div>
               )}
               {res.desglose.insumosCliente > 0 && (
-                <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
-                  <span className="text-[11px] font-black text-slate-600">Insumos / terceros</span>
-                  <span className="text-[11px] font-black text-slate-900">{formatMoney(res.desglose.insumosCliente)}</span>
+                <div className="flex items-center justify-between rounded-[1.5rem] border border-slate-800 bg-slate-800/70 px-4 py-3 shadow-inner">
+                  <span className="text-[11px] font-black text-slate-300">Insumos / terceros</span>
+                  <span className="text-[11px] font-black text-white">{formatMoney(res.desglose.insumosCliente)}</span>
                 </div>
               )}
             </div>
 
-            <div className="rounded-2xl bg-slate-50 p-4">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Total a cobrar al cliente</p>
-              <p className="mt-2 text-xl font-black text-slate-950">{formatMoney(res.total)}</p>
+            <div className="rounded-[1.75rem] border border-slate-800 bg-slate-800/70 p-4 shadow-inner">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Total a cobrar al cliente</p>
+              <p className="mt-2 text-xl font-black text-white">{formatMoney(res.total)}</p>
             </div>
 
-            <div className={`rounded-2xl p-4 ${saldoPendiente > 0 ? "border border-red-100 bg-red-50" : "border border-green-100 bg-green-50"}`}>
-              <p className={`text-[9px] font-black uppercase tracking-widest ${saldoPendiente > 0 ? "text-red-500" : "text-green-600"}`}>
+            <div className={`rounded-[1.75rem] border p-4 ${saldoPendiente > 0 ? "border-red-500/20 bg-red-500/10" : "border-emerald-500/20 bg-emerald-500/10"}`}>
+              <p className={`text-[9px] font-black uppercase tracking-widest ${saldoPendiente > 0 ? "text-red-300" : "text-emerald-300"}`}>
                 {saldoPendiente > 0 ? "Falta cobrar" : "Cobrado completo"}
               </p>
-              <p className={`mt-2 text-xl font-black ${saldoPendiente > 0 ? "text-red-600" : "text-green-600"}`}>
+              <p className={`mt-2 text-xl font-black ${saldoPendiente > 0 ? "text-red-300" : "text-emerald-300"}`}>
                 {formatMoney(saldoPendiente > 0 ? saldoPendiente : totalPagado)}
               </p>
             </div>
@@ -325,15 +327,15 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
         </div>
 
         {order.estado === "presupuesto" && (
-          <div className="space-y-4 rounded-3xl border border-slate-700 bg-slate-900 p-5">
+          <div className="space-y-4 rounded-[2.5rem] border border-slate-800 bg-slate-900/80 p-5 shadow-2xl backdrop-blur">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Presupuesto</p>
               <span className="rounded-full border border-blue-500/30 bg-blue-500/20 px-3 py-1 text-[9px] font-black text-blue-300">Monto fijo editable</span>
             </div>
 
-            <div className="rounded-[1.5rem] bg-slate-800 p-5">
+            <div className="rounded-[2rem] border border-slate-800 bg-slate-800/70 p-5 shadow-inner">
               <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">Monto a enviar al cliente</p>
-              <div className="flex items-baseline gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-4">
+              <div className="flex items-baseline gap-2 rounded-[1.5rem] border border-slate-700 bg-slate-950 px-4 py-4 shadow-lg">
                 <span className="text-lg font-black text-slate-500">$</span>
                 <input
                   type="number"
@@ -348,10 +350,10 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               </p>
             </div>
 
-            <button onClick={enviarPresupuesto} className="w-full rounded-2xl bg-green-600 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-95">
+            <button onClick={enviarPresupuesto} className="w-full rounded-[1.75rem] border border-emerald-400/20 bg-emerald-500 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl transition-all active:scale-95">
               Enviar presupuesto por WhatsApp
             </button>
-            <button onClick={confirmarAprobacion} className="w-full rounded-2xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-95">
+            <button onClick={confirmarAprobacion} className="w-full rounded-[1.75rem] border border-blue-400/20 bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl transition-all active:scale-95">
               {`Cliente aprobó ${formatMoney(presupuestoEditable)}`}
             </button>
           </div>
