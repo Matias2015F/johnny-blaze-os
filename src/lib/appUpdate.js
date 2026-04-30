@@ -3,7 +3,7 @@ export async function fetchRemoteVersion() {
     cache: "no-store",
     headers: { "Cache-Control": "no-cache" },
   });
-  if (!res.ok) throw new Error("No se pudo consultar la versión");
+  if (!res.ok) throw new Error("No se pudo consultar la version");
   return res.json();
 }
 
@@ -30,6 +30,58 @@ export function getDisplayModeInfo() {
   return { installed: false, mode: "browser", label: "Abierta en navegador" };
 }
 
+export async function clearAppRuntimeCaches() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    }
+  } catch (error) {
+    console.error(error);
+  }
+
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+export async function applyRemoteUpdate(remoteBuild = null) {
+  const targetBuild = remoteBuild || (await fetchRemoteVersion());
+  await clearAppRuntimeCaches();
+
+  const stamp = Date.now();
+  const targetUrl = new URL(window.location.origin + "/");
+  targetUrl.searchParams.set("update", String(stamp));
+  if (targetBuild?.sha) targetUrl.searchParams.set("build", targetBuild.sha);
+
+  try {
+    await Promise.allSettled([
+      fetch(`/version.json?ts=${stamp}`, { cache: "reload", headers: { "Cache-Control": "no-cache" } }),
+      fetch(`/index.html?ts=${stamp}`, { cache: "reload", headers: { "Cache-Control": "no-cache" } }),
+      fetch(`${targetUrl.pathname}?ts=${stamp}`, { cache: "reload", headers: { "Cache-Control": "no-cache" } }),
+    ]);
+  } catch (error) {
+    console.error(error);
+  }
+
+  try {
+    sessionStorage.setItem("jbos_last_update_attempt", JSON.stringify({
+      requestedAt: stamp,
+      targetVersion: targetBuild?.version || null,
+      targetSha: targetBuild?.sha || null,
+    }));
+  } catch (error) {
+    console.error(error);
+  }
+
+  window.location.replace(targetUrl.toString());
+}
+
 export async function ensureNotificationPermission() {
   if (typeof window === "undefined" || !("Notification" in window)) {
     return "unsupported";
@@ -52,7 +104,7 @@ export async function sendTestNotification() {
   }
 
   const notification = new Notification("Johnny Blaze OS", {
-    body: "Notificación de prueba. Si ves esto, las alertas del taller están funcionando.",
+    body: "Notificacion de prueba. Si ves esto, las alertas del taller estan funcionando.",
     silent: false,
     tag: "jbos-test-notification",
   });

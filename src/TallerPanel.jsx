@@ -7,7 +7,7 @@ import { LS, useCollection, generateId, migrateFromLocalStorage, migrateRenamedC
 import { autoCloudBackup } from "./lib/cloudBackup.js";
 import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
 import { APP_BUILD } from "./generated/appVersion.js";
-import { fetchRemoteVersion, isNewerBuild } from "./lib/appUpdate.js";
+import { applyRemoteUpdate, fetchRemoteVersion, isNewerBuild } from "./lib/appUpdate.js";
 import { ensureAccountProfile, trackEvent } from "./lib/telemetry.js";
 
 // HomeView se carga de forma eager — es la pantalla inicial
@@ -322,16 +322,12 @@ export default function TallerPanel() {
 
   const aplicarActualizacion = async () => {
     try {
-      if ("caches" in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map((key) => caches.delete(key)));
-      }
+      const remote = await fetchRemoteVersion();
+      await applyRemoteUpdate(remote);
     } catch (e) {
       console.error(e);
+      window.location.reload();
     }
-    const url = new URL(window.location.href);
-    url.searchParams.set("update", String(Date.now()));
-    window.location.replace(url.toString());
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────

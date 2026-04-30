@@ -10,7 +10,7 @@ import { createCloudBackup, listCloudBackups, restoreCloudBackup } from "../lib/
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { APP_BUILD } from "../generated/appVersion.js";
-import { ensureNotificationPermission, getDisplayModeInfo, sendTestNotification } from "../lib/appUpdate.js";
+import { applyRemoteUpdate, ensureNotificationPermission, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, sendTestNotification } from "../lib/appUpdate.js";
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
@@ -611,17 +611,34 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
 // ── PANTALLA: Sistema ──────────────────────────────────────────────────────────
 function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, cfg, setCfg }) {
   const [migrando, setMigrando] = React.useState(false);
+  const [remoteBuild, setRemoteBuild] = React.useState(null);
+  const [checkingUpdate, setCheckingUpdate] = React.useState(false);
+  const [updatingApp, setUpdatingApp] = React.useState(false);
   const displayMode = getDisplayModeInfo();
   const permissionLabel =
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "no soportado";
+  const hasRemoteUpdate = isNewerBuild(APP_BUILD, remoteBuild);
+
+  React.useEffect(() => {
+    const checkRemoteBuild = async () => {
+      try {
+        const remote = await fetchRemoteVersion();
+        setRemoteBuild(remote);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    checkRemoteBuild();
+  }, []);
 
   const handleMigrarRaiz = async () => {
     setMigrando(true);
     try {
       const uid = auth.currentUser?.uid;
-      if (!uid) throw new Error("Sin sesión");
+      if (!uid) throw new Error("Sin sesion");
       const n = await migrateFromRootCollections(uid);
-      showToast(n > 0 ? `Migración completa: ${n} registros movidos ✓` : "Sin datos en colecciones raíz");
+      showToast(n > 0 ? `Migracion completa: ${n} registros movidos` : "Sin datos en colecciones raiz");
     } catch (e) {
       showToast("Error: " + e.message);
     } finally {
@@ -631,12 +648,11 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
 
   const handleForzarSync = async () => {
     setMigrando(true);
-
     try {
       const uid = auth.currentUser?.uid;
-      if (!uid) throw new Error("Sin sesión");
+      if (!uid) throw new Error("Sin sesion");
       const n = await forceSyncCacheToFirestore(uid);
-      showToast(n > 0 ? `Sincronizado: ${n} registros guardados en la nube ✓` : "No hay datos en memoria para sincronizar");
+      showToast(n > 0 ? `Sincronizado: ${n} registros guardados en la nube` : "No hay datos en memoria para sincronizar");
     } catch (e) {
       showToast("Error: " + e.message);
     } finally {
@@ -648,7 +664,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
     const nuevo = { ...cfg, testModeRecordatorios: !cfg.testModeRecordatorios };
     setCfg(nuevo);
     LS.setDoc("config", "global", nuevo);
-    showToast(nuevo.testModeRecordatorios ? "Modo prueba activado ✓" : "Modo prueba desactivado");
+    showToast(nuevo.testModeRecordatorios ? "Modo prueba activado" : "Modo prueba desactivado");
   };
 
   const toggleAlertasNavegador = async () => {
@@ -668,35 +684,58 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
   const probarNotificacion = async () => {
     const result = await sendTestNotification();
     if (result.ok) {
-      showToast("Notificación de prueba enviada");
+      showToast("Notificacion de prueba enviada");
       return;
     }
-
     if (result.permission === "denied") {
-      showToast("El navegador bloqueó las notificaciones");
+      showToast("El navegador bloqueo las notificaciones");
       return;
     }
-
-    showToast("No se pudo enviar la notificación de prueba");
+    showToast("No se pudo enviar la notificacion de prueba");
   };
 
   const toggleAnalytics = () => {
     const nuevo = { ...cfg, analyticsEnabled: !(cfg.analyticsEnabled ?? true) };
     setCfg(nuevo);
     LS.setDoc("config", "global", nuevo);
-    showToast(nuevo.analyticsEnabled ? "Analítica activada" : "Analítica desactivada");
+    showToast(nuevo.analyticsEnabled ? "Analitica activada" : "Analitica desactivada");
+  };
+
+  const buscarActualizacion = async () => {
+    setCheckingUpdate(true);
+    try {
+      const remote = await fetchRemoteVersion();
+      setRemoteBuild(remote);
+      showToast(isNewerBuild(APP_BUILD, remote) ? "Hay una version nueva lista para instalar" : "Esta app ya tiene la ultima version");
+    } catch (error) {
+      console.error(error);
+      showToast("No se pudo consultar la ultima version");
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
+  const instalarActualizacion = async () => {
+    setUpdatingApp(true);
+    try {
+      const remote = remoteBuild || await fetchRemoteVersion();
+      await applyRemoteUpdate(remote);
+    } catch (error) {
+      console.error(error);
+      setUpdatingApp(false);
+      showToast("No se pudo instalar la actualizacion");
+    }
   };
 
   return (
     <div className="space-y-4">
-
       <Card>
-        <SectionTitle>Analítica del producto</SectionTitle>
+        <SectionTitle>Analitica del producto</SectionTitle>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-black text-slate-800">Medición de uso</p>
+            <p className="text-sm font-black text-slate-800">Medicion de uso</p>
             <p className="text-[10px] text-slate-400 font-bold mt-0.5">
-              Registra pantallas, acciones clave y fricción para mejorar la app.
+              Registra pantallas, acciones clave y friccion para mejorar la app.
             </p>
           </div>
           <button
@@ -717,8 +756,8 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         <SectionTitle>Alertas del navegador</SectionTitle>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-black text-slate-800">Notificaciones de próximo service</p>
-            <p className="text-[10px] text-slate-400 font-bold mt-0.5">Muestran un aviso real del navegador cuando un recordatorio entra en próximo o vencido.</p>
+            <p className="text-sm font-black text-slate-800">Notificaciones de proximo service</p>
+            <p className="text-[10px] text-slate-400 font-bold mt-0.5">Muestran un aviso real del navegador cuando un recordatorio entra en proximo o vencido.</p>
           </div>
           <button
             onClick={toggleAlertasNavegador}
@@ -736,21 +775,21 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
           onClick={probarNotificacion}
           className="mt-3 w-full bg-slate-900 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
         >
-          Enviar notificación de prueba
+          Enviar notificacion de prueba
         </button>
         <div className="mt-3 bg-blue-50 border border-blue-200 rounded-2xl p-3">
           <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider">
-            Probala con la app abierta, instalada y también en segundo plano para validar si tu dispositivo realmente la muestra.
+            Proba la alerta con la app abierta, instalada y tambien en segundo plano para validar si tu dispositivo realmente la muestra.
           </p>
         </div>
       </Card>
 
       <Card>
-        <SectionTitle>Modo Prueba de Recordatorios</SectionTitle>
+        <SectionTitle>Modo prueba de recordatorios</SectionTitle>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-black text-slate-800">Modo prueba</p>
-            <p className="text-[10px] text-slate-400 font-bold mt-0.5">Permite crear alertas rápidas para probar recordatorios y WhatsApp</p>
+            <p className="text-[10px] text-slate-400 font-bold mt-0.5">Permite crear alertas rapidas para probar recordatorios y WhatsApp</p>
           </div>
           <button
             onClick={toggleTestMode}
@@ -762,45 +801,69 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         {cfg.testModeRecordatorios && (
           <div className="mt-3 bg-purple-50 border border-purple-200 rounded-2xl p-3">
             <p className="text-[9px] font-black text-purple-600 uppercase tracking-wider">
-              Modo prueba activo — las opciones de test aparecen en "Próximo control" al cargar un trabajo. Los recordatorios de prueba se marcan con badge PRUEBA.
+              Modo prueba activo. Las opciones de test aparecen en Proximo control al cargar un trabajo.
             </p>
           </div>
         )}
       </Card>
 
       <Card>
-        <SectionTitle>Versión de la App</SectionTitle>
+        <SectionTitle>Version de la app</SectionTitle>
         <div className="flex justify-between items-center mb-3">
           <span className="text-sm font-black text-slate-800">Johnny Blaze OS</span>
           <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-3 py-1 rounded-full border border-blue-100">{APP_BUILD.version}</span>
         </div>
         <div className="space-y-3 mb-4">
           <p className="text-[10px] text-slate-400 font-bold">
-            Si la app no muestra los últimos cambios, recargá la página o aceptá la actualización cuando aparezca.
+            Si la app instalada se queda vieja, busca la ultima version e instalala desde aca.
           </p>
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
             <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Modo de uso</p>
             <p className="text-xs font-black text-slate-700 mt-1">{displayMode.label}</p>
           </div>
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Última compilación</p>
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Ultima compilacion local</p>
             <p className="text-xs font-black text-slate-700 mt-1">{new Date(APP_BUILD.buildTime).toLocaleString("es-AR")}</p>
           </div>
+          <div className={`rounded-2xl border p-3 ${hasRemoteUpdate ? "bg-amber-50 border-amber-200" : "bg-slate-50 border-slate-200"}`}>
+            <p className={`text-[9px] font-black uppercase tracking-wider ${hasRemoteUpdate ? "text-amber-700" : "text-slate-500"}`}>Ultimo deploy detectado</p>
+            <p className={`text-xs font-black mt-1 ${hasRemoteUpdate ? "text-amber-900" : "text-slate-700"}`}>
+              {remoteBuild?.version || "Sin dato"}
+            </p>
+            {remoteBuild?.buildTime && (
+              <p className="text-[10px] font-bold text-slate-500 mt-1">
+                {new Date(remoteBuild.buildTime).toLocaleString("es-AR")}
+              </p>
+            )}
+            <p className={`mt-2 text-[10px] font-black ${hasRemoteUpdate ? "text-amber-700" : "text-emerald-600"}`}>
+              {hasRemoteUpdate ? "Hay una actualizacion pendiente para esta app instalada." : "Esta app ya esta al dia."}
+            </p>
+          </div>
         </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="w-full bg-slate-50 border border-slate-200 text-slate-600 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
-        >
-          Recargar app
-        </button>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={buscarActualizacion}
+            disabled={checkingUpdate || updatingApp}
+            className="w-full bg-slate-50 border border-slate-200 text-slate-600 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
+          >
+            {checkingUpdate ? "Buscando..." : "Buscar actualizacion"}
+          </button>
+          <button
+            onClick={hasRemoteUpdate ? instalarActualizacion : () => window.location.reload()}
+            disabled={checkingUpdate || updatingApp}
+            className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 ${hasRemoteUpdate ? "bg-blue-600 text-white" : "bg-slate-900 text-white"}`}
+          >
+            {updatingApp ? "Actualizando..." : hasRemoteUpdate ? "Instalar version nueva" : "Recargar app"}
+          </button>
+        </div>
       </Card>
 
       <Card>
-        <SectionTitle>Datos del Sistema</SectionTitle>
+        <SectionTitle>Datos del sistema</SectionTitle>
         <div className="space-y-2">
           {loadDemoData && (
             <button
-              onClick={() => { loadDemoData(); showToast("Demo cargado ✓"); }}
+              onClick={() => { loadDemoData(); showToast("Demo cargado"); }}
               className="w-full bg-slate-50 border border-slate-200 text-slate-700 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
             >
               Cargar datos de prueba
@@ -812,7 +875,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
             disabled={migrando}
             className="w-full flex items-center justify-center gap-2 bg-blue-50 border border-blue-100 text-blue-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
           >
-            <Database size={14} /> {migrando ? "Sincronizando..." : "Forzar sincronización a la nube"}
+            <Database size={14} /> {migrando ? "Sincronizando..." : "Forzar sincronizacion a la nube"}
           </button>
 
           <button
@@ -839,14 +902,13 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-5 rounded-3xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg"
         >
-          <LogOut size={16} /> Cerrar sesión
+          <LogOut size={16} /> Cerrar sesion
         </button>
       )}
     </div>
   );
 }
 
-// ── MAIN ───────────────────────────────────────────────────────────────────────
 export default function ConfigView({ setView, showToast, orders = [], bikes = [], clients = [], handleLogout, loadDemoData, clearAllData }) {
   const [activeTab, setActiveTab] = useState("resumen");
   const [cfg, setCfg] = useState(() => LS.getDoc("config", "global") || CONFIG_DEFAULT);
