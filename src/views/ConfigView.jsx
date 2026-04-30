@@ -14,7 +14,7 @@ import { applyRemoteUpdate, ensureNotificationPermission, fetchRemoteVersion, ge
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
-import { collection, doc, getDocs, query, limit, orderBy, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, limit, orderBy, setDoc } from "firebase/firestore";
 
 const DIFICULTADES = [
   { key: "facil",      label: "Fácil",       color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
@@ -69,6 +69,26 @@ function SectionTitle({ children }) {
   return <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{children}</p>;
 }
 
+function normalizeDateValue(value) {
+  if (!value) return null;
+  if (typeof value?.toDate === "function") return value.toDate();
+  if (value instanceof Date) return value;
+  if (typeof value === "number") return new Date(value);
+  if (typeof value === "string") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  if (typeof value?.seconds === "number") {
+    return new Date(value.seconds * 1000);
+  }
+  return null;
+}
+
+function formatAdminDate(value, fallback = "Sin dato") {
+  const date = normalizeDateValue(value);
+  return date ? date.toLocaleString("es-AR") : fallback;
+}
+
 function PantallaAdmin({ showToast }) {
   const [loading, setLoading] = React.useState(true);
   const [account, setAccount] = React.useState(null);
@@ -80,8 +100,17 @@ function PantallaAdmin({ showToast }) {
     if (!uid) return;
     setLoading(true);
     try {
-      const accountSnap = await getDocs(query(collection(db, "accounts")));
-      const mine = accountSnap.docs.map((d) => ({ id: d.id, ...d.data() })).find((item) => item.uid === uid) || null;
+      const accountSnap = await getDoc(doc(db, "accounts", uid));
+      const mine = accountSnap.exists()
+        ? { id: accountSnap.id, ...accountSnap.data() }
+        : {
+            id: uid,
+            uid,
+            plan: "trial",
+            pagoEstado: "pendiente",
+            trialEndsAt: null,
+            lastSeenAt: null,
+          };
       setAccount(mine);
 
       const snapshotsSnap = await getDocs(query(collection(db, "usageSnapshots")));
@@ -126,6 +155,16 @@ function PantallaAdmin({ showToast }) {
   const topAcciones = Object.entries(resumenUso)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 6);
+
+  const totalEventosSemana = React.useMemo(
+    () => snapshots.reduce((acc, item) => acc + Object.values(item.metrics || {}).reduce((sum, value) => sum + Number(value || 0), 0), 0),
+    [snapshots]
+  );
+
+  const totalPantallasSemana = React.useMemo(
+    () => snapshots.reduce((acc, item) => acc + Object.values(item.topScreens || {}).reduce((sum, value) => sum + Number(value || 0), 0), 0),
+    [snapshots]
+  );
 
   const extenderTrial = async (dias) => {
     if (!account?.uid) return;
@@ -179,11 +218,11 @@ function PantallaAdmin({ showToast }) {
         <div className="mt-3 bg-slate-50 border border-slate-100 rounded-2xl p-4">
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Trial hasta</p>
           <p className="mt-1 text-sm font-black text-slate-800">
-            {account?.trialEndsAt ? new Date(account.trialEndsAt).toLocaleString("es-AR") : "Sin fecha"}
+            {formatAdminDate(account?.trialEndsAt, "Sin fecha")}
           </p>
           <p className="mt-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Última actividad</p>
           <p className="mt-1 text-sm font-black text-slate-800">
-            {account?.lastSeenAt?.toDate ? account.lastSeenAt.toDate().toLocaleString("es-AR") : "Sin dato"}
+            {formatAdminDate(account?.lastSeenAt, "Sin dato")}
           </p>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
@@ -204,6 +243,16 @@ function PantallaAdmin({ showToast }) {
 
       <Card>
         <SectionTitle>Uso de los últimos 7 días</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Eventos</p>
+            <p className="mt-1 text-2xl font-black text-slate-800">{totalEventosSemana}</p>
+          </div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pantallas</p>
+            <p className="mt-1 text-2xl font-black text-slate-800">{totalPantallasSemana}</p>
+          </div>
+        </div>
         <div className="space-y-3">
           {topAcciones.length > 0 ? topAcciones.map(([accion, total]) => (
             <div key={accion} className="space-y-1">
@@ -232,7 +281,7 @@ function PantallaAdmin({ showToast }) {
               <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">{evento.action?.replaceAll("_", " ")}</p>
               <p className="mt-1 text-xs font-black text-slate-800">{evento.screen || "sin pantalla"} · {evento.entityType || "general"}</p>
               <p className="mt-1 text-[10px] font-bold text-slate-400">
-                {evento.createdAt?.toDate ? evento.createdAt.toDate().toLocaleString("es-AR") : "Sin fecha"}
+                {formatAdminDate(evento.createdAt, "Sin fecha")}
               </p>
             </div>
           )) : (
