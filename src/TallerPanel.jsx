@@ -8,6 +8,7 @@ import { autoCloudBackup } from "./lib/cloudBackup.js";
 import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
 import { APP_BUILD } from "./generated/appVersion.js";
 import { fetchRemoteVersion, isNewerBuild } from "./lib/appUpdate.js";
+import { ensureAccountProfile, trackEvent } from "./lib/telemetry.js";
 
 // HomeView se carga de forma eager — es la pantalla inicial
 import HomeView from "./views/HomeView.jsx";
@@ -114,7 +115,13 @@ export default function TallerPanel() {
   const handleLogout = async () => { try { await signOut(auth); } catch (e) { console.error(e); } };
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => { if (u) setView("home"); });
+    const unsub = onAuthStateChanged(auth, (u) => {
+      if (u) {
+        setView("home");
+        ensureAccountProfile().catch(console.error);
+        trackEvent("login", { screen: "auth", entityType: "account", entityId: u.uid }).catch(console.error);
+      }
+    });
     return () => unsub();
   }, []);
 
@@ -254,6 +261,17 @@ export default function TallerPanel() {
     setSelectedOrderId(orden.id);
     setPrefillData(null);
     setView("detalleOrden");
+    trackEvent("crear_trabajo", {
+      screen: "nuevaOrden",
+      entityType: "trabajo",
+      entityId: orden.id,
+      metadata: {
+        marca: payload.marca,
+        modelo: payload.modelo,
+        cilindrada: Number(payload.cilindrada || 0),
+        patente: payload.patente?.toUpperCase?.() || "",
+      },
+    }).catch(console.error);
     showToast("Orden abierta ✓");
   };
 

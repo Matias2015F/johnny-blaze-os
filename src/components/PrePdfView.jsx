@@ -3,6 +3,7 @@ import { ArrowLeft, FileText, AlertCircle } from "lucide-react";
 import { LS } from "../lib/storage.js";
 import { PLANTILLAS_GARANTIA, CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
+import { trackEvent } from "../lib/telemetry.js";
 import { formatMoney } from "../utils/format.js";
 
 export default function PrePdfView({ order, setView, setFinalPdfData }) {
@@ -15,6 +16,12 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
   const irAlPdf = () => {
     if (saldo > 0) return;
     const numeroComprobante = order.numeroComprobante || `COMP-${String(Date.now()).slice(-8)}`;
+    trackEvent("emitir_comprobante", {
+      screen: "prePdf",
+      entityType: "trabajo",
+      entityId: order.id,
+      metadata: { numeroComprobante, total: totalOrden },
+    }).catch(console.error);
     LS.updateDoc("trabajos", order.id, {
       pdfEntregado: true,
       estado: "cerrado_emitido",

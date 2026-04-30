@@ -3,6 +3,7 @@ import { ArrowLeft, Check, CreditCard, ReceiptText } from "lucide-react";
 import { LS, generateId } from "../lib/storage.js";
 import { hoyEstable } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
+import { trackEvent } from "../lib/telemetry.js";
 import { formatMoney, parseMonto } from "../utils/format.js";
 
 const METODO_LABEL = {
@@ -56,6 +57,18 @@ export default function PaymentView({ order, setView, showToast }) {
       metodo,
       comprobante,
     });
+
+    trackEvent("registrar_pago", {
+      screen: "pagos",
+      entityType: "trabajo",
+      entityId: order.id,
+      metadata: {
+        metodo,
+        monto: montoNum,
+        comprobante,
+        saldoRestante: Math.max(saldoRestante, 0),
+      },
+    }).catch(console.error);
 
     showToast(saldoRestante <= 0 ? "Pago completo registrado" : `Recibido ${formatMoney(montoNum)}`);
     setMonto("");
@@ -167,7 +180,14 @@ export default function PaymentView({ order, setView, showToast }) {
 
           {pagoCompleto && (
             <button
-              onClick={() => setView("prePdf")}
+              onClick={() => {
+                trackEvent("open_garantia_previa_pdf", {
+                  screen: "pagos",
+                  entityType: "trabajo",
+                  entityId: order.id,
+                }).catch(console.error);
+                setView("prePdf");
+              }}
               className="mt-3 flex w-full items-center justify-center gap-3 rounded-[2rem] bg-blue-600 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white shadow-xl transition-all active:scale-95"
             >
               <ReceiptText size={18} />

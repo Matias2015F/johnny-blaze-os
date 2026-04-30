@@ -14,6 +14,7 @@ import {
   trabajarSinCronometro,
 } from "../lib/timer.js";
 import { abrirWhatsApp, mensajeBloqueo, mensajePresupuesto } from "../lib/messages.js";
+import { trackEvent } from "../lib/telemetry.js";
 import { MOTIVOS_BLOQUEO } from "../lib/theme.js";
 import { formatMoney } from "../utils/format.js";
 
@@ -49,6 +50,16 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     const id = setInterval(() => setTiempoActual(obtenerTiempoActual(order)), 1000);
     return () => clearInterval(id);
   }, [order]);
+
+  useEffect(() => {
+    if (!order?.id) return;
+    trackEvent("open_detalle_trabajo", {
+      screen: "detalleOrden",
+      entityType: "trabajo",
+      entityId: order.id,
+      metadata: { estado: order.estado || "" },
+    }).catch(console.error);
+  }, [order?.id]);
 
   useEffect(() => {
     if (!order?.cronometroActivo || order?.trabajoSinCronometro) return;
@@ -175,6 +186,12 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   };
 
   const enviarPresupuesto = () => {
+    trackEvent("enviar_presupuesto_whatsapp", {
+      screen: "detalleOrden",
+      entityType: "trabajo",
+      entityId: order.id,
+      metadata: { monto: presupuestoEditable },
+    }).catch(console.error);
     abrirWhatsApp(client.tel, mensajePresupuesto({
       bike,
       client,
@@ -187,6 +204,12 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
   const confirmarAprobacion = () => {
     const max = presupuestoEditable;
+    trackEvent("confirmar_aprobacion", {
+      screen: "detalleOrden",
+      entityType: "trabajo",
+      entityId: order.id,
+      metadata: { monto: max },
+    }).catch(console.error);
     LS.updateDoc("trabajos", order.id, { maxAutorizado: max, estado: "aprobacion" });
     showToast(`Aprobado: ${formatMoney(max)} OK`);
   };

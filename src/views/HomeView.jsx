@@ -5,6 +5,7 @@ import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { evaluarEstado } from "../lib/calc.js";
 import { evaluarEstadoRecordatorio, generarMensajeWhatsApp } from "../lib/proximoControl.js";
 import { LS, useCollection } from "../lib/storage.js";
+import { trackEvent } from "../lib/telemetry.js";
 import { obtenerTiempoActual } from "../lib/timer.js";
 import { formatMoney } from "../utils/format.js";
 
@@ -109,6 +110,10 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
     return sum + Math.max(saldo, 0);
   }, 0);
 
+  useEffect(() => {
+    trackEvent("open_home", { screen: "home" }).catch(console.error);
+  }, []);
+
   return (
     <div className="space-y-5 p-4 pb-28 text-left animate-in fade-in duration-500">
       <header className="rounded-[2.5rem] border border-slate-800 bg-slate-900 p-8 shadow-2xl">
@@ -153,7 +158,10 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
         </div>
       </header>
 
-      <button onClick={() => setView("nuevaOrden")} className="w-full rounded-[2.5rem] bg-blue-600 p-8 text-white shadow-xl transition-all active:scale-[0.98]">
+      <button onClick={() => {
+        trackEvent("nuevo_ingreso", { screen: "home" }).catch(console.error);
+        setView("nuevaOrden");
+      }} className="w-full rounded-[2.5rem] bg-blue-600 p-8 text-white shadow-xl transition-all active:scale-[0.98]">
         <div className="flex items-center gap-5 text-left font-bold">
           <div className="rounded-3xl bg-white/20 p-4"><PlusCircle size={32} /></div>
           <div>
@@ -164,22 +172,34 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
       </button>
 
       <div className="grid grid-cols-2 gap-4">
-        <button onClick={() => setView("ordenes")} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
+        <button onClick={() => {
+          trackEvent("open_trabajos", { screen: "home" }).catch(console.error);
+          setView("ordenes");
+        }} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
           <Clock className="text-blue-400" size={24} />
           <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Trabajos</p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Ver y seguir trabajos activos</p>
         </button>
-        <button onClick={() => setView("pagosView")} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
+        <button onClick={() => {
+          trackEvent("open_pagos", { screen: "home" }).catch(console.error);
+          setView("pagosView");
+        }} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
           <ReceiptText className="text-emerald-400" size={24} />
           <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Pagos</p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Cobrar y emitir comprobantes</p>
         </button>
-        <button onClick={() => setView("historial")} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
+        <button onClick={() => {
+          trackEvent("open_historial", { screen: "home" }).catch(console.error);
+          setView("historial");
+        }} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
           <History className="text-blue-400" size={24} />
           <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Historial</p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Buscar patente, cliente o comprobante</p>
         </button>
-        <button onClick={() => setView("config")} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
+        <button onClick={() => {
+          trackEvent("open_config", { screen: "home" }).catch(console.error);
+          setView("config");
+        }} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
           <Wrench className="text-slate-300" size={24} />
           <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Más</p>
           <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Configuración y herramientas</p>
@@ -216,6 +236,12 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
                   onClick={() => {
                     const msg = generarMensajeWhatsApp(recordatorio.cliente, recordatorio.moto, recordatorio, config);
                     const tel = recordatorio.cliente?.whatsapp || recordatorio.cliente?.telefono || recordatorio.cliente?.tel || "";
+                    trackEvent("recordatorio_whatsapp", {
+                      screen: "home",
+                      entityType: "recordatorio",
+                      entityId: recordatorio.id,
+                      metadata: { estado: recordatorio.estado, testMode: !!recordatorio.testMode },
+                    }).catch(console.error);
                     window.open(`https://wa.me/${tel.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
                     LS.updateDoc("recordatorios", recordatorio.id, { estado: "avisado", enviado: true });
                   }}
@@ -261,6 +287,11 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
               <button
                 key={order.id}
                 onClick={() => {
+                  trackEvent("open_detalle_trabajo", {
+                    screen: "home",
+                    entityType: "trabajo",
+                    entityId: order.id,
+                  }).catch(console.error);
                   setSelectedOrderId(order.id);
                   setView("detalleOrden");
                 }}
