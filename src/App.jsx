@@ -25,7 +25,7 @@ function buildPlansForUi(settings = DEFAULT_ADMIN_SETTINGS) {
     key,
     label: plan.label || key,
     precio: formatMoney(plan.price || 0, plan.currency || settings.subscriptionCurrency || "ARS"),
-    detalle: `${Number(plan.billingDays || 30)} días`,
+    detalle: `${Number(plan.billingDays || 30)} dias`,
   }));
 }
 
@@ -44,8 +44,8 @@ function buildBannerData(account, settings) {
     const daysLeft = Math.max(0, Math.ceil((trialEndsAt - now) / (24 * 60 * 60 * 1000)));
     if (daysLeft <= 5) {
       tone = "amber";
-      titulo = `Tu prueba vence en ${daysLeft} ${daysLeft === 1 ? "día" : "días"}`;
-      detalle = "Podés seguir usando la app, pero conviene regularizar el plan antes del vencimiento.";
+      titulo = `Tu prueba vence en ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"}`;
+      detalle = "Podes seguir usando la app, pero conviene regularizar el plan antes del vencimiento.";
     }
   }
 
@@ -53,16 +53,16 @@ function buildBannerData(account, settings) {
     const daysLeft = Math.ceil((nextBillingAt - now) / (24 * 60 * 60 * 1000));
     if (daysLeft >= 0 && daysLeft <= 5) {
       tone = "amber";
-      titulo = `Tu plan vence en ${daysLeft} ${daysLeft === 1 ? "día" : "días"}`;
-      detalle = "Conviene renovar para evitar que la cuenta pase a gracia o suspensión.";
+      titulo = `Tu plan vence en ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"}`;
+      detalle = "Conviene renovar para evitar que la cuenta pase a gracia o suspension.";
     }
   }
 
   if ((access.motivo === "gracia" || access.motivo === "gracia_pago") && graceEndsAt) {
     const daysLeft = Math.max(0, Math.ceil((graceEndsAt - now) / (24 * 60 * 60 * 1000)));
     tone = "red";
-    titulo = `Estás en período de gracia`;
-    detalle = `Te quedan ${daysLeft} ${daysLeft === 1 ? "día" : "días"} para renovar antes de la suspensión.`;
+    titulo = "Estas en periodo de gracia";
+    detalle = `Te quedan ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"} para renovar antes de la suspension.`;
   }
 
   if (!titulo) return null;
@@ -119,9 +119,9 @@ function PantallaBloqueo({ account, settings }) {
 
   const motivoLabel =
     access.motivo === "trial_vencido"
-      ? "Período de prueba vencido"
+      ? "Periodo de prueba vencido"
       : access.motivo === "plan_vencido"
-        ? "Suscripción vencida"
+        ? "Suscripcion vencida"
         : access.motivo === "suspendido"
           ? "Cuenta suspendida"
           : "Acceso no disponible";
@@ -131,7 +131,7 @@ function PantallaBloqueo({ account, settings }) {
       <div className="bg-[#151515] rounded-[2.5rem] border border-red-900/30 shadow-2xl w-full max-w-sm overflow-hidden">
         <div className="bg-red-950/40 border-b border-red-900/30 p-8 text-center">
           <div className="text-5xl mb-3">🔒</div>
-          <h2 className="text-2xl font-black text-red-400 uppercase tracking-tighter">Tu acceso está suspendido</h2>
+          <h2 className="text-2xl font-black text-red-400 uppercase tracking-tighter">Tu acceso esta suspendido</h2>
           <p className="text-red-400/60 text-[10px] font-bold uppercase tracking-widest mt-1">Johnny Blaze OS</p>
         </div>
 
@@ -143,13 +143,13 @@ function PantallaBloqueo({ account, settings }) {
           </div>
 
           <p className="text-slate-400 text-xs text-center leading-relaxed">
-            Tus datos están guardados y seguros.
+            Tus datos estan guardados y seguros.
             <br />
-            Renovando el acceso los recuperás al instante.
+            Renovando el acceso los recuperas al instante.
           </p>
 
           <div className="space-y-2">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Elegí tu plan</p>
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Elegi tu plan</p>
             {plansUi.map((plan) => (
               <button
                 key={plan.key}
@@ -183,7 +183,7 @@ function PantallaBloqueo({ account, settings }) {
             onClick={() => auth.signOut()}
             className="w-full text-slate-600 hover:text-slate-400 transition-colors text-[10px] font-black uppercase tracking-widest py-2"
           >
-            Cerrar sesión
+            Cerrar sesion
           </button>
         </div>
       </div>
@@ -226,8 +226,8 @@ export default function App() {
     if (!pago) return;
     window.history.replaceState({}, "", window.location.pathname);
     if (pago === "ok") setPagoToast("Pago recibido. Estamos activando tu acceso.");
-    if (pago === "error") setPagoToast("El pago no se completó. Intentá de nuevo.");
-    if (pago === "pendiente") setPagoToast("El pago quedó pendiente de confirmación.");
+    if (pago === "error") setPagoToast("El pago no se completo. Intenta de nuevo.");
+    if (pago === "pendiente") setPagoToast("El pago quedo pendiente de confirmacion.");
     setTimeout(() => setPagoToast(""), 5000);
   }, []);
 
@@ -308,15 +308,15 @@ export default function App() {
         >
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1">
-          <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Estado de la suscripción</p>
-          <p className="mt-1 text-sm font-black">{banner.titulo}</p>
-          <p className="mt-1 text-xs opacity-90">{banner.detalle}</p>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Estado de la suscripcion</p>
+              <p className="mt-1 text-sm font-black">{banner.titulo}</p>
+              <p className="mt-1 text-xs opacity-90">{banner.detalle}</p>
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={abrirSuscripcion}
                   className="rounded-2xl bg-white/15 px-3 py-2 text-[10px] font-black uppercase tracking-widest"
                 >
-                  Ver suscripción
+                  Ver suscripcion
                 </button>
               </div>
             </div>

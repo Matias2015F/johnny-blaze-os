@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from "react";
+ï»¿import React, { useState, useEffect, lazy, Suspense } from "react";
 import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { Wrench, Clock, History, Settings, DollarSign, HelpCircle, RefreshCw } from "lucide-react";
@@ -10,10 +10,10 @@ import { APP_BUILD } from "./generated/appVersion.js";
 import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, promptInstallApp } from "./lib/appUpdate.js";
 import { ensureAccountProfile, trackEvent } from "./lib/telemetry.js";
 
-// HomeView se carga de forma eager — es la pantalla inicial
+// HomeView se carga de forma eager â€” es la pantalla inicial
 import HomeView from "./views/HomeView.jsx";
 
-// El resto se carga bajo demanda (code splitting) ? reduce el bundle inicial
+// El resto se carga bajo demanda (code splitting) y reduce el bundle inicial
 const OrderListView  = lazy(() => import("./views/OrderListView.jsx"));
 const NewOrderView   = lazy(() => import("./views/NewOrderView.jsx"));
 const ConfigView     = lazy(() => import("./views/ConfigView.jsx"));
@@ -50,23 +50,23 @@ const HELP_CONTENT = {
   home: {
     titulo: "Ayuda de Inicio",
     items: [
-      "Usá Nuevo ingreso para cargar una moto al taller.",
-      "Trabajos activos muestra lo que hoy está en movimiento.",
-      "Próximos service te avisa cuándo conviene contactar al cliente.",
+      "Usa Nuevo ingreso para cargar una moto al taller.",
+      "Trabajos activos muestra lo que hoy esta en movimiento.",
+      "Proximos service te avisa cuando conviene contactar al cliente.",
     ],
   },
   ordenes: {
     titulo: "Ayuda de Trabajos",
     items: [
-      "Tocá una tarjeta para abrir el detalle completo del trabajo.",
-      "El estado te dice en qué parte del flujo está cada moto.",
-      "Si necesitás cobrar o emitir comprobante, entrá al detalle.",
+      "Toca una tarjeta para abrir el detalle completo del trabajo.",
+      "El estado te dice en que parte del flujo esta cada moto.",
+      "Si necesitas cobrar o emitir comprobante, entra al detalle.",
     ],
   },
   historial: {
     titulo: "Ayuda de Historial",
     items: [
-      "Buscá por patente, cliente, número de trabajo o comprobante.",
+      "Busca por patente, cliente, numero de trabajo o comprobante.",
       "Entrando a una moto ves trabajos anteriores, repuestos y gastos.",
       "Te sirve para no repetir cargas y tomar referencias reales.",
     ],
@@ -74,16 +74,16 @@ const HELP_CONTENT = {
   pagosView: {
     titulo: "Ayuda de Pagos",
     items: [
-      "Primero revisá el saldo pendiente.",
-      "Entrá a un trabajo para registrar pago total o parcial.",
-      "Cuando el saldo llega a cero, ya podés emitir comprobante.",
+      "Primero revisa el saldo pendiente.",
+      "Entra a un trabajo para registrar pago total o parcial.",
+      "Cuando el saldo llega a cero, ya podes emitir comprobante.",
     ],
   },
   config: {
-    titulo: "Ayuda de Configuración",
+    titulo: "Ayuda de Configuracion",
     items: [
-      "Acá ajustás datos del taller, alertas y copias de seguridad.",
-      "Modo prueba sirve para validar recordatorios rápido.",
+      "Aca ajustas datos del taller, alertas y copias de seguridad.",
+      "Modo prueba sirve para validar recordatorios rapido.",
       "Alertas del navegador deben quedar permitidas para avisos reales.",
     ],
   },
@@ -91,7 +91,7 @@ const HELP_CONTENT = {
 
 function getInstallGuide() {
   if (typeof window === "undefined") {
-    return { platform: "generic", title: "Instalá la app", steps: [] };
+    return { platform: "generic", title: "Instala la app", steps: [] };
   }
 
   const ua = window.navigator.userAgent || "";
@@ -103,9 +103,9 @@ function getInstallGuide() {
       platform: "ios",
       title: "Instalar en iPhone o iPad",
       steps: [
-        { title: "Abrí Safari", detail: "Esta instalación en iPhone funciona desde Safari." },
-        { title: "Tocá Compartir", detail: "Buscá el botón Compartir abajo o arriba del navegador." },
-        { title: "Agregala al inicio", detail: "Elegí Agregar a pantalla de inicio y confirmá Agregar." },
+        { title: "Abri Safari", detail: "Esta instalacion en iPhone funciona desde Safari." },
+        { title: "Toca Compartir", detail: "Busca el boton Compartir abajo o arriba del navegador." },
+        { title: "Agregala al inicio", detail: "Elegi Agregar a pantalla de inicio y confirma Agregar." },
       ],
     };
   }
@@ -115,9 +115,9 @@ function getInstallGuide() {
       platform: "android",
       title: "Instalar en Android",
       steps: [
-        { title: "Probá instalar desde acá", detail: "Tocá Instalar app si el botón está habilitado." },
-        { title: "Abrí el menú", detail: "Si no aparece, abrí el menú de Chrome." },
-        { title: "Confirmá la instalación", detail: "Elegí Instalar aplicación o Agregar a pantalla principal." },
+        { title: "Proba instalar desde aca", detail: "Toca Instalar app si el boton esta habilitado." },
+        { title: "Abri el menu", detail: "Si no aparece, abri el menu de Chrome." },
+        { title: "Confirma la instalacion", detail: "Elegi Instalar aplicacion o Agregar a pantalla principal." },
       ],
     };
   }
@@ -126,9 +126,9 @@ function getInstallGuide() {
     platform: "desktop",
     title: "Instalar en PC",
     steps: [
-      { title: "Probá instalar desde acá", detail: "Tocá Instalar app si el botón está habilitado." },
-      { title: "Abrí el menú del navegador", detail: "Si no aparece, usá el menú de Chrome o Edge." },
-      { title: "Instalala como app", detail: "Buscá Instalar aplicación o Apps y confirmá." },
+      { title: "Proba instalar desde aca", detail: "Toca Instalar app si el boton esta habilitado." },
+      { title: "Abri el menu del navegador", detail: "Si no aparece, usa el menu de Chrome o Edge." },
+      { title: "Instalala como app", detail: "Busca Instalar aplicacion o Apps y confirma." },
     ],
   };
 }
@@ -217,7 +217,7 @@ export default function TallerPanel() {
     };
   }, []);
 
-  // Migración localStorage ? Firestore y backup automático diario
+  // Migracion localStorage -> Firestore y backup automatico diario
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
@@ -280,7 +280,7 @@ export default function TallerPanel() {
       }).id;
     }
 
-    // Titularidad: relación histórica cliente ? moto
+    // Titularidad: relaciÃ³n histÃ³rica cliente ? moto
     const titActual = titularidades.find(t => t.motoId === bikeId && t.titularActual === true);
     if (!titActual || titActual.clienteId !== clientId) {
       if (titActual) {
@@ -335,7 +335,7 @@ export default function TallerPanel() {
         patente: payload.patente?.toUpperCase?.() || "",
       },
     }).catch(console.error);
-    showToast("Orden abierta ?");
+    showToast("Orden abierta");
   };
 
   const handleStartNewService = (bike, client) => {
@@ -346,7 +346,7 @@ export default function TallerPanel() {
   // -- Demo / Reset -----------------------------------------------------------
   const loadDemoData = () => {
     const hoy = hoyEstable();
-    const c1 = LS.addDoc("clientes", { nombre: "Juan Pérez", tel: "3434111222", telefono: "3434111222", whatsapp: "3434111222", etiquetas: [], activo: true, createdAt: Date.now() });
+    const c1 = LS.addDoc("clientes", { nombre: "Juan PÃ©rez", tel: "3434111222", telefono: "3434111222", whatsapp: "3434111222", etiquetas: [], activo: true, createdAt: Date.now() });
     const b1 = LS.addDoc("motos", { patente: "A123ABC", patenteNormalizada: "A123ABC", marca: "Honda", modelo: "Tornado 250", cilindrada: 250, km: 12500, kilometrajeActual: 12500, estado: "activa", clienteId: c1.id, ultimaVisita: hoy, proximoService: 15000, createdAt: Date.now() });
     LS.addDoc("titularidades", { clienteId: c1.id, motoId: b1.id, fechaDesde: hoy, fechaHasta: null, titularActual: true, createdAt: Date.now() });
     LS.addDoc("trabajos", {
@@ -354,20 +354,20 @@ export default function TallerPanel() {
       clientId: c1.id, bikeId: b1.id, estado: "reparacion", prioridad: "normal",
       fechaIngreso: hoy, fechaEntrega: null, total: 65000,
       pagos: [{ id: generateId(), fecha: hoy, monto: 20000, metodo: "efectivo", hora: "14:30" }],
-      tareas: [{ nombre: "Regulación de válvulas", monto: 25000, horasBase: 2 }],
+      tareas: [{ nombre: "RegulaciÃ³n de vÃ¡lvulas", monto: 25000, horasBase: 2 }],
       repuestos: [{ nombre: "Junta de tapa", monto: 15000, cantidad: 1 }, { nombre: "Aceite Motul 5100", monto: 25000, cantidad: 1 }],
       insumos: [{ nombre: "Limpia carburador", monto: 3500 }],
       fletes: [], km: 12500, kmIngreso: 12500, kmEntrega: null,
-      motivoIngreso: "Le cuesta arrancar en frío y regula mal.",
-      diagnostico: "Le cuesta arrancar en frío y regula mal.",
-      observacionesProxima: "Revisar transmisión en 2000km.",
+      motivoIngreso: "Le cuesta arrancar en frÃ­o y regula mal.",
+      diagnostico: "Le cuesta arrancar en frÃ­o y regula mal.",
+      observacionesProxima: "Revisar transmisiÃ³n en 2000km.",
       pdfEntregado: false, createdAt: Date.now(),
     });
-    showToast("Demo cargado ?");
+    showToast("Demo cargado");
   };
 
   const clearAllData = () => {
-    showConfirm("¿Borrar todos los datos? Esta acción no se puede deshacer.", async () => {
+    showConfirm("Â¿Borrar todos los datos? Esta accion no se puede deshacer.", async () => {
       const uid = auth.currentUser?.uid;
       if (uid) await clearFirestoreData(uid);
       localStorage.removeItem("jbos_fs_migrated_v1");
@@ -386,9 +386,9 @@ export default function TallerPanel() {
           platform: "ios",
           title: "Instalar en iPhone o iPad",
           steps: [
-            { title: "Abrí Safari", detail: "Esta instalación en iPhone funciona desde Safari." },
-            { title: "Tocá Compartir", detail: "Buscá el botón Compartir abajo o arriba del navegador." },
-            { title: "Agregala al inicio", detail: "Elegí Agregar a pantalla de inicio y confirmá Agregar." },
+            { title: "Abri Safari", detail: "Esta instalacion en iPhone funciona desde Safari." },
+            { title: "Toca Compartir", detail: "Busca el boton Compartir abajo o arriba del navegador." },
+            { title: "Agregala al inicio", detail: "Elegi Agregar a pantalla de inicio y confirma Agregar." },
           ],
         }
       : selectedInstallPlatform === "android"
@@ -396,9 +396,9 @@ export default function TallerPanel() {
             platform: "android",
             title: "Instalar en Android",
             steps: [
-              { title: "Probá instalar desde acá", detail: "Tocá Instalar app si el botón está habilitado." },
-              { title: "Abrí el menú", detail: "Si no aparece, abrí el menú de Chrome." },
-              { title: "Confirmá la instalación", detail: "Elegí Instalar aplicación o Agregar a pantalla principal." },
+              { title: "Proba instalar desde aca", detail: "Toca Instalar app si el boton esta habilitado." },
+              { title: "Abri el menu", detail: "Si no aparece, abri el menu de Chrome." },
+              { title: "Confirma la instalacion", detail: "Elegi Instalar aplicacion o Agregar a pantalla principal." },
             ],
           }
         : selectedInstallPlatform === "desktop"
@@ -406,9 +406,9 @@ export default function TallerPanel() {
               platform: "desktop",
               title: "Instalar en PC",
               steps: [
-                { title: "Probá instalar desde acá", detail: "Tocá Instalar app si el botón está habilitado." },
-                { title: "Abrí el menú del navegador", detail: "Si no aparece, usá el menú de Chrome o Edge." },
-                { title: "Instalala como app", detail: "Buscá Instalar aplicación o Apps y confirmá." },
+                { title: "Proba instalar desde aca", detail: "Toca Instalar app si el boton esta habilitado." },
+                { title: "Abri el menu del navegador", detail: "Si no aparece, usa el menu de Chrome o Edge." },
+                { title: "Instalala como app", detail: "Busca Instalar aplicacion o Apps y confirma." },
               ],
             }
           : installGuide;
@@ -434,7 +434,7 @@ export default function TallerPanel() {
       return;
     }
     if (installGuide.platform === "ios") {
-      showToast("En iPhone usá Safari y Agregar a pantalla de inicio");
+      showToast("En iPhone usa Safari y Agregar a pantalla de inicio");
       return;
     }
     showToast("El instalador no esta disponible ahora");
@@ -460,7 +460,7 @@ export default function TallerPanel() {
       if (navigator.share) {
         await navigator.share({
           title: "Johnny Blaze OS",
-          text: "Abrí esta app y agregala a tu pantalla de inicio.",
+          text: "Abri esta app y agregala a tu pantalla de inicio.",
           url: window.location.origin,
         });
         showToast("Se abrio compartir");
@@ -524,17 +524,17 @@ export default function TallerPanel() {
                 <RefreshCw size={18} />
               </div>
               <div>
-                <p className="text-sm font-black uppercase tracking-widest text-white">Actualización disponible</p>
-                <p className="text-[10px] font-bold text-slate-400">Versión nueva detectada en Vercel</p>
+                <p className="text-sm font-black uppercase tracking-widest text-white">Actualizacion disponible</p>
+                <p className="text-[10px] font-bold text-slate-400">Version nueva detectada en Vercel</p>
               </div>
             </div>
             <div className="rounded-2xl bg-slate-900 p-4 space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Versión actual</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Version actual</p>
               <p className="text-sm font-black text-white">{APP_BUILD.version}</p>
               <p className="text-[10px] font-bold text-slate-500">
                 {new Date(APP_BUILD.buildTime).toLocaleString("es-AR")}
               </p>
-              <p className="mt-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Último deploy</p>
+              <p className="mt-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Ultimo deploy</p>
               <p className="text-sm font-black text-blue-400">{updateInfo.version}</p>
               {updateInfo.buildTime && (
                 <p className="text-[10px] font-bold text-slate-500">
@@ -543,14 +543,14 @@ export default function TallerPanel() {
               )}
             </div>
             <p className="text-[10px] font-bold leading-relaxed text-slate-400">
-              Si aceptás, la app recarga la última versión publicada para que la instalación quede actualizada como una app profesional.
+              Si aceptas, la app recarga la ultima version publicada para que la instalacion quede actualizada como una app profesional.
             </p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setUpdateInfo(null)}
                 className="rounded-2xl bg-slate-800 py-4 text-[10px] font-black uppercase tracking-widest text-slate-300 active:scale-95"
               >
-                Después
+                Despues
               </button>
               <button
                 onClick={aplicarActualizacion}
@@ -572,7 +572,7 @@ export default function TallerPanel() {
               </div>
               <div>
                 <p className="text-sm font-black uppercase tracking-widest text-white">{helpInfo.titulo}</p>
-                <p className="text-[10px] font-bold text-slate-400">Guía rápida y simple</p>
+                <p className="text-[10px] font-bold text-slate-400">Guia rapida y simple</p>
               </div>
             </div>
             <div className="space-y-3">
@@ -587,7 +587,7 @@ export default function TallerPanel() {
                 <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Instalar app</p>
                 <p className="mt-1 text-sm font-black text-white">{activeInstallGuide.title}</p>
                 <p className="mt-1 text-[10px] font-bold text-slate-400">
-                  {displayMode.installed ? "Esta app ya esta instalada en este dispositivo." : "Podés instalarla desde acá si tu navegador lo permite."}
+                  {displayMode.installed ? "Esta app ya esta instalada en este dispositivo." : "Podes instalarla desde aca si tu navegador lo permite."}
                 </p>
               </div>
               <div className="grid grid-cols-3 gap-2">
@@ -657,7 +657,7 @@ export default function TallerPanel() {
         </div>
       )}
 
-      {/* Modal de confirmación — reemplaza window.confirm */}
+      {/* Modal de confirmaciÃ³n â€” reemplaza window.confirm */}
       {confirm && (
         <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-6">
           <div className="bg-[#151515] border border-slate-800 rounded-[2rem] p-8 w-full max-w-sm space-y-5">
@@ -678,7 +678,7 @@ export default function TallerPanel() {
 
       {NAV_VIEWS.includes(view) && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-black/95 backdrop-blur-3xl border-t border-white/10 px-2 py-4 flex justify-around items-center z-50 rounded-t-[3rem] shadow-2xl">
-          {/* Indicador de sincronización */}
+          {/* Indicador de sincronizaciÃ³n */}
           <div className={`absolute top-2 right-4 flex items-center gap-1 text-[8px] font-black uppercase tracking-widest ${syncStatus === "synced" ? "text-green-500" : syncStatus === "syncing" ? "text-yellow-400" : "text-red-400"}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${syncStatus === "synced" ? "bg-green-500" : syncStatus === "syncing" ? "bg-yellow-400 animate-pulse" : "bg-red-400"}`} />
             {syncStatus === "synced" ? "Guardado" : syncStatus === "syncing" ? "Guardando..." : "Error al guardar"}
@@ -696,7 +696,7 @@ export default function TallerPanel() {
             <DollarSign size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Pagos</span>
           </button>
           <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "config" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
-            <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Más</span>
+            <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">MÃ¡s</span>
           </button>
         </nav>
       )}
@@ -709,3 +709,4 @@ export default function TallerPanel() {
     </div>
   );
 }
+
