@@ -18,11 +18,45 @@ const DEFAULT_FEATURES = {
 
 export const PLATFORM_ADMIN_EMAILS = ["fefe@gmail.com"];
 export const PLATFORM_ADMIN_UIDS = ["123456789"];
+export const DEFAULT_PLAN_DEFINITIONS = {
+  base: {
+    label: "Plan Base",
+    price: 5000,
+    currency: "ARS",
+    billingDays: 30,
+    features: {
+      pdf: true,
+      recordatorios: true,
+      analytics: false,
+      multiusuario: false,
+    },
+  },
+  pro: {
+    label: "Plan Pro",
+    price: 12000,
+    currency: "ARS",
+    billingDays: 30,
+    features: {
+      pdf: true,
+      recordatorios: true,
+      analytics: true,
+      multiusuario: true,
+    },
+  },
+};
 export const DEFAULT_ADMIN_SETTINGS = {
   trialDaysDefault: 14,
   subscriptionPrice: 0,
   subscriptionCurrency: "ARS",
   applyPricingToNewAccountsOnly: true,
+  graceDaysDefault: 3,
+  plans: DEFAULT_PLAN_DEFINITIONS,
+  featureFlags: {
+    pdf: true,
+    recordatorios: true,
+    analytics: true,
+    multiusuario: false,
+  },
   updatedAt: null,
 };
 
@@ -57,6 +91,23 @@ function analyticsEnabled() {
   return cfg.analyticsEnabled !== false;
 }
 
+function mergeFeatureFlags(settings = {}) {
+  return {
+    ...DEFAULT_FEATURES,
+    ...(settings.featureFlags || {}),
+  };
+}
+
+function pickSignupPlan(settings = {}) {
+  const plans = settings.plans || DEFAULT_PLAN_DEFINITIONS;
+  const planKey = plans.base ? "base" : Object.keys(plans)[0];
+  const selected = plans[planKey] || DEFAULT_PLAN_DEFINITIONS.base;
+  return {
+    key: planKey,
+    ...selected,
+  };
+}
+
 export async function ensureAccountProfile() {
   const user = auth.currentUser;
   if (!user) return;
@@ -72,6 +123,9 @@ export async function ensureAccountProfile() {
     ? { ...DEFAULT_ADMIN_SETTINGS, ...settingsSnap.data() }
     : DEFAULT_ADMIN_SETTINGS;
   const trialDays = Number(settings.trialDaysDefault || DEFAULT_ADMIN_SETTINGS.trialDaysDefault);
+  const graceDays = Number(settings.graceDaysDefault || DEFAULT_ADMIN_SETTINGS.graceDaysDefault);
+  const signupPlan = pickSignupPlan(settings);
+  const featureFlags = mergeFeatureFlags(settings);
   const now = Date.now();
   const isPlatformAdmin =
     PLATFORM_ADMIN_EMAILS.includes((user.email || "").toLowerCase()) ||
@@ -82,10 +136,11 @@ export async function ensureAccountProfile() {
     email: user.email || "",
     nombreTaller: (LS.getDoc("config", "global") || {}).nombreTaller || existing?.nombreTaller || "Johnny Blaze OS",
     lastSeenAt: serverTimestamp(),
-    appVersion: APP_BUILD.version,
-    updatedAt: serverTimestamp(),
-    isPlatformAdmin: existing?.isPlatformAdmin ?? isPlatformAdmin,
-  };
+      appVersion: APP_BUILD.version,
+      updatedAt: serverTimestamp(),
+      isPlatformAdmin: existing?.isPlatformAdmin ?? isPlatformAdmin,
+      featureFlags,
+    };
 
   if (existing) {
     await setDoc(ref, basePayload, { merge: true });
@@ -98,11 +153,18 @@ export async function ensureAccountProfile() {
     pagoEstado: "pendiente",
     trialStartsAt: now,
     trialEndsAt: now + trialDays * 24 * 60 * 60 * 1000,
-    graceEndsAt: null,
+    graceEndsAt: now + (trialDays + graceDays) * 24 * 60 * 60 * 1000,
     adminUid: user.uid,
-    features: DEFAULT_FEATURES,
-    subscriptionPriceAtSignup: Number(settings.subscriptionPrice || 0),
-    subscriptionCurrencyAtSignup: settings.subscriptionCurrency || "ARS",
+    features: {
+      ...(signupPlan.features || DEFAULT_FEATURES),
+      ...featureFlags,
+    },
+    featureFlags,
+    currentPlanKey: signupPlan.key,
+    nextBillingAt: now + trialDays * 24 * 60 * 60 * 1000,
+    billingCadenceDays: Number(signupPlan.billingDays || 30),
+    subscriptionPriceAtSignup: Number((signupPlan.price ?? settings.subscriptionPrice) || 0),
+    subscriptionCurrencyAtSignup: signupPlan.currency || settings.subscriptionCurrency || "ARS",
     pricingVersionAppliedAt: serverTimestamp(),
     createdAt: serverTimestamp(),
   }, { merge: true });

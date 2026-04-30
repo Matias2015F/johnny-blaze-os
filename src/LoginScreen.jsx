@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { auth, db } from "./firebase.js";
+import { auth } from "./firebase.js";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -7,9 +7,7 @@ import {
   signInWithPhoneNumber,
   RecaptchaVerifier,
 } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
 import { Eye, EyeOff, Phone, ArrowLeft } from "lucide-react";
-import { DURACION_TRIAL } from "./services/accessService.js";
 
 const COUNTRY_CODES = [
   { label: "🇦🇷 +54", value: "+54" },
@@ -48,11 +46,7 @@ export default function LoginScreen() {
       if (modo === "login") {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        const res = await createUserWithEmailAndPassword(auth, email, password);
-        const ahora = Date.now();
-        await setDoc(doc(db, "usuarios", res.user.uid), {
-          email, estado: "trial", trialInicio: ahora, trialFin: ahora + DURACION_TRIAL,
-        });
+        await createUserWithEmailAndPassword(auth, email, password);
       }
     } catch (e) {
       if (e.code === "auth/user-not-found")      err("No encontramos una cuenta con ese correo");

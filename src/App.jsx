@@ -1,37 +1,91 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { shouldAutoBackup, exportBackup } from "./lib/backup.js";
-import { DURACION_TRIAL } from "./services/accessService.js";
+import { DEFAULT_ADMIN_SETTINGS, ensureAccountProfile } from "./lib/telemetry.js";
+import { leerAdminSettings, normalizeDateMs, resolveAccountAccess } from "./services/accessService.js";
 import { LS } from "./lib/storage.js";
 import { CONFIG_DEFAULT } from "./lib/constants.js";
 
 import TallerPanel from "./TallerPanel.jsx";
 import LoginScreen from "./LoginScreen.jsx";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PLANES visibles al usuario — deben coincidir en precio con api/mp-create-preference.js
-// Modificar labels, precios y descripciones según tu oferta comercial.
-// ─────────────────────────────────────────────────────────────────────────────
-const PLANES_UI = [
-  { key: "mensual",     label: "Mensual",     precio: "$5.000",  detalle: "30 días" },
-  { key: "trimestral",  label: "Trimestral",  precio: "$12.000", detalle: "90 días · ahorrás $3.000" },
-  { key: "anual",       label: "Anual",       precio: "$40.000", detalle: "365 días · ahorrás $20.000" },
-];
+function formatMoney(value, currency = "ARS") {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
 
-function PantallaBloqueo({ snapData }) {
+function buildPlansForUi(settings = DEFAULT_ADMIN_SETTINGS) {
+  const plans = settings.plans || DEFAULT_ADMIN_SETTINGS.plans || {};
+  return Object.entries(plans).map(([key, plan]) => ({
+    key,
+    label: plan.label || key,
+    precio: formatMoney(plan.price || 0, plan.currency || settings.subscriptionCurrency || "ARS"),
+    detalle: `${Number(plan.billingDays || 30)} días`,
+  }));
+}
+
+function buildBannerData(account, settings) {
+  const access = resolveAccountAccess(account || {});
+  const now = Date.now();
+  const trialEndsAt = normalizeDateMs(account?.trialEndsAt);
+  const nextBillingAt = normalizeDateMs(account?.nextBillingAt);
+  const graceEndsAt = normalizeDateMs(account?.graceEndsAt);
+
+  let tone = "blue";
+  let titulo = "";
+  let detalle = "";
+
+  if (access.motivo === "trial" && trialEndsAt) {
+    const daysLeft = Math.max(0, Math.ceil((trialEndsAt - now) / (24 * 60 * 60 * 1000)));
+    if (daysLeft <= 5) {
+      tone = "amber";
+      titulo = `Tu prueba vence en ${daysLeft} ${daysLeft === 1 ? "día" : "días"}`;
+      detalle = "Podés seguir usando la app, pero conviene regularizar el plan antes del vencimiento.";
+    }
+  }
+
+  if ((access.motivo === "vigente" || access.motivo === "activo") && nextBillingAt) {
+    const daysLeft = Math.ceil((nextBillingAt - now) / (24 * 60 * 60 * 1000));
+    if (daysLeft >= 0 && daysLeft <= 5) {
+      tone = "amber";
+      titulo = `Tu plan vence en ${daysLeft} ${daysLeft === 1 ? "día" : "días"}`;
+      detalle = "Conviene renovar para evitar que la cuenta pase a gracia o suspensión.";
+    }
+  }
+
+  if ((access.motivo === "gracia" || access.motivo === "gracia_pago") && graceEndsAt) {
+    const daysLeft = Math.max(0, Math.ceil((graceEndsAt - now) / (24 * 60 * 60 * 1000)));
+    tone = "red";
+    titulo = `Estás en período de gracia`;
+    detalle = `Te quedan ${daysLeft} ${daysLeft === 1 ? "día" : "días"} para renovar antes de la suspensión.`;
+  }
+
+  if (!titulo) return null;
+  return { tone, titulo, detalle, price: settings.subscriptionPrice };
+}
+
+function PantallaBloqueo({ account, settings }) {
   const [pagando, setPagando] = useState(false);
-  const [error, setError]     = useState("");
+  const [error, setError] = useState("");
 
-  const config     = LS.getDoc("config", "global") || CONFIG_DEFAULT;
-  const tel        = (config.telefonoTaller || "").replace(/\D/g, "");
-  const waLink     = tel ? `https://wa.me/54${tel}` : null;
-  const vencioTs   = snapData?.trialFin || snapData?.activoHasta;
-  const vencioStr  = vencioTs
+  const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
+  const tel = (config.telefonoTaller || "").replace(/\D/g, "");
+  const waLink = tel ? `https://wa.me/54${tel}` : null;
+  const userLabel = auth.currentUser?.email || auth.currentUser?.phoneNumber || "";
+  const access = resolveAccountAccess(account || {});
+  const plansUi = buildPlansForUi(settings);
+  const vencioTs =
+    normalizeDateMs(account?.trialEndsAt) ||
+    normalizeDateMs(account?.nextBillingAt) ||
+    normalizeDateMs(account?.graceEndsAt);
+  const vencioStr = vencioTs
     ? new Date(vencioTs).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })
     : null;
-  const userLabel  = auth.currentUser?.email || auth.currentUser?.phoneNumber || "";
 
   const handlePagar = async (planKey) => {
     if (pagando) return;
@@ -39,13 +93,12 @@ function PantallaBloqueo({ snapData }) {
     setError("");
     try {
       const res = await fetch("/api/mp-create-preference", {
-        method:  "POST",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ uid: auth.currentUser.uid, plan: planKey }),
+        body: JSON.stringify({ uid: auth.currentUser.uid, plan: planKey }),
       });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error(data.error || "Error al generar el link de pago");
-      // Redirige al checkout de Mercado Pago
       window.location.href = data.url;
     } catch (e) {
       setError(e.message);
@@ -53,11 +106,18 @@ function PantallaBloqueo({ snapData }) {
     }
   };
 
+  const motivoLabel =
+    access.motivo === "trial_vencido"
+      ? "Período de prueba vencido"
+      : access.motivo === "plan_vencido"
+        ? "Suscripción vencida"
+        : access.motivo === "suspendido"
+          ? "Cuenta suspendida"
+          : "Acceso no disponible";
+
   return (
     <div className="min-h-screen bg-[#0b0b0b] text-white flex flex-col items-center justify-center p-6">
       <div className="bg-[#151515] rounded-[2.5rem] border border-red-900/30 shadow-2xl w-full max-w-sm overflow-hidden">
-
-        {/* Header */}
         <div className="bg-red-950/40 border-b border-red-900/30 p-8 text-center">
           <div className="text-5xl mb-3">🔒</div>
           <h2 className="text-2xl font-black text-red-400 uppercase tracking-tighter">Tu acceso está suspendido</h2>
@@ -65,25 +125,21 @@ function PantallaBloqueo({ snapData }) {
         </div>
 
         <div className="p-6 space-y-4">
-
-          {/* Info vencimiento */}
           <div className="bg-slate-900 rounded-2xl p-4 text-center space-y-1">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-              {snapData?.estado === "trial" ? "Período de prueba vencido" : "Suscripción vencida"}
-            </p>
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{motivoLabel}</p>
             {vencioStr && <p className="text-sm font-black text-slate-300">{vencioStr}</p>}
-            {userLabel  && <p className="text-[10px] text-slate-500 truncate">{userLabel}</p>}
+            {userLabel && <p className="text-[10px] text-slate-500 truncate">{userLabel}</p>}
           </div>
 
           <p className="text-slate-400 text-xs text-center leading-relaxed">
-            Tus datos están guardados y seguros.<br />
+            Tus datos están guardados y seguros.
+            <br />
             Renovando el acceso los recuperás al instante.
           </p>
 
-          {/* Planes */}
           <div className="space-y-2">
             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Elegí tu plan</p>
-            {PLANES_UI.map(plan => (
+            {plansUi.map((plan) => (
               <button
                 key={plan.key}
                 onClick={() => handlePagar(plan.key)}
@@ -101,7 +157,6 @@ function PantallaBloqueo({ snapData }) {
 
           {error && <p className="text-red-400 text-[10px] font-bold text-center">{error}</p>}
 
-          {/* WhatsApp alternativo */}
           {waLink && (
             <a
               href={waLink}
@@ -127,20 +182,21 @@ function PantallaBloqueo({ snapData }) {
 
 export default function App() {
   const [estado, setEstado] = useState("loading");
-  const [snapData, setSnapData] = useState(null);
-  const [pagoToast, setPagoToast] = useState(""); // mensaje de retorno desde MP
+  const [account, setAccount] = useState(null);
+  const [settings, setSettings] = useState(DEFAULT_ADMIN_SETTINGS);
+  const [pagoToast, setPagoToast] = useState("");
   const autoBackupDone = useRef(false);
 
-  // Detecta retorno desde Mercado Pago (?pago=ok|error|pendiente)
+  const banner = useMemo(() => buildBannerData(account, settings), [account, settings]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const pago = params.get("pago");
     if (!pago) return;
-    // Limpiar el parámetro de la URL sin recargar la página
     window.history.replaceState({}, "", window.location.pathname);
-    if (pago === "ok")         setPagoToast("✅ Pago recibido — activando acceso...");
-    if (pago === "error")      setPagoToast("❌ El pago no se completó. Intentá de nuevo.");
-    if (pago === "pendiente")  setPagoToast("⏳ Pago pendiente de confirmación.");
+    if (pago === "ok") setPagoToast("Pago recibido. Estamos activando tu acceso.");
+    if (pago === "error") setPagoToast("El pago no se completó. Intentá de nuevo.");
+    if (pago === "pendiente") setPagoToast("El pago quedó pendiente de confirmación.");
     setTimeout(() => setPagoToast(""), 5000);
   }, []);
 
@@ -152,44 +208,50 @@ export default function App() {
   }, [estado]);
 
   useEffect(() => {
-    let unsubFirestore = null;
+    let unsubAccount = null;
+    let cancelled = false;
 
-    const unsubAuth = onAuthStateChanged(auth, (u) => {
+    const unsubAuth = onAuthStateChanged(auth, async (u) => {
       if (!u) {
         setEstado("login");
-        if (unsubFirestore) unsubFirestore();
+        setAccount(null);
+        if (unsubAccount) unsubAccount();
         return;
       }
 
-      const ref = doc(db, "usuarios", u.uid);
+      try {
+        await ensureAccountProfile();
+      } catch (error) {
+        console.error(error);
+      }
 
-      unsubFirestore = onSnapshot(ref, (snap) => {
+      try {
+        const remoteSettings = await leerAdminSettings();
+        if (!cancelled) setSettings(remoteSettings);
+      } catch (error) {
+        console.error(error);
+      }
+
+      const ref = doc(db, "accounts", u.uid);
+      if (unsubAccount) unsubAccount();
+      unsubAccount = onSnapshot(ref, async (snap) => {
         if (!snap.exists()) {
-          const isPhone = u.providerData?.[0]?.providerId === "phone";
-          const ahora = Date.now();
-          setDoc(ref, {
-            email: isPhone ? u.phoneNumber : u.email,
-            estado: "trial",
-            trialInicio: ahora,
-            trialFin: ahora + DURACION_TRIAL,
-            createdAt: ahora,
-          });
+          setEstado("loading");
           return;
         }
 
-        const data = snap.data();
-        const trialFin = Number(data.trialFin);
-        const ahora = Date.now();
-
-        setSnapData(data);
-
-        if (data.estado === "activo") { setEstado("ok"); return; }
-        if (!isNaN(trialFin) && trialFin > ahora) { setEstado("ok"); return; }
-        setEstado("bloqueado");
+        const data = { id: snap.id, ...snap.data() };
+        setAccount(data);
+        const access = resolveAccountAccess(data);
+        setEstado(access.acceso ? "ok" : "bloqueado");
       });
     });
 
-    return () => { unsubAuth(); if (unsubFirestore) unsubFirestore(); };
+    return () => {
+      cancelled = true;
+      unsubAuth();
+      if (unsubAccount) unsubAccount();
+    };
   }, []);
 
   if (estado === "loading") {
@@ -201,16 +263,27 @@ export default function App() {
   }
 
   if (estado === "login") return <LoginScreen />;
-
-  if (estado === "bloqueado") {
-    return <PantallaBloqueo snapData={snapData} />;
-  }
+  if (estado === "bloqueado") return <PantallaBloqueo account={account} settings={settings} />;
 
   return (
     <>
+      {banner && (
+        <div
+          className={`fixed top-4 left-1/2 z-[210] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-3xl border px-5 py-4 shadow-2xl ${
+            banner.tone === "red"
+              ? "border-red-800 bg-red-950/95 text-red-50"
+              : "border-amber-700 bg-amber-950/95 text-amber-50"
+          }`}
+        >
+          <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Estado de la suscripción</p>
+          <p className="mt-1 text-sm font-black">{banner.titulo}</p>
+          <p className="mt-1 text-xs opacity-90">{banner.detalle}</p>
+        </div>
+      )}
+
       <TallerPanel />
       {pagoToast && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-white text-black px-8 py-4 rounded-3xl font-black text-xs shadow-2xl z-[200]">
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-white text-black px-8 py-4 rounded-3xl font-black text-xs shadow-2xl z-[220]">
           {pagoToast}
         </div>
       )}
