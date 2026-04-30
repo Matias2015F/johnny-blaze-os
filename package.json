@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/write-version.cjs && vite build",
+    "build": "vite build",
     "lint": "eslint src"
   },
   "dependencies": {
