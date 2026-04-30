@@ -7,7 +7,7 @@ import { LS, useCollection, generateId, migrateFromLocalStorage, migrateRenamedC
 import { autoCloudBackup } from "./lib/cloudBackup.js";
 import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
 import { APP_BUILD } from "./generated/appVersion.js";
-import { applyRemoteUpdate, fetchRemoteVersion, isNewerBuild } from "./lib/appUpdate.js";
+import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, promptInstallApp } from "./lib/appUpdate.js";
 import { ensureAccountProfile, trackEvent } from "./lib/telemetry.js";
 
 // HomeView se carga de forma eager — es la pantalla inicial
@@ -89,6 +89,52 @@ const HELP_CONTENT = {
   },
 };
 
+function getInstallGuide() {
+  if (typeof window === "undefined") {
+    return { platform: "generic", title: "Instalá la app", steps: [] };
+  }
+
+  const ua = window.navigator.userAgent || "";
+  const isiPhone = /iPhone|iPad|iPod/i.test(ua);
+  const isAndroid = /Android/i.test(ua);
+  const isDesktop = !isiPhone && !isAndroid;
+
+  if (isiPhone) {
+    return {
+      platform: "ios",
+      title: "Instalar en iPhone o iPad",
+      steps: [
+        "Abrí esta app en Safari.",
+        "Tocá Compartir.",
+        "Elegí Agregar a pantalla de inicio.",
+        "Confirmá Agregar para dejarla como app.",
+      ],
+    };
+  }
+
+  if (isAndroid) {
+    return {
+      platform: "android",
+      title: "Instalar en Android",
+      steps: [
+        "Si el botón Instalar app está disponible, tocá ese botón.",
+        "Si no aparece, abrí el menú de Chrome.",
+        "Elegí Instalar aplicación o Agregar a pantalla principal.",
+      ],
+    };
+  }
+
+  return {
+    platform: "desktop",
+    title: "Instalar en PC",
+    steps: [
+      "Si el botón Instalar app está disponible, tocá ese botón.",
+      "Si no aparece, abrí el menú del navegador.",
+      "Buscá Instalar aplicación o Apps.",
+    ],
+  };
+}
+
 export default function TallerPanel() {
   const [view, setView] = useState("home");
   const [selectedOrderId, setSelectedOrderId] = useState(null);
@@ -102,6 +148,7 @@ export default function TallerPanel() {
   const [finalPdfData, setFinalPdfData] = useState({ garantia: "" });
   const [showHelp, setShowHelp] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
+  const [installAvailable, setInstallAvailable] = useState(false);
 
   const clients       = useCollection("clientes");
   const bikes         = useCollection("motos");
@@ -151,6 +198,17 @@ export default function TallerPanel() {
       alive = false;
       clearInterval(intervalId);
       document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
+  useEffect(() => {
+    const unbind = bindInstallPromptCapture();
+    const syncInstallState = () => setInstallAvailable(canPromptInstall());
+    syncInstallState();
+    window.addEventListener("jbos-install-available", syncInstallState);
+    return () => {
+      if (typeof unbind === "function") unbind();
+      window.removeEventListener("jbos-install-available", syncInstallState);
     };
   }, []);
 
@@ -315,6 +373,8 @@ export default function TallerPanel() {
   // ── Datos derivados ────────────────────────────────────────────────────────
   const selectedOrder = orders.find((o) => o.id === selectedOrderId);
   const helpInfo = HELP_CONTENT[view] || null;
+  const displayMode = getDisplayModeInfo();
+  const installGuide = getInstallGuide();
   const stats = {
     activas: orders.filter((o) => o.estado !== "cerrado_emitido").length,
     hoy: orders.filter((o) => o.fechaIngreso === hoyEstable()).length,
@@ -328,6 +388,19 @@ export default function TallerPanel() {
       console.error(e);
       window.location.reload();
     }
+  };
+
+  const instalarDesdeAyuda = async () => {
+    const result = await promptInstallApp();
+    if (result?.ok) {
+      showToast("Instalacion iniciada");
+      return;
+    }
+    if (installGuide.platform === "ios") {
+      showToast("En iPhone usá Safari y Agregar a pantalla de inicio");
+      return;
+    }
+    showToast("El instalador no esta disponible ahora");
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -435,6 +508,38 @@ export default function TallerPanel() {
                   {item}
                 </div>
               ))}
+            </div>
+            <div className="space-y-3 rounded-2xl border border-blue-500/20 bg-slate-950/70 p-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Instalar app</p>
+                <p className="mt-1 text-sm font-black text-white">{installGuide.title}</p>
+                <p className="mt-1 text-[10px] font-bold text-slate-400">
+                  {displayMode.installed ? "Esta app ya esta instalada en este dispositivo." : "Podés instalarla desde acá si tu navegador lo permite."}
+                </p>
+              </div>
+              <div className="space-y-2">
+                {installGuide.steps.map((step) => (
+                  <div key={step} className="rounded-2xl bg-slate-900 p-3 text-[11px] font-bold leading-relaxed text-slate-200">
+                    {step}
+                  </div>
+                ))}
+              </div>
+              {!displayMode.installed && (
+                <button
+                  onClick={instalarDesdeAyuda}
+                  className={`w-full rounded-2xl py-4 text-[10px] font-black uppercase tracking-widest active:scale-95 ${
+                    installAvailable || installGuide.platform === "ios"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-slate-800 text-slate-400"
+                  }`}
+                >
+                  {installGuide.platform === "ios"
+                    ? "Ver como instalar en iPhone"
+                    : installAvailable
+                      ? "Instalar app"
+                      : "Instalador no disponible"}
+                </button>
+              )}
             </div>
             <button
               onClick={() => setShowHelp(false)}
