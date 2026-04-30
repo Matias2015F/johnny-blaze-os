@@ -122,8 +122,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   });
 
   const presBase = res.total > 0 ? res.total : Math.round(promedioHoras * valorHora);
-  const presMaxDefault = Math.round(presBase * RANGO_FACTOR[nivelRiesgo]);
-  const presMax = Number(maxInput) > 0 ? Number(maxInput) : presMaxDefault;
+  const presupuestoEditable = Number(maxInput) > 0 ? Number(maxInput) : presBase;
   const estadoPaso = {
     diagnostico: "Siguiente paso: armar presupuesto",
     presupuesto: "Siguiente paso: esperar aprobaciÃ³n",
@@ -180,14 +179,14 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       bike,
       client,
       tareas: order.tareas,
-      min: presBase,
-      max: presMax,
-      nivel: nivelRiesgo,
+      min: presupuestoEditable,
+      max: presupuestoEditable,
+      nivel: "bajo",
     }));
   };
 
   const confirmarAprobacion = () => {
-    const max = nivelRiesgo === "bajo" ? presBase : presMax;
+    const max = presupuestoEditable;
     LS.updateDoc("trabajos", order.id, { maxAutorizado: max, estado: "aprobacion" });
     showToast(`Aprobado: ${formatMoney(max)} âœ“`);
   };
@@ -329,49 +328,31 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           <div className="space-y-4 rounded-3xl border border-slate-700 bg-slate-900 p-5">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Presupuesto</p>
-              {nivelRiesgo === "bajo" && <span className="rounded-full border border-green-500/30 bg-green-500/20 px-3 py-1 text-[9px] font-black text-green-400">Precio cerrado</span>}
-              {nivelRiesgo === "medio" && <span className="rounded-full border border-yellow-500/30 bg-yellow-500/20 px-3 py-1 text-[9px] font-black text-yellow-400">Rango estimado</span>}
-              {nivelRiesgo === "alto" && <span className="rounded-full border border-red-500/30 bg-red-500/20 px-3 py-1 text-[9px] font-black text-red-400">Trabajo complejo</span>}
+              <span className="rounded-full border border-blue-500/30 bg-blue-500/20 px-3 py-1 text-[9px] font-black text-blue-300">Monto fijo editable</span>
             </div>
 
-            {nivelRiesgo === "bajo" ? (
-              <div className="space-y-1 rounded-[1.5rem] bg-slate-800 p-5 text-center">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Precio fijo al cliente</p>
-                <p className="text-4xl font-black tracking-tighter text-white">{formatMoney(presBase)}</p>
-                <p className="mt-1 text-[10px] font-bold text-green-400">Trabajo predecible</p>
+            <div className="rounded-[1.5rem] bg-slate-800 p-5">
+              <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">Monto a enviar al cliente</p>
+              <div className="flex items-baseline gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-4 py-4">
+                <span className="text-lg font-black text-slate-500">$</span>
+                <input
+                  type="number"
+                  placeholder={String(presBase)}
+                  value={maxInput}
+                  onChange={(e) => setMaxInput(e.target.value)}
+                  className="w-full bg-transparent text-3xl font-black tracking-tighter text-green-400 outline-none"
+                />
               </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl bg-slate-800 p-4">
-                    <p className="mb-1 text-[9px] font-black uppercase text-slate-500">MÃ­nimo estimado</p>
-                    <p className="text-lg font-black text-green-400">{formatMoney(presBase)}</p>
-                  </div>
-                  <div className="rounded-2xl bg-slate-800 p-4">
-                    <p className="mb-1 text-[9px] font-black uppercase text-slate-500">MÃ¡ximo autorizado</p>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-sm font-black text-slate-500">$</span>
-                      <input
-                        type="number"
-                        placeholder={String(presMaxDefault)}
-                        value={maxInput}
-                        onChange={(e) => setMaxInput(e.target.value)}
-                        className="w-full bg-transparent text-lg font-black text-yellow-400 outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-                {nivelRiesgo === "alto" && (
-                  <p className="px-1 text-[9px] font-bold text-red-400">Trabajo complejo: si superÃ¡s el mÃ¡ximo, consultÃ¡s antes de seguir.</p>
-                )}
-              </div>
-            )}
+              <p className="mt-3 text-[10px] font-bold text-slate-500">
+                Este es el importe fijo que se envía por WhatsApp y el que después queda aprobado.
+              </p>
+            </div>
 
             <button onClick={enviarPresupuesto} className="w-full rounded-2xl bg-green-600 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-95">
-              {nivelRiesgo === "bajo" ? "Enviar confirmaciÃ³n por WhatsApp" : "Enviar presupuesto por WhatsApp"}
+              Enviar presupuesto por WhatsApp
             </button>
             <button onClick={confirmarAprobacion} className="w-full rounded-2xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-95">
-              {nivelRiesgo === "bajo" ? "Cliente confirmÃ³: iniciar trabajo" : `Cliente aprobÃ³ hasta ${formatMoney(presMax)}`}
+              {`Cliente aprobó ${formatMoney(presupuestoEditable)}`}
             </button>
           </div>
         )}
