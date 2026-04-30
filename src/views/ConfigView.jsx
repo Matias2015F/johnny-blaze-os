@@ -776,7 +776,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
   const [updatingApp, setUpdatingApp] = React.useState(false);
   const displayMode = getDisplayModeInfo();
   const permissionLabel =
-    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "no soportado";
+    typeof window !== "undefined" && "Notification" in window ? window.Notification.permission : "no soportado";
   const hasRemoteUpdate = isNewerBuild(APP_BUILD, remoteBuild);
 
   React.useEffect(() => {

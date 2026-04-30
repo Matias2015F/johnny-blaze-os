@@ -75,6 +75,7 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
     const habilitadas = config.alertasNavegadorActivas ?? true;
     if (!habilitadas || typeof window === "undefined" || !("Notification" in window)) return;
     if (!alertasService.length) return;
+    const NotificationApi = window.Notification;
 
     const lanzar = () => {
       const yaNotificadas = leerAlertasNotificadas();
@@ -84,19 +85,19 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
 
         const titulo = recordatorio.estado === "service_vencido" ? "Service vencido" : "Próximo service";
         const cuerpo = `${recordatorio.moto?.patente || "---"} · ${recordatorio.descripcion}`;
-        const notification = new Notification(titulo, { body: cuerpo, silent: false });
+        const notification = new NotificationApi(titulo, { body: cuerpo, silent: false });
         notification.onclick = () => window.focus();
         guardarAlertaNotificada(recordatorio.id, claveEstado);
       });
     };
 
-    if (Notification.permission === "granted") {
+    if (NotificationApi.permission === "granted") {
       lanzar();
       return;
     }
 
-    if (Notification.permission === "default") {
-      Notification.requestPermission().then((permiso) => {
+    if (NotificationApi.permission === "default") {
+      NotificationApi.requestPermission().then((permiso) => {
         if (permiso === "granted") lanzar();
       }).catch(() => {});
     }

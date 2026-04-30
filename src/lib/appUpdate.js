@@ -42,8 +42,9 @@ export async function clearAppRuntimeCaches() {
 
   try {
     if ("caches" in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((key) => caches.delete(key)));
+      const cacheStore = window.caches;
+      const keys = await cacheStore.keys();
+      await Promise.all(keys.map((key) => cacheStore.delete(key)));
     }
   } catch (error) {
     console.error(error);
@@ -70,7 +71,7 @@ export async function applyRemoteUpdate(remoteBuild = null) {
   }
 
   try {
-    sessionStorage.setItem("jbos_last_update_attempt", JSON.stringify({
+    window.sessionStorage.setItem("jbos_last_update_attempt", JSON.stringify({
       requestedAt: stamp,
       targetVersion: targetBuild?.version || null,
       targetSha: targetBuild?.sha || null,
@@ -87,11 +88,13 @@ export async function ensureNotificationPermission() {
     return "unsupported";
   }
 
-  if (Notification.permission === "granted") return "granted";
-  if (Notification.permission === "denied") return "denied";
+  const NotificationApi = window.Notification;
+
+  if (NotificationApi.permission === "granted") return "granted";
+  if (NotificationApi.permission === "denied") return "denied";
 
   try {
-    return await Notification.requestPermission();
+    return await NotificationApi.requestPermission();
   } catch {
     return "error";
   }
@@ -103,7 +106,8 @@ export async function sendTestNotification() {
     return { ok: false, permission: permiso };
   }
 
-  const notification = new Notification("Johnny Blaze OS", {
+  const NotificationApi = window.Notification;
+  const notification = new NotificationApi("Johnny Blaze OS", {
     body: "Notificacion de prueba. Si ves esto, las alertas del taller estan funcionando.",
     silent: false,
     tag: "jbos-test-notification",

@@ -62,10 +62,11 @@ export const DEFAULT_ADMIN_SETTINGS = {
 
 function getSessionId() {
   const key = "jbos_session_id";
-  let value = sessionStorage.getItem(key);
+  if (typeof window === "undefined") return generateId();
+  let value = window.sessionStorage.getItem(key);
   if (!value) {
     value = generateId();
-    sessionStorage.setItem(key, value);
+    window.sessionStorage.setItem(key, value);
   }
   return value;
 }
