@@ -11,11 +11,11 @@ import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { APP_BUILD } from "../generated/appVersion.js";
 import { applyRemoteUpdate, ensureNotificationPermission, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, sendTestNotification } from "../lib/appUpdate.js";
-import { DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS } from "../lib/telemetry.js";
+import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS, guardarAdminSettings, leerAdminSettings } from "../services/saasService.js";
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
-import { collection, collectionGroup, doc, getDoc, getDocs, query, limit, orderBy, setDoc } from "firebase/firestore";
+import { collection, collectionGroup, doc, getDoc, getDocs, query, limit, orderBy } from "firebase/firestore";
 
 const DIFICULTADES = [
   { key: "facil",      label: "FÃ¡cil",       color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
@@ -110,17 +110,16 @@ function PantallaAdmin({ showToast }) {
     if (!uid) return;
     setLoading(true);
     try {
-      const accountSnap = await getDoc(doc(db, "accounts", uid));
+      const accountSnap = await getDoc(doc(db, "usuarios", uid));
       const mine = accountSnap.exists()
         ? { id: accountSnap.id, ...accountSnap.data() }
-        : { id: uid, uid, plan: "trial", pagoEstado: "pendiente", trialEndsAt: null, lastSeenAt: null };
+        : { id: uid, uid, estado: "trial", rol: "user", activoHasta: null, lastSeenAt: null };
       setAccount(mine);
 
-      const settingsSnap = await getDoc(doc(db, "adminSettings", "global"));
-      setSettings(settingsSnap.exists() ? { ...DEFAULT_ADMIN_SETTINGS, ...settingsSnap.data() } : DEFAULT_ADMIN_SETTINGS);
+      setSettings(await leerAdminSettings());
 
       const [accountsSnap, snapshotsSnap, eventosSnap, invoicesSnap, motosSnap, serviciosSnap] = await Promise.all([
-        getDocs(collection(db, "accounts")),
+        getDocs(collection(db, "usuarios")),
         getDocs(collection(db, "usageSnapshots")),
         getDocs(query(collection(db, "telemetryEvents"), orderBy("createdAt", "desc"), limit(200))),
         getDocs(collection(db, "billingInvoices")),
@@ -185,14 +184,14 @@ function PantallaAdmin({ showToast }) {
     const now = Date.now();
     const sieteDias = now - 7 * 24 * 60 * 60 * 1000;
     const trialsPorVencer = accounts.filter((item) => {
-      const trial = normalizeDateValue(item.trialEndsAt)?.getTime();
-      return item.plan === "trial" && trial && trial >= now && trial <= now + 5 * 24 * 60 * 60 * 1000;
+      const trial = normalizeDateValue(item.activoHasta || item.trialEndsAt)?.getTime();
+      return item.estado === "trial" && trial && trial >= now && trial <= now + 5 * 24 * 60 * 60 * 1000;
     }).length;
     const activos7 = accounts.filter((item) => {
       const lastSeen = normalizeDateValue(item.lastSeenAt)?.getTime();
       return lastSeen && lastSeen >= sieteDias;
     }).length;
-    const pendientes = accounts.filter((item) => String(item.pagoEstado || "").toLowerCase() !== "pagado").length;
+    const pendientes = invoices.filter((item) => String(item.status || "").toLowerCase() !== "approved").length;
     const facturacionMes = invoices
       .filter((item) => item.status === "approved")
       .filter((item) => {
@@ -229,18 +228,7 @@ function PantallaAdmin({ showToast }) {
 
   const guardarSettings = async () => {
     try {
-      await setDoc(doc(db, "adminSettings", "global"), {
-        trialDaysDefault: Number(settings.trialDaysDefault || DEFAULT_ADMIN_SETTINGS.trialDaysDefault),
-        graceDaysDefault: Number(settings.graceDaysDefault || DEFAULT_ADMIN_SETTINGS.graceDaysDefault),
-        subscriptionPrice: Number(settings.subscriptionPrice || 0),
-        subscriptionCurrency: settings.subscriptionCurrency || "ARS",
-        applyPricingToNewAccountsOnly: settings.applyPricingToNewAccountsOnly !== false,
-        plans: settings.plans || DEFAULT_ADMIN_SETTINGS.plans,
-        featureFlags: settings.featureFlags || DEFAULT_ADMIN_SETTINGS.featureFlags,
-        updatedAt: new Date().toISOString(),
-        updatedByUid: user?.uid || "",
-        updatedByEmail: user?.email || "",
-      }, { merge: true });
+      await guardarAdminSettings(settings, { uid: user?.uid || "", email: user?.email || "" });
       showToast("Reglas globales guardadas");
       cargar();
     } catch (error) {

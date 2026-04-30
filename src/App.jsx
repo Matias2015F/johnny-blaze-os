@@ -32,8 +32,8 @@ function buildPlansForUi(settings = DEFAULT_ADMIN_SETTINGS) {
 function buildBannerData(account, settings) {
   const access = resolveAccountAccess(account || {});
   const now = Date.now();
-  const trialEndsAt = normalizeDateMs(account?.trialEndsAt);
-  const nextBillingAt = normalizeDateMs(account?.nextBillingAt);
+  const trialEndsAt = normalizeDateMs(account?.trialEndsAt) || (account?.estado === "trial" ? normalizeDateMs(account?.activoHasta) : null);
+  const nextBillingAt = normalizeDateMs(account?.nextBillingAt) || (account?.estado === "activo" ? normalizeDateMs(account?.activoHasta) : null);
   const graceEndsAt = normalizeDateMs(account?.graceEndsAt);
 
   let tone = "blue";
@@ -232,7 +232,7 @@ export default function App() {
         console.error(error);
       }
 
-      const ref = doc(db, "accounts", u.uid);
+      const ref = doc(db, "usuarios", u.uid);
       if (unsubAccount) unsubAccount();
       unsubAccount = onSnapshot(ref, async (snap) => {
         if (!snap.exists()) {

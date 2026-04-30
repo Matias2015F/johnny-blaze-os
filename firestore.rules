@@ -35,6 +35,11 @@ service cloud.firestore {
       allow write: if isPlatformAdmin();
     }
 
+    match /admin_settings/{docId} {
+      allow read: if signedIn();
+      allow write: if isPlatformAdmin();
+    }
+
     // Telemetría cruda
     match /telemetryEvents/{eventId} {
       allow create: if signedIn() &&
