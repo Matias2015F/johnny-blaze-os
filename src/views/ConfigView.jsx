@@ -90,6 +90,13 @@ function formatAdminDate(value, fallback = "Sin dato") {
   return date ? date.toLocaleString("es-AR") : fallback;
 }
 
+const FEATURE_LABELS = {
+  pdf: "Comprobantes PDF",
+  recordatorios: "Próximo control",
+  analytics: "Analítica de uso",
+  multiusuario: "Multiusuario",
+};
+
 function PantallaAdmin({ showToast }) {
   const [loading, setLoading] = React.useState(true);
   const [account, setAccount] = React.useState(null);
@@ -248,26 +255,53 @@ function PantallaAdmin({ showToast }) {
   return (
     <div className="space-y-4">
       <Card>
-        <SectionTitle>Admin settings</SectionTitle>
+        <SectionTitle>Configuración global</SectionTitle>
+        <p className="mb-4 text-[11px] font-bold leading-relaxed text-slate-500">
+          Desde acá definís prueba, precios y funciones para los talleres nuevos.
+        </p>
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">duracionTrialDias</p><input type="text" inputMode="numeric" value={String(settings.duracionTrialDias || 14)} onChange={(e) => setSettings((prev) => ({ ...prev, duracionTrialDias: Number(e.target.value.replace(/\D/g, "") || 14) }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">graceDaysDefault</p><input type="text" inputMode="numeric" value={String(settings.graceDaysDefault || 3)} onChange={(e) => setSettings((prev) => ({ ...prev, graceDaysDefault: Number(e.target.value.replace(/\D/g, "") || 3) }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">precios.base</p><input type="text" inputMode="numeric" value={String(settings.precios?.base || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, precios: { ...(prev.precios || {}), base: Number(e.target.value.replace(/\D/g, "") || 0) } }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">precios.pro</p><input type="text" inputMode="numeric" value={String(settings.precios?.pro || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, precios: { ...(prev.precios || {}), pro: Number(e.target.value.replace(/\D/g, "") || 0) } }))} className="mt-2 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" /></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Días de prueba</p>
+            <p className="mt-1 text-[10px] font-bold text-slate-500">Cuántos días gratis recibe un taller nuevo.</p>
+            <input type="text" inputMode="numeric" value={String(settings.duracionTrialDias || 14)} onChange={(e) => setSettings((prev) => ({ ...prev, duracionTrialDias: Number(e.target.value.replace(/\D/g, "") || 14) }))} className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" />
+          </div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Días de gracia</p>
+            <p className="mt-1 text-[10px] font-bold text-slate-500">Cuántos días extra tiene antes de bloquear acceso.</p>
+            <input type="text" inputMode="numeric" value={String(settings.graceDaysDefault || 3)} onChange={(e) => setSettings((prev) => ({ ...prev, graceDaysDefault: Number(e.target.value.replace(/\D/g, "") || 3) }))} className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" />
+          </div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio plan base</p>
+            <p className="mt-1 text-[10px] font-bold text-slate-500">Valor para talleres nuevos del plan base.</p>
+            <input type="text" inputMode="numeric" value={String(settings.precios?.base || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, precios: { ...(prev.precios || {}), base: Number(e.target.value.replace(/\D/g, "") || 0) } }))} className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" />
+          </div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio plan pro</p>
+            <p className="mt-1 text-[10px] font-bold text-slate-500">Valor para talleres nuevos del plan pro.</p>
+            <input type="text" inputMode="numeric" value={String(settings.precios?.pro || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, precios: { ...(prev.precios || {}), pro: Number(e.target.value.replace(/\D/g, "") || 0) } }))} className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" />
+          </div>
         </div>
         <div className="mt-3 bg-slate-50 border border-slate-100 rounded-2xl p-4">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">pricing</p>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Aplicación de precios</p>
+          <p className="mt-1 text-[10px] font-bold text-slate-500">Definí si los cambios de precio afectan solo a los talleres nuevos.</p>
           <div className="mt-3 flex items-center justify-between">
-            <p className="text-sm font-black text-slate-800">applyPricingToNewAccountsOnly</p>
+            <p className="text-sm font-black text-slate-800">Aplicar solo a cuentas nuevas</p>
             <button onClick={() => setSettings((prev) => ({ ...prev, applyPricingToNewAccountsOnly: !prev.applyPricingToNewAccountsOnly }))} className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest ${settings.applyPricingToNewAccountsOnly !== false ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700"}`}>{settings.applyPricingToNewAccountsOnly !== false ? "Sí" : "No"}</button>
           </div>
         </div>
+        <div className="mt-3">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Funciones incluidas</p>
+          <p className="mt-1 text-[10px] font-bold text-slate-500">Prendé o apagá funciones para talleres nuevos según el plan.</p>
+        </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
           {Object.entries(settings.features || {}).map(([key, value]) => (
-            <button key={key} onClick={() => setSettings((prev) => ({ ...prev, features: { ...(prev.features || {}), [key]: !value } }))} className={`rounded-2xl border px-3 py-3 text-[10px] font-black uppercase tracking-widest ${value ? "border-blue-200 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-500"}`}>{`features.${key}`}</button>
+            <button key={key} onClick={() => setSettings((prev) => ({ ...prev, features: { ...(prev.features || {}), [key]: !value } }))} className={`rounded-2xl border px-3 py-3 text-left ${value ? "border-blue-200 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-500"}`}>
+              <p className="text-[10px] font-black uppercase tracking-widest">{FEATURE_LABELS[key] || key}</p>
+              <p className="mt-1 text-[10px] font-bold">{value ? "Activa" : "Desactivada"}</p>
+            </button>
           ))}
         </div>
-        <div className="mt-3"><button onClick={guardarSettings} className="w-full rounded-2xl bg-blue-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Guardar admin_settings</button></div>
+        <div className="mt-3"><button onClick={guardarSettings} className="w-full rounded-2xl bg-blue-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Guardar configuración global</button></div>
       </Card>
 
       <Card>
