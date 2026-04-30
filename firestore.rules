@@ -60,6 +60,16 @@ service cloud.firestore {
       allow read, write: if isPlatformAdmin();
     }
 
+    match /soporteTickets/{ticketId} {
+      allow create: if signedIn() &&
+        request.resource.data.uid == request.auth.uid;
+      allow read: if isPlatformAdmin() || (
+        signedIn() &&
+        resource.data.uid == request.auth.uid
+      );
+      allow update, delete: if isPlatformAdmin();
+    }
+
     // Datos del taller y subcolecciones por usuario
     match /users/{uid}/{document=**} {
       allow read, write: if isOwner(uid) || isPlatformAdmin();

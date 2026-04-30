@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   Download, LogOut, Trash2, Database, Info, Shield,
   RotateCcw, FileSpreadsheet, ChevronRight, BarChart2,
@@ -11,16 +11,16 @@ import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { APP_BUILD } from "../generated/appVersion.js";
 import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, ensureNotificationPermission, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, promptInstallApp, sendTestNotification } from "../lib/appUpdate.js";
-import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS, guardarAdminSettings, leerAdminSettings } from "../services/saasService.js";
+import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS, actualizarSuscripcionUsuario, crearTicketSoporte, guardarAdminSettings, leerAdminSettings, leerUsuarioSaas, normalizeDateMs } from "../services/saasService.js";
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
 import { collection, collectionGroup, doc, getDoc, getDocs, query, limit, orderBy } from "firebase/firestore";
 
 const DIFICULTADES = [
-  { key: "facil",      label: "FÃ¡cil",       color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
+  { key: "facil",      label: "Fácil",       color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
   { key: "normal",     label: "Normal",      color: "text-blue-500",   bg: "bg-blue-50",   border: "border-blue-200" },
-  { key: "dificil",    label: "DifÃ­cil",     color: "text-orange-500", bg: "bg-orange-50", border: "border-orange-200" },
+  { key: "dificil",    label: "Difícil",     color: "text-orange-500", bg: "bg-orange-50", border: "border-orange-200" },
   { key: "complicado", label: "Complicado",  color: "text-red-500",    bg: "bg-red-50",    border: "border-red-200" },
 ];
 
@@ -32,7 +32,7 @@ const TABS = [
   { id: "admin",   label: "Admin",    Icon: Shield },
 ];
 
-// â”€â”€ Stepper component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Stepper component ──────────────────────────────────────────────────────────
 function Stepper({ value, onChange, step = 1, min = 0, max = Infinity, format = v => v, suffix = "" }) {
 
   return (
@@ -57,7 +57,7 @@ function Stepper({ value, onChange, step = 1, min = 0, max = Infinity, format = 
   );
 }
 
-// â”€â”€ Section card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Section card ───────────────────────────────────────────────────────────────
 function Card({ children, className = "" }) {
   return (
     <div className={`bg-white rounded-3xl shadow-sm border border-slate-100 p-6 ${className}`}>
@@ -92,8 +92,8 @@ function formatAdminDate(value, fallback = "Sin dato") {
 
 const FEATURE_LABELS = {
   pdf: "Comprobantes PDF",
-  recordatorios: "Próximo control",
-  analytics: "Analítica de uso",
+  recordatorios: "Pr�ximo control",
+  analytics: "Anal�tica de uso",
   multiusuario: "Multiusuario",
 };
 
@@ -142,7 +142,7 @@ function PantallaAdmin({ showToast }) {
       const motosCount = {};
       motosSnap.docs.forEach((d) => {
         const item = d.data() || {};
-        const key = [item.marca, item.modelo, item.cilindrada].filter(Boolean).join(" · ");
+        const key = [item.marca, item.modelo, item.cilindrada].filter(Boolean).join(" � ");
         if (!key) return;
         motosCount[key] = (motosCount[key] || 0) + 1;
       });
@@ -245,7 +245,7 @@ function PantallaAdmin({ showToast }) {
   };
 
   if (loading) {
-    return <Card><SectionTitle>Admin</SectionTitle><p className="text-sm font-black text-slate-500">Cargando métricas y licencias...</p></Card>;
+    return <Card><SectionTitle>Admin</SectionTitle><p className="text-sm font-black text-slate-500">Cargando m�tricas y licencias...</p></Card>;
   }
 
   if (!(isPlatformAdmin || account?.isPlatformAdmin)) {
@@ -255,19 +255,19 @@ function PantallaAdmin({ showToast }) {
   return (
     <div className="space-y-4">
       <Card>
-        <SectionTitle>Configuración global</SectionTitle>
+        <SectionTitle>Configuraci�n global</SectionTitle>
         <p className="mb-4 text-[11px] font-bold leading-relaxed text-slate-500">
-          Desde acá definís prueba, precios y funciones para los talleres nuevos.
+          Desde ac� defin�s prueba, precios y funciones para los talleres nuevos.
         </p>
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Días de prueba</p>
-            <p className="mt-1 text-[10px] font-bold text-slate-500">Cuántos días gratis recibe un taller nuevo.</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">D�as de prueba</p>
+            <p className="mt-1 text-[10px] font-bold text-slate-500">Cu�ntos d�as gratis recibe un taller nuevo.</p>
             <input type="text" inputMode="numeric" value={String(settings.duracionTrialDias || 14)} onChange={(e) => setSettings((prev) => ({ ...prev, duracionTrialDias: Number(e.target.value.replace(/\D/g, "") || 14) }))} className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" />
           </div>
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Días de gracia</p>
-            <p className="mt-1 text-[10px] font-bold text-slate-500">Cuántos días extra tiene antes de bloquear acceso.</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">D�as de gracia</p>
+            <p className="mt-1 text-[10px] font-bold text-slate-500">Cu�ntos d�as extra tiene antes de bloquear acceso.</p>
             <input type="text" inputMode="numeric" value={String(settings.graceDaysDefault || 3)} onChange={(e) => setSettings((prev) => ({ ...prev, graceDaysDefault: Number(e.target.value.replace(/\D/g, "") || 3) }))} className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" />
           </div>
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
@@ -282,16 +282,16 @@ function PantallaAdmin({ showToast }) {
           </div>
         </div>
         <div className="mt-3 bg-slate-50 border border-slate-100 rounded-2xl p-4">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Aplicación de precios</p>
-          <p className="mt-1 text-[10px] font-bold text-slate-500">Definí si los cambios de precio afectan solo a los talleres nuevos.</p>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Aplicaci�n de precios</p>
+          <p className="mt-1 text-[10px] font-bold text-slate-500">Defin� si los cambios de precio afectan solo a los talleres nuevos.</p>
           <div className="mt-3 flex items-center justify-between">
             <p className="text-sm font-black text-slate-800">Aplicar solo a cuentas nuevas</p>
-            <button onClick={() => setSettings((prev) => ({ ...prev, applyPricingToNewAccountsOnly: !prev.applyPricingToNewAccountsOnly }))} className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest ${settings.applyPricingToNewAccountsOnly !== false ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700"}`}>{settings.applyPricingToNewAccountsOnly !== false ? "Sí" : "No"}</button>
+            <button onClick={() => setSettings((prev) => ({ ...prev, applyPricingToNewAccountsOnly: !prev.applyPricingToNewAccountsOnly }))} className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest ${settings.applyPricingToNewAccountsOnly !== false ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700"}`}>{settings.applyPricingToNewAccountsOnly !== false ? "S�" : "No"}</button>
           </div>
         </div>
         <div className="mt-3">
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Funciones incluidas</p>
-          <p className="mt-1 text-[10px] font-bold text-slate-500">Prendé o apagá funciones para talleres nuevos según el plan.</p>
+          <p className="mt-1 text-[10px] font-bold text-slate-500">Prend� o apag� funciones para talleres nuevos seg�n el plan.</p>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
           {Object.entries(settings.features || {}).map(([key, value]) => (
@@ -301,21 +301,21 @@ function PantallaAdmin({ showToast }) {
             </button>
           ))}
         </div>
-        <div className="mt-3"><button onClick={guardarSettings} className="w-full rounded-2xl bg-blue-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Guardar configuración global</button></div>
+        <div className="mt-3"><button onClick={guardarSettings} className="w-full rounded-2xl bg-blue-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Guardar configuraci�n global</button></div>
       </Card>
 
       <Card>
         <SectionTitle>Salud del SaaS</SectionTitle>
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Activos 7 días</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenNegocio.activos7}</p></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Activos 7 d�as</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenNegocio.activos7}</p></div>
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Trials por vencer</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenNegocio.trialsPorVencer}</p></div>
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pagos pendientes</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenNegocio.pendientes}</p></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Facturación del mes</p><p className="mt-1 text-xl font-black text-emerald-600">{formatMoney(resumenNegocio.facturacionMes)}</p></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Facturaci�n del mes</p><p className="mt-1 text-xl font-black text-emerald-600">{formatMoney(resumenNegocio.facturacionMes)}</p></div>
         </div>
       </Card>
 
       <Card>
-        <SectionTitle>Uso de los últimos 7 días</SectionTitle>
+        <SectionTitle>Uso de los �ltimos 7 d�as</SectionTitle>
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Eventos</p><p className="mt-1 text-2xl font-black text-slate-800">{totalEventosSemana}</p></div>
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pantallas</p><p className="mt-1 text-2xl font-black text-slate-800">{totalPantallasSemana}</p></div>
@@ -326,12 +326,12 @@ function PantallaAdmin({ showToast }) {
               <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500"><span>{accion.replaceAll("_", " ")}</span><span className="text-slate-800">{total}</span></div>
               <div className="h-3 rounded-full bg-slate-100 overflow-hidden"><div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min((total / Math.max(topAcciones[0]?.[1] || 1, 1)) * 100, 100)}%` }} /></div>
             </div>
-          )) : <p className="text-sm font-black text-slate-500">Todavía no hay datos de uso suficientes.</p>}
+          )) : <p className="text-sm font-black text-slate-500">Todav�a no hay datos de uso suficientes.</p>}
         </div>
       </Card>
 
       <Card>
-        <SectionTitle>Embudo y fricción</SectionTitle>
+        <SectionTitle>Embudo y fricci�n</SectionTitle>
         <div className="space-y-3">
           {funnel.map((item) => (
             <div key={item.label} className="space-y-1">
@@ -348,7 +348,7 @@ function PantallaAdmin({ showToast }) {
       </Card>
 
       <Card>
-        <SectionTitle>Qué usan más</SectionTitle>
+        <SectionTitle>Qu� usan m�s</SectionTitle>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Pantallas</p>
@@ -373,7 +373,7 @@ function PantallaAdmin({ showToast }) {
         <SectionTitle>Mercado y uso real</SectionTitle>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Motos más cargadas</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Motos m�s cargadas</p>
             <div className="space-y-2">
               {motosFrecuentes.length > 0 ? motosFrecuentes.map(([item, total]) => (
                 <div key={item} className="flex items-center justify-between rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3"><span className="text-xs font-black text-slate-700">{item}</span><span className="text-sm font-black text-slate-800">{total}</span></div>
@@ -381,7 +381,7 @@ function PantallaAdmin({ showToast }) {
             </div>
           </div>
           <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Servicios más usados</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Servicios m�s usados</p>
             <div className="space-y-2">
               {serviciosFrecuentes.length > 0 ? serviciosFrecuentes.map(([item, total]) => (
                 <div key={item} className="flex items-center justify-between rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3"><span className="text-xs font-black text-slate-700">{item}</span><span className="text-sm font-black text-slate-800">{total}</span></div>
@@ -402,7 +402,7 @@ function PantallaAdmin({ showToast }) {
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3 text-[10px] font-black text-slate-500">
                 <div>activoHasta: <span className="text-slate-800">{formatAdminDate(item.activoHasta, "Sin fecha")}</span></div>
-                <div>Último uso: <span className="text-slate-800">{formatAdminDate(item.lastSeenAt, "Sin dato")}</span></div>
+                <div>�ltimo uso: <span className="text-slate-800">{formatAdminDate(item.lastSeenAt, "Sin dato")}</span></div>
               </div>
             </div>
           ))}
@@ -415,18 +415,18 @@ function PantallaAdmin({ showToast }) {
           {eventos.length > 0 ? eventos.slice(0, 15).map((evento) => (
             <div key={evento.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
               <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">{evento.action?.replaceAll("_", " ")}</p>
-              <p className="mt-1 text-xs font-black text-slate-800">{evento.screen || "sin pantalla"} · {evento.entityType || "general"}</p>
+              <p className="mt-1 text-xs font-black text-slate-800">{evento.screen || "sin pantalla"} � {evento.entityType || "general"}</p>
               <p className="mt-1 text-[10px] font-bold text-slate-400">{evento.uid || "sin usuario"}</p>
               <p className="mt-1 text-[10px] font-bold text-slate-400">{formatAdminDate(evento.createdAt, "Sin fecha")}</p>
             </div>
-          )) : <p className="text-sm font-black text-slate-500">Todavía no hay actividad reciente.</p>}
+          )) : <p className="text-sm font-black text-slate-500">Todav�a no hay actividad reciente.</p>}
         </div>
       </Card>
     </div>
   );
 }
 
-// â”€â”€ PANTALLA: Resumen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PANTALLA: Resumen ──────────────────────────────────────────────────────────
 function PantallaResumen({ orders, caja }) {
   const mesActual = new Date().toISOString().slice(0, 7);
   const ordenesMes = useMemo(() => orders.filter(o => (o.fechaIngreso || "").startsWith(mesActual)), [orders, mesActual]);
@@ -473,14 +473,14 @@ function PantallaResumen({ orders, caja }) {
   );
 }
 
-// â”€â”€ PANTALLA: Taller â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PANTALLA: Taller ───────────────────────────────────────────────────────────
 function PantallaTaller({ cfg, setCfg, showToast }) {
   const margen = cfg.margenPolitica ?? 25;
   const horaCliente = Math.round(cfg.valorHoraInterno * (1 + margen / 100));
 
   const guardar = () => {
     LS.setDoc("config", "global", { ...cfg, margenPolitica: margen, valorHoraCliente: horaCliente });
-    showToast("Guardado âœ“");
+    showToast("Guardado ✓");
   };
 
   const setFactor = (key, val) => {
@@ -499,7 +499,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
             ["nombreTaller",        "Nombre del Taller", "text"],
             ["mecanicoResponsable", "Responsable",       "text"],
             ["dniMecanico",         "DNI",               "text"],
-            ["telefonoTaller",      "TelÃ©fono",          "tel"],
+            ["telefonoTaller",      "Teléfono",          "tel"],
           ].map(([field, label, type]) => (
             <div key={field}>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">{label}</label>
@@ -517,7 +517,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
       {/* Costo hora */}
       <Card>
         <SectionTitle>Costo por Hora</SectionTitle>
-        <p className="text-[10px] text-slate-400 font-bold mb-4">Gastos fijos Ã· horas trabajadas al mes</p>
+        <p className="text-[10px] text-slate-400 font-bold mb-4">Gastos fijos ÷ horas trabajadas al mes</p>
         <Stepper
           value={cfg.valorHoraInterno}
           onChange={v => setCfg({ ...cfg, valorHoraInterno: v })}
@@ -546,7 +546,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
         <div className="mt-4 bg-slate-900 rounded-2xl p-4 flex items-center justify-between">
           <div>
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio hora al cliente</p>
-            <p className="text-[10px] text-slate-500 mt-0.5">{formatMoney(cfg.valorHoraInterno)} Ã— {(1 + margen / 100).toFixed(2)}</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">{formatMoney(cfg.valorHoraInterno)} × {(1 + margen / 100).toFixed(2)}</p>
           </div>
           <p className="text-2xl font-black text-blue-400">{formatMoney(horaCliente)}</p>
         </div>
@@ -572,7 +572,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
                   step={0.1}
                   min={0.5}
                   max={5}
-                  format={v => `${v.toFixed(1)}Ã—`}
+                  format={v => `${v.toFixed(1)}×`}
                 />
               </div>
             );
@@ -582,13 +582,13 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
 
       {/* Plantilla WhatsApp */}
       <Card>
-        <SectionTitle>Plantilla WhatsApp â€” PrÃ³ximo control</SectionTitle>
+        <SectionTitle>Plantilla WhatsApp — Próximo control</SectionTitle>
         <p className="text-[10px] text-slate-400 font-bold mb-3 leading-relaxed">
           Variables: {"{nombreCliente}"} {"{nombreTaller}"} {"{marca}"} {"{modelo}"} {"{patente}"} {"{tipoControl}"}
         </p>
         <textarea
           rows="5"
-          value={cfg.whatsappPlantillas?.recordatorioService ?? "Hola {nombreCliente}, te escribimos de {nombreTaller}.\n\nTu moto {marca} {modelo} patente {patente} puede estar cerca del prÃ³ximo control recomendado: {tipoControl}.\n\nSi querÃ©s, podÃ©s pasar por el taller y la revisamos para verificarlo."}
+          value={cfg.whatsappPlantillas?.recordatorioService ?? "Hola {nombreCliente}, te escribimos de {nombreTaller}.\n\nTu moto {marca} {modelo} patente {patente} puede estar cerca del próximo control recomendado: {tipoControl}.\n\nSi querés, podés pasar por el taller y la revisamos para verificarlo."}
           onChange={e => setCfg({ ...cfg, whatsappPlantillas: { ...(cfg.whatsappPlantillas || {}), recordatorioService: e.target.value } })}
           className="w-full border-2 border-slate-100 rounded-2xl p-4 font-bold text-xs outline-none focus:border-blue-500 resize-none"
         />
@@ -604,7 +604,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
   );
 }
 
-// â”€â”€ PANTALLA: Datos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PANTALLA: Datos ────────────────────────────────────────────────────────────
 function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setBkpEstado, fileInputRef, handleRestaurarArchivo, handleRestaurarAuto }) {
   const [backups, setBackups] = React.useState([]);
   const [loadingBackups, setLoadingBackups] = React.useState(false);
@@ -629,7 +629,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
     try {
       const uid = auth.currentUser?.uid;
       const r = await createCloudBackup(uid);
-      showToast(r ? `Copia guardada en la nube (${r.total} registros) âœ“` : "No hay datos para guardar");
+      showToast(r ? `Copia guardada en la nube (${r.total} registros) ✓` : "No hay datos para guardar");
       cargarBackups();
     } catch (e) {
       showToast("Error: " + e.message);
@@ -639,12 +639,12 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
   };
 
   const handleRestaurarNube = async (backupId, fecha) => {
-    if (!window.confirm(`Â¿Restaurar la copia del ${new Date(fecha).toLocaleString("es-AR")}?\n\nEsto reemplaza TODOS los datos actuales.`)) return;
+    if (!window.confirm(`¿Restaurar la copia del ${new Date(fecha).toLocaleString("es-AR")}?\n\nEsto reemplaza TODOS los datos actuales.`)) return;
     setRestaurando(backupId);
     try {
       const uid = auth.currentUser?.uid;
       const n = await restoreCloudBackup(uid, backupId);
-      showToast(`Restaurado: ${n} registros recuperados âœ“`);
+      showToast(`Restaurado: ${n} registros recuperados ✓`);
       setTimeout(() => window.location.reload(), 1500);
     } catch (e) {
       showToast("Error al restaurar: " + e.message);
@@ -695,7 +695,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
         <SectionTitle>Copia de Seguridad</SectionTitle>
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Ãšltima manual</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Última manual</p>
             <p className="text-xs font-black text-slate-700">{tiempoDesde(bkpEstado.ultimoManual) || "Nunca"}</p>
           </div>
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
@@ -706,7 +706,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
 
         <div className="space-y-2">
           <button
-            onClick={() => { descargarBackup(); setBkpEstado(estadoBackup()); showToast("Copia descargada âœ“"); }}
+            onClick={() => { descargarBackup(); setBkpEstado(estadoBackup()); showToast("Copia descargada ✓"); }}
             className="w-full flex items-center justify-between bg-blue-600 text-white rounded-2xl p-5 active:scale-[0.98] transition-all shadow-md"
           >
             <div className="text-left">
@@ -722,7 +722,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
           >
             <div className="text-left">
               <p className="text-sm font-black uppercase">Restaurar desde archivo</p>
-              <p className="text-[10px] font-bold text-slate-400 mt-0.5">ElegÃ­ el .json descargado</p>
+              <p className="text-[10px] font-bold text-slate-400 mt-0.5">Elegí el .json descargado</p>
             </div>
             <RotateCcw size={20} />
           </button>
@@ -747,7 +747,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
       <Card>
         <SectionTitle>Copias en la Nube</SectionTitle>
         <p className="text-[10px] text-slate-400 font-bold mb-3 leading-relaxed">
-          Se guarda automÃ¡ticamente 1 vez por dÃ­a. PodÃ©s guardar ahora o restaurar una copia anterior desde cualquier dispositivo.
+          Se guarda automáticamente 1 vez por día. Podés guardar ahora o restaurar una copia anterior desde cualquier dispositivo.
         </p>
         <button
           onClick={handleGuardarEnNube}
@@ -764,10 +764,10 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
         {loadingBackups ? (
           <p className="text-center text-[10px] text-slate-400 font-bold py-4">Cargando copias...</p>
         ) : backups.length === 0 ? (
-          <p className="text-center text-[10px] text-slate-400 font-bold py-4">No hay copias guardadas en la nube todavÃ­a</p>
+          <p className="text-center text-[10px] text-slate-400 font-bold py-4">No hay copias guardadas en la nube todavía</p>
         ) : (
           <div className="space-y-2">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Copias disponibles (Ãºltimas {backups.length})</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Copias disponibles (últimas {backups.length})</p>
             {backups.map((b) => (
               <div key={b.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl p-4">
                 <div>
@@ -790,7 +790,211 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
   );
 }
 
-// â”€â”€ PANTALLA: Sistema â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── PANTALLA: Sistema ──────────────────────────────────────────────────────────
+function PantallaSuscripcion({ showToast }) {
+  const [loading, setLoading] = React.useState(true);
+  const [account, setAccount] = React.useState(null);
+  const [settings, setSettings] = React.useState(DEFAULT_ADMIN_SETTINGS);
+  const [invoices, setInvoices] = React.useState([]);
+  const [note, setNote] = React.useState("");
+  const [sending, setSending] = React.useState(false);
+  const uid = auth.currentUser?.uid;
+
+  const cargar = async () => {
+    if (!uid) return;
+    setLoading(true);
+    try {
+      const [usuario, global, invoicesSnap] = await Promise.all([
+        leerUsuarioSaas(uid),
+        leerAdminSettings(),
+        getDocs(collection(db, "billingInvoices")),
+      ]);
+      setAccount(usuario);
+      setSettings(global);
+      const mine = invoicesSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((item) => item.uid === uid)
+        .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+      setInvoices(mine.slice(0, 5));
+    } catch (error) {
+      console.error(error);
+      showToast("No se pudo cargar la suscripci�n");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    cargar();
+  }, [uid]);
+
+  const planLabel = account?.currentPlanKey === "pro" ? "Plan Pro" : account?.estado === "trial" ? "Prueba" : "Plan Base";
+  const estadoLabel = account?.estado === "activo" ? "Activa" : account?.estado === "trial" ? "En prueba" : "Vencida";
+  const activoHasta = normalizeDateMs(account?.activoHasta || account?.trialEndsAt || account?.nextBillingAt);
+  const previousPlanKey = account?.previousPlanKey || "";
+
+  const irAPagar = async (planKey) => {
+    try {
+      setSending(true);
+      const res = await fetch("/api/mp-create-preference", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid, plan: planKey }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "No se pudo generar el pago");
+      window.location.href = data.url;
+    } catch (error) {
+      console.error(error);
+      showToast(error.message || "No se pudo iniciar el pago");
+      setSending(false);
+    }
+  };
+
+  const guardarPedido = async (patch, okMessage) => {
+    try {
+      setSending(true);
+      await actualizarSuscripcionUsuario(uid, patch);
+      showToast(okMessage);
+      await cargar();
+    } catch (error) {
+      console.error(error);
+      showToast("No se pudo guardar el pedido");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const enviarReclamo = async () => {
+    if (!note.trim()) {
+      showToast("Escrib� el reclamo antes de enviarlo");
+      return;
+    }
+    try {
+      setSending(true);
+      await crearTicketSoporte({
+        uid,
+        email: auth.currentUser?.email || "",
+        tipo: "reclamo_suscripcion",
+        mensaje: note.trim(),
+        currentPlanKey: account?.currentPlanKey || "",
+      });
+      setNote("");
+      showToast("Reclamo enviado al administrador");
+    } catch (error) {
+      console.error(error);
+      showToast("No se pudo enviar el reclamo");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <SectionTitle>Suscripci�n</SectionTitle>
+        <p className="text-sm font-black text-slate-500">Cargando estado actual...</p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <SectionTitle>Suscripci�n</SectionTitle>
+      <div className="space-y-3">
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Estado actual</p>
+              <p className="mt-1 text-lg font-black text-slate-800">{estadoLabel}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Plan actual</p>
+              <p className="mt-1 text-lg font-black text-slate-800">{planLabel}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Vigente hasta</p>
+              <p className="mt-1 text-sm font-black text-slate-700">
+                {activoHasta ? new Date(activoHasta).toLocaleString("es-AR") : "Sin fecha"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => irAPagar("base")}
+            disabled={sending}
+            className="rounded-2xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
+          >
+            {sending ? "Procesando..." : `Pagar base ${formatMoney(settings.precios?.base || 0)}`}
+          </button>
+          <button
+            onClick={() => irAPagar("pro")}
+            disabled={sending}
+            className="rounded-2xl bg-slate-900 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
+          >
+            {sending ? "Procesando..." : `Cambiar a pro ${formatMoney(settings.precios?.pro || 0)}`}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => guardarPedido({ cancelAtPeriodEnd: true, requestedAction: "cancel_plan" }, "Cancelaci�n pedida al cierre del per�odo")}
+            disabled={sending}
+            className="rounded-2xl bg-red-50 border border-red-100 py-4 text-[10px] font-black uppercase tracking-widest text-red-600 active:scale-95 disabled:opacity-50"
+          >
+            Cancelar al vencer
+          </button>
+          <button
+            onClick={() => guardarPedido({ requestedAction: "change_plan", requestedPlanKey: previousPlanKey || "base" }, "Pedido enviado para volver al plan anterior")}
+            disabled={sending || !previousPlanKey}
+            className="rounded-2xl bg-slate-50 border border-slate-200 py-4 text-[10px] font-black uppercase tracking-widest text-slate-700 active:scale-95 disabled:opacity-50"
+          >
+            Volver al plan anterior
+          </button>
+        </div>
+
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Reclamo o consulta</p>
+          <textarea
+            rows="4"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Explic� tu problema con el cobro, el plan o la suscripci�n."
+            className="mt-3 w-full rounded-2xl border border-slate-200 p-4 text-xs font-bold text-slate-700 outline-none resize-none"
+          />
+          <button
+            onClick={enviarReclamo}
+            disabled={sending}
+            className="mt-3 w-full rounded-2xl bg-emerald-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
+          >
+            Enviar reclamo al administrador
+          </button>
+        </div>
+
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">�ltimos cobros</p>
+          <div className="mt-3 space-y-2">
+            {invoices.length === 0 && <p className="text-[11px] font-bold text-slate-500">Todav�a no hay cobros registrados.</p>}
+            {invoices.map((item) => (
+              <div key={item.id} className="rounded-2xl border border-slate-100 bg-white p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-black text-slate-800">{item.planLabel || item.plan || "Plan"}</p>
+                    <p className="text-[10px] font-bold text-slate-500">{item.status || "pendiente"}</p>
+                  </div>
+                  <p className="text-sm font-black text-slate-800">{formatMoney(item.amountPaid || item.amount || 0)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, cfg, setCfg }) {
   const [migrando, setMigrando] = React.useState(false);
   const [remoteBuild, setRemoteBuild] = React.useState(null);
@@ -934,6 +1138,8 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
 
   return (
     <div className="space-y-4">
+      <PantallaSuscripcion showToast={showToast} />
+
       <Card>
         <SectionTitle>Analitica del producto</SectionTitle>
         <div className="flex items-center justify-between">
@@ -1130,7 +1336,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
 }
 
 export default function ConfigView({ setView, showToast, orders = [], bikes = [], clients = [], handleLogout, loadDemoData, clearAllData }) {
-  const [activeTab, setActiveTab] = useState("resumen");
+  const [activeTab, setActiveTab] = useState(() => window.localStorage.getItem("jbos_config_tab") || "resumen");
   const [cfg, setCfg] = useState(() => LS.getDoc("config", "global") || CONFIG_DEFAULT);
   const [bkpEstado, setBkpEstado] = useState(() => estadoBackup());
   const fileInputRef = useRef(null);
@@ -1140,6 +1346,10 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
     PLATFORM_ADMIN_UIDS.includes(auth.currentUser?.uid || "");
   const visibleTabs = canSeeAdminTab ? TABS : TABS.filter((tab) => tab.id !== "admin");
 
+  useEffect(() => {
+    window.localStorage.setItem("jbos_config_tab", activeTab);
+  }, [activeTab]);
+
   const handleRestaurarArchivo = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1147,7 +1357,7 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
     reader.onload = (ev) => {
       const resultado = restaurarDesdeTexto(ev.target.result);
       if (resultado.ok) {
-        showToast(`Restaurado âœ“ (${resultado.restaurados} colecciones)`);
+        showToast(`Restaurado ✓ (${resultado.restaurados} colecciones)`);
         setTimeout(() => window.location.reload(), 1200);
       } else {
         showToast(`Error: ${resultado.error}`);
@@ -1160,7 +1370,7 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
   const handleRestaurarAuto = () => {
     const resultado = restaurarAutoBackup();
     if (resultado.ok) {
-      showToast("Restaurado desde copia automÃ¡tica âœ“");
+      showToast("Restaurado desde copia automática ✓");
       setTimeout(() => window.location.reload(), 1200);
     } else {
       showToast(`Error: ${resultado.error}`);

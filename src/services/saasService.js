@@ -1,9 +1,10 @@
 import { db } from "../firebase.js";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export const SAAS_COLLECTIONS = {
   usuarios: "usuarios",
   adminSettings: "admin_settings",
+  soporteTickets: "soporteTickets",
 };
 
 export const PLATFORM_ADMIN_EMAILS = ["fefe@gmail.com"];
@@ -276,4 +277,32 @@ export async function ensureSaasUserProfile(authUser, extras = {}) {
     subscriptionCurrencyAtSignup: existing?.subscriptionCurrencyAtSignup ?? currency,
     appVersion: extras.appVersion || existing?.appVersion || null,
   }, { uid: authUser.uid });
+}
+
+export async function actualizarSuscripcionUsuario(uid, patch = {}) {
+  if (!uid) throw new Error("Falta uid");
+  await setDoc(
+    doc(db, SAAS_COLLECTIONS.usuarios, uid),
+    {
+      ...patch,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+export async function crearTicketSoporte(payload = {}) {
+  if (!payload.uid) throw new Error("Falta uid");
+  const docRef = await addDoc(collection(db, SAAS_COLLECTIONS.soporteTickets), {
+    uid: payload.uid,
+    email: payload.email || "",
+    tipo: payload.tipo || "general",
+    estado: "nuevo",
+    mensaje: payload.mensaje || "",
+    currentPlanKey: payload.currentPlanKey || "",
+    requestedPlanKey: payload.requestedPlanKey || "",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  return docRef.id;
 }
