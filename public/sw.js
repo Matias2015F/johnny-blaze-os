@@ -1,4 +1,5 @@
-const CACHE_NAME = "jbos-static-v1";
+const SW_VERSION = new URL(self.location.href).searchParams.get("v") || "dev";
+const CACHE_NAME = `jbos-static-${SW_VERSION}`;
 const APP_SHELL = ["/", "/manifest.json", "/favicon.ico"];
 
 self.addEventListener("install", (event) => {
