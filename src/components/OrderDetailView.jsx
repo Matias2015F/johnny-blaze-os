@@ -22,7 +22,7 @@ const RANGO_FACTOR = { bajo: 1.0, medio: 1.3, alto: 1.5 };
 
 const CRON_MSG = {
   NORMAL: { texto: "Vas dentro del presupuesto", color: "text-green-400", bg: "bg-green-500/10 border-green-500/30" },
-  ALERTA: { texto: "EstÃ¡s cerca del lÃ­mite", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/30" },
+  ALERTA: { texto: "Estás cerca del límite", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/30" },
   BLOQUEADO: { texto: "Te pasaste del presupuesto", color: "text-red-400", bg: "bg-red-500/10 border-red-500/30" },
 };
 
@@ -125,21 +125,21 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const presupuestoEditable = Number(maxInput) > 0 ? Number(maxInput) : presBase;
   const estadoPaso = {
     diagnostico: "Siguiente paso: armar presupuesto",
-    presupuesto: "Siguiente paso: esperar aprobaciÃ³n",
-    aprobacion: "Siguiente paso: iniciar reparaciÃ³n",
+    presupuesto: "Siguiente paso: esperar aprobación",
+    aprobacion: "Siguiente paso: iniciar reparación",
     reparacion: "Siguiente paso: dejar listo para cobrar",
     finalizada: "Siguiente paso: registrar pago",
     listo_para_emitir: "Siguiente paso: emitir comprobante",
     cerrado_emitido: "Trabajo cerrado con comprobante emitido",
-  }[order.estado] || "RevisÃ¡ este trabajo";
+  }[order.estado] || "Revisá este trabajo";
 
   const cambiarEstado = (nuevo) => {
     if (isLocked) {
-      showToast("No se puede modificar: ya se generÃ³ el comprobante");
+      showToast("No se puede modificar: ya se generó el comprobante");
       return;
     }
     LS.updateDoc("trabajos", order.id, { estado: nuevo });
-    showToast(`Estado: ${ESTADO_LABEL[nuevo]} âœ“`);
+    showToast(`Estado: ${ESTADO_LABEL[nuevo]} OK`);
   };
 
   const accionPrincipal = isLocked
@@ -147,9 +147,9 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     : order.estado === "diagnostico"
       ? { label: "Pasar a presupuesto", action: () => cambiarEstado("presupuesto"), className: "bg-violet-600 text-white" }
       : order.estado === "presupuesto"
-        ? { label: "Esperando aprobaciÃ³n", action: () => cambiarEstado("aprobacion"), className: "bg-amber-400 text-slate-950" }
+        ? { label: "Esperando aprobación", action: () => cambiarEstado("aprobacion"), className: "bg-amber-400 text-slate-950" }
         : order.estado === "aprobacion"
-          ? { label: "Iniciar reparaciÃ³n", action: () => cambiarEstado("reparacion"), className: "bg-blue-600 text-white" }
+          ? { label: "Iniciar reparación", action: () => cambiarEstado("reparacion"), className: "bg-blue-600 text-white" }
           : order.estado === "reparacion"
             ? { label: "Listo para cobrar", action: () => cambiarEstado("finalizada"), className: "bg-green-600 text-white" }
             : order.estado === "finalizada"
@@ -160,7 +160,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
   const eliminarItem = (lista, index) => {
     if (isLocked) {
-      showToast("No se puede modificar: ya se generÃ³ el comprobante");
+      showToast("No se puede modificar: ya se generó el comprobante");
       return;
     }
     const nuevaLista = [...(order[lista] || [])];
@@ -171,7 +171,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     const insumos = lista === "insumos" ? nuevaLista : order.insumos;
     const total = calcularNuevoTotal(tareas, repuestos, fletes, insumos);
     LS.updateDoc("trabajos", order.id, { [lista]: nuevaLista, total });
-    showToast("Eliminado âœ“");
+    showToast("Eliminado OK");
   };
 
   const enviarPresupuesto = () => {
@@ -188,7 +188,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const confirmarAprobacion = () => {
     const max = presupuestoEditable;
     LS.updateDoc("trabajos", order.id, { maxAutorizado: max, estado: "aprobacion" });
-    showToast(`Aprobado: ${formatMoney(max)} âœ“`);
+    showToast(`Aprobado: ${formatMoney(max)} OK`);
   };
 
   const handleStart = () => LS.updateDoc("trabajos", order.id, iniciarCronometro(order));
@@ -265,7 +265,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
         {isLocked && (
           <div className="flex items-center gap-3 rounded-[2rem] border border-blue-500/20 bg-blue-500/10 p-4 shadow-lg backdrop-blur">
             <div className="rounded-xl bg-blue-500 p-2 text-white"><ShieldCheck size={20} /></div>
-            <p className="text-[10px] font-black uppercase leading-tight text-blue-200">Trabajo cerrado: ya se generÃ³ el comprobante. No se pueden editar trabajos ni montos.</p>
+            <p className="text-[10px] font-black uppercase leading-tight text-blue-200">Trabajo cerrado: ya se generó el comprobante. No se pueden editar trabajos ni montos.</p>
           </div>
         )}
 
@@ -365,13 +365,13 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               <div className={`rounded-2xl border p-4 text-center ${cronMsg.bg}`}>
                 <p className={`text-base font-black ${cronMsg.color}`}>{cronMsg.texto}</p>
                 <p className="mt-1 text-[10px] font-bold text-slate-500">
-                  {formatMoney(costoActual)} acumulado Â· {tiempoMax > 0 ? `quedan ${formatTiempoCorto(restante)}` : "sin lÃ­mite"}
+                  {formatMoney(costoActual)} acumulado · {tiempoMax > 0 ? `quedan ${formatTiempoCorto(restante)}` : "sin límite"}
                 </p>
               </div>
             ) : (
               <div className="rounded-2xl bg-slate-800 p-4 text-center">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sin tope de tiempo aprobado</p>
-                <p className="mt-1 text-[9px] text-slate-600">Cuando el cliente apruebe un mÃ¡ximo, el sistema te va a avisar.</p>
+                <p className="mt-1 text-[9px] text-slate-600">Cuando el cliente apruebe un máximo, el sistema te va a avisar.</p>
               </div>
             )}
 
@@ -385,7 +385,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 </div>
                 <div className="flex justify-between text-[9px] font-black text-slate-500">
                   <span>{Math.round(pct)}% usado</span>
-                  <span>MÃ¡x: {formatMoney(order.maxAutorizado)}</span>
+                  <span>Máx: {formatMoney(order.maxAutorizado)}</span>
                 </div>
               </div>
             )}
@@ -394,7 +394,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">{formatMoney(valorHora)}/hora</p>
               <div className="text-right">
                 <p className="font-mono text-xl font-black tracking-widest text-white">{formatTiempo(tiempoActual)}</p>
-                {order.trabajoSinCronometro && <p className="mt-1 text-[8px] font-black uppercase text-slate-500">Trabajando sin cronÃ³metro</p>}
+                {order.trabajoSinCronometro && <p className="mt-1 text-[8px] font-black uppercase text-slate-500">Trabajando sin cronómetro</p>}
               </div>
             </div>
 
@@ -405,20 +405,20 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   client,
                   tareas: order.tareas,
                   repuestos: order.repuestos,
-                  motivo: "Trabajo mÃ¡s complejo de lo estimado",
+                  motivo: "Trabajo más complejo de lo estimado",
                   costoActual,
                   nuevoMin,
                   nuevoMax,
                 }))}
                 className="w-full rounded-2xl bg-yellow-500 py-4 text-[10px] font-black uppercase tracking-widest text-black transition-all active:scale-95"
               >
-                Pedir autorizaciÃ³n por WhatsApp
+                Pedir autorización por WhatsApp
               </button>
             )}
 
             {estadoCron === "BLOQUEADO" && (
               <div className="space-y-3 rounded-2xl border border-red-500/50 bg-red-500/10 p-4">
-                <p className="text-center text-[10px] font-black uppercase tracking-wider text-red-400">Superaste el mÃ¡ximo: necesitÃ¡s autorizaciÃ³n</p>
+                <p className="text-center text-[10px] font-black uppercase tracking-wider text-red-400">Superaste el máximo: necesitás autorización</p>
                 <select
                   value={motivoBloqueo}
                   onChange={(e) => setMotivoBloqueo(e.target.value)}
@@ -430,7 +430,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   <textarea
                     value={motivoManual}
                     onChange={(e) => setMotivoManual(e.target.value)}
-                    placeholder="DescribÃ­ el motivo..."
+                    placeholder="Describí el motivo..."
                     className="h-16 w-full resize-none rounded-xl border border-slate-600 bg-slate-800 p-3 text-xs text-white outline-none"
                   />
                 )}
@@ -447,7 +447,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   }))}
                   className="w-full rounded-2xl bg-green-600 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-95"
                 >
-                  Pedir autorizaciÃ³n por WhatsApp
+                  Pedir autorización por WhatsApp
                 </button>
               </div>
             )}
@@ -477,19 +477,19 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 onClick={handleSinCronometro}
                 className={`rounded-2xl py-4 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${order.trabajoSinCronometro ? "border border-slate-600 bg-slate-800 text-slate-300" : "bg-slate-200 text-slate-800"}`}
               >
-                Sin cronÃ³metro
+                Sin cronómetro
               </button>
             </div>
 
             <div className="rounded-2xl bg-slate-800 p-3">
               <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Alerta sonora</p>
-              <p className="mt-1 text-[10px] font-bold text-slate-500">Aviso automÃ¡tico cada {(config.cronometroAlertas?.frecuenciaMin ?? 30)} min mientras el cronÃ³metro estÃ¡ corriendo.</p>
+              <p className="mt-1 text-[10px] font-bold text-slate-500">Aviso automático cada {(config.cronometroAlertas?.frecuenciaMin ?? 30)} min mientras el cronómetro está corriendo.</p>
             </div>
 
             {order.maxAutorizado > 0 && res.costoInterno > order.maxAutorizado * 0.85 && (
               <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-3">
                 <p className="text-[9px] font-black uppercase tracking-wide text-orange-400">
-                  Tu costo interno ({formatMoney(res.costoInterno)}) se acerca al mÃ¡ximo autorizado ({formatMoney(order.maxAutorizado)})
+                  Tu costo interno ({formatMoney(res.costoInterno)}) se acerca al máximo autorizado ({formatMoney(order.maxAutorizado)})
                 </p>
               </div>
             )}
@@ -511,7 +511,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             <h3 className="text-xs font-black uppercase tracking-tighter text-slate-400">Trabajos y materiales</h3>
             {!isLocked && (
               <button onClick={() => setView("logistica")} className="flex items-center gap-1 text-[10px] font-black uppercase text-blue-600 active:scale-90">
-                <Truck size={14} /> + Flete / cadeterÃ­a
+                <Truck size={14} /> + Flete / cadetería
               </button>
             )}
           </div>
@@ -606,21 +606,12 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
         </div>
 
         {!isLocked && accionPrincipal && (
-          <div className="rounded-[2rem] border-2 border-slate-200 bg-white p-4 shadow-sm">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Paso actual</p>
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-lg font-black leading-none text-slate-950">{ESTADO_LABEL[order.estado]}</p>
-                <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500">{estadoPaso}</p>
-              </div>
-              <span className={`inline-block rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${ESTADO_CSS[order.estado]}`}>
-                {ESTADO_LABEL[order.estado]}
-              </span>
-            </div>
-            <button onClick={accionPrincipal.action} className={`mt-4 w-full rounded-2xl py-4 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 ${accionPrincipal.className}`}>
-              {accionPrincipal.label}
-            </button>
-          </div>
+          <button
+            onClick={accionPrincipal.action}
+            className={`w-full rounded-[1.75rem] py-4 text-[11px] font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 ${accionPrincipal.className}`}
+          >
+            {accionPrincipal.label}
+          </button>
         )}
       </div>
       </div>
