@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from "react";
-import { ArrowLeft, DollarSign, Edit2, FileText, ShieldCheck, Trash2, Truck, Wrench } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ClipboardList, DollarSign, Edit2, FileText, Play, Send, ShieldCheck, ThumbsUp, Trash2, Truck, Wrench } from "lucide-react";
 import { LS } from "../lib/storage.js";
 import { CONFIG_DEFAULT, ESTADO_CSS, ESTADO_LABEL } from "../lib/constants.js";
 import { calcularNuevoRango, calcularNuevoTotal, calcularResultadosOrden } from "../lib/calc.js";
@@ -25,6 +25,16 @@ const CRON_MSG = {
   ALERTA: { texto: "EstÃ¡s cerca del lÃ­mite", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/30" },
   BLOQUEADO: { texto: "Te pasaste del presupuesto", color: "text-red-400", bg: "bg-red-500/10 border-red-500/30" },
 };
+
+const STEP_UI = [
+  { id: "diagnostico", label: "Diag.", icon: ClipboardList },
+  { id: "presupuesto", label: "Presup.", icon: Wrench },
+  { id: "aprobacion", label: "Aprobado", icon: ThumbsUp },
+  { id: "reparacion", label: "En curso", icon: Play },
+  { id: "finalizada", label: "Cobro", icon: DollarSign },
+  { id: "listo_para_emitir", label: "PDF", icon: Send },
+  { id: "cerrado_emitido", label: "Cerrado", icon: FileText },
+];
 
 export default function OrderDetailView({ order, clients, bikes, setView, showToast, setServiceToEdit }) {
   const [tiempoActual, setTiempoActual] = useState(0);
@@ -79,6 +89,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const saldoPendiente = res.total - totalPagado;
   const isLocked = !!order.pdfEntregado;
   const trabajoLabel = order.numeroTrabajo || `#${order.id.slice(-4).toUpperCase()}`;
+  const currentStepIndex = Math.max(STEP_UI.findIndex((step) => step.id === order.estado), 0);
 
   const dificultades = (order.tareas || []).map((t) => t.dificultad || "normal");
   const nivelRiesgo = dificultades.some((d) => d === "complicado" || d === "dificil")
@@ -191,37 +202,65 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const restante = Math.max(tiempoMax - tiempoActual, 0);
 
   return (
-    <div className="min-h-screen bg-slate-100 pb-32 text-left animate-in slide-in-from-right duration-300">
-      <div className="bg-slate-900 p-8 text-white">
-        <button onClick={() => setView("ordenes")} className="mb-6 flex items-center gap-2 text-xs font-black uppercase text-blue-500 transition-all active:scale-90">
-          <ArrowLeft size={16} /> Volver
-        </button>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-4xl font-black leading-none tracking-tighter">{bike?.patente || "---"}</h2>
-              {isLocked && <ShieldCheck className="text-blue-500" size={24} />}
-            </div>
-            <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-blue-400">{trabajoLabel}</p>
-            <p className="mt-1 text-xs font-bold uppercase tracking-widest text-slate-400">{client?.nombre || "Cliente desconocido"}</p>
-            <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500">{estadoPaso}</p>
-            <div className="mt-3">
-              <span className={`inline-block rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${ESTADO_CSS[order.estado]}`}>
-                {ESTADO_LABEL[order.estado]}
-              </span>
+    <div className="min-h-screen bg-[#f8fafc] pb-32 text-left animate-in slide-in-from-right duration-300">
+      <div className="bg-slate-900 px-5 pb-8 pt-5 text-white shadow-lg">
+        <div className="mx-auto max-w-[440px]">
+          <div className="mb-4 flex items-center justify-between">
+            <button onClick={() => setView("ordenes")} className="rounded-2xl p-2 text-blue-400 active:scale-90">
+              <ArrowLeft size={20} />
+            </button>
+            <div className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${ESTADO_CSS[order.estado]}`}>
+              {ESTADO_LABEL[order.estado]}
             </div>
           </div>
-          <div className="text-right">
-            <p className="mb-1 text-[9px] font-black uppercase tracking-widest text-slate-500">{res.margen >= 0 ? "Tu ganancia" : "Tu pÃ©rdida"}</p>
-            <p className={`text-2xl font-black tracking-tighter ${res.margen >= 0 ? "text-green-400" : "text-red-400"}`}>
-              {res.margen >= 0 ? "+" : "-"}{formatMoney(Math.abs(res.margen))}
-            </p>
-            <p className="mt-1 text-[9px] text-slate-500">{formatMoney(res.total)} cobrados</p>
+
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h2 className="text-4xl font-black leading-none tracking-tighter uppercase">{bike?.patente || "---"}</h2>
+                {isLocked && <ShieldCheck className="text-blue-400" size={22} />}
+              </div>
+              <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-blue-400">{trabajoLabel}</p>
+              <p className="mt-2 text-sm font-black uppercase tracking-tight text-slate-300">{client?.nombre || "Cliente desconocido"}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ganancia</p>
+              <p className="text-3xl font-black leading-none tracking-tighter text-emerald-400">{formatMoney(res.desglose.moCliente)}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between border-t border-slate-700/50 pt-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{estadoPaso}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{bike?.marca || ""} {bike?.modelo || ""}</p>
           </div>
         </div>
       </div>
 
-      <div className="space-y-6 p-6">
+      <div className="mx-auto max-w-[440px] px-4">
+        <div className="relative z-10 -mt-4 mb-4 flex gap-2 overflow-x-auto px-1 pb-1">
+          {STEP_UI.map((step, idx) => {
+            const Icon = step.icon;
+            const isCurrent = idx === currentStepIndex;
+            const isDone = idx < currentStepIndex || (isLocked && step.id === "cerrado_emitido");
+            return (
+              <button
+                key={step.id}
+                type="button"
+                className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border transition-all ${
+                  isCurrent
+                    ? "scale-105 border-blue-500 bg-blue-600 text-white shadow-lg"
+                    : isDone
+                      ? "border-emerald-400 bg-emerald-500 text-white"
+                      : "border-slate-200 bg-white text-slate-400"
+                }`}
+              >
+                {isDone ? <CheckCircle2 size={18} /> : <Icon size={16} />}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="space-y-6">
         {isLocked && (
           <div className="flex items-center gap-3 rounded-3xl border-2 border-blue-200 bg-blue-50 p-4">
             <div className="rounded-xl bg-blue-500 p-2 text-white"><ShieldCheck size={20} /></div>
@@ -600,6 +639,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             </button>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
