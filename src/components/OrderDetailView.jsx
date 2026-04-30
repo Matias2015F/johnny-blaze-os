@@ -196,6 +196,15 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const handleStop = () => LS.updateDoc("trabajos", order.id, detenerCronometro(order));
   const handleSinCronometro = () => LS.updateDoc("trabajos", order.id, trabajarSinCronometro(order));
 
+  const ejecutarPaso = (idx) => {
+    if (isLocked || !accionPrincipal) return;
+    if (idx === currentStepIndex || idx === currentStepIndex + 1) {
+      accionPrincipal.action();
+      return;
+    }
+    showToast("Ese paso todavía no corresponde");
+  };
+
   const tiempoMax = order.maxAutorizado > 0 ? order.maxAutorizado / valorHora : 0;
   const pct = tiempoMax > 0 ? Math.min((costoActual / order.maxAutorizado) * 100, 100) : 0;
   const restante = Math.max(tiempoMax - tiempoActual, 0);
@@ -247,6 +256,9 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               <button
                 key={step.id}
                 type="button"
+                onClick={() => ejecutarPaso(idx)}
+                disabled={isLocked || !accionPrincipal}
+                title={idx === currentStepIndex || idx === currentStepIndex + 1 ? accionPrincipal?.label : step.label}
                 className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[1.25rem] border transition-all shadow-lg ${
                   isCurrent
                     ? "scale-105 border-blue-400 bg-blue-600 text-white shadow-blue-500/40"
