@@ -11,7 +11,7 @@ import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { APP_BUILD } from "../generated/appVersion.js";
 import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, ensureNotificationPermission, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, promptInstallApp, sendTestNotification } from "../lib/appUpdate.js";
-import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS, actualizarSuscripcionUsuario, crearTicketSoporte, guardarAdminSettings, leerAdminSettings, leerUsuarioSaas, normalizeDateMs } from "../services/saasService.js";
+import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS, actualizarSuscripcionUsuario, crearTicketSoporte, guardarAdminSettings, leerAdminSettings, leerUsuarioSaas, normalizeDateMs, normalizeSaasUser } from "../services/saasService.js";
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
@@ -103,6 +103,14 @@ function formatRequestedAction(item = {}) {
   return "Sin pedido";
 }
 
+function sortByDateDesc(items = [], ...fields) {
+  return [...items].sort((a, b) => {
+    const left = fields.map((field) => normalizeDateMs(a?.[field])).find(Boolean) || 0;
+    const right = fields.map((field) => normalizeDateMs(b?.[field])).find(Boolean) || 0;
+    return right - left;
+  });
+}
+
 const FEATURE_LABELS = {
   pdf: "Comprobantes PDF",
   recordatorios: "Proximo control",
@@ -139,38 +147,77 @@ function PantallaAdmin({ showToast }) {
 
       setSettings(await leerAdminSettings());
 
-      const [accountsSnap, snapshotsSnap, eventosSnap, invoicesSnap, ticketsSnap, motosSnap, serviciosSnap] = await Promise.all([
+      const results = await Promise.allSettled([
         getDocs(collection(db, "usuarios")),
         getDocs(collection(db, "usageSnapshots")),
         getDocs(query(collection(db, "telemetryEvents"), orderBy("createdAt", "desc"), limit(200))),
         getDocs(collection(db, "billingInvoices")),
-        getDocs(query(collection(db, "soporteTickets"), orderBy("createdAt", "desc"), limit(100))),
+        getDocs(collection(db, "soporteTickets")),
         getDocs(query(collectionGroup(db, "motos"), limit(250))),
         getDocs(query(collectionGroup(db, "catalogoTareas"), limit(250))),
       ]);
 
-      setAccounts(accountsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setSnapshots(snapshotsSnap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || ""))));
-      setEventos(eventosSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setInvoices(invoicesSnap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)));
-      setTickets(ticketsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const [accountsRes, snapshotsRes, eventosRes, invoicesRes, ticketsRes, motosRes, serviciosRes] = results;
+
+      if (accountsRes.status === "fulfilled") {
+        setAccounts(accountsRes.value.docs.map((d) => normalizeSaasUser({ id: d.id, ...d.data() }, { uid: d.id })));
+      } else {
+        console.error(accountsRes.reason);
+        setAccounts([]);
+      }
+
+      if (snapshotsRes.status === "fulfilled") {
+        setSnapshots(snapshotsRes.value.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || ""))));
+      } else {
+        console.error(snapshotsRes.reason);
+        setSnapshots([]);
+      }
+
+      if (eventosRes.status === "fulfilled") {
+        setEventos(sortByDateDesc(eventosRes.value.docs.map((d) => ({ id: d.id, ...d.data() })), "createdAt", "updatedAt"));
+      } else {
+        console.error(eventosRes.reason);
+        setEventos([]);
+      }
+
+      if (invoicesRes.status === "fulfilled") {
+        setInvoices(sortByDateDesc(invoicesRes.value.docs.map((d) => ({ id: d.id, ...d.data() })), "paidAt", "createdAt", "updatedAt"));
+      } else {
+        console.error(invoicesRes.reason);
+        setInvoices([]);
+      }
+
+      if (ticketsRes.status === "fulfilled") {
+        setTickets(sortByDateDesc(ticketsRes.value.docs.map((d) => ({ id: d.id, ...d.data() })), "createdAt", "updatedAt"));
+      } else {
+        console.error(ticketsRes.reason);
+        setTickets([]);
+      }
 
       const motosCount = {};
-      motosSnap.docs.forEach((d) => {
-        const item = d.data() || {};
-        const key = [item.marca, item.modelo, item.cilindrada].filter(Boolean).join(" · ");
-        if (!key) return;
-        motosCount[key] = (motosCount[key] || 0) + 1;
-      });
+      if (motosRes.status === "fulfilled") {
+        motosRes.value.docs.forEach((d) => {
+          const item = d.data() || {};
+          const key = [item.marca, item.modelo, item.cilindrada].filter(Boolean).join(" · ");
+          if (!key) return;
+          motosCount[key] = (motosCount[key] || 0) + 1;
+        });
+      } else {
+        console.error(motosRes.reason);
+      }
       setMotosFrecuentes(Object.entries(motosCount).sort((a, b) => b[1] - a[1]).slice(0, 5));
 
       const serviciosCount = {};
-      serviciosSnap.docs.forEach((d) => {
-        const item = d.data() || {};
-        const key = String(item.nombre || item.label || "").trim();
-        if (!key) return;
-        serviciosCount[key] = (serviciosCount[key] || 0) + 1;
-      });
+      if (serviciosRes.status === "fulfilled") {
+        serviciosRes.value.docs.forEach((d) => {
+          const item = d.data() || {};
+          const key = String(item.nombre || item.label || "").trim();
+          if (!key) return;
+          serviciosCount[key] = (serviciosCount[key] || 0) + 1;
+        });
+      } else {
+        console.error(serviciosRes.reason);
+      }
       setServiciosFrecuentes(Object.entries(serviciosCount).sort((a, b) => b[1] - a[1]).slice(0, 5));
     } catch (e) {
       console.error(e);
@@ -226,6 +273,17 @@ function PantallaAdmin({ showToast }) {
       .reduce((acc, item) => acc + Number(item.amountPaid || item.amount || 0), 0);
     return { trialsPorVencer, activos7, pendientes, facturacionMes };
   }, [accounts, invoices]);
+
+  const resumenUsuarios = React.useMemo(() => {
+    const total = accounts.length;
+    const trial = accounts.filter((item) => item.estado === "trial").length;
+    const activos = accounts.filter((item) => item.estado === "activo").length;
+    const vencidos = accounts.filter((item) => item.estado === "vencido").length;
+    const base = accounts.filter((item) => (item.currentPlanKey || item.plan || "base") === "base").length;
+    const pro = accounts.filter((item) => (item.currentPlanKey || item.plan) === "pro").length;
+    const admins = accounts.filter((item) => item.rol === "admin" || item.isPlatformAdmin).length;
+    return { total, trial, activos, vencidos, base, pro, admins };
+  }, [accounts]);
 
   const funnel = React.useMemo(() => {
     const get = (key) => Number(resumenUso[key] || 0);
@@ -356,6 +414,19 @@ function PantallaAdmin({ showToast }) {
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Trials por vencer</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenNegocio.trialsPorVencer}</p></div>
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pagos pendientes</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenNegocio.pendientes}</p></div>
           <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Facturación del mes</p><p className="mt-1 text-xl font-black text-emerald-600">{formatMoney(resumenNegocio.facturacionMes)}</p></div>
+        </div>
+      </Card>
+
+      <Card>
+        <SectionTitle>Usuarios y planes</SectionTitle>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Usuarios totales</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenUsuarios.total}</p></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Admins</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenUsuarios.admins}</p></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">En prueba</p><p className="mt-1 text-2xl font-black text-amber-600">{resumenUsuarios.trial}</p></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Activos</p><p className="mt-1 text-2xl font-black text-emerald-600">{resumenUsuarios.activos}</p></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Vencidos</p><p className="mt-1 text-2xl font-black text-red-600">{resumenUsuarios.vencidos}</p></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Plan pro</p><p className="mt-1 text-2xl font-black text-blue-600">{resumenUsuarios.pro}</p></div>
+          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 col-span-2"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Plan base</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenUsuarios.base}</p></div>
         </div>
       </Card>
 
@@ -500,15 +571,25 @@ function PantallaAdmin({ showToast }) {
       <Card>
         <SectionTitle>Usuarios</SectionTitle>
         <div className="space-y-3">
-          {accounts.slice(0, 10).map((item) => (
+          {accounts.length === 0 && <p className="text-sm font-black text-slate-500">Todavia no aparecen usuarios cargados en la coleccion nueva.</p>}
+          {accounts.slice(0, 20).map((item) => (
             <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
               <div className="flex items-start justify-between gap-3">
-                <div><p className="text-sm font-black text-slate-800">{item.nombreTaller || item.email || item.uid}</p><p className="text-[10px] font-bold text-slate-400">{item.email || item.uid}</p></div>
-                <div className="text-right"><p className="text-[10px] font-black uppercase tracking-widest text-blue-600">{item.estado || "trial"}</p><p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{item.rol || "user"}</p></div>
+                <div>
+                  <p className="text-sm font-black text-slate-800">{item.nombreTaller || item.email || item.uid}</p>
+                  <p className="text-[10px] font-bold text-slate-400">{item.email || "Sin email"}</p>
+                  <p className="text-[10px] font-bold text-slate-500 mt-1">UID: {item.uid || item.id}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">{item.estado || "trial"}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{item.rol || "user"}</p>
+                </div>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3 text-[10px] font-black text-slate-500">
-                <div>activoHasta: <span className="text-slate-800">{formatAdminDate(item.activoHasta, "Sin fecha")}</span></div>
-                <div>Último uso: <span className="text-slate-800">{formatAdminDate(item.lastSeenAt, "Sin dato")}</span></div>
+                <div>Plan: <span className="text-slate-800">{item.currentPlanKey || item.plan || "base"}</span></div>
+                <div>Vigente hasta: <span className="text-slate-800">{formatAdminDate(item.activoHasta, "Sin fecha")}</span></div>
+                <div>Pago: <span className="text-slate-800">{item.pagoEstado || "pendiente"}</span></div>
+                <div>Ultimo uso: <span className="text-slate-800">{formatAdminDate(item.lastSeenAt, "Sin dato")}</span></div>
               </div>
             </div>
           ))}
