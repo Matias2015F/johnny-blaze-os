@@ -22,13 +22,33 @@ const DEFAULT_PLANS = {
 
 const BASE_URL = "https://johnny-blaze-os.vercel.app";
 
+function safeJsonParse(text) {
+  try {
+    return { ok: true, value: JSON.parse(text) };
+  } catch {
+    return { ok: false, value: null };
+  }
+}
+
+function getBaseUrlFromRequest(req) {
+  // Make back_urls/webhook match the deployment being used (prod/preview/custom).
+  // Vercel passes forwarded headers consistently.
+  const proto = String(req.headers["x-forwarded-proto"] || "https").split(",")[0].trim() || "https";
+  const host =
+    String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim()
+    || "";
+  if (!host) return BASE_URL;
+  return `${proto}://${host}`;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   if (!db) {
     return res.status(500).json({ error: "Error de configuración del servidor" });
   }
-  if (!process.env.MP_ACCESS_TOKEN) {
+  const accessToken = String(process.env.MP_ACCESS_TOKEN || "").trim();
+  if (!accessToken) {
     return res.status(500).json({ error: "Falta MP_ACCESS_TOKEN en el servidor" });
   }
 
@@ -82,6 +102,7 @@ module.exports = async function handler(req, res) {
 
   await invoiceRef.set(invoiceData, { merge: true });
 
+  const baseUrl = getBaseUrlFromRequest(req);
   const preference = {
     items: [{
       title: `Johnny Blaze OS - ${plan.label || planKey}`,
@@ -91,32 +112,62 @@ module.exports = async function handler(req, res) {
     }],
     external_reference: `${uid}:${invoiceRef.id}`,
     back_urls: {
-      success: `${BASE_URL}/?pago=ok`,
-      failure: `${BASE_URL}/?pago=error`,
-      pending: `${BASE_URL}/?pago=pendiente`,
+      success: `${baseUrl}/?pago=ok`,
+      failure: `${baseUrl}/?pago=error`,
+      pending: `${baseUrl}/?pago=pendiente`,
     },
     auto_return: "approved",
-    notification_url: `${BASE_URL}/api/mp-webhook`,
+    notification_url: `${baseUrl}/api/mp-webhook`,
   };
 
-  const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(preference),
-  });
-
-  if (!mpRes.ok) {
-    const errorText = await mpRes.text();
-    console.error("Error al crear preferencia MP:", errorText);
+  let mpRes;
+  try {
+    mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(preference),
+      signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined,
+    });
+  } catch (networkError) {
+    const errorText = networkError?.message || String(networkError);
+    console.error("Error de red al crear preferencia MP:", errorText);
     await invoiceRef.set({
       status: "error",
       errorText,
+      errorCode: "network_error",
       updatedAt: Date.now(),
     }, { merge: true });
-    return res.status(502).json({ error: "Error al conectar con Mercado Pago" });
+    return res.status(502).json({ error: "No se pudo conectar con Mercado Pago (red)" });
+  }
+
+  if (!mpRes.ok) {
+    const errorText = await mpRes.text();
+    const parsed = safeJsonParse(errorText);
+    const mpError = parsed.ok ? parsed.value : null;
+
+    const mpMessage =
+      (mpError && (mpError.message || mpError.error)) ? String(mpError.message || mpError.error) : "";
+    const short = mpMessage || errorText.slice(0, 200) || "Error desconocido";
+
+    console.error("Error al crear preferencia MP:", mpRes.status, short);
+    await invoiceRef.set({
+      status: "error",
+      errorText,
+      errorHttpStatus: mpRes.status,
+      errorMessage: mpMessage || null,
+      updatedAt: Date.now(),
+    }, { merge: true });
+
+    if (mpRes.status === 401) {
+      return res.status(502).json({ error: "Mercado Pago: token inválido (401). Revisá MP_ACCESS_TOKEN en Vercel." });
+    }
+    if (mpRes.status === 403) {
+      return res.status(502).json({ error: "Mercado Pago: permisos insuficientes (403). Revisá credenciales/ambiente." });
+    }
+    return res.status(502).json({ error: `Mercado Pago (${mpRes.status}): ${short}` });
   }
 
   const data = await mpRes.json();

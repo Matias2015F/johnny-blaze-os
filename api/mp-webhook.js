@@ -35,6 +35,10 @@ function parseExternalReference(value) {
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
+  const accessToken = String(process.env.MP_ACCESS_TOKEN || "").trim();
+  if (!accessToken) {
+    return res.status(500).json({ error: "Falta MP_ACCESS_TOKEN en el servidor" });
+  }
 
   const { type, data } = req.body || {};
   if (type !== "payment") {
@@ -45,7 +49,7 @@ module.exports = async function handler(req, res) {
   if (!paymentId) return res.status(400).json({ error: "Sin payment id" });
 
   const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
-    headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` },
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 
   if (!mpRes.ok) {
