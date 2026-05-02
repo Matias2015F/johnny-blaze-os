@@ -1218,7 +1218,7 @@ function PantallaSuscripcion({ showToast }) {
           </ul>
         </div>
 
-        {(paymentResult !== "error" && (lastAttempt?.invoiceId || lastAttempt?.preferenceId)) && (
+        {true && (
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Último intento de pago</p>
             <div className="mt-2 space-y-1">
