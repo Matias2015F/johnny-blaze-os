@@ -1113,6 +1113,38 @@ function PantallaSuscripcion({ showToast }) {
     }
   };
 
+  const diagnosticarPago = async () => {
+    try {
+      setSending(true);
+      const res = await fetch("/api/mp-diagnose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          preferenceId: lastAttempt?.preferenceId || null,
+          invoiceId: lastAttempt?.invoiceId || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "No se pudo diagnosticar");
+
+      const payment = Array.isArray(data.payments) && data.payments.length ? data.payments[0] : null;
+      const status = payment?.status || payment?.status_detail || null;
+      const detail = payment?.status_detail || null;
+
+      if (!payment) {
+        showToast("Sin pagos asociados todavía. Probá de nuevo en 30s.");
+        return;
+      }
+
+      showToast(`MP: ${String(status || "sin estado")} ${detail ? `(${detail})` : ""}`.trim());
+    } catch (error) {
+      console.error(error);
+      showToast(error.message || "No se pudo diagnosticar el pago");
+    } finally {
+      setSending(false);
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -1146,6 +1178,13 @@ function PantallaSuscripcion({ showToast }) {
                 )}
               </div>
             )}
+            <button
+              onClick={diagnosticarPago}
+              disabled={sending || (!lastAttempt?.invoiceId && !lastAttempt?.preferenceId)}
+              className="mt-3 w-full rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
+            >
+              {sending ? "Consultando..." : "Diagnosticar pago"}
+            </button>
           </div>
         )}
 
