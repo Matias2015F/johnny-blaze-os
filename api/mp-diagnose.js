@@ -19,15 +19,27 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: "Falta MP_ACCESS_TOKEN en el servidor" });
   }
 
-  const { preferenceId, invoiceId } = req.body || {};
-  if (!preferenceId && !invoiceId) {
+  const { preferenceId, invoiceId, uid } = req.body || {};
+  // Si no hay ids pero hay uid, buscar el ultimo invoice del usuario
+  let resolvedInvoiceId = invoiceId || null;
+  if (!preferenceId && !resolvedInvoiceId && uid) {
+    try {
+      const snap = await db.collection("billingInvoices")
+        .where("uid", "==", String(uid))
+        .orderBy("createdAt", "desc")
+        .limit(1)
+        .get();
+      if (!snap.empty) resolvedInvoiceId = snap.docs[0].id;
+    } catch (e) { console.error("No se pudo buscar invoice por uid:", e); }
+  }
+  if (!preferenceId && !resolvedInvoiceId) {
     return res.status(400).json({ error: "Falta preferenceId o invoiceId" });
   }
 
   let invoice = null;
   try {
-    if (invoiceId) {
-      const snap = await db.collection("billingInvoices").doc(String(invoiceId)).get();
+    if (resolvedInvoiceId) {
+      const snap = await db.collection("billingInvoices").doc(String(resolvedInvoiceId)).get();
       if (snap.exists) invoice = { id: snap.id, ...snap.data() };
     }
   } catch (e) {
