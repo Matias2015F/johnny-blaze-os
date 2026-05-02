@@ -121,7 +121,7 @@ module.exports = async function handler(req, res) {
       failure: `${baseUrl}/?pago=error`,
       pending: `${baseUrl}/?pago=pendiente`,
     },
-    auto_return: "approved",
+    auto_return: "all",
     notification_url: `${baseUrl}/api/mp-webhook`,
   };
 
