@@ -1120,7 +1120,7 @@ function PantallaSuscripcion({ showToast }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          preferenceId: lastAttempt?.preferenceId || null, invoiceId: lastAttempt?.invoiceId || account?.lastInvoiceId || null,
+          preferenceId: lastAttempt?.preferenceId || null, invoiceId: lastAttempt?.invoiceId || account?.lastInvoiceId || null, uid: uid || null,
           
         }),
       });
