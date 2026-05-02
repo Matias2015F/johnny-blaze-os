@@ -31,8 +31,6 @@ function safeJsonParse(text) {
 }
 
 function getBaseUrlFromRequest(req) {
-  // Make back_urls/webhook match the deployment being used (prod/preview/custom).
-  // Vercel passes forwarded headers consistently.
   const proto = String(req.headers["x-forwarded-proto"] || "https").split(",")[0].trim() || "https";
   const host =
     String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim()
@@ -41,23 +39,28 @@ function getBaseUrlFromRequest(req) {
   return `${proto}://${host}`;
 }
 
+function errorResponse(res, status, payload) {
+  return res.status(status).json(payload);
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   if (!db) {
-    return res.status(500).json({ error: "Error de configuración del servidor" });
+    return errorResponse(res, 500, { error: "Error de configuracion del servidor" });
   }
+
   const accessToken = String(process.env.MP_ACCESS_TOKEN || "").trim();
   if (!accessToken) {
-    return res.status(500).json({ error: "Falta MP_ACCESS_TOKEN en el servidor" });
+    return errorResponse(res, 500, { error: "Falta MP_ACCESS_TOKEN en el servidor" });
   }
 
   const { uid, plan: requestedPlanKey } = req.body || {};
-  if (!uid) return res.status(400).json({ error: "uid es requerido" });
+  if (!uid) return errorResponse(res, 400, { error: "uid es requerido" });
 
   const accountRef = db.collection("usuarios").doc(uid);
   const accountSnap = await accountRef.get();
-  if (!accountSnap.exists) return res.status(404).json({ error: "Cuenta no encontrada" });
+  if (!accountSnap.exists) return errorResponse(res, 404, { error: "Cuenta no encontrada" });
   const account = accountSnap.data();
 
   const settingsSnap = await db.collection("admin_settings").doc("global").get();
@@ -77,10 +80,11 @@ module.exports = async function handler(req, res) {
   const planKey = plans[requestedPlanKey] ? requestedPlanKey : (account.currentPlanKey || "base");
   const plan = plans[planKey];
 
-  if (!plan) return res.status(400).json({ error: "Plan inválido" });
+  if (!plan) return errorResponse(res, 400, { error: "Plan invalido" });
 
   const now = Date.now();
   const invoiceRef = db.collection("billingInvoices").doc();
+  const externalReference = `${uid}:${invoiceRef.id}`;
   const invoiceData = {
     invoiceId: invoiceRef.id,
     uid,
@@ -94,6 +98,7 @@ module.exports = async function handler(req, res) {
     currency: plan.currency || settings.subscriptionCurrency || "ARS",
     status: "pending",
     source: "mercado_pago",
+    externalReference,
     externalPaymentId: null,
     dueAt: now + 3 * 24 * 60 * 60 * 1000,
     createdAt: now,
@@ -110,7 +115,7 @@ module.exports = async function handler(req, res) {
       unit_price: Number(plan.price || 0),
       currency_id: plan.currency || "ARS",
     }],
-    external_reference: `${uid}:${invoiceRef.id}`,
+    external_reference: externalReference,
     back_urls: {
       success: `${baseUrl}/?pago=ok`,
       failure: `${baseUrl}/?pago=error`,
@@ -140,14 +145,18 @@ module.exports = async function handler(req, res) {
       errorCode: "network_error",
       updatedAt: Date.now(),
     }, { merge: true });
-    return res.status(502).json({ error: "No se pudo conectar con Mercado Pago (red)" });
+    return errorResponse(res, 502, {
+      error: "No se pudo conectar con Mercado Pago (red)",
+      invoiceId: invoiceRef.id,
+      errorCode: "network_error",
+      errorText,
+    });
   }
 
   if (!mpRes.ok) {
     const errorText = await mpRes.text();
     const parsed = safeJsonParse(errorText);
     const mpError = parsed.ok ? parsed.value : null;
-
     const mpMessage =
       (mpError && (mpError.message || mpError.error)) ? String(mpError.message || mpError.error) : "";
     const short = mpMessage || errorText.slice(0, 200) || "Error desconocido";
@@ -162,16 +171,30 @@ module.exports = async function handler(req, res) {
     }, { merge: true });
 
     if (mpRes.status === 401) {
-      return res.status(502).json({ error: "Mercado Pago: token inválido (401). Revisá MP_ACCESS_TOKEN en Vercel." });
+      return errorResponse(res, 502, {
+        error: "Mercado Pago: token invalido (401). Revisa MP_ACCESS_TOKEN en Vercel.",
+        invoiceId: invoiceRef.id,
+        mpStatus: mpRes.status,
+        mpMessage: short,
+      });
     }
     if (mpRes.status === 403) {
-      return res.status(502).json({ error: "Mercado Pago: permisos insuficientes (403). Revisá credenciales/ambiente." });
+      return errorResponse(res, 502, {
+        error: "Mercado Pago: permisos insuficientes (403). Revisa credenciales/ambiente.",
+        invoiceId: invoiceRef.id,
+        mpStatus: mpRes.status,
+        mpMessage: short,
+      });
     }
-    return res.status(502).json({ error: `Mercado Pago (${mpRes.status}): ${short}` });
+    return errorResponse(res, 502, {
+      error: `Mercado Pago (${mpRes.status}): ${short}`,
+      invoiceId: invoiceRef.id,
+      mpStatus: mpRes.status,
+      mpMessage: short,
+    });
   }
 
   const data = await mpRes.json();
-
   const checkoutUrl = data.init_point || data.sandbox_init_point || null;
   const mpMode = checkoutUrl && String(checkoutUrl).includes("sandbox.mercadopago.com.ar") ? "sandbox" : "production";
 

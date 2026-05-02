@@ -1003,7 +1003,7 @@ function PantallaSuscripcion({ showToast }) {
       const mine = invoicesSnap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
         .filter((item) => item.uid === uid)
-        .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+        .sort((a, b) => Number(normalizeDateMs(b.updatedAt) || normalizeDateMs(b.createdAt) || 0) - Number(normalizeDateMs(a.updatedAt) || normalizeDateMs(a.createdAt) || 0));
       setInvoices(mine.slice(0, 5));
     } catch (error) {
       console.error(error);
@@ -1039,6 +1039,47 @@ function PantallaSuscripcion({ showToast }) {
   const estadoLabel = account?.estado === "activo" ? "Activa" : account?.estado === "trial" ? "En prueba" : "Vencida";
   const activoHasta = normalizeDateMs(account?.activoHasta || account?.trialEndsAt || account?.nextBillingAt);
   const previousPlanKey = account?.previousPlanKey || "";
+  const latestInvoiceAttempt = React.useMemo(() => {
+    const latest = invoices[0];
+    if (!latest) return null;
+    return {
+      invoiceId: latest.invoiceId || latest.id || null,
+      preferenceId: latest.preferenceId || null,
+      mode: latest.mpMode || null,
+      planKey: latest.planKey || null,
+      at: normalizeDateMs(latest.updatedAt) || normalizeDateMs(latest.createdAt) || null,
+      status: latest.status || null,
+      errorMessage: latest.errorMessage || latest.errorText || null,
+      mpStatus: latest.errorHttpStatus || null,
+    };
+  }, [invoices]);
+  const activeAttempt = React.useMemo(() => {
+    if (!lastAttempt) return latestInvoiceAttempt;
+    if (!latestInvoiceAttempt) return lastAttempt;
+    const localAt = Number(lastAttempt.at || 0);
+    const invoiceAt = Number(latestInvoiceAttempt.at || 0);
+    return invoiceAt >= localAt ? latestInvoiceAttempt : lastAttempt;
+  }, [lastAttempt, latestInvoiceAttempt]);
+
+  const persistPaymentAttempt = (attempt) => {
+    if (!attempt?.invoiceId && !attempt?.preferenceId) return;
+    const normalized = {
+      invoiceId: attempt.invoiceId || null,
+      preferenceId: attempt.preferenceId || null,
+      mode: attempt.mode || null,
+      planKey: attempt.planKey || null,
+      at: attempt.at || Date.now(),
+      status: attempt.status || null,
+      errorMessage: attempt.errorMessage || null,
+      mpStatus: attempt.mpStatus || null,
+    };
+    try {
+      window.localStorage.setItem("jbos_last_mp_attempt", JSON.stringify(normalized));
+    } catch {
+      // ignore
+    }
+    setLastAttempt(normalized);
+  };
 
   const irAPagar = async (planKey) => {
     try {
@@ -1048,22 +1089,28 @@ function PantallaSuscripcion({ showToast }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uid, plan: planKey }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error || "No se pudo generar el pago");
-
-      try {
-        const attempt = {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) {
+        persistPaymentAttempt({
           invoiceId: data.invoiceId || null,
           preferenceId: data.preferenceId || null,
-          mode: data.mode || null,
-          planKey: planKey || null,
+          planKey,
           at: Date.now(),
-        };
-        window.localStorage.setItem("jbos_last_mp_attempt", JSON.stringify(attempt));
-        setLastAttempt(attempt);
-      } catch {
-        // ignore
+          status: "error",
+          errorMessage: data.mpMessage || data.error || null,
+          mpStatus: data.mpStatus || null,
+        });
+        await cargar();
+        throw new Error(data.error || "No se pudo generar el pago");
       }
+
+      persistPaymentAttempt({
+        invoiceId: data.invoiceId || null,
+        preferenceId: data.preferenceId || null,
+        mode: data.mode || null,
+        planKey,
+        at: Date.now(),
+      });
       if (data.mode === "sandbox") {
         showToast("Pago en modo SANDBOX: entra con usuario COMPRADOR de prueba y usá tarjeta de prueba.");
       }
@@ -1120,8 +1167,9 @@ function PantallaSuscripcion({ showToast }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          preferenceId: lastAttempt?.preferenceId || null, invoiceId: lastAttempt?.invoiceId || account?.lastInvoiceId || null, uid: uid || null,
-          
+          preferenceId: activeAttempt?.preferenceId || null,
+          invoiceId: activeAttempt?.invoiceId || null,
+          uid: uid || null,
         }),
       });
       const data = await res.json();
@@ -1132,7 +1180,12 @@ function PantallaSuscripcion({ showToast }) {
       const detail = payment?.status_detail || null;
 
       if (!payment) {
-        showToast("Sin pagos asociados todavía. Probá de nuevo en 30s.");
+        const invoiceError = data.invoice?.errorMessage || data.invoice?.errorText || data.preferenceError || data.paymentsError;
+        if (invoiceError) {
+          showToast(String(invoiceError).slice(0, 180));
+          return;
+        }
+        showToast("Sin pagos asociados todavia. Proba de nuevo en 30s.");
         return;
       }
 
@@ -1169,18 +1222,21 @@ function PantallaSuscripcion({ showToast }) {
               <li>Comprador y vendedor son el mismo usuario (no se puede).</li>
               <li>La tarjeta es de prueba, pero el comprador no es de prueba.</li>
             </ul>
-            true && (
+            {activeAttempt?.invoiceId && (
               <div className="mt-3 bg-white/70 border border-rose-200 rounded-xl p-3">
                 <p className="text-[9px] font-black uppercase tracking-widest text-rose-700">Último intento</p>
-                <p className="mt-1 text-[10px] font-black text-rose-900">Invoice: {lastAttempt.invoiceId}</p>
-                {lastAttempt.preferenceId && (
-                  <p className="text-[10px] font-black text-rose-900">Preference: {lastAttempt.preferenceId}</p>
+                <p className="mt-1 text-[10px] font-black text-rose-900">Invoice: {activeAttempt.invoiceId}</p>
+                {activeAttempt.preferenceId && (
+                  <p className="text-[10px] font-black text-rose-900">Preference: {activeAttempt.preferenceId}</p>
+                )}
+                {activeAttempt.errorMessage && (
+                  <p className="mt-1 text-[10px] font-bold text-rose-800 break-all">{String(activeAttempt.errorMessage).slice(0, 180)}</p>
                 )}
               </div>
             )}
             <button
               onClick={diagnosticarPago}
-              disabled={sending}
+              disabled={sending || (!activeAttempt?.invoiceId && !activeAttempt?.preferenceId)}
               className="mt-3 w-full rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
             >
               {sending ? "Consultando..." : "Diagnosticar pago"}
@@ -1222,21 +1278,30 @@ function PantallaSuscripcion({ showToast }) {
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Último intento de pago</p>
             <div className="mt-2 space-y-1">
-              {lastAttempt?.invoiceId && (
-                <p className="text-[10px] font-black text-slate-800 break-all">Invoice: {lastAttempt.invoiceId}</p>
+              {activeAttempt?.invoiceId && (
+                <p className="text-[10px] font-black text-slate-800 break-all">Invoice: {activeAttempt.invoiceId}</p>
               )}
-              {lastAttempt?.preferenceId && (
-                <p className="text-[10px] font-black text-slate-800 break-all">Preference: {lastAttempt.preferenceId}</p>
+              {activeAttempt?.preferenceId && (
+                <p className="text-[10px] font-black text-slate-800 break-all">Preference: {activeAttempt.preferenceId}</p>
               )}
-              {lastAttempt?.at && (
+              {activeAttempt?.at && (
                 <p className="text-[10px] font-bold text-slate-500">
-                  {new Date(Number(lastAttempt.at)).toLocaleString("es-AR")}
+                  {new Date(Number(activeAttempt.at)).toLocaleString("es-AR")}
                 </p>
+              )}
+              {activeAttempt?.status && (
+                <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Estado: {activeAttempt.status}</p>
+              )}
+              {activeAttempt?.errorMessage && (
+                <p className="text-[10px] font-bold text-rose-600 break-all">{String(activeAttempt.errorMessage).slice(0, 180)}</p>
+              )}
+              {!activeAttempt && (
+                <p className="text-[10px] font-bold text-slate-500">Todavia no hay intento registrado en este dispositivo.</p>
               )}
             </div>
             <button
               onClick={diagnosticarPago}
-              disabled={sending}
+              disabled={sending || (!activeAttempt?.invoiceId && !activeAttempt?.preferenceId)}
               className="mt-3 w-full rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
             >
               {sending ? "Consultando..." : "Diagnosticar pago"}

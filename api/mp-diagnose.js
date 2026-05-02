@@ -5,17 +5,12 @@ try {
   console.error("ERROR al inicializar Firebase Admin:", initError.message);
 }
 
-function isProbablySandboxToken() {
-  const token = String(process.env.MP_ACCESS_TOKEN || "");
-  // Heurística: no hay un prefijo público estable; lo dejamos como "unknown" si no se puede.
-  if (!token) return { ok: false, mode: "unknown" };
-  return { ok: true, mode: "unknown" };
-}
-
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
   if (!db) return res.status(500).json({ error: "Servidor sin base de datos" });
-  if (!process.env.MP_ACCESS_TOKEN) {
+
+  const accessToken = String(process.env.MP_ACCESS_TOKEN || "").trim();
+  if (!accessToken) {
     return res.status(500).json({ error: "Falta MP_ACCESS_TOKEN en el servidor" });
   }
 
@@ -46,31 +41,28 @@ module.exports = async function handler(req, res) {
     console.error("No se pudo leer billingInvoices:", e);
   }
 
+  const externalReference =
+    invoice?.externalReference
+    || (invoice?.uid && invoice?.invoiceId ? `${invoice.uid}:${invoice.invoiceId}` : null);
   const targetPreferenceId = String(preferenceId || invoice?.preferenceId || "").trim();
-  if (!targetPreferenceId) {
-    return res.status(404).json({ error: "No se encontró preferenceId" });
-  }
 
-  const tokenInfo = isProbablySandboxToken();
-
-  // 1) Consultar preferencia (nos da info básica y payer si está)
   let preference = null;
   let preferenceError = null;
-  try {
-    const prefRes = await fetch(`https://api.mercadopago.com/checkout/preferences/${encodeURIComponent(targetPreferenceId)}`, {
-      headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` },
-    });
-    if (!prefRes.ok) {
-      preferenceError = await prefRes.text();
-    } else {
-      preference = await prefRes.json();
+  if (targetPreferenceId) {
+    try {
+      const prefRes = await fetch(`https://api.mercadopago.com/checkout/preferences/${encodeURIComponent(targetPreferenceId)}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!prefRes.ok) {
+        preferenceError = await prefRes.text();
+      } else {
+        preference = await prefRes.json();
+      }
+    } catch (e) {
+      preferenceError = e?.message || String(e);
     }
-  } catch (e) {
-    preferenceError = e?.message || String(e);
   }
 
-  // 2) Buscar pagos asociados por external_reference (uid:invoiceId)
-  const externalReference = invoice?.uid && invoice?.invoiceId ? `${invoice.uid}:${invoice.invoiceId}` : (invoice?.external_reference || null);
   let payments = [];
   let paymentsError = null;
   if (externalReference) {
@@ -82,7 +74,7 @@ module.exports = async function handler(req, res) {
       searchUrl.searchParams.set("limit", "5");
 
       const payRes = await fetch(searchUrl.toString(), {
-        headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (!payRes.ok) {
         paymentsError = await payRes.text();
@@ -97,9 +89,8 @@ module.exports = async function handler(req, res) {
 
   return res.status(200).json({
     ok: true,
-    tokenMode: tokenInfo.mode,
     invoice: invoice || null,
-    preferenceId: targetPreferenceId,
+    preferenceId: targetPreferenceId || null,
     preference: preference || null,
     preferenceError,
     externalReference: externalReference || null,
@@ -107,4 +98,3 @@ module.exports = async function handler(req, res) {
     paymentsError,
   });
 };
-
