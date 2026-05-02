@@ -983,6 +983,8 @@ function PantallaSuscripcion({ showToast }) {
   const [account, setAccount] = React.useState(null);
   const [settings, setSettings] = React.useState(DEFAULT_ADMIN_SETTINGS);
   const [invoices, setInvoices] = React.useState([]);
+  const [paymentResult, setPaymentResult] = React.useState(null); // ok | error | pendiente | null
+  const [lastAttempt, setLastAttempt] = React.useState(null); // { invoiceId, preferenceId, mode, planKey, at }
   const [note, setNote] = React.useState("");
   const [sending, setSending] = React.useState(false);
   const uid = auth.currentUser?.uid;
@@ -1015,6 +1017,24 @@ function PantallaSuscripcion({ showToast }) {
     cargar();
   }, [uid]);
 
+  React.useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search || "");
+      const pago = params.get("pago");
+      if (pago === "ok" || pago === "error" || pago === "pendiente") setPaymentResult(pago);
+      else setPaymentResult(null);
+    } catch {
+      setPaymentResult(null);
+    }
+
+    try {
+      const raw = window.localStorage.getItem("jbos_last_mp_attempt");
+      setLastAttempt(raw ? JSON.parse(raw) : null);
+    } catch {
+      setLastAttempt(null);
+    }
+  }, []);
+
   const planLabel = account?.currentPlanKey === "pro" ? "Plan Pro" : account?.estado === "trial" ? "Prueba" : "Plan Base";
   const estadoLabel = account?.estado === "activo" ? "Activa" : account?.estado === "trial" ? "En prueba" : "Vencida";
   const activoHasta = normalizeDateMs(account?.activoHasta || account?.trialEndsAt || account?.nextBillingAt);
@@ -1030,8 +1050,22 @@ function PantallaSuscripcion({ showToast }) {
       });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error(data.error || "No se pudo generar el pago");
+
+      try {
+        const attempt = {
+          invoiceId: data.invoiceId || null,
+          preferenceId: data.preferenceId || null,
+          mode: data.mode || null,
+          planKey: planKey || null,
+          at: Date.now(),
+        };
+        window.localStorage.setItem("jbos_last_mp_attempt", JSON.stringify(attempt));
+        setLastAttempt(attempt);
+      } catch {
+        // ignore
+      }
       if (data.mode === "sandbox") {
-        showToast("Pago en modo SANDBOX. Usa comprador y tarjeta de prueba de Mercado Pago.");
+        showToast("Pago en modo SANDBOX: entra con usuario COMPRADOR de prueba y usá tarjeta de prueba.");
       }
       window.location.href = data.url;
     } catch (error) {
@@ -1092,12 +1126,57 @@ function PantallaSuscripcion({ showToast }) {
     <Card>
       <SectionTitle>Suscripción</SectionTitle>
       <div className="space-y-3">
+        {paymentResult === "error" && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+            <p className="text-[9px] font-black uppercase tracking-widest text-rose-700">Pago rechazado</p>
+            <p className="mt-1 text-[11px] font-bold leading-relaxed text-rose-800">
+              Mercado Pago devolvió un error. En sandbox, lo más común es:
+            </p>
+            <ul className="mt-2 space-y-1 text-[11px] font-bold text-rose-800">
+              <li>Estás logueado con el usuario vendedor (tu cuenta) en vez de un comprador de prueba.</li>
+              <li>Comprador y vendedor son el mismo usuario (no se puede).</li>
+              <li>La tarjeta es de prueba, pero el comprador no es de prueba.</li>
+            </ul>
+            {lastAttempt?.invoiceId && (
+              <div className="mt-3 bg-white/70 border border-rose-200 rounded-xl p-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-rose-700">Último intento</p>
+                <p className="mt-1 text-[10px] font-black text-rose-900">Invoice: {lastAttempt.invoiceId}</p>
+                {lastAttempt.preferenceId && (
+                  <p className="text-[10px] font-black text-rose-900">Preference: {lastAttempt.preferenceId}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {paymentResult === "ok" && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-[9px] font-black uppercase tracking-widest text-emerald-700">Pago aprobado</p>
+            <p className="mt-1 text-[11px] font-bold leading-relaxed text-emerald-800">
+              Perfecto. Si el plan no cambia en unos segundos, recargá esta pantalla.
+            </p>
+          </div>
+        )}
+
+        {paymentResult === "pendiente" && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-[9px] font-black uppercase tracking-widest text-amber-700">Pago pendiente</p>
+            <p className="mt-1 text-[11px] font-bold leading-relaxed text-amber-800">
+              Mercado Pago informó que el pago quedó pendiente. Revisalo en unos minutos.
+            </p>
+          </div>
+        )}
+
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <p className="text-[9px] font-black uppercase tracking-widest text-amber-700">Importante</p>
           <p className="mt-1 text-[11px] font-bold leading-relaxed text-amber-800">
-            Si Mercado Pago abre en <span className="font-black">sandbox</span>, el pago solo funciona con comprador y tarjeta de prueba.
-            Con datos reales suele fallar.
+            Si Mercado Pago abre en <span className="font-black">SANDBOX</span>, el pago solo funciona con:
           </p>
+          <ul className="mt-2 space-y-1 text-[11px] font-bold leading-relaxed text-amber-800">
+            <li>Usuario <span className="font-black">COMPRADOR</span> de prueba.</li>
+            <li>Vendedor (tu cuenta) distinto al comprador.</li>
+            <li>Tarjeta de prueba.</li>
+          </ul>
         </div>
         <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
           <div className="grid grid-cols-2 gap-3">
