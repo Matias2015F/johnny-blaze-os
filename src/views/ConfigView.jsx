@@ -1030,6 +1030,9 @@ function PantallaSuscripcion({ showToast }) {
       });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error(data.error || "No se pudo generar el pago");
+      if (data.mode === "sandbox") {
+        showToast("Pago en modo SANDBOX. Usa comprador y tarjeta de prueba de Mercado Pago.");
+      }
       window.location.href = data.url;
     } catch (error) {
       console.error(error);
@@ -1089,6 +1092,13 @@ function PantallaSuscripcion({ showToast }) {
     <Card>
       <SectionTitle>Suscripción</SectionTitle>
       <div className="space-y-3">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-[9px] font-black uppercase tracking-widest text-amber-700">Importante</p>
+          <p className="mt-1 text-[11px] font-bold leading-relaxed text-amber-800">
+            Si Mercado Pago abre en <span className="font-black">sandbox</span>, el pago solo funciona con comprador y tarjeta de prueba.
+            Con datos reales suele fallar.
+          </p>
+        </div>
         <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
           <div className="grid grid-cols-2 gap-3">
             <div>

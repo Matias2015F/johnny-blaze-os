@@ -121,9 +121,13 @@ module.exports = async function handler(req, res) {
 
   const data = await mpRes.json();
 
+  const checkoutUrl = data.init_point || data.sandbox_init_point || null;
+  const mpMode = checkoutUrl && String(checkoutUrl).includes("sandbox.mercadopago.com.ar") ? "sandbox" : "production";
+
   await invoiceRef.set({
     preferenceId: data.id,
-    checkoutUrl: data.init_point || data.sandbox_init_point || null,
+    checkoutUrl,
+    mpMode,
     updatedAt: Date.now(),
   }, { merge: true });
 
@@ -139,6 +143,7 @@ module.exports = async function handler(req, res) {
   return res.status(200).json({
     preferenceId: data.id,
     invoiceId: invoiceRef.id,
-    url: data.init_point || data.sandbox_init_point,
+    url: checkoutUrl,
+    mode: mpMode,
   });
 };
