@@ -1120,8 +1120,8 @@ function PantallaSuscripcion({ showToast }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          preferenceId: lastAttempt?.preferenceId || null,
-          invoiceId: lastAttempt?.invoiceId || null,
+          preferenceId: lastAttempt?.preferenceId || null, invoiceId: lastAttempt?.invoiceId || account?.lastInvoiceId || null,
+          
         }),
       });
       const data = await res.json();
@@ -1169,7 +1169,7 @@ function PantallaSuscripcion({ showToast }) {
               <li>Comprador y vendedor son el mismo usuario (no se puede).</li>
               <li>La tarjeta es de prueba, pero el comprador no es de prueba.</li>
             </ul>
-            {lastAttempt?.invoiceId && (
+            true && (
               <div className="mt-3 bg-white/70 border border-rose-200 rounded-xl p-3">
                 <p className="text-[9px] font-black uppercase tracking-widest text-rose-700">Último intento</p>
                 <p className="mt-1 text-[10px] font-black text-rose-900">Invoice: {lastAttempt.invoiceId}</p>
@@ -1180,7 +1180,7 @@ function PantallaSuscripcion({ showToast }) {
             )}
             <button
               onClick={diagnosticarPago}
-              disabled={sending || (!lastAttempt?.invoiceId && !lastAttempt?.preferenceId)}
+              disabled={sending}
               className="mt-3 w-full rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
             >
               {sending ? "Consultando..." : "Diagnosticar pago"}
@@ -1236,7 +1236,7 @@ function PantallaSuscripcion({ showToast }) {
             </div>
             <button
               onClick={diagnosticarPago}
-              disabled={sending || (!lastAttempt?.invoiceId && !lastAttempt?.preferenceId)}
+              disabled={sending}
               className="mt-3 w-full rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
             >
               {sending ? "Consultando..." : "Diagnosticar pago"}
