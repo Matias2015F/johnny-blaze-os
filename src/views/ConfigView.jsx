@@ -1217,6 +1217,35 @@ function PantallaSuscripcion({ showToast }) {
             <li>Tarjeta de prueba.</li>
           </ul>
         </div>
+
+        {(paymentResult !== "error" && (lastAttempt?.invoiceId || lastAttempt?.preferenceId)) && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Último intento de pago</p>
+            <div className="mt-2 space-y-1">
+              {lastAttempt?.invoiceId && (
+                <p className="text-[10px] font-black text-slate-800 break-all">Invoice: {lastAttempt.invoiceId}</p>
+              )}
+              {lastAttempt?.preferenceId && (
+                <p className="text-[10px] font-black text-slate-800 break-all">Preference: {lastAttempt.preferenceId}</p>
+              )}
+              {lastAttempt?.at && (
+                <p className="text-[10px] font-bold text-slate-500">
+                  {new Date(Number(lastAttempt.at)).toLocaleString("es-AR")}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={diagnosticarPago}
+              disabled={sending || (!lastAttempt?.invoiceId && !lastAttempt?.preferenceId)}
+              className="mt-3 w-full rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
+            >
+              {sending ? "Consultando..." : "Diagnosticar pago"}
+            </button>
+            <p className="mt-2 text-[10px] font-bold text-slate-500">
+              Si Mercado Pago te devolvió un error pero volviste a la app sin el mensaje, podés usar este botón igual.
+            </p>
+          </div>
+        )}
         <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
