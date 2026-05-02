@@ -28,6 +28,9 @@ module.exports = async function handler(req, res) {
   if (!db) {
     return res.status(500).json({ error: "Error de configuración del servidor" });
   }
+  if (!process.env.MP_ACCESS_TOKEN) {
+    return res.status(500).json({ error: "Falta MP_ACCESS_TOKEN en el servidor" });
+  }
 
   const { uid, plan: requestedPlanKey } = req.body || {};
   if (!uid) return res.status(400).json({ error: "uid es requerido" });
