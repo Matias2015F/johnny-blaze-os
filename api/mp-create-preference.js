@@ -121,7 +121,8 @@ module.exports = async function handler(req, res) {
       failure: `${baseUrl}/?pago=error`,
       pending: `${baseUrl}/?pago=pendiente`,
     },
-    auto_return: "all",
+        auto_return: "all",
+        payer: { email: account.email || "test@testuser.com" },
     notification_url: `${baseUrl}/api/mp-webhook`,
   };
 
