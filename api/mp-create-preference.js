@@ -122,7 +122,7 @@ module.exports = async function handler(req, res) {
       pending: `${baseUrl}/?pago=pendiente`,
     },
         auto_return: "all",
-        payer: { email: account.email || "test@testuser.com" },
+            payer: { email: accessToken.startsWith("TEST-") ? (process.env.MP_TEST_PAYER_EMAIL || "test@testuser.com") : account.email },
     notification_url: `${baseUrl}/api/mp-webhook`,
   };
 
