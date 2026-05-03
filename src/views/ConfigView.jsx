@@ -1046,6 +1046,7 @@ function PantallaSuscripcion({ showToast }) {
       invoiceId: latest.invoiceId || latest.id || null,
       preferenceId: latest.preferenceId || null,
       mode: latest.mpMode || null,
+      tokenMode: latest.mercadoPagoTokenMode || null,
       planKey: latest.planKey || null,
       at: normalizeDateMs(latest.updatedAt) || normalizeDateMs(latest.createdAt) || null,
       status: latest.status || null,
@@ -1067,6 +1068,7 @@ function PantallaSuscripcion({ showToast }) {
       invoiceId: attempt.invoiceId || null,
       preferenceId: attempt.preferenceId || null,
       mode: attempt.mode || null,
+      tokenMode: attempt.tokenMode || null,
       planKey: attempt.planKey || null,
       at: attempt.at || Date.now(),
       status: attempt.status || null,
@@ -1095,6 +1097,7 @@ function PantallaSuscripcion({ showToast }) {
           invoiceId: data.invoiceId || null,
           preferenceId: data.preferenceId || null,
           planKey,
+          tokenMode: data.tokenMode || null,
           at: Date.now(),
           status: "error",
           errorMessage: data.mpMessage || data.error || null,
@@ -1108,6 +1111,7 @@ function PantallaSuscripcion({ showToast }) {
         invoiceId: data.invoiceId || null,
         preferenceId: data.preferenceId || null,
         mode: data.mode || null,
+        tokenMode: data.tokenMode || null,
         planKey,
         at: Date.now(),
       });
@@ -1183,6 +1187,10 @@ function PantallaSuscripcion({ showToast }) {
         const invoiceError = data.invoice?.errorMessage || data.invoice?.errorText || data.preferenceError || data.paymentsError;
         if (invoiceError) {
           showToast(String(invoiceError).slice(0, 180));
+          return;
+        }
+        if (data.preference) {
+          showToast("Preferencia creada, pero Mercado Pago no registro pago. Revisa que el comprador sea usuario test distinto.");
           return;
         }
         showToast("Sin pagos asociados todavia. Proba de nuevo en 30s.");
@@ -1291,6 +1299,12 @@ function PantallaSuscripcion({ showToast }) {
               )}
               {activeAttempt?.status && (
                 <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Estado: {activeAttempt.status}</p>
+              )}
+              {activeAttempt?.mode && (
+                <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Checkout: {activeAttempt.mode}</p>
+              )}
+              {activeAttempt?.tokenMode && (
+                <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Token MP: {activeAttempt.tokenMode}</p>
               )}
               {activeAttempt?.errorMessage && (
                 <p className="text-[10px] font-bold text-rose-600 break-all">{String(activeAttempt.errorMessage).slice(0, 180)}</p>

@@ -43,6 +43,12 @@ function errorResponse(res, status, payload) {
   return res.status(status).json(payload);
 }
 
+function getTokenMode(accessToken) {
+  if (String(accessToken).startsWith("TEST-")) return "sandbox";
+  if (String(accessToken).startsWith("APP_USR-")) return "production";
+  return "unknown";
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
@@ -54,6 +60,7 @@ module.exports = async function handler(req, res) {
   if (!accessToken) {
     return errorResponse(res, 500, { error: "Falta MP_ACCESS_TOKEN en el servidor" });
   }
+  const tokenMode = getTokenMode(accessToken);
 
   const { uid, plan: requestedPlanKey } = req.body || {};
   if (!uid) return errorResponse(res, 400, { error: "uid es requerido" });
@@ -98,6 +105,7 @@ module.exports = async function handler(req, res) {
     currency: plan.currency || settings.subscriptionCurrency || "ARS",
     status: "pending",
     source: "mercado_pago",
+    mercadoPagoTokenMode: tokenMode,
     externalReference,
     externalPaymentId: null,
     dueAt: now + 3 * 24 * 60 * 60 * 1000,
@@ -196,13 +204,18 @@ module.exports = async function handler(req, res) {
   }
 
   const data = await mpRes.json();
-  const checkoutUrl = data.init_point || data.sandbox_init_point || null;
+  const checkoutUrl = tokenMode === "sandbox"
+    ? (data.sandbox_init_point || data.init_point || null)
+    : (data.init_point || data.sandbox_init_point || null);
   const mpMode = checkoutUrl && String(checkoutUrl).includes("sandbox.mercadopago.com.ar") ? "sandbox" : "production";
 
   await invoiceRef.set({
     preferenceId: data.id,
     checkoutUrl,
+    initPoint: data.init_point || null,
+    sandboxInitPoint: data.sandbox_init_point || null,
     mpMode,
+    mercadoPagoTokenMode: tokenMode,
     updatedAt: Date.now(),
   }, { merge: true });
 
@@ -220,5 +233,6 @@ module.exports = async function handler(req, res) {
     invoiceId: invoiceRef.id,
     url: checkoutUrl,
     mode: mpMode,
+    tokenMode,
   });
 };
