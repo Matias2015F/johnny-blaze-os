@@ -116,6 +116,9 @@ module.exports = async function handler(req, res) {
   await invoiceRef.set(invoiceData, { merge: true });
 
   const baseUrl = BASE_URL;
+  const payerEmail = tokenMode === "sandbox"
+    ? String(process.env.MP_TEST_PAYER_EMAIL || "").trim()
+    : String(account.email || "").trim();
   const preference = {
     items: [{
       title: `Johnny Blaze OS - ${plan.label || planKey}`,
@@ -129,10 +132,12 @@ module.exports = async function handler(req, res) {
       failure: `${baseUrl}/?pago=error`,
       pending: `${baseUrl}/?pago=pendiente`,
     },
-        auto_return: "all",
-            payer: { email: accessToken.startsWith("TEST-") ? (process.env.MP_TEST_PAYER_EMAIL || "test@testuser.com") : account.email },
+    auto_return: "approved",
     notification_url: `${baseUrl}/api/mp-webhook`,
   };
+  if (payerEmail) {
+    preference.payer = { email: payerEmail };
+  }
 
   let mpRes;
   try {
@@ -176,6 +181,7 @@ module.exports = async function handler(req, res) {
       errorText,
       errorHttpStatus: mpRes.status,
       errorMessage: mpMessage || null,
+      payerEmailConfigured: Boolean(payerEmail),
       updatedAt: Date.now(),
     }, { merge: true });
 
@@ -216,6 +222,7 @@ module.exports = async function handler(req, res) {
     sandboxInitPoint: data.sandbox_init_point || null,
     mpMode,
     mercadoPagoTokenMode: tokenMode,
+    payerEmailConfigured: Boolean(payerEmail),
     updatedAt: Date.now(),
   }, { merge: true });
 
