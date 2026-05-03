@@ -30,7 +30,7 @@ function safeJsonParse(text) {
   }
 }
 
-function BASE_URL(req) {
+function _unusedGetBaseUrl(req) {
   const proto = String(req.headers["x-forwarded-proto"] || "https").split(",")[0].trim() || "https";
   const host =
     String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim()
@@ -107,7 +107,7 @@ module.exports = async function handler(req, res) {
 
   await invoiceRef.set(invoiceData, { merge: true });
 
-  const baseUrl = BASE_URL(req);
+  const baseUrl = BASE_URL;
   const preference = {
     items: [{
       title: `Johnny Blaze OS - ${plan.label || planKey}`,
