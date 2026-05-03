@@ -1,5 +1,4 @@
 // api/_lib/firebaseAdmin.js
-// Helper compatible con el sistema existente (_firebase-admin.js)
 // Soporta FIREBASE_SERVICE_ACCOUNT_B64 (base64 del JSON completo)
 // y tambien FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY
 
@@ -32,4 +31,8 @@ function getAdminDb() {
   return admin.firestore();
 }
 
-module.exports = { getAdminDb };
+function serverTimestamp() {
+  return admin.firestore.FieldValue.serverTimestamp();
+}
+
+module.exports = { getAdminDb, serverTimestamp };
