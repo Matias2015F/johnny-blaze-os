@@ -116,9 +116,6 @@ module.exports = async function handler(req, res) {
   await invoiceRef.set(invoiceData, { merge: true });
 
   const baseUrl = BASE_URL;
-  const payerEmail = tokenMode === "sandbox"
-    ? String(process.env.MP_TEST_PAYER_EMAIL || "").trim()
-    : String(account.email || "").trim();
   const preference = {
     items: [{
       title: `Johnny Blaze OS - ${plan.label || planKey}`,
@@ -135,8 +132,9 @@ module.exports = async function handler(req, res) {
     auto_return: "approved",
     notification_url: `${baseUrl}/api/mp-webhook`,
   };
-  if (payerEmail) {
-    preference.payer = { email: payerEmail };
+  if (tokenMode !== "sandbox") {
+    const payerEmail = String(account.email || "").trim();
+    if (payerEmail) preference.payer = { email: payerEmail };
   }
 
   let mpRes;
