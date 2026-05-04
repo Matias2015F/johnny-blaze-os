@@ -19,7 +19,7 @@ module.exports = async function handler(req, res) {
 
   if (!db) {
     console.error("Firebase Admin no inicializado");
-    return res.status(500).json({ error: "Error de configuración del servidor" });
+    return res.status(500).json({ error: "Error de configuracion del servidor" });
   }
 
   const { uid, plan: planKey } = req.body || {};
@@ -28,16 +28,23 @@ module.exports = async function handler(req, res) {
   }
 
   const snap = await db.collection("usuarios").doc(uid).get();
-  if (!snap.exists) return res.status(404).json({ error: "Usuario no encontrado" });
+  if (!snap.exists) {
+    return res.status(404).json({ error: "Usuario no encontrado" });
+  }
 
   const plan = PLANES[planKey];
 
-  const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
-  const preference = new Preference(client);
+  const token = process.env.MP_ACCESS_TOKEN;
+  console.log("MP_ACCESS_TOKEN prefix:", token ? token.substring(0, 20) + "..." : "UNDEFINED");
 
-  let response;
   try {
-    response = await preference.create({
+    const client = new MercadoPagoConfig({ accessToken: token });
+    const preferenceClient = new Preference(client);
+
+    const invoiceRef = db.collection("billingInvoices").doc();
+    const invoiceId = invoiceRef.id;
+
+    const response = await preferenceClient.create({
       body: {
         items: [{
           title: `Johnny Blaze OS — ${plan.label}`,
@@ -45,23 +52,38 @@ module.exports = async function handler(req, res) {
           unit_price: plan.monto,
           currency_id: "ARS",
         }],
-        external_reference: uid,
+        external_reference: `${uid}:${invoiceId}`,
         back_urls: {
           success: `${BASE_URL}/?pago=ok`,
           failure: `${BASE_URL}/?pago=error`,
           pending: `${BASE_URL}/?pago=pendiente`,
         },
         auto_return: "approved",
-        notification_url: `${BASE_URL}/api/mp-webhook`,
+        // notification_url comentada temporalmente para diagnostico
+        // notification_url: `${BASE_URL}/api/mp-webhook`,
       },
+    });
+
+    console.log("Preference creada OK:", response.id);
+
+    await invoiceRef.set({
+      uid,
+      planKey,
+      preferenceId: response.id,
+      monto: plan.monto,
+      status: "pending",
+      createdAt: Date.now(),
+    });
+
+    return res.status(200).json({
+      preferenceId: response.id,
+      url: response.sandbox_init_point || response.init_point,
     });
   } catch (err) {
     console.error("Error SDK MP:", JSON.stringify(err));
-    return res.status(502).json({ error: "Error al conectar con Mercado Pago", detail: String(err?.message || err) });
+    return res.status(502).json({
+      error: "Error al conectar con Mercado Pago",
+      mpError: err.message || JSON.stringify(err),
+    });
   }
-
-  return res.status(200).json({
-    preferenceId: response.id,
-    url: response.sandbox_init_point || response.init_point,
-  });
 };
