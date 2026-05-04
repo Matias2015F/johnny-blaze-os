@@ -179,7 +179,6 @@ module.exports = async function handler(req, res) {
       errorText,
       errorHttpStatus: mpRes.status,
       errorMessage: mpMessage || null,
-      payerEmailConfigured: Boolean(payerEmail),
       updatedAt: Date.now(),
     }, { merge: true });
 
@@ -220,7 +219,6 @@ module.exports = async function handler(req, res) {
     sandboxInitPoint: data.sandbox_init_point || null,
     mpMode,
     mercadoPagoTokenMode: tokenMode,
-    payerEmailConfigured: Boolean(payerEmail),
     updatedAt: Date.now(),
   }, { merge: true });
 
