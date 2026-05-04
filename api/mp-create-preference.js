@@ -47,6 +47,9 @@ module.exports = async function handler(req, res) {
     return res.status(502).json({ error: `MP ${mpRes.status}: ${cause}` });
   }
 
+  console.log("MP sandbox_init_point:", body.sandbox_init_point);
+  console.log("MP init_point:", body.init_point);
+
   return res.status(200).json({
     preferenceId: body.id,
     url: body.sandbox_init_point || body.init_point,
