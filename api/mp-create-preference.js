@@ -43,8 +43,9 @@ module.exports = async function handler(req, res) {
 
   const body = await mpRes.json();
   if (!mpRes.ok) {
+    const cause = body.cause?.[0]?.description || body.message || body.error || "Error MP";
     console.error("MP error:", mpRes.status, JSON.stringify(body));
-    return res.status(502).json({ error: body.message || body.error || "Error MP", mpStatus: mpRes.status });
+    return res.status(502).json({ error: `MP ${mpRes.status}: ${cause}` });
   }
 
   return res.status(200).json({
