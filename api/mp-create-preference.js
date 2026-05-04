@@ -56,8 +56,8 @@ module.exports = async function handler(req, res) {
 
   if (!mpRes.ok) {
     const errorText = await mpRes.text();
-    console.error("Error MP:", mpRes.status, errorText.slice(0, 300));
-    return res.status(502).json({ error: "Error al conectar con Mercado Pago" });
+    console.error("Error MP:", mpRes.status, errorText.slice(0, 500));
+    return res.status(502).json({ error: "Error al conectar con Mercado Pago", mpStatus: mpRes.status, mpError: errorText.slice(0, 300) });
   }
 
   const data = await mpRes.json();
