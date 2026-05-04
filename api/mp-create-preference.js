@@ -5,6 +5,8 @@ try {
   console.error("ERROR al inicializar Firebase Admin:", initError.message);
 }
 
+const { MercadoPagoConfig, Preference } = require("mercadopago");
+
 const PLANES = {
   base: { label: "Plan Base", monto: 5000, dias: 30 },
   pro:  { label: "Plan Pro",  monto: 12000, dias: 30 },
@@ -30,39 +32,36 @@ module.exports = async function handler(req, res) {
 
   const plan = PLANES[planKey];
 
-  const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      items: [{
-        title: `Johnny Blaze OS — ${plan.label}`,
-        quantity: 1,
-        unit_price: plan.monto,
-        currency_id: "ARS",
-      }],
-      external_reference: uid,
-      back_urls: {
-        success: `${BASE_URL}/?pago=ok`,
-        failure: `${BASE_URL}/?pago=error`,
-        pending: `${BASE_URL}/?pago=pendiente`,
-      },
-      auto_return: "approved",
-      notification_url: `${BASE_URL}/api/mp-webhook`,
-    }),
-  });
+  const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN });
+  const preference = new Preference(client);
 
-  if (!mpRes.ok) {
-    const errorText = await mpRes.text();
-    console.error("Error MP:", mpRes.status, errorText.slice(0, 500));
-    return res.status(502).json({ error: "Error al conectar con Mercado Pago", mpStatus: mpRes.status, mpError: errorText.slice(0, 300) });
+  let response;
+  try {
+    response = await preference.create({
+      body: {
+        items: [{
+          title: `Johnny Blaze OS — ${plan.label}`,
+          quantity: 1,
+          unit_price: plan.monto,
+          currency_id: "ARS",
+        }],
+        external_reference: uid,
+        back_urls: {
+          success: `${BASE_URL}/?pago=ok`,
+          failure: `${BASE_URL}/?pago=error`,
+          pending: `${BASE_URL}/?pago=pendiente`,
+        },
+        auto_return: "approved",
+        notification_url: `${BASE_URL}/api/mp-webhook`,
+      },
+    });
+  } catch (err) {
+    console.error("Error SDK MP:", JSON.stringify(err));
+    return res.status(502).json({ error: "Error al conectar con Mercado Pago", detail: String(err?.message || err) });
   }
 
-  const data = await mpRes.json();
   return res.status(200).json({
-    preferenceId: data.id,
-    url: data.sandbox_init_point || data.init_point,
+    preferenceId: response.id,
+    url: response.sandbox_init_point || response.init_point,
   });
 };
