@@ -109,7 +109,7 @@ function PantallaBloqueo({ account, settings }) {
         body: JSON.stringify({ uid: auth.currentUser.uid, plan: planKey }),
       });
       const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error || "Error al generar el link de pago");
+      if (!res.ok || !data.url) throw new Error((data.detail || data.error || "Error al generar el link de pago"));
       window.location.href = data.url;
     } catch (e) {
       setError(e.message);
