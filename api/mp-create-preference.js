@@ -19,9 +19,6 @@ module.exports = async function handler(req, res) {
   const { uid, plan } = req.body || {};
   if (!uid || !PLANES[plan]) return res.status(400).json({ error: "uid y plan requeridos" });
 
-  const snap = await db.collection("usuarios").doc(uid).get();
-  if (!snap.exists) return res.status(404).json({ error: "Usuario no encontrado" });
-
   const token = process.env.MP_ACCESS_TOKEN;
   if (!token) return res.status(500).json({ error: "MP_ACCESS_TOKEN no configurado" });
 
