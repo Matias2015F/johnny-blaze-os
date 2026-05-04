@@ -1,89 +1,54 @@
 let db;
 try {
   db = require("./_firebase-admin.js").db;
-} catch (initError) {
-  console.error("ERROR al inicializar Firebase Admin:", initError.message);
+} catch (e) {
+  console.error("Firebase Admin error:", e.message);
 }
 
-const { MercadoPagoConfig, Preference } = require("mercadopago");
-
 const PLANES = {
-  base: { label: "Plan Base", monto: 5000, dias: 30 },
-  pro:  { label: "Plan Pro",  monto: 12000, dias: 30 },
+  base: { label: "Plan Base", monto: 5000 },
+  pro:  { label: "Plan Pro",  monto: 12000 },
 };
 
 const BASE_URL = "https://johnny-blaze-os.vercel.app";
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
+  if (!db) return res.status(500).json({ error: "Firebase no inicializado" });
 
-  if (!db) {
-    console.error("Firebase Admin no inicializado");
-    return res.status(500).json({ error: "Error de configuracion del servidor" });
-  }
-
-  const { uid, plan: planKey } = req.body || {};
-  if (!uid || !PLANES[planKey]) {
-    return res.status(400).json({ error: "uid y plan son requeridos" });
-  }
+  const { uid, plan } = req.body || {};
+  if (!uid || !PLANES[plan]) return res.status(400).json({ error: "uid y plan requeridos" });
 
   const snap = await db.collection("usuarios").doc(uid).get();
-  if (!snap.exists) {
-    return res.status(404).json({ error: "Usuario no encontrado" });
-  }
-
-  const plan = PLANES[planKey];
+  if (!snap.exists) return res.status(404).json({ error: "Usuario no encontrado" });
 
   const token = process.env.MP_ACCESS_TOKEN;
-  console.log("MP_ACCESS_TOKEN prefix:", token ? token.substring(0, 20) + "..." : "UNDEFINED");
+  if (!token) return res.status(500).json({ error: "MP_ACCESS_TOKEN no configurado" });
 
-  try {
-    const client = new MercadoPagoConfig({ accessToken: token });
-    const preferenceClient = new Preference(client);
-
-    const invoiceRef = db.collection("billingInvoices").doc();
-    const invoiceId = invoiceRef.id;
-
-    const response = await preferenceClient.create({
-      body: {
-        items: [{
-          title: `Johnny Blaze OS — ${plan.label}`,
-          quantity: 1,
-          unit_price: plan.monto,
-          currency_id: "ARS",
-        }],
-        external_reference: `${uid}:${invoiceId}`,
-        back_urls: {
-          success: `${BASE_URL}/?pago=ok`,
-          failure: `${BASE_URL}/?pago=error`,
-          pending: `${BASE_URL}/?pago=pendiente`,
-        },
-        auto_return: "approved",
-        // notification_url comentada temporalmente para diagnostico
-        // notification_url: `${BASE_URL}/api/mp-webhook`,
+  const p = PLANES[plan];
+  const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      items: [{ title: `Johnny Blaze OS — ${p.label}`, quantity: 1, unit_price: p.monto, currency_id: "ARS" }],
+      external_reference: uid,
+      back_urls: {
+        success: `${BASE_URL}/?pago=ok`,
+        failure: `${BASE_URL}/?pago=error`,
+        pending: `${BASE_URL}/?pago=pendiente`,
       },
-    });
+      auto_return: "approved",
+    }),
+  });
 
-    console.log("Preference creada OK:", response.id);
-
-    await invoiceRef.set({
-      uid,
-      planKey,
-      preferenceId: response.id,
-      monto: plan.monto,
-      status: "pending",
-      createdAt: Date.now(),
-    });
-
-    return res.status(200).json({
-      preferenceId: response.id,
-      url: response.sandbox_init_point || response.init_point,
-    });
-  } catch (err) {
-    console.error("Error SDK MP:", JSON.stringify(err));
-    return res.status(502).json({
-      error: "Error al conectar con Mercado Pago",
-      mpError: err.message || JSON.stringify(err),
-    });
+  const body = await mpRes.json();
+  if (!mpRes.ok) {
+    console.error("MP error:", mpRes.status, JSON.stringify(body));
+    return res.status(502).json({ error: body.message || body.error || "Error MP", mpStatus: mpRes.status });
   }
+
+  return res.status(200).json({
+    preferenceId: body.id,
+    url: body.sandbox_init_point || body.init_point,
+  });
 };
