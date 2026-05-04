@@ -29,12 +29,14 @@ module.exports = async function handler(req, res) {
     body: JSON.stringify({
       items: [{ title: `Johnny Blaze OS — ${p.label}`, quantity: 1, unit_price: p.monto, currency_id: "ARS" }],
       external_reference: uid,
+      metadata: { uid },
       back_urls: {
         success: `${BASE_URL}/?pago=ok`,
         failure: `${BASE_URL}/?pago=error`,
         pending: `${BASE_URL}/?pago=pendiente`,
       },
       auto_return: "approved",
+      notification_url: `${BASE_URL}/api/mp-webhook`,
     }),
   });
 
