@@ -683,19 +683,19 @@ export default function TallerPanel() {
             <span className={`w-1.5 h-1.5 rounded-full ${syncStatus === "synced" ? "bg-green-500" : syncStatus === "syncing" ? "bg-yellow-400 animate-pulse" : "bg-red-400"}`} />
             {syncStatus === "synced" ? "Guardado" : syncStatus === "syncing" ? "Guardando..." : "Error al guardar"}
           </div>
-          <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "home" ? "text-blue-400 bg-blue-500/20 scale-105" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "home" ? "text-blue-400 bg-blue-500/20 scale-105 shadow-lg shadow-blue-500/20" : "text-slate-500 hover:text-slate-300"}`}>
             <Wrench size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Inicio</span>
           </button>
-          <button onClick={() => setView("ordenes")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "ordenes" ? "text-blue-400 bg-blue-500/20 scale-105" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("ordenes")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "ordenes" ? "text-blue-400 bg-blue-500/20 scale-105 shadow-lg shadow-blue-500/20" : "text-slate-500 hover:text-slate-300"}`}>
             <Clock size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Trabajos</span>
           </button>
-          <button onClick={() => setView("historial")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "historial" || view === "perfilMoto" ? "text-blue-400 bg-blue-500/20 scale-105" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("historial")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "historial" || view === "perfilMoto" ? "text-blue-400 bg-blue-500/20 scale-105 shadow-lg shadow-blue-500/20" : "text-slate-500 hover:text-slate-300"}`}>
             <History size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Historial</span>
           </button>
-          <button onClick={() => setView("pagosView")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "pagosView" ? "text-blue-400 bg-blue-500/20 scale-105" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("pagosView")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "pagosView" ? "text-blue-400 bg-blue-500/20 scale-105 shadow-lg shadow-blue-500/20" : "text-slate-500 hover:text-slate-300"}`}>
             <DollarSign size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Pagos</span>
           </button>
-          <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "config" ? "text-blue-400 bg-blue-500/20 scale-105" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "config" ? "text-blue-400 bg-blue-500/20 scale-105 shadow-lg shadow-blue-500/20" : "text-slate-500 hover:text-slate-300"}`}>
             <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Más</span>
           </button>
         </nav>

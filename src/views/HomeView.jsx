@@ -208,74 +208,75 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
       </div>
 
       {alertasService.length > 0 && (
-        <div className="space-y-3">
-          <p className="flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-widest text-yellow-400">
-            <Bell size={12} /> Próximos service
-          </p>
-          {alertasService.map((recordatorio) => (
-            <div
-              key={recordatorio.id}
-              className={`space-y-3 rounded-[2rem] border p-4 ${
-                recordatorio.estado === "service_vencido"
-                  ? "border-red-500/30 bg-red-500/10"
-                  : "border-yellow-500/30 bg-yellow-500/10"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-black uppercase tracking-tight text-white">
-                    {recordatorio.moto?.patente || "---"} · {recordatorio.moto?.marca || ""} {recordatorio.moto?.modelo || ""}
-                  </p>
-                  <p className={`mt-1 text-[10px] font-black uppercase ${recordatorio.estado === "service_vencido" ? "text-red-300" : "text-yellow-300"}`}>
-                    {recordatorio.estado === "service_vencido" ? "Service vencido" : "Próximo service"} · {recordatorio.descripcion}
-                  </p>
-                  {recordatorio.testMode && (
-                    <span className="mt-1 inline-block rounded bg-purple-500 px-2 py-0.5 text-[8px] font-black uppercase text-white">Prueba</span>
-                  )}
-                </div>
-                <button
-                  onClick={() => {
-                    const msg = generarMensajeWhatsApp(recordatorio.cliente, recordatorio.moto, recordatorio, config);
-                    const tel = recordatorio.cliente?.whatsapp || recordatorio.cliente?.telefono || recordatorio.cliente?.tel || "";
-                    trackEvent("recordatorio_whatsapp", {
-                      screen: "home",
-                      entityType: "recordatorio",
-                      entityId: recordatorio.id,
-                      metadata: { estado: recordatorio.estado, testMode: !!recordatorio.testMode },
-                    }).catch(console.error);
-                    window.open(`https://wa.me/${tel.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
-                    LS.updateDoc("recordatorios", recordatorio.id, { estado: "avisado", enviado: true });
-                  }}
-                  className="flex shrink-0 items-center gap-1 rounded-xl bg-emerald-500 px-3 py-2 text-[9px] font-black uppercase text-white active:scale-95"
-                >
-                  <MessageCircle size={12} /> WhatsApp
-                </button>
-              </div>
+        <div className="rounded-[2.5rem] border border-yellow-500/30 bg-gradient-to-br from-yellow-500/15 to-orange-500/10 p-5 shadow-xl backdrop-blur space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-yellow-300">
+              <Bell size={16} /> {alertasService.length} Notificación{alertasService.length !== 1 ? 'es' : ''} pendiente{alertasService.length !== 1 ? 's' : ''}
+            </p>
+          </div>
 
-              {recordatorio.kmObjetivo && (
-                <p className="text-[9px] font-bold text-slate-300">
-                  Km actual: {(recordatorio.moto?.kilometrajeActual || recordatorio.moto?.km || 0).toLocaleString("es-AR")} · Objetivo: {recordatorio.kmObjetivo.toLocaleString("es-AR")} km
-                </p>
-              )}
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => LS.updateDoc("recordatorios", recordatorio.id, { estado: "hecho" })}
-                  className="flex-1 rounded-xl bg-white/10 py-2 text-[9px] font-black uppercase text-white active:scale-95"
-                >
-                  Marcar hecho
-                </button>
-                {recordatorio.testMode && (
+          <div className="space-y-3">
+            {alertasService.map((recordatorio) => (
+              <div
+                key={recordatorio.id}
+                className={`rounded-2xl border p-4 space-y-3 ${
+                  recordatorio.estado === "service_vencido"
+                    ? "border-red-500/40 bg-red-500/25"
+                    : "border-yellow-500/40 bg-yellow-500/20"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-black uppercase tracking-tight text-white">
+                      {recordatorio.moto?.patente || "---"} · {recordatorio.moto?.marca || ""} {recordatorio.moto?.modelo || ""}
+                    </p>
+                    <p className="mt-1 text-xs text-white font-bold">👤 {recordatorio.cliente?.nombre || "Cliente"}</p>
+                    <p className={`mt-2 text-[10px] font-black uppercase ${recordatorio.estado === "service_vencido" ? "text-red-300" : "text-yellow-300"}`}>
+                      {recordatorio.estado === "service_vencido" ? "⚠️ SERVICE VENCIDO" : "🔔 PRÓXIMO SERVICE"} · {recordatorio.descripcion}
+                    </p>
+                    {recordatorio.kmObjetivo && (
+                      <p className="mt-2 text-[9px] text-slate-200">
+                        Km actual: <span className="font-black text-white">{(recordatorio.moto?.kilometrajeActual || recordatorio.moto?.km || 0).toLocaleString("es-AR")}</span> / Objetivo: <span className="font-black text-white">{recordatorio.kmObjetivo.toLocaleString("es-AR")} km</span>
+                      </p>
+                    )}
+                  </div>
                   <button
-                    onClick={() => LS.deleteDoc("recordatorios", recordatorio.id)}
-                    className="rounded-xl bg-red-500/20 px-3 py-2 text-[9px] font-black uppercase text-red-300 active:scale-95"
+                    onClick={() => LS.updateDoc("recordatorios", recordatorio.id, { estado: "hecho" })}
+                    className="shrink-0 text-slate-400 hover:text-red-400 text-2xl font-black active:scale-110 transition-colors"
+                    title="Cerrar notificación"
                   >
-                    Eliminar prueba
+                    ✕
                   </button>
-                )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      const msg = generarMensajeWhatsApp(recordatorio.cliente, recordatorio.moto, recordatorio, config);
+                      const tel = recordatorio.cliente?.whatsapp || recordatorio.cliente?.telefono || recordatorio.cliente?.tel || "";
+                      trackEvent("recordatorio_whatsapp", {
+                        screen: "home",
+                        entityType: "recordatorio",
+                        entityId: recordatorio.id,
+                        metadata: { estado: recordatorio.estado, testMode: !!recordatorio.testMode },
+                      }).catch(console.error);
+                      window.open(`https://wa.me/${tel.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
+                      LS.updateDoc("recordatorios", recordatorio.id, { estado: "avisado", enviado: true });
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white py-3 px-3 text-[9px] font-black uppercase active:scale-95 transition-all shadow-lg"
+                  >
+                    <MessageCircle size={14} /> WhatsApp
+                  </button>
+                  <button
+                    onClick={() => LS.updateDoc("recordatorios", recordatorio.id, { estado: "hecho" })}
+                    className="rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 py-3 px-3 text-[9px] font-black uppercase active:scale-95 transition-all"
+                  >
+                    Marcar leído
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
