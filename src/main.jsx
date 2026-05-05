@@ -16,5 +16,9 @@ if ("serviceWorker" in navigator) {
       .catch((error) => {
         console.error("No se pudo registrar el service worker", error);
       });
+
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      window.location.reload();
+    });
   });
 }
