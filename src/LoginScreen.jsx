@@ -5,7 +5,7 @@ import {
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
 } from "firebase/auth";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, Wrench } from "lucide-react";
 
 export default function LoginScreen() {
   const [email, setEmail]       = useState("");
@@ -54,121 +54,157 @@ export default function LoginScreen() {
     setLoading(false);
   };
 
-  const Header = () => (
-    <div style={{ marginBottom: "28px" }}>
-      <h2 style={s.title}>JOHNNY BLAZE</h2>
-      <p style={s.sub}>Sistema de Gestión para Talleres</p>
-    </div>
-  );
-
-  const MsgLine = () => msg.text
-    ? <p style={{ ...s.msg, color: msg.ok ? "#22c55e" : "#ef4444" }}>{msg.text}</p>
-    : null;
-
-  // RECUPERAR
+  // ── RECUPERAR CONTRASEÑA ───────────────────────────────────────────
   if (modo === "recuperar") return (
-    <div style={s.container}>
-      <div style={s.card}>
-        <Header />
-        <p style={{ color: "#94a3b8", fontSize: "11px", marginBottom: "18px", fontWeight: "bold", lineHeight: "1.5" }}>
-          Ingresá tu correo y te enviamos un link para restablecer la contraseña.
-        </p>
-        <input
-          type="email"
-          placeholder="Correo electrónico"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          style={s.input}
-        />
-        <MsgLine />
-        <button onClick={handleRecuperar} style={s.button} disabled={loading}>
-          {loading ? "ENVIANDO..." : "ENVIAR LINK DE RECUPERACIÓN"}
-        </button>
-        <button onClick={() => reset("login")} style={s.back}>
-          <ArrowLeft size={14} style={{ display: "inline", marginRight: 4 }} />
-          Volver
-        </button>
+    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-5">
+      <div className="w-full max-w-sm">
+        <Logo />
+        <div className="mt-8 rounded-3xl border border-white/8 bg-[#141414] p-7 space-y-5">
+          <div>
+            <p className="text-white font-black text-base">Recuperar contraseña</p>
+            <p className="text-slate-500 text-xs mt-1">Te enviamos un link al correo para restablecer tu acceso.</p>
+          </div>
+          <Field
+            type="email"
+            placeholder="Correo electrónico"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+          />
+          <MsgLine msg={msg} />
+          <Btn onClick={handleRecuperar} disabled={loading}>
+            {loading ? "Enviando..." : "Enviar link de recuperación"}
+          </Btn>
+          <button
+            onClick={() => reset("login")}
+            className="flex items-center gap-1.5 text-slate-500 text-xs font-bold hover:text-slate-300 transition-colors"
+          >
+            <ArrowLeft size={13} /> Volver al inicio
+          </button>
+        </div>
       </div>
     </div>
   );
 
-  // LOGIN / REGISTRO
+  // ── LOGIN / REGISTRO ───────────────────────────────────────────────
   return (
-    <div style={s.container}>
-      <div style={s.card}>
-        <Header />
+    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center p-5">
+      <div className="w-full max-w-sm">
+        <Logo />
 
-        <div style={{ display: "flex", gap: "6px", marginBottom: "20px" }}>
-          <button onClick={() => reset("login")}    style={{ ...s.tab, ...(modo === "login"    ? s.tabActive : {}) }}>Ingresar</button>
-          <button onClick={() => reset("registro")} style={{ ...s.tab, ...(modo === "registro" ? s.tabActive : {}) }}>Crear cuenta</button>
+        {/* Tabs */}
+        <div className="mt-8 flex gap-2 p-1 rounded-2xl bg-[#141414] border border-white/8">
+          <Tab active={modo === "login"}    onClick={() => reset("login")}>Ya tengo cuenta</Tab>
+          <Tab active={modo === "registro"} onClick={() => reset("registro")}>Soy nuevo</Tab>
         </div>
 
-        <input
-          type="email"
-          placeholder="Correo electrónico"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          style={s.input}
-        />
-
-        <div style={{ position: "relative" }}>
-          <input
-            type={showPass ? "text" : "password"}
-            placeholder="Contraseña"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleAuth()}
-            style={s.input}
+        {/* Formulario */}
+        <div className="mt-3 rounded-3xl border border-white/8 bg-[#141414] p-7 space-y-4">
+          <Field
+            type="email"
+            label="Correo electrónico"
+            placeholder="hola@taller.com"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
           />
-          <button onClick={() => setShowPass(!showPass)} style={s.eyeBtn}>
-            {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
+          <div className="relative">
+            <Field
+              type={showPass ? "text" : "password"}
+              label="Contraseña"
+              placeholder="Mínimo 6 caracteres"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleAuth()}
+            />
+            <button
+              onClick={() => setShowPass(!showPass)}
+              className="absolute right-4 bottom-[14px] text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              {showPass ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
+          </div>
+
+          <MsgLine msg={msg} />
+
+          <Btn onClick={handleAuth} disabled={loading}>
+            {loading
+              ? "Procesando..."
+              : modo === "login"
+                ? "Ingresar al taller"
+                : "Crear mi cuenta gratis"}
+          </Btn>
+
+          {modo === "login" && (
+            <button
+              onClick={() => reset("recuperar")}
+              className="w-full text-center text-slate-600 text-[11px] font-bold hover:text-slate-400 transition-colors"
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
+          )}
         </div>
-
-        <MsgLine />
-
-        <button onClick={handleAuth} style={s.button} disabled={loading}>
-          {loading ? "PROCESANDO..." : modo === "login" ? "INGRESAR AL TALLER" : "CREAR MI CUENTA GRATIS"}
-        </button>
-
-        {modo === "login" && (
-          <button onClick={() => reset("recuperar")} style={s.reset}>
-            ¿Olvidaste tu contraseña?
-          </button>
-        )}
       </div>
     </div>
   );
 }
 
-const s = {
-  container: {
-    minHeight: "100vh",
-    background: "#0b0b0b",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    color: "white",
-    fontFamily: "sans-serif",
-    padding: "16px",
-  },
-  card: {
-    background: "#151515",
-    padding: "36px 32px",
-    borderRadius: "24px",
-    width: "100%",
-    maxWidth: "360px",
-    textAlign: "center",
-    border: "1px solid #222",
-  },
-  title:     { fontSize: "28px", fontWeight: "900", letterSpacing: "-1px", margin: 0 },
-  sub:       { color: "#f97316", fontSize: "10px", fontWeight: "bold", marginTop: "5px" },
-  input:     { width: "100%", padding: "14px", marginBottom: "12px", borderRadius: "12px", border: "1px solid #333", background: "#000", color: "white", outline: "none", boxSizing: "border-box", fontSize: "14px" },
-  button:    { width: "100%", padding: "16px", borderRadius: "12px", border: "none", cursor: "pointer", fontWeight: "900", marginTop: "10px", background: "#f97316", color: "white", fontSize: "12px", letterSpacing: "0.5px" },
-  eyeBtn:    { position: "absolute", right: "12px", top: "16px", background: "none", border: "none", color: "#666", cursor: "pointer" },
-  reset:     { marginTop: "12px", background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "10px", fontWeight: "bold", textDecoration: "underline", display: "block", width: "100%", textAlign: "center" },
-  back:      { marginTop: "14px", background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "11px", fontWeight: "bold", display: "block", width: "100%", textAlign: "center" },
-  msg:       { fontSize: "11px", marginBottom: "12px", fontWeight: "bold", lineHeight: "1.5" },
-  tab:       { flex: 1, padding: "10px", borderRadius: "10px", border: "1px solid #333", background: "#000", color: "#666", fontSize: "11px", fontWeight: "900", cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.5px" },
-  tabActive: { background: "#f97316", color: "white", border: "1px solid #f97316" },
-};
+// ── Componentes internos ─────────────────────────────────────────────
+
+function Logo() {
+  return (
+    <div className="text-center">
+      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-orange-500 mb-4">
+        <Wrench size={28} className="text-white" />
+      </div>
+      <h1 className="text-3xl font-black tracking-tight text-white">JOHNNY BLAZE</h1>
+      <p className="text-orange-500 text-[11px] font-bold tracking-widest uppercase mt-1">Sistema de Gestión para Talleres</p>
+    </div>
+  );
+}
+
+function Tab({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-1 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+        active
+          ? "bg-orange-500 text-white shadow"
+          : "text-slate-500 hover:text-slate-300"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Field({ label, ...props }) {
+  return (
+    <div className="space-y-1.5">
+      {label && <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">{label}</p>}
+      <input
+        {...props}
+        className="w-full bg-black/60 border border-white/10 rounded-2xl px-4 py-3.5 text-white text-sm placeholder-slate-600 outline-none focus:border-orange-500/60 focus:bg-black transition-all"
+      />
+    </div>
+  );
+}
+
+function Btn({ onClick, disabled, children }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full bg-orange-500 hover:bg-orange-400 active:scale-[0.98] disabled:opacity-50 text-white font-black text-sm py-4 rounded-2xl transition-all shadow-lg shadow-orange-500/20"
+    >
+      {children}
+    </button>
+  );
+}
+
+function MsgLine({ msg }) {
+  if (!msg.text) return null;
+  return (
+    <p className={`text-xs font-bold leading-relaxed ${msg.ok ? "text-green-400" : "text-red-400"}`}>
+      {msg.text}
+    </p>
+  );
+}

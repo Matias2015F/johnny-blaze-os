@@ -43,6 +43,9 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const [motivoManual, setMotivoManual] = useState("");
   const [maxInput, setMaxInput] = useState("");
   const [ultimoAviso, setUltimoAviso] = useState(0);
+  const [editingClient, setEditingClient] = useState(false);
+  const [clientNombre, setClientNombre] = useState("");
+  const [clientTel, setClientTel] = useState("");
 
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
 
@@ -50,6 +53,11 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     const id = setInterval(() => setTiempoActual(obtenerTiempoActual(order)), 1000);
     return () => clearInterval(id);
   }, [order]);
+
+  useEffect(() => {
+    if (client?.nombre) setClientNombre(client.nombre);
+    if (client?.tel) setClientTel(client.tel);
+  }, [client?.id]);
 
   useEffect(() => {
     if (!order?.id) return;
@@ -60,6 +68,18 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       metadata: { estado: order.estado || "" },
     }).catch(console.error);
   }, [order?.id]);
+
+  const guardarCliente = () => {
+    if (!client?.id) return;
+    LS.updateDoc("clientes", client.id, {
+      nombre: clientNombre || client.nombre,
+      tel: clientTel || client.tel,
+      telefono: clientTel || client.telefono || client.tel,
+      whatsapp: clientTel || client.whatsapp || client.tel,
+    });
+    setEditingClient(false);
+    showToast("Cliente actualizado");
+  };
 
   useEffect(() => {
     if (!order?.cronometroActivo || order?.trabajoSinCronometro) return;
@@ -246,13 +266,53 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           </div>
 
           <div className="flex items-end justify-between gap-4">
-            <div>
+            <div className="flex-1">
               <div className="flex items-center gap-3">
                 <h2 className="text-4xl font-black leading-none tracking-tighter uppercase">{bike?.patente || "---"}</h2>
                 {isLocked && <ShieldCheck className="text-blue-400" size={22} />}
               </div>
               <p className="mt-1 text-[10px] font-black uppercase tracking-[0.25em] text-blue-400">{trabajoLabel}</p>
-              <p className="mt-2 text-sm font-black uppercase tracking-tight text-slate-300">{client?.nombre || "Cliente desconocido"}</p>
+
+              {editingClient ? (
+                <div className="mt-3 space-y-2 rounded-2xl bg-slate-800/50 p-3 border border-slate-700">
+                  <input
+                    type="text"
+                    value={clientNombre}
+                    onChange={e => setClientNombre(e.target.value)}
+                    placeholder="Nombre del cliente"
+                    className="w-full bg-black/60 text-white text-sm px-3 py-2 rounded-lg border border-white/10 focus:border-blue-500 outline-none"
+                  />
+                  <input
+                    type="tel"
+                    value={clientTel}
+                    onChange={e => setClientTel(e.target.value)}
+                    placeholder="Teléfono"
+                    className="w-full bg-black/60 text-white text-sm px-3 py-2 rounded-lg border border-white/10 focus:border-blue-500 outline-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={guardarCliente}
+                      className="flex-1 bg-blue-600 text-white text-xs font-black py-2 rounded-lg hover:bg-blue-500 active:scale-95"
+                    >
+                      Guardar
+                    </button>
+                    <button
+                      onClick={() => setEditingClient(false)}
+                      className="flex-1 bg-slate-700 text-slate-200 text-xs font-black py-2 rounded-lg hover:bg-slate-600 active:scale-95"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setEditingClient(true)}
+                  className="mt-2 text-left w-full group"
+                >
+                  <p className="text-sm font-black uppercase tracking-tight text-slate-300 group-hover:text-blue-400 transition-colors">{clientNombre || "Cliente desconocido"}</p>
+                  <p className="text-[9px] text-slate-500 group-hover:text-slate-400 transition-colors">{clientTel || "Sin teléfono"}</p>
+                </button>
+              )}
             </div>
             <div className="text-right">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ganancia</p>

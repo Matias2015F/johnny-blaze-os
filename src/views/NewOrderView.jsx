@@ -96,8 +96,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Patente</label>
             <input
-              disabled={!!prefill}
-              className={`w-full border rounded-2xl p-4 font-black uppercase outline-none ${prefill ? "bg-black/30 text-zinc-600 border-white/5" : "bg-zinc-900 text-white border-white/5 focus:border-blue-600"}`}
+              className="w-full border rounded-2xl p-4 font-black uppercase outline-none bg-zinc-900 text-white border-white/5 focus:border-blue-600"
               value={f.patente}
               onChange={(e) => setF({ ...f, patente: e.target.value })}
             />
@@ -129,8 +128,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
         <div className="space-y-1">
           <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Cliente</label>
           <input
-            disabled={!!prefill}
-            className={`w-full border rounded-2xl p-4 font-black outline-none ${prefill ? "bg-black/30 text-zinc-600 border-white/5" : "bg-zinc-900 text-white border-white/5 focus:border-blue-600"}`}
+            className="w-full border rounded-2xl p-4 font-black outline-none bg-zinc-900 text-white border-white/5 focus:border-blue-600"
             placeholder="Nombre completo"
             value={f.nombre}
             onChange={(e) => setF({ ...f, nombre: e.target.value })}
@@ -139,8 +137,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
         <div className="space-y-1">
           <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Teléfono</label>
           <input
-            disabled={!!prefill}
-            className={`w-full border rounded-2xl p-4 font-black outline-none ${prefill ? "bg-black/30 text-zinc-600 border-white/5" : "bg-zinc-900 text-white border-white/5 focus:border-blue-600"}`}
+            className="w-full border rounded-2xl p-4 font-black outline-none bg-zinc-900 text-white border-white/5 focus:border-blue-600"
             placeholder="Ej: 3434123456"
             value={f.tel}
             onChange={(e) => setF({ ...f, tel: e.target.value })}
