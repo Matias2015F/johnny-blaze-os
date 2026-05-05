@@ -55,11 +55,6 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   }, [order]);
 
   useEffect(() => {
-    if (client?.nombre) setClientNombre(client.nombre);
-    if (client?.tel) setClientTel(client.tel);
-  }, [client?.id]);
-
-  useEffect(() => {
     if (!order?.id) return;
     trackEvent("open_detalle_trabajo", {
       screen: "detalleOrden",
@@ -120,6 +115,12 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const saldoPendiente = res.total - totalPagado;
   const isLocked = !!order.pdfEntregado;
   const trabajoLabel = order.numeroTrabajo || `#${order.id.slice(-4).toUpperCase()}`;
+
+  // Sincronizar datos del cliente cuando cambia
+  useEffect(() => {
+    if (client?.nombre) setClientNombre(client.nombre);
+    if (client?.tel) setClientTel(client.tel);
+  }, [client?.id]);
   const currentStepIndex = Math.max(STEP_UI.findIndex((step) => step.id === order.estado), 0);
 
   const dificultades = (order.tareas || []).map((t) => t.dificultad || "normal");

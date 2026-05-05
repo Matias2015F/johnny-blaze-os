@@ -677,25 +677,25 @@ export default function TallerPanel() {
       )}
 
       {NAV_VIEWS.includes(view) && (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-black/95 backdrop-blur-3xl border-t border-white/10 px-2 py-4 flex justify-around items-center z-50 rounded-t-[3rem] shadow-2xl">
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-gradient-to-t from-black/95 via-slate-950/90 to-slate-900/50 backdrop-blur-3xl border-t border-white/10 px-2 py-3 flex justify-around items-center z-50 rounded-t-[3rem] shadow-2xl">
           {/* Indicador de sincronización */}
           <div className={`absolute top-2 right-4 flex items-center gap-1 text-[8px] font-black uppercase tracking-widest ${syncStatus === "synced" ? "text-green-500" : syncStatus === "syncing" ? "text-yellow-400" : "text-red-400"}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${syncStatus === "synced" ? "bg-green-500" : syncStatus === "syncing" ? "bg-yellow-400 animate-pulse" : "bg-red-400"}`} />
             {syncStatus === "synced" ? "Guardado" : syncStatus === "syncing" ? "Guardando..." : "Error al guardar"}
           </div>
-          <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "home" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
+          <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "home" ? "text-blue-400 bg-blue-500/20 scale-105" : "text-slate-500 hover:text-slate-300"}`}>
             <Wrench size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Inicio</span>
           </button>
-          <button onClick={() => setView("ordenes")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "ordenes" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
+          <button onClick={() => setView("ordenes")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "ordenes" ? "text-blue-400 bg-blue-500/20 scale-105" : "text-slate-500 hover:text-slate-300"}`}>
             <Clock size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Trabajos</span>
           </button>
-          <button onClick={() => setView("historial")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "historial" || view === "perfilMoto" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
+          <button onClick={() => setView("historial")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "historial" || view === "perfilMoto" ? "text-blue-400 bg-blue-500/20 scale-105" : "text-slate-500 hover:text-slate-300"}`}>
             <History size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Historial</span>
           </button>
-          <button onClick={() => setView("pagosView")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "pagosView" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
+          <button onClick={() => setView("pagosView")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "pagosView" ? "text-blue-400 bg-blue-500/20 scale-105" : "text-slate-500 hover:text-slate-300"}`}>
             <DollarSign size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Pagos</span>
           </button>
-          <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 transition-all ${view === "config" ? "text-blue-500 scale-110" : "text-slate-500"}`}>
+          <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "config" ? "text-blue-400 bg-blue-500/20 scale-105" : "text-slate-500 hover:text-slate-300"}`}>
             <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Más</span>
           </button>
         </nav>

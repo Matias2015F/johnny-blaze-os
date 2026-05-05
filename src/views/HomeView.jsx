@@ -117,7 +117,7 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
 
   return (
     <div className="space-y-5 p-4 pb-28 text-left animate-in fade-in duration-500">
-      <header className="rounded-[2.5rem] border border-slate-800 bg-slate-900 p-8 shadow-2xl">
+      <header className="rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-blue-600/20 via-slate-900 to-slate-950 p-8 shadow-2xl backdrop-blur">
         <div className="font-bold">
           <p className="mb-1 text-xs font-black uppercase tracking-[0.4em] text-blue-500">Taller OS</p>
           <h1 className="mb-1 text-4xl font-black leading-none tracking-tighter text-white">JOHNNY BLAZE</h1>
@@ -132,28 +132,28 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
-              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Trabajos activos</p>
-              <p className="mt-2 text-2xl font-black text-blue-400">{ordenesActivas.length}</p>
-              <p className="mt-1 text-[10px] font-bold text-slate-500">En movimiento hoy</p>
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+              <p className="text-[9px] font-black uppercase tracking-wider text-emerald-300">Trabajos activos</p>
+              <p className="mt-2 text-2xl font-black text-emerald-400">{ordenesActivas.length}</p>
+              <p className="mt-1 text-[10px] font-bold text-emerald-600">En movimiento hoy</p>
             </div>
-            <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
-              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Pendiente de cobro</p>
-              <p className="mt-2 text-2xl font-black text-emerald-400">{formatMoney(totalPendienteCobro)}</p>
-              <p className="mt-1 text-[10px] font-bold text-slate-500">Saldo total</p>
+            <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4">
+              <p className="text-[9px] font-black uppercase tracking-wider text-blue-300">Pendiente de cobro</p>
+              <p className="mt-2 text-2xl font-black text-blue-400">{formatMoney(totalPendienteCobro)}</p>
+              <p className="mt-1 text-[10px] font-bold text-blue-600">Saldo total</p>
             </div>
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
-              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Atención</p>
+            <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4">
+              <p className="text-[9px] font-black uppercase tracking-wider text-yellow-300">Atención</p>
               <p className="mt-2 text-2xl font-black text-yellow-400">{alerta}</p>
-              <p className="mt-1 text-[10px] font-bold text-slate-500">Cerca del límite</p>
+              <p className="mt-1 text-[10px] font-bold text-yellow-600">Cerca del límite</p>
             </div>
-            <div className="rounded-2xl border border-white/5 bg-black/30 p-4">
-              <p className="text-[9px] font-black uppercase tracking-wider text-slate-400">Detenidos</p>
+            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4">
+              <p className="text-[9px] font-black uppercase tracking-wider text-red-300">Detenidos</p>
               <p className="mt-2 text-2xl font-black text-red-400">{bloqueado}</p>
-              <p className="mt-1 text-[10px] font-bold text-slate-500">Necesitan acción</p>
+              <p className="mt-1 text-[10px] font-bold text-red-600">Necesitan acción</p>
             </div>
           </div>
         </div>

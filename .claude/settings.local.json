@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5173)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(pkill -f \"vite\")",
+      "Bash(curl -s http://localhost:59031)",
+      "Bash(curl -s http://localhost:59675)",
+      "Bash(netstat -ano)",
+      "PowerShell(Stop-Process -Id 2716 -Force)",
+      "PowerShell(Stop-Process -Id 15852 -Force)",
+      "Bash(mkdir -p /c/Users/Usuario/johnny-blaze-os/prototype)",
+      "Bash(cat)",
+      "mcp__Claude_in_Chrome__switch_browser",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_in_Chrome__browser_batch",
+      "mcp__eafd4cad-2326-483e-942e-173f9f9c9460__get_access_to_vercel_url",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(gh pr *)",
+      "Bash(npm install *)",
+      "Bash(pkill -f vite)"
+    ]
+  }
+}
