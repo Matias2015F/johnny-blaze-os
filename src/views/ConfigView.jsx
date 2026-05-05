@@ -118,17 +118,34 @@ const FEATURE_LABELS = {
   multiusuario: "Multiusuario",
 };
 
+const ADMIN_TABS = [
+  { id: "dashboard",  label: "Resumen" },
+  { id: "planes",     label: "Planes" },
+  { id: "usuarios",   label: "Usuarios" },
+  { id: "cobros",     label: "Cobros" },
+  { id: "consultas",  label: "Consultas" },
+];
+
+function StatBox({ label, value, color = "text-slate-800" }) {
+  return (
+    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+      <p className={`mt-1 text-2xl font-black ${color}`}>{value}</p>
+    </div>
+  );
+}
+
 function PantallaAdmin({ showToast }) {
   const [loading, setLoading] = React.useState(true);
+  const [adminTab, setAdminTab] = React.useState("dashboard");
   const [account, setAccount] = React.useState(null);
   const [accounts, setAccounts] = React.useState([]);
   const [settings, setSettings] = React.useState(DEFAULT_ADMIN_SETTINGS);
-  const [snapshots, setSnapshots] = React.useState([]);
-  const [eventos, setEventos] = React.useState([]);
   const [invoices, setInvoices] = React.useState([]);
   const [tickets, setTickets] = React.useState([]);
-  const [motosFrecuentes, setMotosFrecuentes] = React.useState([]);
-  const [serviciosFrecuentes, setServiciosFrecuentes] = React.useState([]);
+  const [filterEstado, setFilterEstado] = React.useState("todos");
+  const [expandedUid, setExpandedUid] = React.useState(null);
+  const [accionando, setAccionando] = React.useState(null);
   const user = auth.currentUser;
   const isPlatformAdmin =
     PLATFORM_ADMIN_EMAILS.includes((user?.email || "").toLowerCase()) ||
@@ -149,76 +166,29 @@ function PantallaAdmin({ showToast }) {
 
       const results = await Promise.allSettled([
         getDocs(collection(db, "usuarios")),
-        getDocs(collection(db, "usageSnapshots")),
-        getDocs(query(collection(db, "telemetryEvents"), orderBy("createdAt", "desc"), limit(200))),
         getDocs(collection(db, "billingInvoices")),
         getDocs(collection(db, "soporteTickets")),
-        getDocs(query(collectionGroup(db, "motos"), limit(250))),
-        getDocs(query(collectionGroup(db, "catalogoTareas"), limit(250))),
       ]);
 
-      const [accountsRes, snapshotsRes, eventosRes, invoicesRes, ticketsRes, motosRes, serviciosRes] = results;
+      const [accountsRes, invoicesRes, ticketsRes] = results;
 
       if (accountsRes.status === "fulfilled") {
         setAccounts(accountsRes.value.docs.map((d) => normalizeSaasUser({ id: d.id, ...d.data() }, { uid: d.id })));
       } else {
-        console.error(accountsRes.reason);
         setAccounts([]);
-      }
-
-      if (snapshotsRes.status === "fulfilled") {
-        setSnapshots(snapshotsRes.value.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.fecha || "").localeCompare(String(a.fecha || ""))));
-      } else {
-        console.error(snapshotsRes.reason);
-        setSnapshots([]);
-      }
-
-      if (eventosRes.status === "fulfilled") {
-        setEventos(sortByDateDesc(eventosRes.value.docs.map((d) => ({ id: d.id, ...d.data() })), "createdAt", "updatedAt"));
-      } else {
-        console.error(eventosRes.reason);
-        setEventos([]);
       }
 
       if (invoicesRes.status === "fulfilled") {
         setInvoices(sortByDateDesc(invoicesRes.value.docs.map((d) => ({ id: d.id, ...d.data() })), "paidAt", "createdAt", "updatedAt"));
       } else {
-        console.error(invoicesRes.reason);
         setInvoices([]);
       }
 
       if (ticketsRes.status === "fulfilled") {
         setTickets(sortByDateDesc(ticketsRes.value.docs.map((d) => ({ id: d.id, ...d.data() })), "createdAt", "updatedAt"));
       } else {
-        console.error(ticketsRes.reason);
         setTickets([]);
       }
-
-      const motosCount = {};
-      if (motosRes.status === "fulfilled") {
-        motosRes.value.docs.forEach((d) => {
-          const item = d.data() || {};
-          const key = [item.marca, item.modelo, item.cilindrada].filter(Boolean).join(" · ");
-          if (!key) return;
-          motosCount[key] = (motosCount[key] || 0) + 1;
-        });
-      } else {
-        console.error(motosRes.reason);
-      }
-      setMotosFrecuentes(Object.entries(motosCount).sort((a, b) => b[1] - a[1]).slice(0, 5));
-
-      const serviciosCount = {};
-      if (serviciosRes.status === "fulfilled") {
-        serviciosRes.value.docs.forEach((d) => {
-          const item = d.data() || {};
-          const key = String(item.nombre || item.label || "").trim();
-          if (!key) return;
-          serviciosCount[key] = (serviciosCount[key] || 0) + 1;
-        });
-      } else {
-        console.error(serviciosRes.reason);
-      }
-      setServiciosFrecuentes(Object.entries(serviciosCount).sort((a, b) => b[1] - a[1]).slice(0, 5));
     } catch (e) {
       console.error(e);
       showToast("No se pudo cargar el panel admin");
@@ -227,98 +197,89 @@ function PantallaAdmin({ showToast }) {
     }
   };
 
-  React.useEffect(() => {
-    cargar();
-  }, []);
+  React.useEffect(() => { cargar(); }, []);
 
-  const resumenUso = React.useMemo(() => snapshots.reduce((acc, item) => {
-    Object.entries(item.topActions || {}).forEach(([key, value]) => {
-      acc[key] = (acc[key] || 0) + Number(value || 0);
-    });
-    return acc;
-  }, {}), [snapshots]);
-
-  const resumenPantallas = React.useMemo(() => snapshots.reduce((acc, item) => {
-    Object.entries(item.topScreens || {}).forEach(([key, value]) => {
-      acc[key] = (acc[key] || 0) + Number(value || 0);
-    });
-    return acc;
-  }, {}), [snapshots]);
-
-  const topAcciones = Object.entries(resumenUso).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  const topPantallas = Object.entries(resumenPantallas).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  const totalEventosSemana = React.useMemo(() => snapshots.reduce((acc, item) => acc + Object.values(item.metrics || {}).reduce((sum, value) => sum + Number(value || 0), 0), 0), [snapshots]);
-  const totalPantallasSemana = React.useMemo(() => snapshots.reduce((acc, item) => acc + Object.values(item.topScreens || {}).reduce((sum, value) => sum + Number(value || 0), 0), 0), [snapshots]);
-
-  const resumenNegocio = React.useMemo(() => {
+  // Métricas calculadas
+  const stats = React.useMemo(() => {
     const now = Date.now();
-    const sieteDias = now - 7 * 24 * 60 * 60 * 1000;
-    const trialsPorVencer = accounts.filter((item) => {
-      const trial = normalizeDateValue(item.activoHasta || item.trialEndsAt)?.getTime();
-      return item.estado === "trial" && trial && trial >= now && trial <= now + 5 * 24 * 60 * 60 * 1000;
-    }).length;
-    const activos7 = accounts.filter((item) => {
-      const lastSeen = normalizeDateValue(item.lastSeenAt)?.getTime();
-      return lastSeen && lastSeen >= sieteDias;
-    }).length;
-    const pendientes = invoices.filter((item) => String(item.status || "").toLowerCase() !== "approved").length;
-    const facturacionMes = invoices
-      .filter((item) => item.status === "approved")
-      .filter((item) => {
-        const created = Number(item.paidAt || item.createdAt || 0);
-        const date = new Date(created);
-        const current = new Date();
-        return date.getMonth() === current.getMonth() && date.getFullYear() === current.getFullYear();
-      })
-      .reduce((acc, item) => acc + Number(item.amountPaid || item.amount || 0), 0);
-    return { trialsPorVencer, activos7, pendientes, facturacionMes };
-  }, [accounts, invoices]);
+    const mesInicio = new Date(); mesInicio.setDate(1); mesInicio.setHours(0,0,0,0);
+    const mesInicioMs = mesInicio.getTime();
 
-  const resumenUsuarios = React.useMemo(() => {
     const total = accounts.length;
-    const trial = accounts.filter((item) => item.estado === "trial").length;
-    const activos = accounts.filter((item) => item.estado === "activo").length;
-    const vencidos = accounts.filter((item) => item.estado === "vencido").length;
-    const base = accounts.filter((item) => (item.currentPlanKey || item.plan || "base") === "base").length;
-    const pro = accounts.filter((item) => (item.currentPlanKey || item.plan) === "pro").length;
-    const admins = accounts.filter((item) => item.rol === "admin" || item.isPlatformAdmin).length;
-    return { total, trial, activos, vencidos, base, pro, admins };
-  }, [accounts]);
+    const trial = accounts.filter(a => a.estado === "trial").length;
+    const activos = accounts.filter(a => a.estado === "activo").length;
+    const vencidos = accounts.filter(a => ["vencido","suspendido"].includes(a.estado)).length;
+    const admins = accounts.filter(a => a.rol === "admin" || a.isPlatformAdmin).length;
+    const planBase = accounts.filter(a => (a.currentPlanKey || a.plan || "base") === "base" && a.estado === "activo").length;
+    const planPro = accounts.filter(a => (a.currentPlanKey || a.plan) === "pro" && a.estado === "activo").length;
 
-  const funnel = React.useMemo(() => {
-    const get = (key) => Number(resumenUso[key] || 0);
-    return [
-      { label: "Nuevo ingreso", value: get("nuevo_ingreso") },
-      { label: "Guardar trabajo", value: get("guardar_trabajo") },
-      { label: "Registrar pago", value: get("registrar_pago") },
-      { label: "Emitir comprobante", value: get("emitir_comprobante") },
-    ];
-  }, [resumenUso]);
+    // Pagos: combinar invoices + ultimoPago de accounts
+    const pagosDesdeAccounts = accounts
+      .filter(a => a.ultimoPago?.fecha && a.ultimoPago?.monto)
+      .map(a => ({
+        id: a.ultimoPago.paymentId || a.uid,
+        uid: a.uid,
+        email: a.email || "",
+        monto: Number(a.ultimoPago.monto || 0),
+        fecha: Number(a.ultimoPago.fecha),
+        paymentId: a.ultimoPago.paymentId || "",
+        plan: a.currentPlanKey || a.plan || "base",
+        status: "approved",
+      }));
+    const pagosDesdeInvoices = invoices
+      .filter(inv => inv.status === "approved")
+      .map(inv => ({
+        id: inv.id,
+        uid: inv.uid || "",
+        email: inv.email || "",
+        monto: Number(inv.amountPaid || inv.amount || 0),
+        fecha: Number(inv.paidAt || inv.createdAt || 0),
+        paymentId: inv.mpPaymentId || inv.id,
+        plan: inv.planKey || "base",
+        status: "approved",
+      }));
+    // Deduplicar por paymentId
+    const seen = new Set();
+    const todosPagos = [...pagosDesdeAccounts, ...pagosDesdeInvoices]
+      .filter(p => { if (seen.has(p.paymentId || p.id)) return false; seen.add(p.paymentId || p.id); return true; })
+      .sort((a, b) => b.fecha - a.fecha);
 
-  const friction = React.useMemo(() => {
-    const nuevos = Number(resumenUso.nuevo_ingreso || 0);
-    const guardados = Number(resumenUso.guardar_trabajo || 0);
-    const pagos = Number(resumenUso.registrar_pago || 0);
-    const comprobantes = Number(resumenUso.emitir_comprobante || 0);
+    const totalCobrado = todosPagos.reduce((s, p) => s + p.monto, 0);
+    const cobradoMes = todosPagos.filter(p => p.fecha >= mesInicioMs).reduce((s, p) => s + p.monto, 0);
+    const pagosEsteMes = todosPagos.filter(p => p.fecha >= mesInicioMs).length;
+
+    // Tiempo promedio trial → pago (en días)
+    const tiemposConversion = accounts
+      .filter(a => a.ultimoPago?.fecha && a.createdAt)
+      .map(a => (Number(a.ultimoPago.fecha) - Number(a.createdAt)) / (1000 * 60 * 60 * 24));
+    const promDias = tiemposConversion.length > 0
+      ? Math.round(tiemposConversion.reduce((s, d) => s + d, 0) / tiemposConversion.length)
+      : null;
+
+    const trialsPorVencer = accounts.filter(a => {
+      const fin = normalizeDateMs(a.activoHasta || a.trialEndsAt);
+      return a.estado === "trial" && fin && fin >= now && fin <= now + 5 * 24 * 60 * 60 * 1000;
+    }).length;
+
+    const pedidosPendientes = accounts.filter(a => a.requestedAction || a.cancelAtPeriodEnd).length;
+    const reclamosPendientes = tickets.filter(t => t.estado !== "resuelto").length;
+
     return {
-      abandonoNuevaOrden: nuevos > 0 ? Math.max(0, Math.round(((nuevos - guardados) / nuevos) * 100)) : 0,
-      conversionTrabajoPago: guardados > 0 ? Math.round((pagos / guardados) * 100) : 0,
-      conversionPagoCierre: pagos > 0 ? Math.round((comprobantes / pagos) * 100) : 0,
+      total, trial, activos, vencidos, admins, planBase, planPro,
+      todosPagos, totalCobrado, cobradoMes, pagosEsteMes,
+      promDias, trialsPorVencer, pedidosPendientes, reclamosPendientes,
     };
-  }, [resumenUso]);
+  }, [accounts, invoices, tickets]);
 
   const guardarSettings = async () => {
     try {
       await guardarAdminSettings(settings, { uid: user?.uid || "", email: user?.email || "" });
-      showToast("Reglas globales guardadas");
+      showToast("Configuracion guardada");
       cargar();
     } catch (error) {
-      console.error(error);
-      showToast("No se pudieron guardar las reglas");
+      showToast("No se pudo guardar");
     }
   };
-
-  const cuentasConPedidos = accounts.filter((item) => item.requestedAction || item.cancelAtPeriodEnd);
 
   const resolverPedidoCuenta = async (item, patch, message) => {
     try {
@@ -331,7 +292,6 @@ function PantallaAdmin({ showToast }) {
       showToast(message);
       cargar();
     } catch (error) {
-      console.error(error);
       showToast("No se pudo resolver el pedido");
     }
   };
@@ -339,276 +299,460 @@ function PantallaAdmin({ showToast }) {
   const resolverTicket = async (ticketId) => {
     try {
       await setDoc(doc(db, "soporteTickets", ticketId), { estado: "resuelto", updatedAt: new Date().toISOString() }, { merge: true });
-      showToast("Reclamo marcado como resuelto");
+      showToast("Reclamo resuelto");
       cargar();
     } catch (error) {
-      console.error(error);
       showToast("No se pudo resolver el reclamo");
     }
   };
 
+  const activarUsuario = async (item, planKey = "base", extraDias = 30) => {
+    setAccionando(item.uid);
+    try {
+      await actualizarSuscripcionUsuario(item.uid, {
+        estado: "activo",
+        plan: planKey,
+        currentPlanKey: planKey,
+        pagoEstado: "pagado",
+        activoHasta: Date.now() + extraDias * 24 * 60 * 60 * 1000,
+        requestedAction: null,
+        cancelAtPeriodEnd: false,
+      });
+      showToast(`${item.email || item.uid} activado por ${extraDias} dias`);
+      setExpandedUid(null);
+      cargar();
+    } catch (error) {
+      showToast("No se pudo activar");
+    } finally {
+      setAccionando(null);
+    }
+  };
+
+  const extenderUsuario = async (item, dias = 30) => {
+    setAccionando(item.uid);
+    try {
+      const base = Math.max(Number(normalizeDateMs(item.activoHasta) || 0), Date.now());
+      await actualizarSuscripcionUsuario(item.uid, {
+        estado: "activo",
+        activoHasta: base + dias * 24 * 60 * 60 * 1000,
+      });
+      showToast(`Extendido ${dias} dias`);
+      setExpandedUid(null);
+      cargar();
+    } catch (error) {
+      showToast("No se pudo extender");
+    } finally {
+      setAccionando(null);
+    }
+  };
+
   if (loading) {
-    return <Card><SectionTitle>Admin</SectionTitle><p className="text-sm font-black text-slate-500">Cargando métricas y licencias...</p></Card>;
+    return <Card><p className="text-sm font-black text-slate-500 text-center py-4">Cargando panel admin...</p></Card>;
   }
 
   if (!(isPlatformAdmin || account?.isPlatformAdmin)) {
-    return <Card><SectionTitle>Admin</SectionTitle><p className="text-sm font-black text-slate-700">Este panel es solo para vos como autor y administrador de Johnny Blaze OS.</p></Card>;
+    return <Card><p className="text-sm font-black text-slate-700">Este panel es solo para el administrador.</p></Card>;
   }
 
+  const cuentasConPedidos = accounts.filter(a => a.requestedAction || a.cancelAtPeriodEnd);
+  const usuariosFiltrados = filterEstado === "todos" ? accounts
+    : filterEstado === "activos" ? accounts.filter(a => a.estado === "activo")
+    : filterEstado === "trial" ? accounts.filter(a => a.estado === "trial")
+    : filterEstado === "vencidos" ? accounts.filter(a => ["vencido","suspendido"].includes(a.estado))
+    : accounts;
+
   return (
-    <div className="space-y-4">
-      <Card>
-        <SectionTitle>Configuración global</SectionTitle>
-        <p className="mb-4 text-[11px] font-bold leading-relaxed text-slate-500">
-          Desde acá definís prueba, precios y funciones para los talleres nuevos.
-        </p>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Días de prueba</p>
-            <p className="mt-1 text-[10px] font-bold text-slate-500">Cuántos días gratis recibe un taller nuevo.</p>
-            <input type="text" inputMode="numeric" value={String(settings.duracionTrialDias || 14)} onChange={(e) => setSettings((prev) => ({ ...prev, duracionTrialDias: Number(e.target.value.replace(/\D/g, "") || 14) }))} className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" />
-          </div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Días de gracia</p>
-            <p className="mt-1 text-[10px] font-bold text-slate-500">Cuántos días extra tiene antes de bloquear acceso.</p>
-            <input type="text" inputMode="numeric" value={String(settings.graceDaysDefault || 3)} onChange={(e) => setSettings((prev) => ({ ...prev, graceDaysDefault: Number(e.target.value.replace(/\D/g, "") || 3) }))} className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" />
-          </div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio plan base</p>
-            <p className="mt-1 text-[10px] font-bold text-slate-500">Valor para talleres nuevos del plan base.</p>
-            <input type="text" inputMode="numeric" value={String(settings.precios?.base || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, precios: { ...(prev.precios || {}), base: Number(e.target.value.replace(/\D/g, "") || 0) } }))} className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" />
-          </div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio plan pro</p>
-            <p className="mt-1 text-[10px] font-bold text-slate-500">Valor para talleres nuevos del plan pro.</p>
-            <input type="text" inputMode="numeric" value={String(settings.precios?.pro || 0)} onChange={(e) => setSettings((prev) => ({ ...prev, precios: { ...(prev.precios || {}), pro: Number(e.target.value.replace(/\D/g, "") || 0) } }))} className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none" />
-          </div>
-        </div>
-        <div className="mt-3 bg-slate-50 border border-slate-100 rounded-2xl p-4">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Aplicación de precios</p>
-          <p className="mt-1 text-[10px] font-bold text-slate-500">Definí si los cambios de precio afectan solo a los talleres nuevos.</p>
-          <div className="mt-3 flex items-center justify-between">
-            <p className="text-sm font-black text-slate-800">Aplicar solo a cuentas nuevas</p>
-            <button onClick={() => setSettings((prev) => ({ ...prev, applyPricingToNewAccountsOnly: !prev.applyPricingToNewAccountsOnly }))} className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest ${settings.applyPricingToNewAccountsOnly !== false ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700"}`}>{settings.applyPricingToNewAccountsOnly !== false ? "Sí" : "No"}</button>
-          </div>
-        </div>
-        <div className="mt-3">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Funciones incluidas</p>
-          <p className="mt-1 text-[10px] font-bold text-slate-500">Prendé o apagá funciones para talleres nuevos según el plan.</p>
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {Object.entries(settings.features || {}).map(([key, value]) => (
-            <button key={key} onClick={() => setSettings((prev) => ({ ...prev, features: { ...(prev.features || {}), [key]: !value } }))} className={`rounded-2xl border px-3 py-3 text-left ${value ? "border-blue-200 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-500"}`}>
-              <p className="text-[10px] font-black uppercase tracking-widest">{FEATURE_LABELS[key] || key}</p>
-              <p className="mt-1 text-[10px] font-bold">{value ? "Activa" : "Desactivada"}</p>
-            </button>
-          ))}
-        </div>
-        <div className="mt-3"><button onClick={guardarSettings} className="w-full rounded-2xl bg-blue-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Guardar configuración global</button></div>
-      </Card>
+    <div>
+      {/* Sub-navegación */}
+      <div className="flex gap-2 overflow-x-auto pb-3 mb-4 -mx-1">
+        {ADMIN_TABS.map(t => (
+          <button key={t.id} onClick={() => setAdminTab(t.id)}
+            className={`shrink-0 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              adminTab === t.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500 active:scale-95"
+            }`}
+          >
+            {t.label}
+            {t.id === "consultas" && (stats.pedidosPendientes + stats.reclamosPendientes) > 0 && (
+              <span className="ml-1.5 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[8px]">
+                {stats.pedidosPendientes + stats.reclamosPendientes}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
 
-      <Card>
-        <SectionTitle>Salud del SaaS</SectionTitle>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Activos 7 días</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenNegocio.activos7}</p></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Trials por vencer</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenNegocio.trialsPorVencer}</p></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pagos pendientes</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenNegocio.pendientes}</p></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Facturación del mes</p><p className="mt-1 text-xl font-black text-emerald-600">{formatMoney(resumenNegocio.facturacionMes)}</p></div>
-        </div>
-      </Card>
-
-      <Card>
-        <SectionTitle>Usuarios y planes</SectionTitle>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Usuarios totales</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenUsuarios.total}</p></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Admins</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenUsuarios.admins}</p></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">En prueba</p><p className="mt-1 text-2xl font-black text-amber-600">{resumenUsuarios.trial}</p></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Activos</p><p className="mt-1 text-2xl font-black text-emerald-600">{resumenUsuarios.activos}</p></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Vencidos</p><p className="mt-1 text-2xl font-black text-red-600">{resumenUsuarios.vencidos}</p></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Plan pro</p><p className="mt-1 text-2xl font-black text-blue-600">{resumenUsuarios.pro}</p></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 col-span-2"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Plan base</p><p className="mt-1 text-2xl font-black text-slate-800">{resumenUsuarios.base}</p></div>
-        </div>
-      </Card>
-
-      <Card>
-        <SectionTitle>Pedidos de usuarios</SectionTitle>
-        <div className="space-y-3">
-          {cuentasConPedidos.length === 0 && <p className="text-sm font-black text-slate-500">No hay pedidos pendientes.</p>}
-          {cuentasConPedidos.map((item) => (
-            <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-black text-slate-800">{item.nombreTaller || item.email || item.uid}</p>
-                  <p className="text-[10px] font-bold text-slate-400">{item.email || item.uid}</p>
-                  <p className="text-[10px] font-bold text-slate-500 mt-1">UID: {item.uid}</p>
-                </div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">
-                  {formatRequestedAction(item)}
-                </p>
+      {/* ── DASHBOARD ── */}
+      {adminTab === "dashboard" && (
+        <div className="space-y-4">
+          <Card>
+            <SectionTitle>Este mes</SectionTitle>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 col-span-2">
+                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Cobrado este mes</p>
+                <p className="mt-1 text-3xl font-black text-emerald-700">{formatMoney(stats.cobradoMes)}</p>
+                <p className="text-[10px] font-bold text-emerald-500 mt-1">{stats.pagosEsteMes} {stats.pagosEsteMes === 1 ? "pago" : "pagos"} recibidos</p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => resolverPedidoCuenta(item, { estado: "activo", currentPlanKey: item.requestedPlanKey || item.currentPlanKey || "base" }, "Pedido aprobado")}
-                  className="rounded-2xl bg-emerald-600 py-3 text-[10px] font-black uppercase tracking-widest text-white"
-                >
-                  Aprobar
-                </button>
-                <button
-                  onClick={() => resolverPedidoCuenta(item, {}, "Pedido limpiado")}
-                  className="rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white"
-                >
-                  Limpiar pedido
-                </button>
+              <StatBox label="Total cobrado" value={formatMoney(stats.totalCobrado)} color="text-slate-800" />
+              <StatBox label="Tiempo promedio a pagar" value={stats.promDias !== null ? `${stats.promDias} dias` : "—"} />
+            </div>
+          </Card>
+
+          <Card>
+            <SectionTitle>Usuarios ahora</SectionTitle>
+            <div className="grid grid-cols-2 gap-3">
+              <StatBox label="Total" value={stats.total} />
+              <StatBox label="Activos" value={stats.activos} color="text-emerald-600" />
+              <StatBox label="En prueba" value={stats.trial} color="text-amber-600" />
+              <StatBox label="Vencidos" value={stats.vencidos} color="text-red-600" />
+            </div>
+          </Card>
+
+          <Card>
+            <SectionTitle>Alertas</SectionTitle>
+            <div className="space-y-2">
+              {stats.trialsPorVencer > 0 && (
+                <div className="flex items-center justify-between rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3">
+                  <p className="text-sm font-black text-amber-700">Trials por vencer en 5 dias</p>
+                  <p className="text-lg font-black text-amber-700">{stats.trialsPorVencer}</p>
+                </div>
+              )}
+              {stats.pedidosPendientes > 0 && (
+                <div className="flex items-center justify-between rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3">
+                  <p className="text-sm font-black text-blue-700">Pedidos pendientes</p>
+                  <p className="text-lg font-black text-blue-700">{stats.pedidosPendientes}</p>
+                </div>
+              )}
+              {stats.reclamosPendientes > 0 && (
+                <div className="flex items-center justify-between rounded-2xl bg-red-50 border border-red-100 px-4 py-3">
+                  <p className="text-sm font-black text-red-700">Reclamos sin resolver</p>
+                  <p className="text-lg font-black text-red-700">{stats.reclamosPendientes}</p>
+                </div>
+              )}
+              {stats.trialsPorVencer === 0 && stats.pedidosPendientes === 0 && stats.reclamosPendientes === 0 && (
+                <p className="text-sm font-black text-slate-500 text-center py-2">Todo en orden. No hay alertas.</p>
+              )}
+            </div>
+          </Card>
+
+          <Card>
+            <SectionTitle>Distribucion de planes</SectionTitle>
+            <div className="grid grid-cols-2 gap-3">
+              <StatBox label="Plan base activos" value={stats.planBase} />
+              <StatBox label="Plan pro activos" value={stats.planPro} color="text-blue-600" />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* ── PLANES ── */}
+      {adminTab === "planes" && (
+        <div className="space-y-4">
+          <Card>
+            <SectionTitle>Precios y duracion</SectionTitle>
+            <p className="text-[11px] font-bold text-slate-500 mb-4">Estos valores se usan al momento del pago. Cambiarlo no afecta suscripciones ya activas.</p>
+            <div className="space-y-3">
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio Plan Base (ARS)</p>
+                <input
+                  type="text" inputMode="numeric"
+                  value={String(settings.precios?.base || 0)}
+                  onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), base: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
+                  className="mt-2 w-full bg-transparent text-3xl font-black text-slate-800 outline-none"
+                  placeholder="5000"
+                />
+              </div>
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio Plan Pro (ARS)</p>
+                <input
+                  type="text" inputMode="numeric"
+                  value={String(settings.precios?.pro || 0)}
+                  onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), pro: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
+                  className="mt-2 w-full bg-transparent text-3xl font-black text-slate-800 outline-none"
+                  placeholder="12000"
+                />
               </div>
             </div>
-          ))}
-        </div>
-      </Card>
+          </Card>
 
-      <Card>
-        <SectionTitle>Reclamos</SectionTitle>
-        <div className="space-y-3">
-          {tickets.length === 0 && <p className="text-sm font-black text-slate-500">No hay reclamos cargados.</p>}
-          {tickets.map((ticket) => (
-            <div key={ticket.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-black text-slate-800">{ticket.email || ticket.uid}</p>
-                  <p className="text-[10px] font-bold text-slate-500">UID: {ticket.uid}</p>
-                </div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">{ticket.estado || "nuevo"}</p>
+          <Card>
+            <SectionTitle>Periodos</SectionTitle>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Dias de prueba (trial)</p>
+                <p className="text-[10px] font-bold text-slate-500 mt-1">Acceso gratis al registrarse.</p>
+                <input
+                  type="text" inputMode="numeric"
+                  value={String(settings.duracionTrialDias || 14)}
+                  onChange={e => setSettings(p => ({ ...p, duracionTrialDias: Number(e.target.value.replace(/\D/g,"") || 14) }))}
+                  className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none"
+                />
               </div>
-              <p className="text-[11px] font-bold leading-relaxed text-slate-700">{ticket.mensaje || "Sin mensaje"}</p>
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Dias de gracia</p>
+                <p className="text-[10px] font-bold text-slate-500 mt-1">Extra tras vencimiento antes de bloquear.</p>
+                <input
+                  type="text" inputMode="numeric"
+                  value={String(settings.graceDaysDefault || 3)}
+                  onChange={e => setSettings(p => ({ ...p, graceDaysDefault: Number(e.target.value.replace(/\D/g,"") || 3) }))}
+                  className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none"
+                />
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <SectionTitle>Funciones por plan</SectionTitle>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(settings.features || {}).map(([key, value]) => (
+                <button
+                  key={key}
+                  onClick={() => setSettings(p => ({ ...p, features: { ...(p.features || {}), [key]: !value }}))}
+                  className={`rounded-2xl border px-3 py-3 text-left transition-all ${value ? "border-blue-200 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-500"}`}
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest">{FEATURE_LABELS[key] || key}</p>
+                  <p className="mt-1 text-[10px] font-bold">{value ? "Activa" : "Desactivada"}</p>
+                </button>
+              ))}
+            </div>
+          </Card>
+
+          <Card>
+            <SectionTitle>Aplicacion de precios</SectionTitle>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-black text-slate-800">Solo cuentas nuevas</p>
+                <p className="text-[10px] font-bold text-slate-400 mt-0.5">Si esta apagado, afecta a todos al renovar.</p>
+              </div>
               <button
-                onClick={() => resolverTicket(ticket.id)}
-                disabled={ticket.estado === "resuelto"}
-                className="w-full rounded-2xl bg-blue-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+                onClick={() => setSettings(p => ({ ...p, applyPricingToNewAccountsOnly: !p.applyPricingToNewAccountsOnly }))}
+                className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest ${settings.applyPricingToNewAccountsOnly !== false ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700"}`}
               >
-                {ticket.estado === "resuelto" ? "Resuelto" : "Marcar como resuelto"}
+                {settings.applyPricingToNewAccountsOnly !== false ? "Si" : "No"}
               </button>
             </div>
-          ))}
-        </div>
-      </Card>
+          </Card>
 
-      <Card>
-        <SectionTitle>Uso de los últimos 7 días</SectionTitle>
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Eventos</p><p className="mt-1 text-2xl font-black text-slate-800">{totalEventosSemana}</p></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pantallas</p><p className="mt-1 text-2xl font-black text-slate-800">{totalPantallasSemana}</p></div>
+          <button onClick={guardarSettings} className="w-full rounded-2xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
+            Guardar todos los cambios
+          </button>
         </div>
-        <div className="space-y-3">
-          {topAcciones.length > 0 ? topAcciones.map(([accion, total]) => (
-            <div key={accion} className="space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500"><span>{accion.replaceAll("_", " ")}</span><span className="text-slate-800">{total}</span></div>
-              <div className="h-3 rounded-full bg-slate-100 overflow-hidden"><div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min((total / Math.max(topAcciones[0]?.[1] || 1, 1)) * 100, 100)}%` }} /></div>
-            </div>
-          )) : <p className="text-sm font-black text-slate-500">Todavía no hay datos de uso suficientes.</p>}
-        </div>
-      </Card>
+      )}
 
-      <Card>
-        <SectionTitle>Embudo y fricción</SectionTitle>
-        <div className="space-y-3">
-          {funnel.map((item) => (
-            <div key={item.label} className="space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500"><span>{item.label}</span><span className="text-slate-800">{item.value}</span></div>
-              <div className="h-3 rounded-full bg-slate-100 overflow-hidden"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min((item.value / Math.max(funnel[0]?.value || 1, 1)) * 100, 100)}%` }} /></div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 grid grid-cols-3 gap-3">
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Abandono nueva orden</p><p className="mt-1 text-xl font-black text-red-600">{friction.abandonoNuevaOrden}%</p></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Trabajo a pago</p><p className="mt-1 text-xl font-black text-slate-800">{friction.conversionTrabajoPago}%</p></div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4"><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pago a cierre</p><p className="mt-1 text-xl font-black text-slate-800">{friction.conversionPagoCierre}%</p></div>
-        </div>
-      </Card>
-
-      <Card>
-        <SectionTitle>Qué usan más</SectionTitle>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Pantallas</p>
-            <div className="space-y-2">
-              {topPantallas.length > 0 ? topPantallas.map(([pantalla, total]) => (
-                <div key={pantalla} className="flex items-center justify-between rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{pantalla}</span><span className="text-sm font-black text-slate-800">{total}</span></div>
-              )) : <p className="text-sm font-black text-slate-500">Sin datos.</p>}
-            </div>
+      {/* ── USUARIOS ── */}
+      {adminTab === "usuarios" && (
+        <div className="space-y-4">
+          {/* Filtros */}
+          <div className="flex gap-2 overflow-x-auto -mx-1">
+            {[
+              { id: "todos", label: `Todos (${stats.total})` },
+              { id: "activos", label: `Activos (${stats.activos})` },
+              { id: "trial", label: `Trial (${stats.trial})` },
+              { id: "vencidos", label: `Vencidos (${stats.vencidos})` },
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilterEstado(f.id)}
+                className={`shrink-0 px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest ${filterEstado === f.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500"}`}
+              >
+                {f.label}
+              </button>
+            ))}
           </div>
-          <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Funciones</p>
-            <div className="space-y-2">
-              {topAcciones.length > 0 ? topAcciones.map(([accion, total]) => (
-                <div key={accion} className="flex items-center justify-between rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{accion.replaceAll("_", " ")}</span><span className="text-sm font-black text-slate-800">{total}</span></div>
-              )) : <p className="text-sm font-black text-slate-500">Sin datos.</p>}
-            </div>
-          </div>
-        </div>
-      </Card>
 
-      <Card>
-        <SectionTitle>Mercado y uso real</SectionTitle>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Motos más cargadas</p>
-            <div className="space-y-2">
-              {motosFrecuentes.length > 0 ? motosFrecuentes.map(([item, total]) => (
-                <div key={item} className="flex items-center justify-between rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3"><span className="text-xs font-black text-slate-700">{item}</span><span className="text-sm font-black text-slate-800">{total}</span></div>
-              )) : <p className="text-sm font-black text-slate-500">Sin datos.</p>}
-            </div>
-          </div>
-          <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Servicios más usados</p>
-            <div className="space-y-2">
-              {serviciosFrecuentes.length > 0 ? serviciosFrecuentes.map(([item, total]) => (
-                <div key={item} className="flex items-center justify-between rounded-2xl bg-slate-50 border border-slate-100 px-4 py-3"><span className="text-xs font-black text-slate-700">{item}</span><span className="text-sm font-black text-slate-800">{total}</span></div>
-              )) : <p className="text-sm font-black text-slate-500">Sin datos.</p>}
-            </div>
-          </div>
-        </div>
-      </Card>
+          <div className="space-y-2">
+            {usuariosFiltrados.length === 0 && (
+              <Card><p className="text-sm font-black text-slate-500">No hay usuarios en este filtro.</p></Card>
+            )}
+            {usuariosFiltrados.map(item => {
+              const isExpanded = expandedUid === item.uid;
+              const estadoColor = item.estado === "activo" ? "text-emerald-600 bg-emerald-50 border-emerald-100"
+                : item.estado === "trial" ? "text-amber-600 bg-amber-50 border-amber-100"
+                : "text-red-600 bg-red-50 border-red-100";
+              const vigencia = normalizeDateMs(item.activoHasta || item.trialEndsAt);
+              const vigenciaStr = vigencia
+                ? new Date(vigencia).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })
+                : "Sin fecha";
 
-      <Card>
-        <SectionTitle>Usuarios</SectionTitle>
-        <div className="space-y-3">
-          {accounts.length === 0 && <p className="text-sm font-black text-slate-500">Todavia no aparecen usuarios cargados en la coleccion nueva.</p>}
-          {accounts.slice(0, 20).map((item) => (
-            <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-black text-slate-800">{item.nombreTaller || item.email || item.uid}</p>
-                  <p className="text-[10px] font-bold text-slate-400">{item.email || "Sin email"}</p>
-                  <p className="text-[10px] font-bold text-slate-500 mt-1">UID: {item.uid || item.id}</p>
+              return (
+                <div key={item.uid || item.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden">
+                  <button
+                    onClick={() => setExpandedUid(isExpanded ? null : (item.uid || item.id))}
+                    className="w-full flex items-center gap-3 p-4 text-left"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black text-slate-800 truncate">{item.email || item.uid}</p>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                        {item.currentPlanKey || item.plan || "base"} · hasta {vigenciaStr}
+                      </p>
+                    </div>
+                    <span className={`shrink-0 text-[9px] font-black uppercase tracking-widest border rounded-xl px-2 py-1 ${estadoColor}`}>
+                      {item.estado || "trial"}
+                    </span>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="border-t border-slate-100 p-4 bg-slate-50 space-y-3">
+                      <div className="grid grid-cols-2 gap-2 text-[10px] font-black text-slate-500">
+                        <div>UID: <span className="text-slate-700 font-bold text-[9px] break-all">{item.uid || item.id}</span></div>
+                        <div>Pago: <span className="text-slate-700">{item.pagoEstado || "pendiente"}</span></div>
+                        {item.ultimoPago?.fecha && (
+                          <>
+                            <div>Ultimo pago: <span className="text-slate-700">{new Date(item.ultimoPago.fecha).toLocaleDateString("es-AR")}</span></div>
+                            <div>Monto: <span className="text-emerald-700">{formatMoney(item.ultimoPago.monto || 0)}</span></div>
+                            <div className="col-span-2">ID MP: <span className="text-slate-700 font-bold text-[9px]">{item.ultimoPago.paymentId || "—"}</span></div>
+                          </>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          disabled={accionando === item.uid}
+                          onClick={() => activarUsuario(item, "base", 30)}
+                          className="rounded-2xl bg-emerald-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+                        >
+                          {accionando === item.uid ? "..." : "Activar 30d"}
+                        </button>
+                        <button
+                          disabled={accionando === item.uid}
+                          onClick={() => activarUsuario(item, "pro", 30)}
+                          className="rounded-2xl bg-blue-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+                        >
+                          Activar Pro
+                        </button>
+                        <button
+                          disabled={accionando === item.uid}
+                          onClick={() => extenderUsuario(item, 30)}
+                          className="rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white col-span-2 disabled:opacity-50"
+                        >
+                          Extender +30 dias
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">{item.estado || "trial"}</p>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{item.rol || "user"}</p>
-                </div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-3 text-[10px] font-black text-slate-500">
-                <div>Plan: <span className="text-slate-800">{item.currentPlanKey || item.plan || "base"}</span></div>
-                <div>Vigente hasta: <span className="text-slate-800">{formatAdminDate(item.activoHasta, "Sin fecha")}</span></div>
-                <div>Pago: <span className="text-slate-800">{item.pagoEstado || "pendiente"}</span></div>
-                <div>Ultimo uso: <span className="text-slate-800">{formatAdminDate(item.lastSeenAt, "Sin dato")}</span></div>
-              </div>
-            </div>
-          ))}
+              );
+            })}
+          </div>
         </div>
-      </Card>
+      )}
 
-      <Card>
-        <SectionTitle>Actividad reciente global</SectionTitle>
-        <div className="space-y-2">
-          {eventos.length > 0 ? eventos.slice(0, 15).map((evento) => (
-            <div key={evento.id} className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">{evento.action?.replaceAll("_", " ")}</p>
-              <p className="mt-1 text-xs font-black text-slate-800">{evento.screen || "sin pantalla"} · {evento.entityType || "general"}</p>
-              <p className="mt-1 text-[10px] font-bold text-slate-400">{evento.uid || "sin usuario"}</p>
-              <p className="mt-1 text-[10px] font-bold text-slate-400">{formatAdminDate(evento.createdAt, "Sin fecha")}</p>
+      {/* ── COBROS ── */}
+      {adminTab === "cobros" && (
+        <div className="space-y-4">
+          <Card>
+            <SectionTitle>Resumen de ingresos</SectionTitle>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 col-span-2">
+                <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Total cobrado</p>
+                <p className="mt-1 text-3xl font-black text-emerald-700">{formatMoney(stats.totalCobrado)}</p>
+              </div>
+              <StatBox label="Cobrado este mes" value={formatMoney(stats.cobradoMes)} color="text-emerald-600" />
+              <StatBox label="Pagos este mes" value={stats.pagosEsteMes} />
+              <StatBox label="Total de pagos" value={stats.todosPagos.length} />
+              <StatBox label="Tiempo prom. a pagar" value={stats.promDias !== null ? `${stats.promDias}d` : "—"} />
             </div>
-          )) : <p className="text-sm font-black text-slate-500">Todavía no hay actividad reciente.</p>}
+          </Card>
+
+          <Card>
+            <SectionTitle>Historial de pagos</SectionTitle>
+            {stats.todosPagos.length === 0 && (
+              <p className="text-sm font-black text-slate-500">No hay pagos registrados todavia.</p>
+            )}
+            <div className="space-y-2">
+              {stats.todosPagos.map(pago => (
+                <div key={pago.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black text-slate-800 truncate">{pago.email || pago.uid}</p>
+                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                        {pago.fecha ? new Date(pago.fecha).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" }) : "Sin fecha"}
+                        {" · "}Plan {pago.plan || "base"}
+                      </p>
+                      {pago.paymentId && (
+                        <p className="text-[9px] font-bold text-slate-400 mt-0.5 break-all">MP: {pago.paymentId}</p>
+                      )}
+                      <p className="text-[9px] font-bold text-slate-400 mt-0.5 break-all">UID: {pago.uid}</p>
+                    </div>
+                    <p className="text-base font-black text-emerald-600 shrink-0">{formatMoney(pago.monto)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
-      </Card>
+      )}
+
+      {/* ── CONSULTAS ── */}
+      {adminTab === "consultas" && (
+        <div className="space-y-4">
+          <Card>
+            <SectionTitle>Pedidos de usuarios</SectionTitle>
+            {cuentasConPedidos.length === 0 && (
+              <p className="text-sm font-black text-slate-500">No hay pedidos pendientes.</p>
+            )}
+            <div className="space-y-3">
+              {cuentasConPedidos.map(item => (
+                <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-slate-800">{item.email || item.uid}</p>
+                      <p className="text-[10px] font-bold text-slate-500 mt-0.5">UID: {item.uid}</p>
+                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 shrink-0">{formatRequestedAction(item)}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => resolverPedidoCuenta(item, { estado: "activo", currentPlanKey: item.requestedPlanKey || item.currentPlanKey || "base" }, "Pedido aprobado")}
+                      className="rounded-2xl bg-emerald-600 py-3 text-[10px] font-black uppercase tracking-widest text-white"
+                    >
+                      Aprobar
+                    </button>
+                    <button
+                      onClick={() => resolverPedidoCuenta(item, {}, "Pedido limpiado")}
+                      className="rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white"
+                    >
+                      Rechazar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card>
+            <SectionTitle>Reclamos ({tickets.filter(t => t.estado !== "resuelto").length} pendientes)</SectionTitle>
+            {tickets.length === 0 && <p className="text-sm font-black text-slate-500">No hay reclamos.</p>}
+            <div className="space-y-3">
+              {tickets.map(ticket => (
+                <div key={ticket.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black text-slate-800 truncate">{ticket.email || ticket.uid}</p>
+                      <p className="text-[10px] font-bold text-slate-500 mt-0.5">UID: {ticket.uid}</p>
+                    </div>
+                    <span className={`text-[9px] font-black uppercase tracking-widest border rounded-xl px-2 py-1 shrink-0 ${ticket.estado === "resuelto" ? "bg-emerald-50 border-emerald-100 text-emerald-600" : "bg-red-50 border-red-100 text-red-600"}`}>
+                      {ticket.estado || "nuevo"}
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold leading-relaxed text-slate-700">{ticket.mensaje || "Sin mensaje"}</p>
+                  <p className="text-[9px] font-bold text-slate-400">{formatAdminDate(ticket.createdAt, "Fecha desconocida")}</p>
+                  <button
+                    onClick={() => resolverTicket(ticket.id)}
+                    disabled={ticket.estado === "resuelto"}
+                    className="w-full rounded-2xl bg-blue-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-40"
+                  >
+                    {ticket.estado === "resuelto" ? "Ya resuelto" : "Marcar como resuelto"}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Botón actualizar */}
+      <button onClick={cargar} className="w-full mt-2 rounded-2xl bg-slate-100 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 active:scale-95">
+        Actualizar datos
+      </button>
     </div>
   );
 }
