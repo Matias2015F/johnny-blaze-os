@@ -346,24 +346,42 @@ export default function TallerPanel() {
   // -- Demo / Reset -----------------------------------------------------------
   const loadDemoData = () => {
     const hoy = hoyEstable();
-    const c1 = LS.addDoc("clientes", { nombre: "Juan Pérez", tel: "3434111222", telefono: "3434111222", whatsapp: "3434111222", etiquetas: [], activo: true, createdAt: Date.now() });
-    const b1 = LS.addDoc("motos", { patente: "A123ABC", patenteNormalizada: "A123ABC", marca: "Honda", modelo: "Tornado 250", cilindrada: 250, km: 12500, kilometrajeActual: 12500, estado: "activa", clienteId: c1.id, ultimaVisita: hoy, proximoService: 15000, createdAt: Date.now() });
+
+    // Moto 1 — Juan García / Honda Wave 110
+    const c1 = LS.addDoc("clientes", { nombre: "Juan García", tel: "3434123456", telefono: "3434123456", whatsapp: "3434123456", etiquetas: [], activo: true, createdAt: Date.now() });
+    const b1 = LS.addDoc("motos", { patente: "ABC123", patenteNormalizada: "ABC123", marca: "Honda", modelo: "Wave 110", cilindrada: 110, km: 15400, kilometrajeActual: 15400, estado: "activa", clienteId: c1.id, ultimaVisita: hoy, proximoService: 17500, createdAt: Date.now() });
     LS.addDoc("titularidades", { clienteId: c1.id, motoId: b1.id, fechaDesde: hoy, fechaHasta: null, titularActual: true, createdAt: Date.now() });
     LS.addDoc("trabajos", {
       numeroTrabajo: "OT-000001",
       clientId: c1.id, bikeId: b1.id, estado: "reparacion", prioridad: "normal",
-      fechaIngreso: hoy, fechaEntrega: null, total: 65000,
-      pagos: [{ id: generateId(), fecha: hoy, monto: 20000, metodo: "efectivo", hora: "14:30" }],
-      tareas: [{ nombre: "Regulación de válvulas", monto: 25000, horasBase: 2 }],
-      repuestos: [{ nombre: "Junta de tapa", monto: 15000, cantidad: 1 }, { nombre: "Aceite Motul 5100", monto: 25000, cantidad: 1 }],
-      insumos: [{ nombre: "Limpia carburador", monto: 3500 }],
-      fletes: [], km: 12500, kmIngreso: 12500, kmEntrega: null,
-      motivoIngreso: "Le cuesta arrancar en frío y regula mal.",
-      diagnostico: "Le cuesta arrancar en frío y regula mal.",
-      observacionesProxima: "Revisar transmisión en 2000km.",
+      fechaIngreso: hoy, fechaEntrega: null, total: 45000,
+      pagos: [],
+      tareas: [{ nombre: "Cambio de aceite y filtro", monto: 18000, horasBase: 0.5 }],
+      repuestos: [{ nombre: "Aceite 10W40", monto: 12000, cantidad: 1 }, { nombre: "Filtro de aceite", monto: 8000, cantidad: 1 }],
+      insumos: [], fletes: [], km: 15400, kmIngreso: 15400, kmEntrega: null,
+      motivoIngreso: "Service periódico y revisión general.",
+      diagnostico: "Service periódico y revisión general.",
+      observacionesProxima: "Próximo service a los 17500 km.",
       pdfEntregado: false, createdAt: Date.now(),
     });
-    showToast("Demo cargado");
+
+    // Moto 2 — María López / Yamaha FZ 16
+    const c2 = LS.addDoc("clientes", { nombre: "María López", tel: "3434654321", telefono: "3434654321", whatsapp: "3434654321", etiquetas: [], activo: true, createdAt: Date.now() });
+    const b2 = LS.addDoc("motos", { patente: "XYZ789", patenteNormalizada: "XYZ789", marca: "Yamaha", modelo: "FZ 16", cilindrada: 160, km: 8920, kilometrajeActual: 8920, estado: "activa", clienteId: c2.id, ultimaVisita: hoy, proximoService: 11000, createdAt: Date.now() });
+    LS.addDoc("titularidades", { clienteId: c2.id, motoId: b2.id, fechaDesde: hoy, fechaHasta: null, titularActual: true, createdAt: Date.now() });
+    LS.addDoc("trabajos", {
+      numeroTrabajo: "OT-000002",
+      clientId: c2.id, bikeId: b2.id, estado: "diagnostico", prioridad: "alta",
+      fechaIngreso: hoy, fechaEntrega: null, total: 0,
+      pagos: [], tareas: [], repuestos: [], insumos: [], fletes: [],
+      km: 8920, kmIngreso: 8920, kmEntrega: null,
+      motivoIngreso: "Frenos traseros con poco tacto, revisar pastillas.",
+      diagnostico: "Frenos traseros con poco tacto, revisar pastillas.",
+      observacionesProxima: "",
+      pdfEntregado: false, createdAt: Date.now(),
+    });
+
+    showToast("Demo cargado ✓");
   };
 
   const clearAllData = () => {
