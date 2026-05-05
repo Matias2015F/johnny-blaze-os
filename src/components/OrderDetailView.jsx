@@ -372,19 +372,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           </div>
 
           <div className="space-y-4 p-5">
-            <div className="rounded-[1.75rem] border border-slate-800 bg-slate-800/70 p-4 shadow-inner">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">La ganancia del taller sale de la mano de obra</p>
-              <div className="mt-2 space-y-1 text-[12px] font-black leading-relaxed">
-                <p className="text-slate-300">
-                  Cobrás <span className="text-white">{formatMoney(res.desglose.moCliente)}</span> de mano de obra.
-                </p>
-                <p className="text-slate-500">
-                  Repuestos, flete, cadetería, insumos y terceros se cobran aparte al cliente.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
+<div className="space-y-2">
               <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Costos que paga el cliente</p>
               {res.desglose.repuestosCliente > 0 && (
                 <div className="flex items-center justify-between rounded-[1.5rem] border border-slate-800 bg-slate-800/70 px-4 py-3 shadow-inner">
