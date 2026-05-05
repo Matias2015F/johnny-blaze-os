@@ -114,14 +114,18 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
           </div>
         </div>
         {!prefill && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Marca</label>
-              <input className="w-full border border-white/5 bg-zinc-900 rounded-2xl p-4 font-black text-white outline-none focus:border-blue-600" value={f.marca} onChange={(e) => setF({ ...f, marca: e.target.value })} />
+              <input className="w-full border border-white/5 bg-zinc-900 rounded-2xl p-4 font-black text-white outline-none focus:border-blue-600 text-sm" value={f.marca} onChange={(e) => setF({ ...f, marca: e.target.value })} />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Modelo</label>
-              <input className="w-full border border-white/5 bg-zinc-900 rounded-2xl p-4 font-black text-white outline-none focus:border-blue-600" value={f.modelo} onChange={(e) => setF({ ...f, modelo: e.target.value })} />
+              <input className="w-full border border-white/5 bg-zinc-900 rounded-2xl p-4 font-black text-white outline-none focus:border-blue-600 text-sm" value={f.modelo} onChange={(e) => setF({ ...f, modelo: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Cilindrada</label>
+              <input className="w-full border border-white/5 bg-zinc-900 rounded-2xl p-4 font-black text-white outline-none focus:border-blue-600 text-sm" type="number" placeholder="Ej: 250" value={f.cilindrada} onChange={(e) => setF({ ...f, cilindrada: Number(e.target.value) || "" })} />
             </div>
           </div>
         )}
