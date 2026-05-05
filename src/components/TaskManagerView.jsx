@@ -45,6 +45,38 @@ function clonarLista(items = []) {
   return items.map((item) => ({ ...item }));
 }
 
+function AccordionSection({ titulo, numero, completo, activo, onClick, children }) {
+  return (
+    <div className="rounded-[2rem] border border-slate-800 bg-slate-900/50 overflow-hidden">
+      <button
+        onClick={onClick}
+        className={`w-full flex items-center justify-between p-5 transition-all ${
+          activo ? "bg-blue-600/20 border-b border-blue-500/30" : "hover:bg-slate-800/50"
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${
+            completo ? "bg-green-500/20 text-green-400" : "bg-slate-700 text-slate-300"
+          }`}>
+            {completo ? "✓" : numero}
+          </div>
+          <span className={`font-black uppercase text-sm ${
+            activo ? "text-blue-300" : completo ? "text-green-300" : "text-slate-300"
+          }`}>{titulo}</span>
+        </div>
+        <svg className={`w-5 h-5 transition-transform ${activo ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {activo && (
+        <div className="p-5 space-y-4 animate-in slide-in-from-top duration-200">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RepuestoConAutocomplete({ repuesto, cilindrada, onUpdate, onSelect, onDelete }) {
   const [busqueda, setBusqueda] = useState(repuesto.nombre || "");
   const [sugerencias, setSugerencias] = useState([]);
@@ -232,6 +264,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
   const defaultMargen = config.margenPolitica ?? 25;
 
+  const [seccionActiva, setSeccionActiva] = useState("servicio");
   const [selectedId, setSelectedId] = useState(null);
   const [editForm, setEditForm] = useState({
     nombre: "", horasBase: 1, dificultad: "normal", repuestos: [], insumos: [], observacionesProxima: "",
@@ -429,6 +462,14 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     }
   };
 
+  const completoServicio = () => editForm.nombre.trim().length > 0;
+
+  const abrirSiguiente = (seccionActual) => {
+    if (seccionActual === "servicio" && completoServicio()) setSeccionActiva("repuestos");
+    else if (seccionActual === "repuestos") setSeccionActiva("insumos");
+    else if (seccionActual === "insumos") setSeccionActiva("observaciones");
+  };
+
   const updateListItem = (lista, idx, field, val) => {
     const numFields = ["monto", "cantidad", "montoCosto"];
     const parsed = numFields.includes(field) ? (typeof val === "number" ? val : Number(String(val).replace(/\D/g, "")) || 0) : val;
@@ -616,396 +657,349 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
   return (
     <div className="animate-in slide-in-from-bottom duration-300 bg-slate-950 px-4 pb-32 pt-4 text-left">
-      <button onClick={() => { setServiceToEdit(null); setView("detalleOrden"); }}
-        className="mb-5 flex items-center gap-2 text-xs font-black uppercase text-blue-400 transition-all active:scale-90">
-        <ArrowLeft size={16} /> Volver
-      </button>
+      <div className="flex items-center gap-4 mb-6">
+        <button onClick={() => { setServiceToEdit(null); setView("detalleOrden"); }}
+          className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-white active:scale-90 transition-all">
+          <ArrowLeft size={16} />
+        </button>
+        <h1 className="text-2xl font-black text-white uppercase">Gestionar Tarea</h1>
+      </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
 
-        {/* Selector + nombre */}
-        <div className="space-y-4 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
-          <select value={selectedId || ""} onChange={e => handleSelect(e.target.value)}
-            className="w-full rounded-[1.5rem] border border-white/10 bg-black/20 p-4 text-sm font-black text-white outline-none">
-            <option value="">-- Escribir manualmente --</option>
-            {serviciosDisponibles.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-          </select>
-          <div className="space-y-1">
-            <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre del servicio</label>
-            <input
-              value={editForm.nombre}
-              onChange={e => setEditForm({ ...editForm, nombre: e.target.value })}
-              placeholder="Ej: Cambio de cubierta"
-              className="w-full rounded-[1.5rem] border border-white/10 bg-black/20 p-4 font-black text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
-            />
-          </div>
-        </div>
-
-        {/* Sugerencia del sistema */}
-        {sugerencia && (
-          <div className={`rounded-[2rem] border p-5 space-y-3 ${sugerencia.confianza?.badge || "bg-slate-50 border-slate-200"}`}>
-            <div className="flex items-center gap-2">
-              <Sparkles size={14} className="flex-shrink-0" />
-              <p className="text-[10px] font-black uppercase tracking-widest">
-                Sugerencia · {sugerencia.apr.muestras} {sugerencia.apr.muestras === 1 ? "trabajo" : "trabajos"} registrados
-              </p>
-            </div>
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-[9px] font-bold opacity-70 uppercase">Tiempo promedio real</p>
-                <p className="text-xl font-black">{Math.round(sugerencia.apr.promedio * 10) / 10}h</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[9px] font-bold opacity-70 uppercase">Variabilidad</p>
-                <p className="text-sm font-black">±{Math.round(sugerencia.apr.desvio * 10) / 10}h</p>
-              </div>
-              <div className={`px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase ${sugerencia.confianza?.badge || ""}`}>
-                {sugerencia.confianza?.texto || "Sin datos"}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Mano de obra */}
-        <div className="space-y-3 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Mano de obra</p>
-          <div className="grid grid-cols-2 gap-3">
+        {/* SECCIÓN 1: SERVICIO */}
+        <AccordionSection
+          numero="1"
+          titulo="Servicio"
+          completo={completoServicio()}
+          activo={seccionActiva === "servicio"}
+          onClick={() => setSeccionActiva("servicio")}
+        >
+          <div className="space-y-3">
             <div className="space-y-1">
-              <label className="ml-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">Horas</label>
-              <input type="text" inputMode="decimal" value={editForm.horasBase || ""}
-                onChange={e => {
-                  const cleaned = e.target.value.replace(",", ".").replace(/[^0-9.]/g, "");
-                  setEditForm({ ...editForm, horasBase: cleaned === "" ? 0 : Number(cleaned) });
-                }}
-                className="w-full rounded-xl border border-white/10 bg-black/20 p-3 text-center font-black text-white outline-none focus:border-blue-500" />
-            </div>
-            <div className="space-y-1">
-              <label className="ml-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">Dificultad</label>
-              <select value={editForm.dificultad} onChange={e => setEditForm({ ...editForm, dificultad: e.target.value })}
-                className="w-full rounded-xl border border-white/10 bg-black/20 p-3 text-xs font-black uppercase text-white outline-none focus:border-blue-500">
-                <option value="facil">Fácil</option>
-                <option value="normal">Normal</option>
-                <option value="dificil">Difícil</option>
-                <option value="complicado">Complicado</option>
+              <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Seleccionar servicio</label>
+              <select value={selectedId || ""} onChange={e => handleSelect(e.target.value)}
+                className="w-full rounded-[1.5rem] border border-white/10 bg-black/20 p-4 text-sm font-black text-white outline-none focus:border-blue-500">
+                <option value="">-- Escribir manualmente --</option>
+                {serviciosDisponibles.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
               </select>
             </div>
-          </div>
-          <div className="space-y-0.5 rounded-[1.5rem] border border-white/10 bg-black/20 p-3 text-center">
-            <p className="text-[9px] text-slate-400 font-bold">
-              {editForm.horasBase}h × {formatMoney(config.valorHoraInterno || 12000)}/h × {factor.toFixed(1)} = costo {formatMoney(stats.moCosto)}
-            </p>
-            <p className="text-[10px] font-black text-slate-700">
-              con {margenPct}% → <span className="text-blue-600">{formatMoney(stats.moPrecio)} al cliente</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Repuestos — se ingresa el costo, el precio se deriva del margen */}
-        <div className="space-y-3 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
-          <div className="flex justify-between items-center">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Repuestos</p>
-            <button
-              onClick={() => setEditForm({ ...editForm, repuestos: [...editForm.repuestos, { nombre: "", monto: 0, cantidad: 1 }] })}
-              className="rounded-xl bg-blue-500/10 p-2 text-blue-400">
-              <Plus size={18} />
-            </button>
-          </div>
-          {editForm.repuestos.length === 0 && (
-            <p className="text-[10px] text-slate-300 font-bold text-center py-1">Sin repuestos cargados</p>
-          )}
-          {editForm.repuestos.map((item, idx) => (
-            <RepuestoConAutocomplete
-              key={idx}
-              repuesto={item}
-              cilindrada={bike.cilindrada}
-              onUpdate={(field, value) => updateListItem("repuestos", idx, field, value)}
-              onSelect={(rep) => {
-                const updated = editForm.repuestos.map((r, i) => i === idx ? { ...r, nombre: rep.nombre, monto: rep.precio, cantidad: r.cantidad || 1 } : r);
-                setEditForm({ ...editForm, repuestos: updated });
-              }}
-              onDelete={() => setEditForm({ ...editForm, repuestos: editForm.repuestos.filter((_, i) => i !== idx) })}
-            />
-          ))}
-          {editForm.repuestos.length > 0 && stats.repPrecio > 0 && (
-            <div className="flex justify-between border-t border-white/10 px-1 pt-1 text-[10px] font-black">
-              <span className="text-slate-500">Total repuestos</span>
-              <span className="text-blue-400">{formatMoney(stats.repPrecio)}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Insumos / Terceros — pasan al cliente sin markup */}
-        <div className="space-y-3 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Otros gastos (insumos / servicios externos)</p>
-              <p className="text-[9px] text-slate-300 font-bold">Se cobran al cliente sin ganancia adicional</p>
-            </div>
-            <button
-              onClick={() => setEditForm({ ...editForm, insumos: [...editForm.insumos, { nombre: "", monto: 0, cantidad: 1 }] })}
-               className="rounded-xl bg-orange-500/10 p-2 text-orange-400">
-              <Plus size={18} />
-            </button>
-          </div>
-          {editForm.insumos.length === 0 && (
-            <p className="text-[10px] text-slate-300 font-bold text-center py-1">Sin insumos cargados</p>
-          )}
-          {editForm.insumos.map((item, idx) => (
-            <InsumoConAutocomplete
-              key={idx}
-              insumo={item}
-              cilindrada={bike.cilindrada}
-              onUpdate={(field, value) => updateListItem("insumos", idx, field, value)}
-              onSelect={(ins) => {
-                const updated = editForm.insumos.map((r, i) => i === idx ? { ...r, nombre: ins.nombre, monto: ins.precio, cantidad: r.cantidad || 1 } : r);
-                setEditForm({ ...editForm, insumos: updated });
-              }}
-              onDelete={() => setEditForm({ ...editForm, insumos: editForm.insumos.filter((_, i) => i !== idx) })}
-            />
-          ))}
-          {editForm.insumos.length > 0 && stats.insPrecio > 0 && (
-            <div className="flex justify-between border-t border-white/10 px-1 pt-1 text-[10px] font-black">
-              <span className="text-slate-500">Total gastos e insumos</span>
-              <span className="text-orange-400">{formatMoney(stats.insPrecio)}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Observaciones */}
-        <div className="space-y-1 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
-          <label className="text-[10px] uppercase text-slate-400 ml-1 font-black tracking-widest">Notas para la próxima visita</label>
-          <textarea
-            value={editForm.observacionesProxima}
-            onChange={e => setEditForm({ ...editForm, observacionesProxima: e.target.value })}
-            rows="2"
-            className="w-full rounded-2xl border border-white/10 bg-black/20 p-4 font-bold text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
-            placeholder="Ej: Revisar transmisión en 2000km..."
-          />
-        </div>
-
-        {/* Próximo control */}
-          <div className="space-y-5 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
-            <div className="flex items-center gap-2">
-              <Bell size={16} className="text-yellow-500" />
-              <p className="text-[10px] font-black uppercase text-slate-700 tracking-widest">Próximo control</p>
-            </div>
-            <p className="text-[10px] text-slate-400 font-bold -mt-2">Dejá avisado si esta moto tiene que volver por revisión o service</p>
-
-          {/* Detección automática */}
-          {deteccion && !proximoTipo && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 space-y-3">
-              <p className="text-[10px] font-black text-yellow-700 uppercase">
-                Detectamos: {deteccion.descripcion} en {deteccion.valorObjetivo} {deteccion.unidad}
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setProximoTipo(deteccion.tipo);
-                    setProximoUnidad(deteccion.unidad);
-                    setProximoValor(deteccion.valorObjetivo);
-                    setDeteccion(null);
-                  }}
-                  className="flex-1 bg-yellow-500 text-white py-2.5 rounded-xl font-black text-[10px] uppercase active:scale-95"
-                >
-                  Usar
-                </button>
-                <button
-                  onClick={() => setDeteccion(null)}
-                  className="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl font-black text-[10px] uppercase active:scale-95"
-                >
-                  Ignorar
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paso 1: qué hay que controlar</p>
-            <div className="grid grid-cols-3 gap-2">
-            {TIPOS_RAPIDOS.map(t => (
-              <button key={String(t.id)}
-                onClick={() => {
-                  setProximoTipo(t.id);
-                  if (!t.id) {
-                    setProximoValor(null);
-                    setProximoUnidad("km");
-                    setProximoCustom(false);
-                    setProximoCustomInput("");
-                  }
-                }}
-                className={`py-3 px-2 rounded-2xl text-[10px] font-black uppercase text-center transition-all active:scale-95 leading-tight ${
-                  proximoTipo === t.id
-                    ? (t.id ? "bg-yellow-500 text-white" : "bg-slate-200 text-slate-700")
-                    : "bg-slate-50 border border-slate-100 text-slate-600"
-                }`}>
-                {t.label}
-              </button>
-            ))}
-            </div>
-          </div>
-
-          {/* Campo libre para "Otro" */}
-          {proximoTipo === "otro" && (
-            <div className="space-y-2">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paso 2: escribí el control</p>
-              <input
-                value={proximoDesc}
-                onChange={e => setProximoDesc(e.target.value)}
-                placeholder="¿Qué hay que controlar?"
-                className="w-full border-2 border-slate-100 rounded-2xl p-3 text-sm font-bold outline-none focus:border-yellow-500"
+            <div className="space-y-1">
+              <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre del servicio</label>
+              <input value={editForm.nombre} onChange={e => setEditForm({ ...editForm, nombre: e.target.value })}
+                placeholder="Ej: Cambio de cubierta"
+                className="w-full rounded-[1.5rem] border border-white/10 bg-black/20 p-4 font-black text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
               />
             </div>
-          )}
 
-          {/* Plazo — solo si eligió un tipo */}
-          {proximoTipo && (
-            <div className="space-y-3">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                {proximoTipo === "otro" ? "Paso 3: cuándo avisar" : "Paso 2: cuándo avisar"}
-              </p>
-
-              <div className="space-y-2">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Por kilómetros</p>
-                <div className="grid grid-cols-3 gap-2">
-                {PLAZOS_KM.map(v => (
-                  <button key={v}
-                    onClick={() => {
-                      setProximoUnidad("km");
-                      setProximoValor(v);
-                      setProximoCustom(false);
-                      setProximoCustomInput("");
-                    }}
-                    className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
-                      proximoUnidad === "km" && proximoValor === v ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
-                    }`}>
-                    {v.toLocaleString("es-AR")} km
-                  </button>
-                ))}
-                <button
-                  onClick={() => {
-                    setProximoUnidad("km");
-                    setProximoValor(null);
-                    setProximoCustom(true);
-                    setProximoCustomInput("");
-                  }}
-                  className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
-                    proximoCustom && proximoUnidad === "km"
-                      ? "bg-blue-600 text-white"
-                      : "bg-slate-50 border border-slate-100 text-slate-600"
-                  }`}
-                >
-                  Personalizado
-                </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Por días</p>
-                <div className="grid grid-cols-3 gap-2">
-                {PLAZOS_DIAS.map(v => (
-                  <button key={v}
-                    onClick={() => {
-                      setProximoUnidad("dias");
-                      setProximoValor(v);
-                      setProximoCustom(false);
-                      setProximoCustomInput("");
-                    }}
-                    className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
-                      proximoUnidad === "dias" && proximoValor === v ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
-                    }`}>
-                    {v} días
-                  </button>
-                ))}
-                <button
-                  onClick={() => {
-                    setProximoUnidad("dias");
-                    setProximoValor(null);
-                    setProximoCustom(true);
-                    setProximoCustomInput("");
-                  }}
-                  className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
-                    proximoCustom && proximoUnidad === "dias"
-                      ? "bg-blue-600 text-white"
-                      : "bg-slate-50 border border-slate-100 text-slate-600"
-                  }`}
-                >
-                  Personalizado
-                </button>
-                </div>
-              </div>
-
-              {proximoCustom && (
-                <div className="grid grid-cols-[1fr_auto] gap-2">
-                  <input
-                    value={proximoCustomInput}
-                    onChange={e => setProximoCustomInput(e.target.value)}
-                    placeholder={proximoUnidad === "km" ? "Ej: 1800" : "Ej: 45"}
-                    className="w-full border-2 border-slate-100 rounded-2xl p-3 text-sm font-bold outline-none focus:border-blue-500"
-                  />
-                  <button
-                    onClick={() => {
-                      const valor = Number(String(proximoCustomInput).replace(/\D/g, ""));
-                      if (!valor) return;
-                      setProximoValor(valor);
-                    }}
-                    className="px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase active:scale-95"
-                  >
-                    Usar
-                  </button>
-                </div>
-              )}
-
-              {proximoValor && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-3 flex items-center justify-between">
-                  <p className="text-[10px] font-black text-yellow-800">
-                    {proximoTipo === "otro" ? "Paso 4" : "Paso 3"}: {TIPOS_SERVICIO[proximoTipo] || proximoDesc || "Control"} en {proximoValor.toLocaleString("es-AR")} {proximoUnidad === "km" ? "km" : "días"} ✓
+            {sugerencia && (
+              <div className={`rounded-[2rem] border p-4 space-y-2 ${sugerencia.confianza?.badge || "bg-slate-50 border-slate-200"}`}>
+                <div className="flex items-center gap-2">
+                  <Sparkles size={14} className="flex-shrink-0" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">
+                    Sugerencia · {sugerencia.apr.muestras} {sugerencia.apr.muestras === 1 ? "trabajo" : "trabajos"}
                   </p>
-                  <button onClick={() => {
-                    setProximoTipo(null);
-                    setProximoValor(null);
-                    setProximoCustom(false);
-                    setProximoCustomInput("");
+                </div>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-[9px] font-bold opacity-70 uppercase">Promedio real</p>
+                    <p className="text-xl font-black">{Math.round(sugerencia.apr.promedio * 10) / 10}h</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[9px] font-bold opacity-70 uppercase">Variabilidad</p>
+                    <p className="text-sm font-black">±{Math.round(sugerencia.apr.desvio * 10) / 10}h</p>
+                  </div>
+                  <div className={`px-3 py-1.5 rounded-xl border text-[9px] font-black uppercase ${sugerencia.confianza?.badge || ""}`}>
+                    {sugerencia.confianza?.texto || "Sin datos"}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="ml-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">Horas</label>
+                <input type="text" inputMode="decimal" value={editForm.horasBase || ""}
+                  onChange={e => {
+                    const cleaned = e.target.value.replace(",", ".").replace(/[^0-9.]/g, "");
+                    setEditForm({ ...editForm, horasBase: cleaned === "" ? 0 : Number(cleaned) });
                   }}
-                    className="text-yellow-600 active:scale-90 p-1">
-                    <X size={14} />
-                  </button>
+                  className="w-full rounded-xl border border-white/10 bg-black/20 p-3 text-center font-black text-white outline-none focus:border-blue-500" />
+              </div>
+              <div className="space-y-1">
+                <label className="ml-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">Dificultad</label>
+                <select value={editForm.dificultad} onChange={e => setEditForm({ ...editForm, dificultad: e.target.value })}
+                  className="w-full rounded-xl border border-white/10 bg-black/20 p-3 text-xs font-black uppercase text-white outline-none focus:border-blue-500">
+                  <option value="facil">Fácil</option>
+                  <option value="normal">Normal</option>
+                  <option value="dificil">Difícil</option>
+                  <option value="complicado">Complicado</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-blue-500/10 border border-blue-500/30 p-4 space-y-1">
+              <p className="text-[9px] font-black text-blue-300 uppercase">
+                {editForm.horasBase}h × {formatMoney(config.valorHoraInterno || 12000)}/h × {factor.toFixed(1)} = {formatMoney(stats.moCosto)} costo
+              </p>
+              <p className="text-[10px] font-black text-blue-400">
+                con {margenPct}% margen → {formatMoney(stats.moPrecio)} al cliente
+              </p>
+            </div>
+
+            {completoServicio() && (
+              <button onClick={() => abrirSiguiente("servicio")}
+                className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
+                Siguiente → Repuestos
+              </button>
+            )}
+          </div>
+        </AccordionSection>
+
+        {/* SECCIÓN 2: REPUESTOS */}
+        <AccordionSection
+          numero="2"
+          titulo="Repuestos"
+          completo={editForm.repuestos.length > 0}
+          activo={seccionActiva === "repuestos"}
+          onClick={() => setSeccionActiva("repuestos")}
+        >
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Repuestos y materiales</p>
+                <p className="text-[9px] text-slate-400 font-bold">Se cobran al cliente sin ganancia adicional</p>
+              </div>
+              <button
+                onClick={() => setEditForm({ ...editForm, repuestos: [...editForm.repuestos, { nombre: "", monto: 0, cantidad: 1 }] })}
+                className="rounded-xl bg-blue-500/10 p-2 text-blue-400">
+                <Plus size={18} />
+              </button>
+            </div>
+            {editForm.repuestos.length === 0 && (
+              <p className="text-[10px] text-slate-400 font-bold text-center py-4 bg-slate-800/30 rounded-2xl">Sin repuestos cargados</p>
+            )}
+            {editForm.repuestos.map((item, idx) => (
+              <RepuestoConAutocomplete
+                key={idx}
+                repuesto={item}
+                cilindrada={bike.cilindrada}
+                onUpdate={(field, value) => updateListItem("repuestos", idx, field, value)}
+                onSelect={(rep) => {
+                  const updated = editForm.repuestos.map((r, i) => i === idx ? { ...r, nombre: rep.nombre, monto: rep.precio, cantidad: r.cantidad || 1 } : r);
+                  setEditForm({ ...editForm, repuestos: updated });
+                }}
+                onDelete={() => setEditForm({ ...editForm, repuestos: editForm.repuestos.filter((_, i) => i !== idx) })}
+              />
+            ))}
+            {editForm.repuestos.length > 0 && stats.repPrecio > 0 && (
+              <div className="flex justify-between border-t border-white/10 px-1 pt-2 text-[10px] font-black">
+                <span className="text-slate-500">Total repuestos</span>
+                <span className="text-blue-400">{formatMoney(stats.repPrecio)}</span>
+              </div>
+            )}
+            <button onClick={() => abrirSiguiente("repuestos")}
+              className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
+              Siguiente → Insumos
+            </button>
+          </div>
+        </AccordionSection>
+
+        {/* SECCIÓN 3: INSUMOS */}
+        <AccordionSection
+          numero="3"
+          titulo="Insumos / Servicios Externos"
+          completo={editForm.insumos.length > 0}
+          activo={seccionActiva === "insumos"}
+          onClick={() => setSeccionActiva("insumos")}
+        >
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Otros gastos</p>
+                <p className="text-[9px] text-slate-400 font-bold">Se cobran al cliente sin ganancia adicional</p>
+              </div>
+              <button
+                onClick={() => setEditForm({ ...editForm, insumos: [...editForm.insumos, { nombre: "", monto: 0, cantidad: 1 }] })}
+                className="rounded-xl bg-orange-500/10 p-2 text-orange-400">
+                <Plus size={18} />
+              </button>
+            </div>
+            {editForm.insumos.length === 0 && (
+              <p className="text-[10px] text-slate-400 font-bold text-center py-4 bg-slate-800/30 rounded-2xl">Sin insumos cargados</p>
+            )}
+            {editForm.insumos.map((item, idx) => (
+              <InsumoConAutocomplete
+                key={idx}
+                insumo={item}
+                cilindrada={bike.cilindrada}
+                onUpdate={(field, value) => updateListItem("insumos", idx, field, value)}
+                onSelect={(ins) => {
+                  const updated = editForm.insumos.map((r, i) => i === idx ? { ...r, nombre: ins.nombre, monto: ins.precio, cantidad: r.cantidad || 1 } : r);
+                  setEditForm({ ...editForm, insumos: updated });
+                }}
+                onDelete={() => setEditForm({ ...editForm, insumos: editForm.insumos.filter((_, i) => i !== idx) })}
+              />
+            ))}
+            {editForm.insumos.length > 0 && stats.insPrecio > 0 && (
+              <div className="flex justify-between border-t border-white/10 px-1 pt-2 text-[10px] font-black">
+                <span className="text-slate-500">Total insumos</span>
+                <span className="text-orange-400">{formatMoney(stats.insPrecio)}</span>
+              </div>
+            )}
+            <button onClick={() => abrirSiguiente("insumos")}
+              className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
+              Siguiente → Observaciones
+            </button>
+          </div>
+        </AccordionSection>
+
+        {/* SECCIÓN 4: OBSERVACIONES Y PRÓXIMO CONTROL */}
+        <AccordionSection
+          numero="4"
+          titulo="Observaciones y Próximo Control"
+          completo={editForm.observacionesProxima.trim().length > 0 || !!proximoTipo}
+          activo={seccionActiva === "observaciones"}
+          onClick={() => setSeccionActiva("observaciones")}
+        >
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-[10px] uppercase text-slate-400 ml-1 font-black tracking-widest">Notas para la próxima visita</label>
+              <textarea
+                value={editForm.observacionesProxima}
+                onChange={e => setEditForm({ ...editForm, observacionesProxima: e.target.value })}
+                rows="2"
+                className="w-full rounded-2xl border border-white/10 bg-black/20 p-4 font-bold text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
+                placeholder="Ej: Revisar transmisión en 2000km..."
+              />
+            </div>
+
+            <div className="space-y-5 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5">
+              <div className="flex items-center gap-2">
+                <Bell size={16} className="text-yellow-500" />
+                <p className="text-[10px] font-black uppercase text-slate-700 tracking-widest">Próximo control (opcional)</p>
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold -mt-2">Dejá avisado si esta moto tiene que volver por revisión o service</p>
+
+              {deteccion && !proximoTipo && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 space-y-3">
+                  <p className="text-[10px] font-black text-yellow-700 uppercase">
+                    Detectamos: {deteccion.descripcion} en {deteccion.valorObjetivo} {deteccion.unidad}
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={() => { setProximoTipo(deteccion.tipo); setProximoUnidad(deteccion.unidad); setProximoValor(deteccion.valorObjetivo); setDeteccion(null); }}
+                      className="flex-1 bg-yellow-500 text-white py-2.5 rounded-xl font-black text-[10px] uppercase active:scale-95">Usar</button>
+                    <button onClick={() => setDeteccion(null)}
+                      className="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl font-black text-[10px] uppercase active:scale-95">Ignorar</button>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paso 1: qué hay que controlar</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {TIPOS_RAPIDOS.map(t => (
+                    <button key={String(t.id)}
+                      onClick={() => { setProximoTipo(t.id); if (!t.id) { setProximoValor(null); setProximoUnidad("km"); setProximoCustom(false); setProximoCustomInput(""); } }}
+                      className={`py-3 px-2 rounded-2xl text-[10px] font-black uppercase text-center transition-all active:scale-95 leading-tight ${
+                        proximoTipo === t.id ? (t.id ? "bg-yellow-500 text-white" : "bg-slate-200 text-slate-700") : "bg-slate-50 border border-slate-100 text-slate-600"
+                      }`}>{t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {proximoTipo === "otro" && (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paso 2: escribí el control</p>
+                  <input value={proximoDesc} onChange={e => setProximoDesc(e.target.value)} placeholder="¿Qué hay que controlar?"
+                    className="w-full border-2 border-slate-100 rounded-2xl p-3 text-sm font-bold outline-none focus:border-yellow-500" />
+                </div>
+              )}
+
+              {proximoTipo && (
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    {proximoTipo === "otro" ? "Paso 3: cuándo avisar" : "Paso 2: cuándo avisar"}
+                  </p>
+                  <div className="space-y-2">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Por kilómetros</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {PLAZOS_KM.map(v => (
+                        <button key={v}
+                          onClick={() => { setProximoUnidad("km"); setProximoValor(v); setProximoCustom(false); setProximoCustomInput(""); }}
+                          className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
+                            proximoUnidad === "km" && proximoValor === v ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
+                          }`}>{v.toLocaleString("es-AR")} km</button>
+                      ))}
+                      <button onClick={() => { setProximoUnidad("km"); setProximoValor(null); setProximoCustom(true); setProximoCustomInput(""); }}
+                        className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
+                          proximoCustom && proximoUnidad === "km" ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
+                        }`}>Personalizado</button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Por días</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {PLAZOS_DIAS.map(v => (
+                        <button key={v}
+                          onClick={() => { setProximoUnidad("dias"); setProximoValor(v); setProximoCustom(false); setProximoCustomInput(""); }}
+                          className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
+                            proximoUnidad === "dias" && proximoValor === v ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
+                          }`}>{v} días</button>
+                      ))}
+                      <button onClick={() => { setProximoUnidad("dias"); setProximoValor(null); setProximoCustom(true); setProximoCustomInput(""); }}
+                        className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
+                          proximoCustom && proximoUnidad === "dias" ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
+                        }`}>Personalizado</button>
+                    </div>
+                  </div>
+                  {proximoCustom && (
+                    <div className="grid grid-cols-[1fr_auto] gap-2">
+                      <input value={proximoCustomInput} onChange={e => setProximoCustomInput(e.target.value)}
+                        placeholder={proximoUnidad === "km" ? "Ej: 1800" : "Ej: 45"}
+                        className="w-full border-2 border-slate-100 rounded-2xl p-3 text-sm font-bold outline-none focus:border-blue-500" />
+                      <button onClick={() => { const v = Number(String(proximoCustomInput).replace(/\D/g, "")); if (v) setProximoValor(v); }}
+                        className="px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase active:scale-95">Usar</button>
+                    </div>
+                  )}
+                  {proximoValor && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-3 flex items-center justify-between">
+                      <p className="text-[10px] font-black text-yellow-800">
+                        {proximoTipo === "otro" ? "Paso 4" : "Paso 3"}: {TIPOS_SERVICIO[proximoTipo] || proximoDesc || "Control"} en {proximoValor.toLocaleString("es-AR")} {proximoUnidad === "km" ? "km" : "días"} ✓
+                      </p>
+                      <button onClick={() => { setProximoTipo(null); setProximoValor(null); setProximoCustom(false); setProximoCustomInput(""); }}
+                        className="text-yellow-600 active:scale-90 p-1"><X size={14} /></button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {testMode && (
+                <div className="border-t border-slate-100 pt-4 space-y-2">
+                  <p className="text-[9px] font-black text-purple-500 uppercase tracking-widest flex items-center gap-1">
+                    <span className="bg-purple-500 text-white px-2 py-0.5 rounded text-[8px]">PRUEBA</span>
+                    Opciones de test
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {PLAZOS_TEST.map(t => (
+                      <button key={t.label}
+                        onClick={() => { const tipo = proximoTipo || "control_general"; guardarProximoControl(tipo, t.unidad, t.valor, true, t.label); showToast(`Recordatorio de prueba creado: ${t.label} ✓`); }}
+                        className="py-2.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 text-[9px] font-black uppercase active:scale-95 transition-all">
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
-          )}
 
-          {/* Pruebas rápidas — solo en modo prueba */}
-          {testMode && (
-            <div className="border-t border-slate-100 pt-4 space-y-2">
-              <p className="text-[9px] font-black text-purple-500 uppercase tracking-widest flex items-center gap-1">
-                <span className="bg-purple-500 text-white px-2 py-0.5 rounded text-[8px]">PRUEBA</span>
-                Opciones de test
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {PLAZOS_TEST.map(t => (
-                  <button key={t.label}
-                    onClick={() => {
-                      const tipo = proximoTipo || "control_general";
-                      guardarProximoControl(tipo, t.unidad, t.valor, true, t.label);
-                      showToast(`Recordatorio de prueba creado: ${t.label} ✓`);
-                    }}
-                    className="py-2.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 text-[9px] font-black uppercase active:scale-95 transition-all">
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="pb-4">
-          <button
-            onClick={aplicar}
-            className="w-full rounded-[2rem] bg-blue-600 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white shadow-xl transition-all active:scale-95"
-          >
-            Guardar y volver
-          </button>
-        </div>
+            <button onClick={aplicar}
+              className="w-full rounded-[2rem] bg-green-600 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-white shadow-xl transition-all active:scale-95">
+              ✓ Guardar y Cerrar
+            </button>
+          </div>
+        </AccordionSection>
 
       </div>
     </div>
