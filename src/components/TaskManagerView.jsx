@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Plus, X, Sparkles, Bell } from "lucide-react";
-import { LS, useCollection, generateId } from "../lib/storage.js";
+import { ArrowLeft, Plus, X, Sparkles, Bell, Search } from "lucide-react";
+import { LS, useCollection, generateId, buscarRepuestosAutocomplete, guardarRepuestoHistorial } from "../lib/storage.js";
 import { CONFIG_DEFAULT, SERVICIOS_DEFAULT } from "../lib/constants.js";
 import { calcularNuevoTotal } from "../lib/calc.js";
 import { obtenerAprendizaje, evaluarConfianza } from "../lib/priceLearning.js";
@@ -43,6 +43,183 @@ function mismaMoto(a = {}, b = {}) {
 
 function clonarLista(items = []) {
   return items.map((item) => ({ ...item }));
+}
+
+function RepuestoConAutocomplete({ repuesto, cilindrada, onUpdate, onSelect, onDelete }) {
+  const [busqueda, setBusqueda] = useState(repuesto.nombre || "");
+  const [sugerencias, setSugerencias] = useState([]);
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+
+  useEffect(() => { setBusqueda(repuesto.nombre || ""); }, [repuesto.nombre]);
+
+  const handleBusqueda = (valor) => {
+    setBusqueda(valor);
+    onUpdate("nombre", valor);
+    if (valor.length > 0) {
+      const r = buscarRepuestosAutocomplete(valor, cilindrada, "repuesto");
+      setSugerencias(r);
+      setMostrarSugerencias(r.length > 0);
+    } else {
+      setSugerencias([]);
+      setMostrarSugerencias(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-3 relative">
+      <div className="relative">
+        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
+          <Search size={14} className="text-slate-500" />
+          <input
+            type="text"
+            className="w-full border-none bg-transparent text-xs font-black uppercase text-white outline-none placeholder:text-slate-600"
+            placeholder="Buscar repuesto..."
+            value={busqueda}
+            onChange={(e) => handleBusqueda(e.target.value)}
+            onBlur={() => setTimeout(() => setMostrarSugerencias(false), 150)}
+          />
+        </div>
+        {mostrarSugerencias && sugerencias.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/10 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
+            {sugerencias.map((rep) => (
+              <button
+                key={rep.id}
+                onMouseDown={() => { onSelect(rep); setBusqueda(rep.nombre); setMostrarSugerencias(false); }}
+                className="w-full text-left px-3 py-2 hover:bg-blue-600/20 transition-colors border-b border-white/5 last:border-b-0"
+              >
+                <p className="text-xs font-black text-white">{rep.nombre}</p>
+                <p className="text-[9px] text-blue-400">$ {rep.precio.toLocaleString("es-AR")} · Usos: {rep.usos}</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-[80px_minmax(0,1fr)_auto] gap-2 items-end">
+        <div>
+          <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Cant.</p>
+          <input
+            type="text" inputMode="numeric"
+            className="w-full rounded-xl border border-white/10 bg-slate-950/80 p-2 text-center text-xs font-black text-white outline-none focus:border-blue-500"
+            value={repuesto.cantidad || 1}
+            onChange={(e) => onUpdate("cantidad", Number(e.target.value.replace(/\D/g, "")) || 1)}
+          />
+        </div>
+        <div>
+          <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Precio unit.</p>
+          <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
+            <span className="text-[10px] font-black text-slate-300">$</span>
+            <input
+              type="text" inputMode="numeric"
+              className="w-full min-w-0 bg-transparent text-right text-xs font-black text-blue-400 outline-none"
+              placeholder="0"
+              value={repuesto.monto > 0 ? repuesto.monto.toLocaleString("es-AR") : ""}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "");
+                const monto = digits ? Number(digits) : 0;
+                onUpdate("monto", monto);
+                if (monto && repuesto.nombre) guardarRepuestoHistorial(repuesto.nombre, monto, cilindrada, "repuesto");
+              }}
+            />
+          </div>
+        </div>
+        <button onClick={onDelete} className="self-center p-1 text-slate-500 hover:text-red-400 transition-colors">
+          <X size={16} />
+        </button>
+      </div>
+      <div className="flex justify-between items-center border-t border-white/10 pt-2">
+        <p className="text-[9px] font-black text-slate-400 uppercase">Total repuesto</p>
+        <p className="text-sm font-black text-blue-400">${((repuesto.cantidad || 1) * (repuesto.monto || 0)).toLocaleString("es-AR")}</p>
+      </div>
+    </div>
+  );
+}
+
+function InsumoConAutocomplete({ insumo, cilindrada, onUpdate, onSelect, onDelete }) {
+  const [busqueda, setBusqueda] = useState(insumo.nombre || "");
+  const [sugerencias, setSugerencias] = useState([]);
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+
+  useEffect(() => { setBusqueda(insumo.nombre || ""); }, [insumo.nombre]);
+
+  const handleBusqueda = (valor) => {
+    setBusqueda(valor);
+    onUpdate("nombre", valor);
+    if (!valor.trim()) { setSugerencias([]); setMostrarSugerencias(false); return; }
+    const r = buscarRepuestosAutocomplete(valor, cilindrada, "insumo");
+    setSugerencias(r);
+    setMostrarSugerencias(r.length > 0);
+  };
+
+  return (
+    <div className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-3">
+      <div className="relative">
+        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
+          <Search size={14} className="text-slate-500 flex-shrink-0" />
+          <input
+            className="w-full min-w-0 bg-transparent text-xs font-black uppercase text-white outline-none placeholder:text-slate-600"
+            placeholder="Insumo / servicio..."
+            value={busqueda}
+            onChange={(e) => handleBusqueda(e.target.value)}
+            onBlur={() => setTimeout(() => setMostrarSugerencias(false), 150)}
+            autoComplete="off"
+          />
+        </div>
+        {mostrarSugerencias && sugerencias.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-xl z-10 max-h-48 overflow-y-auto">
+            {sugerencias.map((item, i) => (
+              <button
+                key={i}
+                onMouseDown={() => { onSelect(item); setBusqueda(item.nombre); setMostrarSugerencias(false); }}
+                className="w-full text-left px-3 py-2 hover:bg-slate-800 border-b border-white/5 text-[10px] last:border-b-0 active:bg-slate-700"
+              >
+                <p className="font-black text-white">{item.nombre}</p>
+                <p className="text-slate-400">{formatMoney(item.precio)} · {item.usos || 0} usos</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-[80px_minmax(0,1fr)_auto] gap-2 items-end">
+        <div>
+          <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Cant.</p>
+          <input
+            type="text" inputMode="numeric"
+            className="w-full rounded-xl border border-white/10 bg-slate-950/80 p-2 text-center text-xs font-black text-white outline-none"
+            value={insumo.cantidad || 1}
+            onChange={(e) => {
+              const digits = e.target.value.replace(/\D/g, "");
+              onUpdate("cantidad", Math.max(1, Number(digits) || 1));
+            }}
+          />
+        </div>
+        <div>
+          <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Costo unit.</p>
+          <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
+            <span className="text-[10px] font-black text-slate-300">$</span>
+            <input
+              type="text" inputMode="numeric"
+              className="w-full min-w-0 bg-transparent text-right text-xs font-black text-orange-400 outline-none"
+              value={insumo.monto > 0 ? insumo.monto.toLocaleString("es-AR") : ""}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "");
+                const monto = digits ? Number(digits) : 0;
+                onUpdate("monto", monto);
+                if (monto && insumo.nombre) guardarRepuestoHistorial(insumo.nombre, monto, cilindrada, "insumo");
+              }}
+              placeholder="0"
+            />
+          </div>
+        </div>
+        <button onClick={onDelete} className="self-center p-1 text-slate-500 active:text-red-400">
+          <X size={16} />
+        </button>
+      </div>
+      <div className="flex justify-between items-center border-t border-white/10 pt-2">
+        <p className="text-[9px] font-black text-slate-300 uppercase">Total gasto</p>
+        <p className="text-[11px] font-black text-orange-400">{formatMoney((insumo.monto || 0) * (insumo.cantidad || 1))}</p>
+      </div>
+    </div>
+  );
 }
 
 export default function TaskManagerView({ order, setView, showToast, serviceToEdit, setServiceToEdit }) {
@@ -537,53 +714,17 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             <p className="text-[10px] text-slate-300 font-bold text-center py-1">Sin repuestos cargados</p>
           )}
           {editForm.repuestos.map((item, idx) => (
-            <div key={idx} className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-3">
-              <input
-                className="w-full border-none bg-transparent text-xs font-black uppercase text-slate-700 outline-none"
-                placeholder="Nombre del repuesto..."
-                value={item.nombre}
-                onChange={e => updateListItem("repuestos", idx, "nombre", e.target.value)}
-              />
-              <div className="grid grid-cols-[80px_minmax(0,1fr)_auto] gap-2 items-end">
-                <div>
-                  <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Cant.</p>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className="w-full rounded-xl border border-white/10 bg-slate-950/80 p-2 text-center text-xs font-black text-white outline-none"
-                    value={item.cantidad || 1}
-                    onChange={e => {
-                      const digits = e.target.value.replace(/\D/g, "");
-                      updateListItem("repuestos", idx, "cantidad", Math.max(1, Number(digits) || 1));
-                    }}
-                  />
-                </div>
-                <div>
-                  <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Precio unit.</p>
-                  <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
-                    <span className="text-[10px] font-black text-slate-300">$</span>
-                    <input
-                      type="text" inputMode="numeric"
-                      className="w-full min-w-0 bg-transparent text-right text-xs font-black text-blue-400 outline-none"
-                      value={item.monto > 0 ? item.monto.toLocaleString("es-AR") : ""}
-                      onChange={e => {
-                        const digits = e.target.value.replace(/\D/g, "");
-                        updateListItem("repuestos", idx, "monto", digits ? Number(digits) : 0);
-                      }}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                <button onClick={() => setEditForm({ ...editForm, repuestos: editForm.repuestos.filter((_, i) => i !== idx) })}
-                  className="self-center p-1 text-slate-500 active:text-red-400">
-                  <X size={16} />
-                </button>
-              </div>
-              <div className="flex justify-between items-center border-t border-white/10 pt-2">
-                <p className="text-[9px] font-black text-slate-300 uppercase">Total repuesto</p>
-                <p className="text-[11px] font-black text-blue-400">{formatMoney((item.monto || 0) * (item.cantidad || 1))}</p>
-              </div>
-            </div>
+            <RepuestoConAutocomplete
+              key={idx}
+              repuesto={item}
+              cilindrada={bike.cilindrada}
+              onUpdate={(field, value) => updateListItem("repuestos", idx, field, value)}
+              onSelect={(rep) => {
+                const updated = editForm.repuestos.map((r, i) => i === idx ? { ...r, nombre: rep.nombre, monto: rep.precio, cantidad: r.cantidad || 1 } : r);
+                setEditForm({ ...editForm, repuestos: updated });
+              }}
+              onDelete={() => setEditForm({ ...editForm, repuestos: editForm.repuestos.filter((_, i) => i !== idx) })}
+            />
           ))}
           {editForm.repuestos.length > 0 && stats.repPrecio > 0 && (
             <div className="flex justify-between border-t border-white/10 px-1 pt-1 text-[10px] font-black">
@@ -610,53 +751,17 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             <p className="text-[10px] text-slate-300 font-bold text-center py-1">Sin insumos cargados</p>
           )}
           {editForm.insumos.map((item, idx) => (
-            <div key={idx} className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-3">
-              <input
-                className="w-full border-none bg-transparent text-xs font-black uppercase text-slate-700 outline-none"
-                placeholder="Nombre..."
-                value={item.nombre}
-                onChange={e => updateListItem("insumos", idx, "nombre", e.target.value)}
-              />
-              <div className="grid grid-cols-[80px_minmax(0,1fr)_auto] gap-2 items-end">
-                <div>
-                  <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Cant.</p>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    className="w-full rounded-xl border border-white/10 bg-slate-950/80 p-2 text-center text-xs font-black text-white outline-none"
-                    value={item.cantidad || 1}
-                    onChange={e => {
-                      const digits = e.target.value.replace(/\D/g, "");
-                      updateListItem("insumos", idx, "cantidad", Math.max(1, Number(digits) || 1));
-                    }}
-                  />
-                </div>
-                <div>
-                  <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Costo unit.</p>
-                  <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
-                    <span className="text-[10px] font-black text-slate-300">$</span>
-                    <input
-                      type="text" inputMode="numeric"
-                      className="w-full min-w-0 bg-transparent text-right text-xs font-black text-orange-400 outline-none"
-                      value={item.monto > 0 ? item.monto.toLocaleString("es-AR") : ""}
-                      onChange={e => {
-                        const digits = e.target.value.replace(/\D/g, "");
-                        updateListItem("insumos", idx, "monto", digits ? Number(digits) : 0);
-                      }}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                <button onClick={() => setEditForm({ ...editForm, insumos: editForm.insumos.filter((_, i) => i !== idx) })}
-                  className="self-center p-1 text-slate-500 active:text-red-400">
-                  <X size={16} />
-                </button>
-              </div>
-              <div className="flex justify-between items-center border-t border-white/10 pt-2">
-                <p className="text-[9px] font-black text-slate-300 uppercase">Total gasto</p>
-                <p className="text-[11px] font-black text-orange-400">{formatMoney((item.monto || 0) * (item.cantidad || 1))}</p>
-              </div>
-            </div>
+            <InsumoConAutocomplete
+              key={idx}
+              insumo={item}
+              cilindrada={bike.cilindrada}
+              onUpdate={(field, value) => updateListItem("insumos", idx, field, value)}
+              onSelect={(ins) => {
+                const updated = editForm.insumos.map((r, i) => i === idx ? { ...r, nombre: ins.nombre, monto: ins.precio, cantidad: r.cantidad || 1 } : r);
+                setEditForm({ ...editForm, insumos: updated });
+              }}
+              onDelete={() => setEditForm({ ...editForm, insumos: editForm.insumos.filter((_, i) => i !== idx) })}
+            />
           ))}
           {editForm.insumos.length > 0 && stats.insPrecio > 0 && (
             <div className="flex justify-between border-t border-white/10 px-1 pt-1 text-[10px] font-black">

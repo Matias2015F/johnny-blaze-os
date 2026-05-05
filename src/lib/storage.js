@@ -258,3 +258,52 @@ export async function clearFirestoreData(uid) {
   }
   DATA_COLS.forEach((col) => { delete _cache[col]; });
 }
+
+// ========== HISTORIAL DE REPUESTOS E INSUMOS ==========
+
+export function obtenerRepuestosHistorial(cilindrada = null) {
+  try {
+    const todos = LS.getAll("repuestosHistorial") || [];
+    if (!cilindrada) return todos;
+    return todos.filter((r) => !r.cilindrada || Number(r.cilindrada) === Number(cilindrada));
+  } catch {
+    return [];
+  }
+}
+
+export function guardarRepuestoHistorial(nombre, precio, cilindrada = null, tipo = "repuesto") {
+  if (!nombre || !precio) return;
+  const historial = LS.getAll("repuestosHistorial") || [];
+  const existe = historial.find(
+    (r) => r.nombre.toLowerCase() === nombre.toLowerCase() &&
+           Number(r.cilindrada || 0) === Number(cilindrada || 0) &&
+           r.tipo === tipo
+  );
+  if (existe) {
+    LS.updateDoc("repuestosHistorial", existe.id, {
+      precio: Number(precio),
+      ultimaActualizacion: Date.now(),
+      usos: (existe.usos || 0) + 1,
+    });
+  } else {
+    LS.addDoc("repuestosHistorial", {
+      nombre: nombre.trim(),
+      precio: Number(precio),
+      cilindrada: cilindrada ? Number(cilindrada) : null,
+      tipo,
+      createdAt: Date.now(),
+      ultimaActualizacion: Date.now(),
+      usos: 1,
+    });
+  }
+}
+
+export function buscarRepuestosAutocomplete(query, cilindrada = null, tipo = "repuesto") {
+  if (!query || query.length < 1) return [];
+  const historial = obtenerRepuestosHistorial(cilindrada);
+  const busqueda = query.toLowerCase();
+  return historial
+    .filter((r) => r.tipo === tipo && r.nombre.toLowerCase().includes(busqueda))
+    .sort((a, b) => (b.usos || 0) - (a.usos || 0))
+    .slice(0, 8);
+}
