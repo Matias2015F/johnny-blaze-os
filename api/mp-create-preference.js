@@ -6,8 +6,8 @@ try {
 }
 
 const PLANES = {
-  base: { label: "Plan Base", monto: 1 },
-  pro:  { label: "Plan Pro",  monto: 1 },
+  base: { label: "Plan Base", monto: 5000 },
+  pro:  { label: "Plan Pro",  monto: 12000 },
 };
 
 const BASE_URL = "https://johnny-blaze-os.vercel.app";
