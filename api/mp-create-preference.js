@@ -6,8 +6,8 @@ try {
 }
 
 const PLANES = {
-  base: { label: "Plan Base", monto: 5000 },
-  pro:  { label: "Plan Pro",  monto: 12000 },
+  base: { label: "Plan Base", monto: 1 },
+  pro:  { label: "Plan Pro",  monto: 1 },
 };
 
 const BASE_URL = "https://johnny-blaze-os.vercel.app";
@@ -52,6 +52,6 @@ module.exports = async function handler(req, res) {
 
   return res.status(200).json({
     preferenceId: body.id,
-    url: body.sandbox_init_point || body.init_point,
+    url: body.init_point,
   });
 };
