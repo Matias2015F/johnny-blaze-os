@@ -738,15 +738,6 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
               </div>
             </div>
 
-            <div className="rounded-2xl bg-blue-500/10 border border-blue-500/30 p-4 space-y-1">
-              <p className="text-[9px] font-black text-blue-300 uppercase">
-                {editForm.horasBase}h × {formatMoney(config.valorHoraInterno || 12000)}/h × {factor.toFixed(1)} = {formatMoney(stats.moCosto)} costo
-              </p>
-              <p className="text-[10px] font-black text-blue-400">
-                con {margenPct}% margen → {formatMoney(stats.moPrecio)} al cliente
-              </p>
-            </div>
-
             {completoServicio() && (
               <button onClick={() => abrirSiguiente("servicio")}
                 className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
