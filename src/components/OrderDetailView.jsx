@@ -209,19 +209,25 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   };
 
   const enviarPresupuesto = () => {
+    const presupuestoMinimo = nivelRiesgo === "bajo"
+      ? presupuestoEditable
+      : Math.min(presupuestoEditable, Math.max(presBase, Math.round(nuevoMin)));
+    const presupuestoMaximo = nivelRiesgo === "bajo"
+      ? presupuestoEditable
+      : Math.max(presupuestoEditable, Math.round(nuevoMax));
     trackEvent("enviar_presupuesto_whatsapp", {
       screen: "detalleOrden",
       entityType: "trabajo",
       entityId: order.id,
-      metadata: { monto: presupuestoEditable },
+      metadata: { min: presupuestoMinimo, max: presupuestoMaximo, nivel: nivelRiesgo },
     }).catch(console.error);
     abrirWhatsApp(client.tel, mensajePresupuesto({
       bike,
       client,
       tareas: order.tareas,
-      min: presupuestoEditable,
-      max: presupuestoEditable,
-      nivel: "bajo",
+      min: presupuestoMinimo,
+      max: presupuestoMaximo,
+      nivel: nivelRiesgo,
     }));
   };
 
