@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { LS, useCollection, generateId } from "../lib/storage.js";
+import { abrirEnlaceExterno } from "../lib/whatsappService.js";
 
 const WEEK_DAYS = ["D", "L", "M", "M", "J", "V", "S"];
 const STATUS_OPTIONS = [
@@ -277,7 +278,7 @@ export default function AgendaView({ setView }) {
     const telefono = String(appointment.telefono || "").replace(/\D/g, "");
     if (!telefono) return;
     const message = buildWhatsappMessage(appointment, type);
-    window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(message)}`, "_blank");
+    abrirEnlaceExterno(`https://wa.me/${telefono}?text=${encodeURIComponent(message)}`);
   };
 
   return (

@@ -1,3 +1,5 @@
+import { abrirEnlaceExterno } from "./whatsappService.js";
+
 export function mensajePresupuesto({ bike, client, tareas = [], min, max, nivel = "medio" }) {
   const listaTareas = tareas.length > 0
     ? tareas.map(t => `• ${t.nombre}`).join("\n")
@@ -82,5 +84,5 @@ export function normalizarTelWA(tel) {
 export function abrirWhatsApp(tel, mensaje) {
   const numero = normalizarTelWA(tel);
   const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
-  window.open(url, "_blank");
+  abrirEnlaceExterno(url);
 }

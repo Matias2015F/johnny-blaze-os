@@ -1,5 +1,19 @@
 import { normalizarTelWA } from "./messages.js";
 
+function isMobileDevice() {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+}
+
+export function abrirEnlaceExterno(url) {
+  if (typeof window === "undefined" || !url) return;
+  if (isMobileDevice()) {
+    window.location.assign(url);
+    return;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 export function generarEnlacePresupuesto(orden, monto, cliente, moto) {
   const nombreCliente = cliente?.nombre || orden?.clienteNombre || "Cliente";
   const marcaMoto = moto?.marca || orden?.moto?.marca || "";

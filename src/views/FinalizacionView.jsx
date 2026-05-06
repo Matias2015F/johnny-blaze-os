@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, Share2 } from "lucide-react";
 import { LS, obtenerOrden, actualizarOrden } from "../lib/storage.js";
-import { generarEnlaceMontoFinal } from "../lib/whatsappService.js";
+import { abrirEnlaceExterno, generarEnlaceMontoFinal } from "../lib/whatsappService.js";
 import { formatMoney } from "../utils/format.js";
 
 export default function FinalizacionView({ ordenId, setView }) {
@@ -41,7 +41,7 @@ export default function FinalizacionView({ ordenId, setView }) {
 
   const handleEnviarWhatsApp = () => {
     const enlace = generarEnlaceMontoFinal(orden, costoFinal, cliente, moto);
-    window.open(enlace, "_blank");
+    abrirEnlaceExterno(enlace);
     actualizarOrden(ordenId, {
       whatsappFinalEnviado: true,
       costosAdicionales: Number(costosAdicionales || 0),

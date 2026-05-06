@@ -7,6 +7,7 @@ import { DEFAULT_ADMIN_SETTINGS, ensureAccountProfile } from "./lib/telemetry.js
 import { leerAdminSettings, normalizeDateMs, resolveAccountAccess } from "./services/accessService.js";
 import { LS } from "./lib/storage.js";
 import { CONFIG_DEFAULT } from "./lib/constants.js";
+import { abrirEnlaceExterno } from "./lib/whatsappService.js";
 
 import TallerPanel from "./TallerPanel.jsx";
 import LoginScreen from "./LoginScreen.jsx";
@@ -171,8 +172,11 @@ function PantallaBloqueo({ account, settings }) {
           {waLink && (
             <a
               href={waLink}
-              target="_blank"
               rel="noreferrer"
+              onClick={(e) => {
+                e.preventDefault();
+                abrirEnlaceExterno(waLink);
+              }}
               className="w-full flex items-center justify-center gap-2 bg-green-900/30 border border-green-800/40 text-green-400 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wide active:scale-95 transition-all"
             >
               <span>💬</span> Consultar por WhatsApp
