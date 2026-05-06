@@ -59,9 +59,37 @@ function buildWhatsappMessage(appointment, type) {
     return `Hola ${cliente}, te escribo para confirmar tu turno del ${fecha} a las ${hora} por ${moto}. ¿Vas a asistir, reprogramar o suspender?`;
   }
   if (type === "day_before") {
-    return `Hola ${cliente}, te recordamos tu turno de mañana ${fecha} a las ${hora} por ${moto}. Si necesitás cambiarlo, avisanos.`;
+    return `Hola ${cliente}, mañana ${fecha} a las ${hora} tenés tu turno por ${moto}. ¿Vas a asistir al turno o necesitás reprogramarlo?`;
   }
-  return `Hola ${cliente}, falta poco para tu turno de hoy a las ${hora} por ${moto}. ¿Venís en camino?`;
+  if (type === "hour_before_confirm") {
+    return `Hola ${cliente}, falta una hora para tu turno de hoy a las ${hora} por ${moto}. ¿Seguís en camino o querés avisarnos un cambio?`;
+  }
+  return `Hola ${cliente}, falta una hora para tu turno de hoy a las ${hora} por ${moto}. Te esperamos en el taller.`;
+}
+
+function playReminderSound() {
+  if (typeof window === "undefined") return;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+
+  const ctx = new AudioContextClass();
+  const pattern = [880, 660, 880];
+  pattern.forEach((frequency, index) => {
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.value = frequency;
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    const start = ctx.currentTime + index * 0.22;
+    const end = start + 0.16;
+    gain.gain.setValueAtTime(0.001, start);
+    gain.gain.exponentialRampToValueAtTime(0.18, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, end);
+    oscillator.start(start);
+    oscillator.stop(end + 0.03);
+  });
+  setTimeout(() => ctx.close().catch(() => {}), 1200);
 }
 
 export default function AgendaView({ setView }) {
@@ -73,6 +101,7 @@ export default function AgendaView({ setView }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [clientMode, setClientMode] = useState("historial");
+  const [reminderMenuId, setReminderMenuId] = useState(null);
   const [formData, setFormData] = useState({
     clientId: "",
     bikeId: "",
@@ -181,12 +210,17 @@ export default function AgendaView({ setView }) {
 
   const handleClientChange = (clientId) => {
     const client = clients.find((item) => item.id === clientId);
+    const clientBikes = bikes.filter((bike) => bike.clienteId === clientId);
+    const bike = clientBikes.length === 1 ? clientBikes[0] : null;
     setFormData((prev) => ({
       ...prev,
       clientId,
-      bikeId: "",
+      bikeId: bike?.id || "",
       clienteNombre: client?.nombre || prev.clienteNombre,
       telefono: client?.telefono || client?.tel || prev.telefono,
+      motoPatente: bike?.patente || "",
+      motoMarca: bike?.marca || "",
+      motoModelo: bike?.modelo || "",
     }));
   };
 
@@ -255,7 +289,7 @@ export default function AgendaView({ setView }) {
           </button>
           <div className="min-w-0">
             <h1 className="flex items-center gap-2 text-xl font-black text-white">
-              <CalendarIcon size={20} />
+              <Clock size={20} />
               Agenda del taller
             </h1>
             <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -395,16 +429,42 @@ export default function AgendaView({ setView }) {
                               onClick={() => sendWhatsApp(appointment, "day_before")}
                               className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-200 active:scale-95"
                             >
-                              <MessageCircle size={14} /> 24h
+                              <MessageCircle size={14} /> 24H
                             </button>
                             <button
-                              onClick={() => sendWhatsApp(appointment, "hour_before")}
+                              onClick={() => {
+                                playReminderSound();
+                                setReminderMenuId((prev) => (prev === appointment.id ? null : appointment.id));
+                              }}
                               className="flex items-center justify-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-blue-200 active:scale-95"
                             >
-                              <Clock size={14} /> 1h
+                              <Clock size={14} /> 1H
                             </button>
                           </div>
                         </div>
+
+                        {reminderMenuId === appointment.id && (
+                          <div className="mt-3 grid grid-cols-1 gap-2 rounded-2xl border border-blue-500/15 bg-slate-900 p-3 sm:grid-cols-3">
+                            <button
+                              onClick={() => playReminderSound()}
+                              className="rounded-2xl bg-slate-800 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-slate-200 active:scale-95"
+                            >
+                              Hacer sonar aviso
+                            </button>
+                            <button
+                              onClick={() => sendWhatsApp(appointment, "hour_before")}
+                              className="rounded-2xl bg-blue-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
+                            >
+                              Avisar al cliente
+                            </button>
+                            <button
+                              onClick={() => sendWhatsApp(appointment, "hour_before_confirm")}
+                              className="rounded-2xl bg-emerald-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
+                            >
+                              Preguntar si viene
+                            </button>
+                          </div>
+                        )}
 
                         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                           <button onClick={() => LS.updateDoc("agendaTurnos", appointment.id, { estado: "confirmado", updatedAt: Date.now() })} className="rounded-2xl bg-emerald-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Confirmó</button>
@@ -470,7 +530,7 @@ export default function AgendaView({ setView }) {
                   <label className="block space-y-2">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Moto</span>
                     <select value={formData.bikeId} onChange={(e) => handleBikeChange(e.target.value)} className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white outline-none">
-                      <option value="">Elegí moto</option>
+                      <option value="">{filteredBikes.length === 1 ? "Moto autoseleccionada" : "Elegí moto"}</option>
                       {filteredBikes.map((bike) => (
                         <option key={bike.id} value={bike.id}>{bike.patente} · {bike.marca} {bike.modelo}</option>
                       ))}
