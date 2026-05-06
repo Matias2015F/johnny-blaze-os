@@ -1,179 +1,261 @@
 import React, { useMemo, useState } from "react";
-import { ArrowLeft, Calendar, Bell, CheckCircle2, Clock3, Plus, Phone, Bike, User, XCircle, RotateCcw, MessageSquare } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  MessageCircle,
+  Clock,
+  Bike,
+  Trash2,
+  Pencil,
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  X,
+} from "lucide-react";
 import { LS, useCollection, generateId } from "../lib/storage.js";
 
-const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const ESTADOS = {
-  pendiente: { label: "Pendiente", chip: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30" },
-  confirmado: { label: "Confirmado", chip: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" },
-  reprogramar: { label: "Reprogramar", chip: "bg-blue-500/15 text-blue-300 border-blue-500/30" },
-  suspendido: { label: "Suspendido", chip: "bg-rose-500/15 text-rose-300 border-rose-500/30" },
-  asistio: { label: "Asistió", chip: "bg-emerald-500/20 text-emerald-200 border-emerald-500/40" },
-  no_asistio: { label: "No asistió", chip: "bg-slate-700 text-slate-300 border-slate-600" },
-};
+const WEEK_DAYS = ["D", "L", "M", "M", "J", "V", "S"];
+const STATUS_OPTIONS = [
+  { value: "pendiente", label: "Pendiente" },
+  { value: "confirmado", label: "Confirmado" },
+  { value: "reprogramar", label: "Reprogramar" },
+  { value: "suspendido", label: "Suspendido" },
+  { value: "asistio", label: "Asistió" },
+  { value: "no_asistio", label: "No asistió" },
+];
 
-function inicioSemana(baseDate) {
-  const fecha = new Date(baseDate);
-  const day = fecha.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  fecha.setDate(fecha.getDate() + diff);
-  fecha.setHours(0, 0, 0, 0);
-  return fecha;
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
-function formatFecha(fecha) {
-  return fecha.toISOString().split("T")[0];
+function getStatusMeta(status) {
+  switch (status) {
+    case "confirmado":
+      return { label: "Confirmado", chip: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" };
+    case "reprogramar":
+      return { label: "Reprogramar", chip: "bg-blue-500/15 text-blue-300 border-blue-500/30" };
+    case "suspendido":
+      return { label: "Suspendido", chip: "bg-rose-500/15 text-rose-300 border-rose-500/30" };
+    case "asistio":
+      return { label: "Asistió", chip: "bg-emerald-500/20 text-emerald-200 border-emerald-500/40" };
+    case "no_asistio":
+      return { label: "No asistió", chip: "bg-slate-700 text-slate-300 border-slate-600" };
+    default:
+      return { label: "Pendiente", chip: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30" };
+  }
 }
 
-function formatFechaLarga(fechaIso) {
-  const fecha = new Date(`${fechaIso}T00:00:00`);
-  return `${DIAS[fecha.getDay()]} ${fecha.getDate()}/${fecha.getMonth() + 1}`;
-}
+function buildWhatsappMessage(appointment, type) {
+  const cliente = appointment.clienteNombre || "cliente";
+  const fecha = appointment.fecha;
+  const hora = appointment.hora || "--:--";
+  const moto = appointment.motoPatente || appointment.motoMarca || "moto";
 
-function formatHora(hora = "") {
-  return hora || "--:--";
-}
-
-function estadoConfig(estado) {
-  return ESTADOS[estado] || ESTADOS.pendiente;
-}
-
-function buildMensaje(turno, cliente, moto, momento) {
-  const encabezado = momento === "dia"
-    ? "Recordatorio de turno para mañana"
-    : "Recordatorio de turno para hoy";
-  return `${encabezado}\nCliente: ${cliente?.nombre || turno.clienteNombre || "Cliente"}\nMoto: ${moto?.patente || turno.motoPatente || "Sin patente"}\nFecha: ${formatFechaLarga(turno.fecha)}\nHora: ${formatHora(turno.hora)}\nEstado: ${estadoConfig(turno.estado).label}\n\nResponde: CONFIRMO / REPROGRAMAR / SUSPENDER.`;
+  if (type === "confirm") {
+    return `Hola ${cliente}, te escribo para confirmar tu turno del ${fecha} a las ${hora} por ${moto}. ¿Vas a asistir, reprogramar o suspender?`;
+  }
+  if (type === "day_before") {
+    return `Hola ${cliente}, te recordamos tu turno de mañana ${fecha} a las ${hora} por ${moto}. Si necesitás cambiarlo, avisanos.`;
+  }
+  return `Hola ${cliente}, falta poco para tu turno de hoy a las ${hora} por ${moto}. ¿Venís en camino?`;
 }
 
 export default function AgendaView({ setView }) {
-  const turnos = useCollection("agendaTurnos");
-  const clientes = useCollection("clientes");
-  const motos = useCollection("motos");
-  const [mostrarForm, setMostrarForm] = useState(false);
-  const [filtroEstado, setFiltroEstado] = useState("todos");
-  const [semanaOffset, setSemanaOffset] = useState(0);
-  const [form, setForm] = useState({
-    fecha: formatFecha(new Date()),
-    hora: "09:00",
-    clienteId: "",
-    motoId: "",
+  const clients = useCollection("clientes");
+  const bikes = useCollection("motos");
+  const appointments = useCollection("agendaTurnos");
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [clientMode, setClientMode] = useState("historial");
+  const [formData, setFormData] = useState({
+    clientId: "",
+    bikeId: "",
     clienteNombre: "",
     telefono: "",
+    motoPatente: "",
+    motoMarca: "",
+    motoModelo: "",
+    fecha: formatDateKey(new Date()),
+    hora: "09:00",
     motivo: "",
     estado: "pendiente",
+    observaciones: "",
     reminderDayBefore: true,
     reminderHourBefore: true,
-    observaciones: "",
   });
 
-  const baseSemana = useMemo(() => {
-    const base = inicioSemana(new Date());
-    base.setDate(base.getDate() + semanaOffset * 7);
-    return base;
-  }, [semanaOffset]);
+  const daysInMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const startDayOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  const selectedDateStr = useMemo(() => formatDateKey(selectedDate), [selectedDate]);
 
-  const diasSemana = useMemo(() => {
-    return Array.from({ length: 7 }, (_, index) => {
-      const dia = new Date(baseSemana);
-      dia.setDate(baseSemana.getDate() + index);
-      return dia;
-    });
-  }, [baseSemana]);
+  const dayAppointments = useMemo(() => {
+    return appointments
+      .filter((apt) => apt.fecha === selectedDateStr)
+      .sort((a, b) => (a.hora || "").localeCompare(b.hora || ""));
+  }, [appointments, selectedDateStr]);
 
-  const turnosFiltrados = useMemo(() => {
-    const base = formatFecha(baseSemana);
-    const fin = formatFecha(new Date(baseSemana.getFullYear(), baseSemana.getMonth(), baseSemana.getDate() + 6));
-    return turnos
-      .filter((turno) => turno.fecha >= base && turno.fecha <= fin)
-      .filter((turno) => (filtroEstado === "todos" ? true : turno.estado === filtroEstado))
-      .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
-  }, [turnos, baseSemana, filtroEstado]);
+  const stats = useMemo(() => {
+    return appointments.reduce(
+      (acc, apt) => {
+        acc.total += 1;
+        if (apt.estado === "confirmado") acc.confirmados += 1;
+        if (apt.reminderDayBefore || apt.reminderHourBefore) acc.recordatorios += 1;
+        return acc;
+      },
+      { total: 0, confirmados: 0, recordatorios: 0 }
+    );
+  }, [appointments]);
 
-  const resumen = useMemo(() => {
-    return turnosFiltrados.reduce((acc, turno) => {
-      acc.total += 1;
-      if (turno.estado === "confirmado") acc.confirmados += 1;
-      if (turno.estado === "pendiente") acc.pendientes += 1;
-      if (turno.reminderDayBefore || turno.reminderHourBefore) acc.recordatorios += 1;
-      return acc;
-    }, { total: 0, confirmados: 0, pendientes: 0, recordatorios: 0 });
-  }, [turnosFiltrados]);
+  const filteredBikes = useMemo(() => {
+    if (!formData.clientId) return bikes;
+    return bikes.filter((bike) => bike.clienteId === formData.clientId);
+  }, [bikes, formData.clientId]);
 
-  const motosCliente = useMemo(() => {
-    if (!form.clienteId) return motos;
-    return motos.filter((moto) => moto.clienteId === form.clienteId);
-  }, [motos, form.clienteId]);
+  const handlePrevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  const handleNextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
 
-  const agendaPorDia = useMemo(() => {
-    return diasSemana.map((dia) => {
-      const fecha = formatFecha(dia);
-      const items = turnosFiltrados.filter((turno) => turno.fecha === fecha);
-      return { dia, fecha, items };
-    });
-  }, [diasSemana, turnosFiltrados]);
+  const isToday = (day) => {
+    const today = new Date();
+    return day === today.getDate() && currentMonth.getMonth() === today.getMonth() && currentMonth.getFullYear() === today.getFullYear();
+  };
 
-  const guardarTurno = () => {
-    if (!form.fecha || !form.hora) return;
+  const isSelected = (day) => {
+    return day === selectedDate.getDate() && currentMonth.getMonth() === selectedDate.getMonth() && currentMonth.getFullYear() === selectedDate.getFullYear();
+  };
 
-    const cliente = clientes.find((item) => item.id === form.clienteId);
-    const moto = motos.find((item) => item.id === form.motoId);
+  const hasAppointment = (day) => {
+    const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return appointments.some((apt) => apt.fecha === dateStr);
+  };
 
-    LS.setDoc("agendaTurnos", generateId(), {
-      fecha: form.fecha,
-      hora: form.hora,
-      clienteId: form.clienteId || null,
-      motoId: form.motoId || null,
-      clienteNombre: cliente?.nombre || form.clienteNombre || "Cliente sin nombre",
-      telefono: cliente?.telefono || cliente?.tel || form.telefono || "",
-      motoPatente: moto?.patente || "Sin patente",
-      motoMarca: moto?.marca || "",
-      motoModelo: moto?.modelo || "",
-      estado: form.estado,
-      motivo: form.motivo || "Revisión / turno de taller",
-      reminderDayBefore: !!form.reminderDayBefore,
-      reminderHourBefore: !!form.reminderHourBefore,
-      observaciones: form.observaciones || "",
-      createdAt: Date.now(),
+  const resetForm = (dateValue) => ({
+    clientId: "",
+    bikeId: "",
+    clienteNombre: "",
+    telefono: "",
+    motoPatente: "",
+    motoMarca: "",
+    motoModelo: "",
+    fecha: dateValue,
+    hora: "09:00",
+    motivo: "",
+    estado: "pendiente",
+    observaciones: "",
+    reminderDayBefore: true,
+    reminderHourBefore: true,
+  });
+
+  const openModal = (appointment = null) => {
+    if (appointment) {
+      setEditingId(appointment.id);
+      setClientMode(appointment.clientId || appointment.bikeId ? "historial" : "manual");
+      setFormData({
+        clientId: appointment.clientId || "",
+        bikeId: appointment.bikeId || "",
+        clienteNombre: appointment.clienteNombre || "",
+        telefono: appointment.telefono || "",
+        motoPatente: appointment.motoPatente || "",
+        motoMarca: appointment.motoMarca || "",
+        motoModelo: appointment.motoModelo || "",
+        fecha: appointment.fecha || selectedDateStr,
+        hora: appointment.hora || "09:00",
+        motivo: appointment.motivo || "",
+        estado: appointment.estado || "pendiente",
+        observaciones: appointment.observaciones || "",
+        reminderDayBefore: appointment.reminderDayBefore !== false,
+        reminderHourBefore: appointment.reminderHourBefore !== false,
+      });
+    } else {
+      setEditingId(null);
+      setClientMode("historial");
+      setFormData(resetForm(selectedDateStr));
+    }
+    setIsModalOpen(true);
+  };
+
+  const handleClientChange = (clientId) => {
+    const client = clients.find((item) => item.id === clientId);
+    setFormData((prev) => ({
+      ...prev,
+      clientId,
+      bikeId: "",
+      clienteNombre: client?.nombre || prev.clienteNombre,
+      telefono: client?.telefono || client?.tel || prev.telefono,
+    }));
+  };
+
+  const handleBikeChange = (bikeId) => {
+    const bike = bikes.find((item) => item.id === bikeId);
+    setFormData((prev) => ({
+      ...prev,
+      bikeId,
+      motoPatente: bike?.patente || prev.motoPatente,
+      motoMarca: bike?.marca || prev.motoMarca,
+      motoModelo: bike?.modelo || prev.motoModelo,
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const client = clients.find((item) => item.id === formData.clientId);
+    const bike = bikes.find((item) => item.id === formData.bikeId);
+
+    const payload = {
+      clientId: formData.clientId || null,
+      bikeId: formData.bikeId || null,
+      clienteNombre: client?.nombre || formData.clienteNombre || "Cliente sin nombre",
+      telefono: client?.telefono || client?.tel || formData.telefono || "",
+      motoPatente: bike?.patente || formData.motoPatente || "Sin patente",
+      motoMarca: bike?.marca || formData.motoMarca || "",
+      motoModelo: bike?.modelo || formData.motoModelo || "",
+      fecha: formData.fecha,
+      hora: formData.hora,
+      motivo: formData.motivo || "Turno de taller",
+      estado: formData.estado,
+      observaciones: formData.observaciones || "",
+      reminderDayBefore: !!formData.reminderDayBefore,
+      reminderHourBefore: !!formData.reminderHourBefore,
       updatedAt: Date.now(),
-    });
+    };
 
-    setForm({
-      fecha: form.fecha,
-      hora: "09:00",
-      clienteId: "",
-      motoId: "",
-      clienteNombre: "",
-      telefono: "",
-      motivo: "",
-      estado: "pendiente",
-      reminderDayBefore: true,
-      reminderHourBefore: true,
-      observaciones: "",
-    });
-    setMostrarForm(false);
+    if (editingId) {
+      LS.updateDoc("agendaTurnos", editingId, payload);
+    } else {
+      LS.setDoc("agendaTurnos", generateId(), { ...payload, createdAt: Date.now() });
+    }
+
+    setIsModalOpen(false);
+    setEditingId(null);
+    setFormData(resetForm(formData.fecha));
   };
 
-  const cambiarEstado = (turno, estado) => {
-    LS.updateDoc("agendaTurnos", turno.id, { estado, updatedAt: Date.now() });
+  const deleteAppointment = (id) => {
+    LS.deleteDoc("agendaTurnos", id);
   };
 
-  const eliminarTurno = (turnoId) => {
-    LS.deleteDoc("agendaTurnos", turnoId);
+  const sendWhatsApp = (appointment, type) => {
+    const telefono = String(appointment.telefono || "").replace(/\D/g, "");
+    if (!telefono) return;
+    const message = buildWhatsappMessage(appointment, type);
+    window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(message)}`, "_blank");
   };
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] pb-32 text-white animate-in slide-in-from-right duration-300">
       <div className="p-5 space-y-5">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setView("home")}
-            className="rounded-2xl border border-white/5 bg-slate-900 p-3 active:scale-95"
-          >
+          <button onClick={() => setView("home")} className="rounded-2xl border border-white/5 bg-slate-900 p-3 active:scale-95">
             <ArrowLeft size={16} className="text-white" />
           </button>
           <div className="min-w-0">
             <h1 className="flex items-center gap-2 text-xl font-black text-white">
-              <Calendar size={20} />
+              <CalendarIcon size={20} />
               Agenda del taller
             </h1>
             <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -182,369 +264,291 @@ export default function AgendaView({ setView }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="rounded-[1.75rem] border border-slate-800 bg-slate-900/50 p-4">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Turnos de la semana</p>
-            <p className="mt-1 text-3xl font-black text-blue-400">{resumen.total}</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Turnos</p>
+            <p className="mt-1 text-3xl font-black text-blue-400">{stats.total}</p>
           </div>
           <div className="rounded-[1.75rem] border border-slate-800 bg-slate-900/50 p-4">
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Confirmados</p>
-            <p className="mt-1 text-3xl font-black text-emerald-400">{resumen.confirmados}</p>
+            <p className="mt-1 text-3xl font-black text-emerald-400">{stats.confirmados}</p>
           </div>
           <div className="rounded-[1.75rem] border border-slate-800 bg-slate-900/50 p-4">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Pendientes</p>
-            <p className="mt-1 text-3xl font-black text-yellow-400">{resumen.pendientes}</p>
-          </div>
-          <div className="rounded-[1.75rem] border border-slate-800 bg-slate-900/50 p-4">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Con aviso previo</p>
-            <p className="mt-1 text-3xl font-black text-fuchsia-400">{resumen.recordatorios}</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Avisos</p>
+            <p className="mt-1 text-3xl font-black text-yellow-400">{stats.recordatorios}</p>
           </div>
         </div>
 
-        <div className="rounded-[1.75rem] border border-slate-800 bg-slate-900/40 p-4 space-y-4">
+        <div className="rounded-[2rem] border border-slate-800 bg-slate-900/50 p-4 space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <button onClick={handlePrevMonth} className="rounded-full p-2 text-slate-300 hover:bg-slate-800 transition-colors">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="text-center">
+              <p className="text-sm font-black capitalize text-white">
+                {currentMonth.toLocaleDateString("es-AR", { month: "long", year: "numeric" })}
+              </p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Calendario de citas</p>
+            </div>
+            <button onClick={handleNextMonth} className="rounded-full p-2 text-slate-300 hover:bg-slate-800 transition-colors">
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1">
+            {WEEK_DAYS.map((day, index) => (
+              <div key={`${day}-${index}`} className="py-1 text-center text-[10px] font-black text-slate-500">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-2">
+            {[...Array(startDayOfMonth(currentMonth))].map((_, index) => (
+              <div key={`empty-${index}`} />
+            ))}
+            {[...Array(daysInMonth(currentMonth))].map((_, index) => {
+              const day = index + 1;
+              return (
+                <button
+                  key={`day-${day}`}
+                  onClick={() => setSelectedDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day))}
+                  className={`relative aspect-square rounded-2xl text-sm font-black transition-all ${
+                    isSelected(day)
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                      : "bg-slate-950 text-slate-300 hover:bg-slate-800"
+                  } ${isToday(day) && !isSelected(day) ? "border border-blue-500/40 text-blue-300" : ""}`}
+                >
+                  <span>{day}</span>
+                  {hasAppointment(day) && (
+                    <span className={`absolute bottom-2 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full ${isSelected(day) ? "bg-white" : "bg-blue-500"}`} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-slate-800 bg-slate-900/40 p-4 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Organización tipo secretaría</p>
-              <p className="mt-1 text-sm font-black text-white">Confirmación, suspensión y reprogramación de turnos</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Turnos del día</p>
+              <p className="mt-1 text-base font-black text-white">
+                {selectedDate.toLocaleDateString("es-AR", { day: "numeric", month: "long" })}
+              </p>
             </div>
             <button
-              onClick={() => setMostrarForm((prev) => !prev)}
-              className="flex shrink-0 items-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
+              onClick={() => openModal()}
+              className="flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
             >
               <Plus size={16} /> Nuevo turno
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {[
-              { key: "todos", label: "Todos" },
-              { key: "pendiente", label: "Pendientes" },
-              { key: "confirmado", label: "Confirmados" },
-              { key: "reprogramar", label: "Reprogramar" },
-            ].map((item) => (
-              <button
-                key={item.key}
-                onClick={() => setFiltroEstado(item.key)}
-                className={`rounded-2xl px-3 py-3 text-[10px] font-black uppercase tracking-widest active:scale-95 ${
-                  filtroEstado === item.key ? "bg-blue-600 text-white" : "bg-slate-950 text-slate-400"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between gap-3 rounded-2xl bg-slate-950 p-3">
-            <button
-              onClick={() => setSemanaOffset((prev) => prev - 1)}
-              className="rounded-2xl border border-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 active:scale-95"
-            >
-              Semana anterior
-            </button>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
-              {formatFechaLarga(formatFecha(diasSemana[0]))} al {formatFechaLarga(formatFecha(diasSemana[6]))}
-            </p>
-            <button
-              onClick={() => setSemanaOffset((prev) => prev + 1)}
-              className="rounded-2xl border border-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-300 active:scale-95"
-            >
-              Semana siguiente
-            </button>
-          </div>
-        </div>
-
-        {mostrarForm && (
-          <div className="rounded-[2rem] border border-blue-500/20 bg-slate-900 p-4 space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Nuevo turno</p>
-                <p className="mt-1 text-sm font-black text-white">Elegí día, hora, cliente y moto</p>
-              </div>
-              <button
-                onClick={() => setMostrarForm(false)}
-                className="rounded-2xl border border-white/10 bg-slate-950 p-3 text-slate-300 active:scale-95"
-              >
-                <XCircle size={16} />
-              </button>
+          {dayAppointments.length === 0 ? (
+            <div className="rounded-[1.75rem] border border-dashed border-slate-700 px-5 py-10 text-center">
+              <Clock className="mx-auto mb-3 text-slate-700" size={34} />
+              <p className="text-sm font-black text-slate-400">No hay turnos cargados para este día</p>
+              <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-600">
+                Podés elegir cliente del historial o agregar uno manualmente
+              </p>
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <label className="space-y-2">
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Día</span>
-                <input
-                  type="date"
-                  value={form.fecha}
-                  onChange={(e) => setForm((prev) => ({ ...prev, fecha: e.target.value }))}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm font-black text-white outline-none"
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Hora</span>
-                <input
-                  type="time"
-                  value={form.hora}
-                  onChange={(e) => setForm((prev) => ({ ...prev, hora: e.target.value }))}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm font-black text-white outline-none"
-                />
-              </label>
-            </div>
-
-            <label className="space-y-2 block">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Cliente del historial</span>
-              <select
-                value={form.clienteId}
-                onChange={(e) => {
-                  const clienteId = e.target.value;
-                  const cliente = clientes.find((item) => item.id === clienteId);
-                  setForm((prev) => ({
-                    ...prev,
-                    clienteId,
-                    clienteNombre: cliente?.nombre || "",
-                    telefono: cliente?.telefono || cliente?.tel || "",
-                    motoId: "",
-                  }));
-                }}
-                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm font-black text-white outline-none"
-              >
-                <option value="">Elegir cliente</option>
-                {clientes.map((cliente) => (
-                  <option key={cliente.id} value={cliente.id}>{cliente.nombre}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-2 block">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Moto del historial</span>
-              <select
-                value={form.motoId}
-                onChange={(e) => setForm((prev) => ({ ...prev, motoId: e.target.value }))}
-                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm font-black text-white outline-none"
-              >
-                <option value="">Elegir moto</option>
-                {motosCliente.map((moto) => (
-                  <option key={moto.id} value={moto.id}>{moto.patente} · {moto.marca} {moto.modelo}</option>
-                ))}
-              </select>
-            </label>
-
-            <div className="grid grid-cols-2 gap-3">
-              <label className="space-y-2 block">
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Motivo / tipo de cita</span>
-                <input
-                  value={form.motivo}
-                  onChange={(e) => setForm((prev) => ({ ...prev, motivo: e.target.value }))}
-                  placeholder="Ej: service, control, diagnóstico"
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-slate-600"
-                />
-              </label>
-              <label className="space-y-2 block">
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Estado inicial</span>
-                <select
-                  value={form.estado}
-                  onChange={(e) => setForm((prev) => ({ ...prev, estado: e.target.value }))}
-                  className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm font-black text-white outline-none"
-                >
-                  <option value="pendiente">Pendiente de confirmar</option>
-                  <option value="confirmado">Confirmado</option>
-                  <option value="reprogramar">A reprogramar</option>
-                </select>
-              </label>
-            </div>
-
-            <label className="space-y-2 block">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Observaciones</span>
-              <textarea
-                value={form.observaciones}
-                onChange={(e) => setForm((prev) => ({ ...prev, observaciones: e.target.value }))}
-                rows={3}
-                placeholder="Indicaciones para la secretaria, notas del turno, pedido del cliente..."
-                className="w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-slate-600"
-              />
-            </label>
-
-            <div className="rounded-2xl border border-white/10 bg-slate-950 p-4 space-y-3">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Avisos previos</p>
-              <label className="flex items-center justify-between gap-3 text-sm font-black text-white">
-                <span>Enviar recordatorio un día antes</span>
-                <input
-                  type="checkbox"
-                  checked={form.reminderDayBefore}
-                  onChange={(e) => setForm((prev) => ({ ...prev, reminderDayBefore: e.target.checked }))}
-                />
-              </label>
-              <label className="flex items-center justify-between gap-3 text-sm font-black text-white">
-                <span>Enviar recordatorio una hora antes</span>
-                <input
-                  type="checkbox"
-                  checked={form.reminderHourBefore}
-                  onChange={(e) => setForm((prev) => ({ ...prev, reminderHourBefore: e.target.checked }))}
-                />
-              </label>
-            </div>
-
-            <button
-              onClick={guardarTurno}
-              className="w-full rounded-2xl bg-emerald-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
-            >
-              Guardar turno
-            </button>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Calendario semanal</p>
-          {agendaPorDia.map(({ dia, fecha, items }) => {
-            const esHoy = fecha === formatFecha(new Date());
-            return (
-              <div
-                key={fecha}
-                className={`rounded-[1.75rem] border p-4 space-y-3 ${esHoy ? "border-blue-500/30 bg-blue-500/5" : "border-slate-800 bg-slate-900/30"}`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-black ${esHoy ? "text-blue-400" : "text-slate-200"}`}>
-                      {DIAS[dia.getDay()]} {dia.getDate()}/{dia.getMonth() + 1}
-                    </span>
-                    {esHoy && (
-                      <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[8px] font-black uppercase text-white">Hoy</span>
-                    )}
-                  </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                    {items.length} turno{items.length === 1 ? "" : "s"}
-                  </span>
-                </div>
-
-                {items.length === 0 && (
-                  <p className="text-[11px] font-bold text-slate-600">Sin turnos cargados para este día.</p>
-                )}
-
-                {items.map((turno) => {
-                  const cliente = clientes.find((item) => item.id === turno.clienteId);
-                  const moto = motos.find((item) => item.id === turno.motoId);
-                  const estado = estadoConfig(turno.estado);
-                  return (
-                    <div key={turno.id} className="rounded-[1.5rem] border border-white/10 bg-slate-950/90 p-4 space-y-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-black text-white">
-                            <Clock3 size={14} className="text-blue-400" />
-                            {formatHora(turno.hora)}
-                          </div>
-                          <p className="text-sm font-black text-white">{turno.motivo || "Turno de taller"}</p>
-                          <div className="flex flex-wrap items-center gap-2 text-[11px] font-black text-slate-300">
-                            <span className="flex items-center gap-1"><User size={12} /> {cliente?.nombre || turno.clienteNombre}</span>
-                            <span className="flex items-center gap-1"><Bike size={12} /> {moto?.patente || turno.motoPatente}</span>
-                          </div>
-                        </div>
-                        <span className={`rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest ${estado.chip}`}>
-                          {estado.label}
-                        </span>
+          ) : (
+            <div className="space-y-4">
+              {dayAppointments.map((appointment) => {
+                const status = getStatusMeta(appointment.estado);
+                return (
+                  <div key={appointment.id} className="rounded-[1.75rem] border border-slate-800 bg-slate-950/90 p-4 shadow-xl">
+                    <div className="flex items-start gap-4">
+                      <div className="min-w-[58px] pt-1 text-lg font-black text-blue-400">
+                        {appointment.hora || "--:--"}
                       </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="truncate text-base font-black text-white">{appointment.clienteNombre}</h3>
+                            <div className="mt-1 flex flex-wrap items-center gap-3 text-xs font-black text-slate-400">
+                              <span className="flex items-center gap-1"><Bike size={13} /> {appointment.motoPatente || "Sin patente"}</span>
+                              <span>{appointment.motoMarca || "Moto"} {appointment.motoModelo || ""}</span>
+                            </div>
+                          </div>
+                          <span className={`rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest ${status.chip}`}>
+                            {status.label}
+                          </span>
+                        </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-[10px] font-black text-slate-400">
-                        <div className="rounded-2xl bg-slate-900 px-3 py-3">
-                          <p className="uppercase tracking-widest text-slate-500">Recordatorio</p>
-                          <p className="mt-1 text-white">
-                            {turno.reminderDayBefore && turno.reminderHourBefore
-                              ? "1 día antes + 1 hora antes"
-                              : turno.reminderDayBefore
-                                ? "1 día antes"
-                                : turno.reminderHourBefore
-                                  ? "1 hora antes"
-                                  : "Sin aviso"}
+                        {appointment.motivo && (
+                          <p className="mt-3 rounded-2xl bg-slate-900 px-3 py-3 text-[11px] font-bold text-slate-300">
+                            {appointment.motivo}
                           </p>
-                        </div>
-                        <div className="rounded-2xl bg-slate-900 px-3 py-3">
-                          <p className="uppercase tracking-widest text-slate-500">Contacto</p>
-                          <p className="mt-1 text-white">{turno.telefono || "Sin teléfono"}</p>
-                        </div>
-                      </div>
+                        )}
 
-                      {turno.observaciones && (
-                        <div className="rounded-2xl border border-white/10 bg-slate-900 px-3 py-3 text-[11px] font-bold text-slate-300">
-                          {turno.observaciones}
+                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <button
+                            onClick={() => sendWhatsApp(appointment, "confirm")}
+                            className="flex items-center justify-center gap-2 rounded-2xl border border-slate-700 bg-slate-900 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-slate-200 active:scale-95"
+                          >
+                            <CheckCircle2 size={14} /> Consultar si asiste
+                          </button>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => sendWhatsApp(appointment, "day_before")}
+                              className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-200 active:scale-95"
+                            >
+                              <MessageCircle size={14} /> 24h
+                            </button>
+                            <button
+                              onClick={() => sendWhatsApp(appointment, "hour_before")}
+                              className="flex items-center justify-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-blue-200 active:scale-95"
+                            >
+                              <Clock size={14} /> 1h
+                            </button>
+                          </div>
                         </div>
-                      )}
 
-                      <div className="rounded-2xl border border-blue-500/15 bg-blue-500/5 p-3 space-y-2">
-                        <p className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-blue-300">
-                          <MessageSquare size={12} /> Mensaje sugerido para la secretaria
-                        </p>
-                        <p className="whitespace-pre-line text-[11px] font-bold leading-relaxed text-slate-200">
-                          {buildMensaje(turno, cliente, moto, turno.reminderDayBefore ? "dia" : "hora")}
-                        </p>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        <button
-                          onClick={() => cambiarEstado(turno, "confirmado")}
-                          className="rounded-2xl bg-emerald-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
-                        >
-                          Confirmó
-                        </button>
-                        <button
-                          onClick={() => cambiarEstado(turno, "reprogramar")}
-                          className="rounded-2xl bg-blue-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
-                        >
-                          Reprogramar
-                        </button>
-                        <button
-                          onClick={() => cambiarEstado(turno, "suspendido")}
-                          className="rounded-2xl bg-rose-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
-                        >
-                          Suspender
-                        </button>
-                        <button
-                          onClick={() => cambiarEstado(turno, "asistio")}
-                          className="rounded-2xl bg-slate-800 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-slate-200 active:scale-95"
-                        >
-                          Asistió
-                        </button>
-                        <button
-                          onClick={() => cambiarEstado(turno, "no_asistio")}
-                          className="rounded-2xl bg-slate-800 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-slate-200 active:scale-95"
-                        >
-                          No asistió
-                        </button>
-                        <button
-                          onClick={() => eliminarTurno(turno.id)}
-                          className="rounded-2xl border border-white/10 bg-slate-950 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 active:scale-95"
-                        >
-                          Eliminar
-                        </button>
+                        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          <button onClick={() => LS.updateDoc("agendaTurnos", appointment.id, { estado: "confirmado", updatedAt: Date.now() })} className="rounded-2xl bg-emerald-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Confirmó</button>
+                          <button onClick={() => LS.updateDoc("agendaTurnos", appointment.id, { estado: "reprogramar", updatedAt: Date.now() })} className="rounded-2xl bg-blue-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Reprogramar</button>
+                          <button onClick={() => openModal(appointment)} className="rounded-2xl bg-slate-800 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-slate-200 active:scale-95"><Pencil size={14} className="inline mr-1" />Editar</button>
+                          <button onClick={() => deleteAppointment(appointment.id)} className="rounded-2xl bg-rose-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"><Trash2 size={14} className="inline mr-1" />Eliminar</button>
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-
-        {turnosFiltrados.length > 0 && (
-          <div className="rounded-[1.75rem] border border-slate-800 bg-slate-900/40 p-4 space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Control de secretaría</p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl bg-slate-950 p-4 text-[11px] font-bold text-slate-300">
-                <p className="flex items-center gap-2 text-[9px] uppercase tracking-widest text-yellow-300"><Bell size={12} /> Avisos previos</p>
-                <p className="mt-2">La agenda ya guarda si el aviso sale un día antes y una hora antes. Queda lista para automatizar el envío después.</p>
-              </div>
-              <div className="rounded-2xl bg-slate-950 p-4 text-[11px] font-bold text-slate-300">
-                <p className="flex items-center gap-2 text-[9px] uppercase tracking-widest text-emerald-300"><CheckCircle2 size={12} /> Confirmación de asistencia</p>
-                <p className="mt-2">Cada turno puede pasar por pendiente, confirmado, reprogramar, suspendido, asistió o no asistió.</p>
-              </div>
-              <div className="rounded-2xl bg-slate-950 p-4 text-[11px] font-bold text-slate-300">
-                <p className="flex items-center gap-2 text-[9px] uppercase tracking-widest text-blue-300"><Phone size={12} /> Contacto</p>
-                <p className="mt-2">Si el cliente ya existe en historial, la agenda toma su teléfono y su moto automáticamente.</p>
-              </div>
-              <div className="rounded-2xl bg-slate-950 p-4 text-[11px] font-bold text-slate-300">
-                <p className="flex items-center gap-2 text-[9px] uppercase tracking-widest text-rose-300"><RotateCcw size={12} /> Reprogramación</p>
-                <p className="mt-2">Si cambia el turno, se puede pasar a reprogramar o suspender sin perder el registro de la cita original.</p>
-              </div>
+                  </div>
+                );
+              })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+
+      <button
+        onClick={() => openModal()}
+        className="fixed bottom-8 right-6 z-30 flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-4 text-white shadow-2xl shadow-blue-600/20 active:scale-90"
+      >
+        <Plus size={22} strokeWidth={3} />
+        <span className="text-[11px] font-black uppercase tracking-widest">Nuevo turno</span>
+      </button>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/70 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="max-h-[92vh] w-full max-w-lg overflow-hidden rounded-t-[2rem] bg-[#111827] shadow-2xl sm:rounded-[2rem]">
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">
+                  {editingId ? "Editar turno" : "Agendar turno"}
+                </p>
+                <p className="mt-1 text-base font-black text-white">Calendario conectado al historial</p>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} className="rounded-2xl bg-slate-900 p-3 text-slate-300 active:scale-95">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="max-h-[78vh] space-y-5 overflow-y-auto p-5">
+              <div className="grid grid-cols-2 gap-3">
+                <button type="button" onClick={() => setClientMode("historial")} className={`rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest ${clientMode === "historial" ? "bg-blue-600 text-white" : "bg-slate-900 text-slate-400"}`}>
+                  Desde historial
+                </button>
+                <button type="button" onClick={() => setClientMode("manual")} className={`rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest ${clientMode === "manual" ? "bg-blue-600 text-white" : "bg-slate-900 text-slate-400"}`}>
+                  Agregar cliente
+                </button>
+              </div>
+
+              {clientMode === "historial" ? (
+                <div className="space-y-4">
+                  <label className="block space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cliente</span>
+                    <select value={formData.clientId} onChange={(e) => handleClientChange(e.target.value)} className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white outline-none">
+                      <option value="">Elegí cliente</option>
+                      {clients.map((client) => (
+                        <option key={client.id} value={client.id}>{client.nombre}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Moto</span>
+                    <select value={formData.bikeId} onChange={(e) => handleBikeChange(e.target.value)} className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white outline-none">
+                      <option value="">Elegí moto</option>
+                      {filteredBikes.map((bike) => (
+                        <option key={bike.id} value={bike.id}>{bike.patente} · {bike.marca} {bike.modelo}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <label className="block space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre cliente</span>
+                    <input value={formData.clienteNombre} onChange={(e) => setFormData((prev) => ({ ...prev, clienteNombre: e.target.value }))} className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-slate-600" placeholder="Juan Pérez" />
+                  </label>
+                  <label className="block space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">WhatsApp</span>
+                    <input value={formData.telefono} onChange={(e) => setFormData((prev) => ({ ...prev, telefono: e.target.value }))} className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-slate-600" placeholder="549343..." />
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block space-y-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Patente</span>
+                      <input value={formData.motoPatente} onChange={(e) => setFormData((prev) => ({ ...prev, motoPatente: e.target.value }))} className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-slate-600" placeholder="ABC123" />
+                    </label>
+                    <label className="block space-y-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Marca / modelo</span>
+                      <input value={formData.motoMarca} onChange={(e) => setFormData((prev) => ({ ...prev, motoMarca: e.target.value }))} className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-slate-600" placeholder="Honda Wave" />
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Fecha</span>
+                  <input type="date" value={formData.fecha} onChange={(e) => setFormData((prev) => ({ ...prev, fecha: e.target.value }))} className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white outline-none" />
+                </label>
+                <label className="block space-y-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Hora</span>
+                  <input type="time" value={formData.hora} onChange={(e) => setFormData((prev) => ({ ...prev, hora: e.target.value }))} className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white outline-none" />
+                </label>
+              </div>
+
+              <label className="block space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Motivo</span>
+                <input value={formData.motivo} onChange={(e) => setFormData((prev) => ({ ...prev, motivo: e.target.value }))} className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-slate-600" placeholder="Ej: service, diagnóstico, control" />
+              </label>
+
+              <label className="block space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Estado</span>
+                <select value={formData.estado} onChange={(e) => setFormData((prev) => ({ ...prev, estado: e.target.value }))} className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white outline-none">
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Observaciones</span>
+                <textarea value={formData.observaciones} onChange={(e) => setFormData((prev) => ({ ...prev, observaciones: e.target.value }))} rows={3} className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-slate-600" placeholder="Notas para la secretaria, pedido del cliente, contexto del turno..." />
+              </label>
+
+              <div className="rounded-2xl bg-slate-900 p-4 space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Avisos previos</p>
+                <label className="flex items-center justify-between gap-3 text-sm font-black text-white">
+                  <span>Recordatorio un día antes</span>
+                  <input type="checkbox" checked={formData.reminderDayBefore} onChange={(e) => setFormData((prev) => ({ ...prev, reminderDayBefore: e.target.checked }))} />
+                </label>
+                <label className="flex items-center justify-between gap-3 text-sm font-black text-white">
+                  <span>Recordatorio una hora antes</span>
+                  <input type="checkbox" checked={formData.reminderHourBefore} onChange={(e) => setFormData((prev) => ({ ...prev, reminderHourBefore: e.target.checked }))} />
+                </label>
+              </div>
+
+              <button type="submit" className="w-full rounded-2xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-blue-600/20 active:scale-95">
+                {editingId ? "Guardar cambios" : "Confirmar turno"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
