@@ -27,6 +27,12 @@ const PaymentView    = lazy(() => import("./components/PaymentView.jsx"));
 const PagosView      = lazy(() => import("./views/PagosView.jsx"));
 const PrePdfView     = lazy(() => import("./components/PrePdfView.jsx"));
 const ExportPdfView  = lazy(() => import("./components/ExportPdfView.jsx"));
+const EsperandoAprobacionView = lazy(() => import("./views/EsperandoAprobacionView.jsx"));
+const EjecucionView           = lazy(() => import("./views/EjecucionView.jsx"));
+const FinalizacionView        = lazy(() => import("./views/FinalizacionView.jsx"));
+const PagoView                = lazy(() => import("./views/PagoView.jsx"));
+const RetiroView              = lazy(() => import("./views/RetiroView.jsx"));
+const AgendaView              = lazy(() => import("./views/AgendaView.jsx"));
 
 const Cargando = () => (
   <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-slate-600 text-[10px] font-black uppercase tracking-widest">
@@ -517,6 +523,12 @@ export default function TallerPanel() {
       )}
       {view === "precios" && <PreciosView setView={setView} />}
       {view === "config" && <ConfigView setView={setView} showToast={showToast} orders={orders} bikes={bikes} clients={clients} handleLogout={handleLogout} loadDemoData={loadDemoData} clearAllData={clearAllData} />}
+      {view === "agenda" && <AgendaView setView={setView} />}
+      {view === "esperandoAprobacion" && selectedOrderId && <EsperandoAprobacionView ordenId={selectedOrderId} setView={setView} />}
+      {view === "ejecucion" && selectedOrderId && <EjecucionView ordenId={selectedOrderId} setView={setView} />}
+      {view === "finalizacion" && selectedOrderId && <FinalizacionView ordenId={selectedOrderId} setView={setView} />}
+      {view === "pago" && selectedOrderId && <PagoView ordenId={selectedOrderId} setView={setView} />}
+      {view === "retiro" && selectedOrderId && <RetiroView ordenId={selectedOrderId} setView={setView} />}
       {view === "historial" && <HistoryView orders={orders} bikes={bikes} clients={clients} setView={setView} setSelectedBikeId={setSelectedBikeId} />}
       {view === "perfilMoto" && <BikeProfileView bikeId={selectedBikeId} orders={orders} bikes={bikes} clients={clients} setView={setView} handleStartNewService={handleStartNewService} />}
       </Suspense>

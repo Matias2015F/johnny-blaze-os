@@ -441,6 +441,9 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             <button onClick={confirmarAprobacion} className="w-full rounded-[1.75rem] border border-blue-400/20 bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl transition-all active:scale-95">
               {`Cliente aprobó ${formatMoney(presupuestoEditable)}`}
             </button>
+            <button onClick={() => setView("esperandoAprobacion")} className="w-full rounded-[1.75rem] border border-slate-700 bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 transition-all active:scale-95">
+              → Pantalla de espera de aprobación
+            </button>
           </div>
         )}
 
@@ -578,6 +581,10 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 </p>
               </div>
             )}
+
+            <button onClick={() => setView("ejecucion")} className="w-full rounded-2xl border border-slate-700 bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 transition-all active:scale-95">
+              → Pantalla de ejecución completa
+            </button>
           </div>
         )}
 

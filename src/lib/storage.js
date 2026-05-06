@@ -307,3 +307,26 @@ export function buscarRepuestosAutocomplete(query, cilindrada = null, tipo = "re
     .sort((a, b) => (b.usos || 0) - (a.usos || 0))
     .slice(0, 8);
 }
+
+// ========== HELPERS DE ÓRDENES PARA FLUJO PROFESIONAL ==========
+
+export function obtenerOrden(ordenId) {
+  return LS.getDoc("trabajos", ordenId);
+}
+
+export function actualizarOrden(ordenId, patch) {
+  LS.updateDoc("trabajos", ordenId, { ...patch, updatedAt: Date.now() });
+}
+
+export function listarOrdenesActivas() {
+  return (LS.getAll("trabajos") || []).filter(
+    (o) => !["cerrado_emitido", "CANCELADO"].includes(o.estado)
+  );
+}
+
+export function calcularGananciaSemana() {
+  const hace7dias = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  return (LS.getAll("trabajos") || [])
+    .filter((o) => o.pagado_fecha && o.pagado_fecha > hace7dias)
+    .reduce((sum, o) => sum + (o.ganancia || 0), 0);
+}
