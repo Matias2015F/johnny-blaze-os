@@ -17,7 +17,7 @@ const getUid  = () => auth.currentUser?.uid ?? null;
 const userCol = (col) => collection(db, "users", getUid(), col);
 const userDoc = (col, id) => doc(db, "users", getUid(), col, id);
 
-// ── Sync status ───────────────────────────────────────────────────────────────
+// ── Sync status ────────────────────────────────────────────────────────────────
 let _pending = 0;
 let _syncError = false;
 const _syncListeners = new Set();
@@ -62,7 +62,7 @@ async function fsWrite(op) {
   notifySync();
 }
 
-// ── LS API ────────────────────────────────────────────────────────────────────
+// ── LS API ───────────────────────────────────────────────────────────────────
 export const LS = {
   getAll: (col) => _cache[col] ?? [],
 
@@ -94,7 +94,7 @@ export const LS = {
   },
 };
 
-// ── useCollection ─────────────────────────────────────────────────────────────
+// ── useCollection ────────────────────────────────────────────────────────────
 export function useCollection(col) {
   const [data, setData] = useState(() => _cache[col] ?? []);
 
@@ -148,15 +148,15 @@ export function useCollection(col) {
   return data;
 }
 
-// ── Hook sync status ──────────────────────────────────────────────────────────
+// ── Hook sync status ─────────────────────────────────────────────────────────
 export function useSyncStatus() {
   const [status, setStatus] = useState(getSyncStatus);
   useEffect(() => onSyncStatus(setStatus), []);
   return status;
 }
 
-// ── Colecciones y migraciones ─────────────────────────────────────────────────
-export const DATA_COLS = ["trabajos", "clientes", "motos", "caja", "config", "catalogoTareas", "titularidades", "precioHistorial", "recordatorios"];
+// ── Colecciones y migraciones ────────────────────────────────────────────────
+export const DATA_COLS = ["trabajos", "clientes", "motos", "caja", "config", "catalogoTareas", "titularidades", "precioHistorial", "recordatorios", "agendaTurnos"];
 
 const LS_PREFIX     = "jbos_johnny-blaze-os_";
 const MIGRATION_KEY = "jbos_fs_migrated_v1";
