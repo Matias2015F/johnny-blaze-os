@@ -1,18 +1,83 @@
-import React, { useMemo, useState } from "react";
-import { ArrowLeft, ChevronRight, FileText, Search, User, Wrench, Check, AlertTriangle } from "lucide-react";
+import React, { useMemo, useRef, useState } from "react";
+import { ArrowLeft, ChevronRight, FileText, Search, User, Wrench, Check, AlertTriangle, Camera, Upload } from "lucide-react";
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { formatMoney } from "../utils/format.js";
 import { validarComprobante } from "../lib/comprobante-validation.js";
 import { LS } from "../lib/storage.js";
+
+GlobalWorkerOptions.workerSrc = pdfWorker;
+
+const barcodeDisponible = typeof window !== "undefined" && "BarcodeDetector" in window;
+
+async function detectarQRDesdeCanvas(canvas) {
+  if (!barcodeDisponible) {
+    throw new Error("Este dispositivo no permite escanear QR automáticamente. Podés pegar el JSON manualmente.");
+  }
+
+  const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+  const resultados = await detector.detect(canvas);
+  const codigo = resultados?.find((item) => item?.rawValue)?.rawValue;
+
+  if (!codigo) {
+    throw new Error("No encontramos un código QR legible.");
+  }
+
+  return codigo;
+}
+
+async function detectarQRDesdeImagen(file) {
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(bitmap, 0, 0);
+  const qr = await detectarQRDesdeCanvas(canvas);
+  bitmap.close?.();
+  return qr;
+}
+
+async function detectarQRDesdePdf(file) {
+  const data = await file.arrayBuffer();
+  const pdf = await getDocument({ data }).promise;
+  const paginasARevisar = Math.min(pdf.numPages, 6);
+
+  for (let pageNumber = 1; pageNumber <= paginasARevisar; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 2.2 });
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({ canvasContext: context, viewport }).promise;
+
+    try {
+      return await detectarQRDesdeCanvas(canvas);
+    } catch (error) {
+      if (pageNumber === paginasARevisar) {
+        throw new Error("No encontramos un código QR dentro del PDF.");
+      }
+    }
+  }
+
+  throw new Error("No encontramos un código QR dentro del PDF.");
+}
 
 export default function HistoryView({ orders, bikes, clients, setView, setSelectedBikeId }) {
   const [search, setSearch] = useState("");
   const [validaciones, setValidaciones] = useState([]);
   const [qrInputValue, setQrInputValue] = useState("");
   const [validacionActual, setValidacionActual] = useState(null);
+  const [scanFeedback, setScanFeedback] = useState("");
+  const [scanLoading, setScanLoading] = useState(false);
+  const cameraInputRef = useRef(null);
+  const pdfInputRef = useRef(null);
 
   const procesarQRData = (qrData) => {
     try {
-      const { numeroComprobante, orderId, hash } = qrData;
+      const { numeroComprobante, orderId } = qrData;
 
       const ordenOriginal = LS.getDoc("trabajos", orderId);
       if (!ordenOriginal) {
@@ -34,28 +99,60 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
       };
 
       setValidacionActual(validacion);
-      setValidaciones([validacion, ...validaciones]);
+      setValidaciones((prev) => [validacion, ...prev]);
       setQrInputValue("");
+      setScanFeedback(resultado.valido ? "Comprobante validado correctamente." : "El comprobante no pasó la validación.");
     } catch (e) {
       setValidacionActual({
         valido: false,
         razon: "Código QR inválido o corrupto: " + e.message,
         fecha: new Date().toISOString()
       });
+      setScanFeedback("No pudimos interpretar el contenido del QR.");
     }
+  };
+
+  const procesarTextoQR = (rawValue) => {
+    if (!rawValue?.trim()) {
+      throw new Error("No encontramos datos dentro del código QR.");
+    }
+
+    setQrInputValue(rawValue);
+    const qrData = JSON.parse(rawValue);
+    procesarQRData(qrData);
   };
 
   const validarQR = () => {
     if (!qrInputValue.trim()) return;
     try {
-      const qrData = JSON.parse(qrInputValue);
-      procesarQRData(qrData);
+      procesarTextoQR(qrInputValue);
     } catch (e) {
       setValidacionActual({
         valido: false,
-        razon: "JSON inválido",
+        razon: e.message === "Unexpected token" ? "JSON inválido" : e.message,
         fecha: new Date().toISOString()
       });
+      setScanFeedback("Revisá el contenido pegado e intentá de nuevo.");
+    }
+  };
+
+  const manejarArchivoQR = async (file, origen) => {
+    if (!file) return;
+    setScanLoading(true);
+    setScanFeedback(origen === "pdf" ? "Leyendo QR dentro del PDF..." : "Buscando QR en la imagen...");
+
+    try {
+      const rawValue = origen === "pdf" ? await detectarQRDesdePdf(file) : await detectarQRDesdeImagen(file);
+      procesarTextoQR(rawValue);
+    } catch (error) {
+      setValidacionActual({
+        valido: false,
+        razon: error.message,
+        fecha: new Date().toISOString()
+      });
+      setScanFeedback(error.message);
+    } finally {
+      setScanLoading(false);
     }
   };
 
@@ -162,21 +259,62 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
         </div>
 
         <div className="rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-blue-500/20 p-2 rounded-xl">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-xl bg-blue-500/20 p-2">
               <Check className="text-blue-400" size={18} />
             </div>
             <div>
               <p className="text-[10px] font-black uppercase text-slate-300">Validar comprobante</p>
-              <p className="text-[9px] font-bold text-slate-500">Pegá el JSON del código QR para verificar</p>
+              <p className="text-[9px] font-bold text-slate-500">Pegá el JSON, escaneá el QR o abrí el PDF desde el dispositivo</p>
             </div>
           </div>
 
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              manejarArchivoQR(file, "imagen");
+              e.target.value = "";
+            }}
+          />
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept="application/pdf"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              manejarArchivoQR(file, "pdf");
+              e.target.value = "";
+            }}
+          />
+
           <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={scanLoading || !barcodeDisponible}
+                className="flex items-center justify-center gap-2 rounded-[1.5rem] border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-[11px] font-black uppercase text-blue-200 transition-all disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500 active:scale-95"
+              >
+                <Camera size={16} /> Abrir cámara / foto
+              </button>
+              <button
+                onClick={() => pdfInputRef.current?.click()}
+                disabled={scanLoading || !barcodeDisponible}
+                className="flex items-center justify-center gap-2 rounded-[1.5rem] border border-white/10 bg-black/20 px-4 py-3 text-[11px] font-black uppercase text-white transition-all disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500 active:scale-95"
+              >
+                <Upload size={16} /> Abrir PDF
+              </button>
+            </div>
+
             <div className="relative">
               <input
                 type="text"
-                placeholder='Pegá el JSON del QR aquí'
+                placeholder="Pegá el JSON del QR aquí"
                 value={qrInputValue}
                 onChange={(e) => setQrInputValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && validarQR()}
@@ -185,28 +323,40 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
             </div>
             <button
               onClick={validarQR}
-              disabled={!qrInputValue.trim()}
-              className="w-full py-3 rounded-2xl bg-blue-600 text-white font-black uppercase text-sm disabled:bg-slate-700 disabled:text-slate-400 transition-all active:scale-95"
+              disabled={!qrInputValue.trim() || scanLoading}
+              className="w-full rounded-2xl bg-blue-600 py-3 text-sm font-black uppercase text-white transition-all disabled:bg-slate-700 disabled:text-slate-400 active:scale-95"
             >
-              Validar
+              {scanLoading ? "Procesando..." : "Validar"}
             </button>
           </div>
 
+          <p className="mt-3 text-[9px] font-bold text-slate-500">
+            {barcodeDisponible
+              ? "En celular, el botón de cámara puede abrir la cámara o la galería según el dispositivo."
+              : "Este navegador no permite escanear QR automático. Podés seguir validando pegando el JSON manualmente."}
+          </p>
+
+          {scanFeedback && (
+            <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-bold text-slate-300">
+              {scanFeedback}
+            </div>
+          )}
+
           {validacionActual && (
-            <div className={`mt-4 p-4 rounded-2xl border-2 ${
+            <div className={`mt-4 rounded-2xl border-2 p-4 ${
               validacionActual.valido
-                ? 'bg-green-500/10 border-green-500/30'
-                : 'bg-red-500/10 border-red-500/30'
+                ? "border-green-500/30 bg-green-500/10"
+                : "border-red-500/30 bg-red-500/10"
             }`}>
               <div className="flex items-start gap-3">
                 {validacionActual.valido ? (
-                  <Check className="text-green-400 shrink-0 mt-1" size={18} />
+                  <Check className="mt-1 shrink-0 text-green-400" size={18} />
                 ) : (
-                  <AlertTriangle className="text-red-400 shrink-0 mt-1" size={18} />
+                  <AlertTriangle className="mt-1 shrink-0 text-red-400" size={18} />
                 )}
                 <div className="min-w-0">
                   <p className={`text-[10px] font-black uppercase ${
-                    validacionActual.valido ? 'text-green-300' : 'text-red-300'
+                    validacionActual.valido ? "text-green-300" : "text-red-300"
                   }`}>
                     {validacionActual.razon}
                   </p>
@@ -216,11 +366,11 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
                     </p>
                   )}
                   {validacionActual.detalles && (
-                    <div className="mt-2 text-[9px] text-slate-400 space-y-1">
-                      <p>Cliente: {validacionActual.detalles.cliente?.nombre || 'N/A'}</p>
-                      <p>Moto: {validacionActual.detalles.moto?.patente || 'N/A'}</p>
+                    <div className="mt-2 space-y-1 text-[9px] text-slate-400">
+                      <p>Cliente: {validacionActual.detalles.cliente?.nombre || "N/A"}</p>
+                      <p>Moto: {validacionActual.detalles.moto?.patente || "N/A"}</p>
                       <p>Monto: {formatMoney(validacionActual.detalles.monto || 0)}</p>
-                      <p>Fecha: {validacionActual.detalles.fecha?.slice(0, 10) || 'N/A'}</p>
+                      <p>Fecha: {validacionActual.detalles.fecha?.slice(0, 10) || "N/A"}</p>
                     </div>
                   )}
                 </div>
@@ -229,19 +379,19 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
           )}
 
           {validaciones.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-slate-700">
-              <p className="text-[9px] font-black uppercase text-slate-500 mb-2">Historial de validaciones</p>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {validaciones.slice(0, 5).map(v => (
-                  <div key={v.id} className={`p-3 rounded-lg text-[9px] border ${
+            <div className="mt-4 border-t border-slate-700 pt-4">
+              <p className="mb-2 text-[9px] font-black uppercase text-slate-500">Historial de validaciones</p>
+              <div className="max-h-48 space-y-2 overflow-y-auto">
+                {validaciones.slice(0, 5).map((v) => (
+                  <div key={v.id} className={`rounded-lg border p-3 text-[9px] ${
                     v.valido
-                      ? 'bg-green-500/10 border-green-500/20 text-green-300'
-                      : 'bg-red-500/10 border-red-500/20 text-red-300'
+                      ? "border-green-500/20 bg-green-500/10 text-green-300"
+                      : "border-red-500/20 bg-red-500/10 text-red-300"
                   }`}>
                     <div className="flex items-center gap-2">
                       {v.valido ? <Check size={12} /> : <AlertTriangle size={12} />}
-                      <span className="font-bold font-mono">{v.numeroComprobante?.slice(0, 15)}</span>
-                      <span className="text-[8px]">{new Date(v.fecha).toLocaleTimeString('es-AR')}</span>
+                      <span className="font-mono font-bold">{v.numeroComprobante?.slice(0, 15)}</span>
+                      <span className="text-[8px]">{new Date(v.fecha).toLocaleTimeString("es-AR")}</span>
                     </div>
                   </div>
                 ))}
