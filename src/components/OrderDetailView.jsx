@@ -376,7 +376,6 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           </button>
         )}
       </div>
-      </div>
     </div>
   );
 }
