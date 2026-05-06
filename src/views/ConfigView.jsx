@@ -1414,61 +1414,6 @@ function PantallaSuscripcion({ showToast }) {
           </div>
         )}
 
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <p className="text-[9px] font-black uppercase tracking-widest text-amber-700">Importante</p>
-          <p className="mt-1 text-[11px] font-bold leading-relaxed text-amber-800">
-            Si Mercado Pago abre en <span className="font-black">SANDBOX</span>, el pago solo funciona con:
-          </p>
-          <ul className="mt-2 space-y-1 text-[11px] font-bold leading-relaxed text-amber-800">
-            <li>Usuario <span className="font-black">COMPRADOR</span> de prueba.</li>
-            <li>Vendedor (tu cuenta) distinto al comprador.</li>
-            <li>Tarjeta de prueba.</li>
-          </ul>
-        </div>
-
-        {true && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Último intento de pago</p>
-            <div className="mt-2 space-y-1">
-              {activeAttempt?.invoiceId && (
-                <p className="text-[10px] font-black text-slate-800 break-all">Invoice: {activeAttempt.invoiceId}</p>
-              )}
-              {activeAttempt?.preferenceId && (
-                <p className="text-[10px] font-black text-slate-800 break-all">Preference: {activeAttempt.preferenceId}</p>
-              )}
-              {activeAttempt?.at && (
-                <p className="text-[10px] font-bold text-slate-500">
-                  {new Date(Number(activeAttempt.at)).toLocaleString("es-AR")}
-                </p>
-              )}
-              {activeAttempt?.status && (
-                <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Estado: {activeAttempt.status}</p>
-              )}
-              {activeAttempt?.mode && (
-                <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Checkout: {activeAttempt.mode}</p>
-              )}
-              {activeAttempt?.tokenMode && (
-                <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Token MP: {activeAttempt.tokenMode}</p>
-              )}
-              {activeAttempt?.errorMessage && (
-                <p className="text-[10px] font-bold text-rose-600 break-all">{String(activeAttempt.errorMessage).slice(0, 180)}</p>
-              )}
-              {!activeAttempt && (
-                <p className="text-[10px] font-bold text-slate-500">Todavia no hay intento registrado en este dispositivo.</p>
-              )}
-            </div>
-            <button
-              onClick={diagnosticarPago}
-              disabled={sending || (!activeAttempt?.invoiceId && !activeAttempt?.preferenceId)}
-              className="mt-3 w-full rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
-            >
-              {sending ? "Consultando..." : "Diagnosticar pago"}
-            </button>
-            <p className="mt-2 text-[10px] font-bold text-slate-500">
-              Si Mercado Pago te devolvió un error pero volviste a la app sin el mensaje, podés usar este botón igual.
-            </p>
-          </div>
-        )}
         <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -1591,6 +1536,15 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
   const displayMode = getDisplayModeInfo();
   const permissionLabel =
     typeof window !== "undefined" && "Notification" in window ? window.Notification.permission : "no soportado";
+  const alertasActivas = cfg.alertasNavegadorActivas ?? true;
+  const permisoTexto =
+    permissionLabel === "granted"
+      ? "Permitido"
+      : permissionLabel === "denied"
+        ? "Bloqueado"
+        : permissionLabel === "default"
+          ? "Falta activar"
+          : "No disponible";
   const hasRemoteUpdate = isNewerBuild(APP_BUILD, remoteBuild);
 
   React.useEffect(() => {
@@ -1752,33 +1706,53 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
 
       <Card>
         <SectionTitle>Alertas del navegador</SectionTitle>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-black text-slate-800">Notificaciones de proximo service</p>
-            <p className="text-[10px] text-slate-400 font-bold mt-0.5">Muestran un aviso real del navegador cuando un recordatorio entra en proximo o vencido.</p>
+            <p className="text-sm font-black text-slate-800">Avisos de proximo service</p>
+            <p className="text-[10px] text-slate-400 font-bold mt-0.5">La app te avisa antes de un control o service para que no se te pase.</p>
           </div>
           <button
             onClick={toggleAlertasNavegador}
-            className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${(cfg.alertasNavegadorActivas ?? true) ? "bg-blue-500" : "bg-slate-200"}`}
+            className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${alertasActivas ? "bg-blue-500" : "bg-slate-200"}`}
           >
-            <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-200 ${(cfg.alertasNavegadorActivas ?? true) ? "left-8" : "left-1"}`} />
+            <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-200 ${alertasActivas ? "left-8" : "left-1"}`} />
           </button>
         </div>
-        <div className="mt-3 bg-slate-50 border border-slate-200 rounded-2xl p-3">
-          <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">
-            Estado del permiso: {permissionLabel}
+        <div className={`mt-3 rounded-2xl border p-4 ${permissionLabel === "granted" ? "border-emerald-200 bg-emerald-50" : permissionLabel === "denied" ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50"}`}>
+          <p className={`text-[9px] font-black uppercase tracking-wider ${permissionLabel === "granted" ? "text-emerald-700" : permissionLabel === "denied" ? "text-rose-700" : "text-amber-700"}`}>
+            Estado del permiso: {permisoTexto}
+          </p>
+          <p className={`mt-2 text-[11px] font-bold leading-relaxed ${permissionLabel === "granted" ? "text-emerald-800" : permissionLabel === "denied" ? "text-rose-800" : "text-amber-800"}`}>
+            {permissionLabel === "granted"
+              ? "Listo. Este dispositivo ya puede mostrar avisos reales."
+              : permissionLabel === "denied"
+                ? "Este navegador las bloqueó. Tenés que habilitarlas en la configuración del navegador y volver a entrar."
+                : "Activá este interruptor y aceptá el permiso cuando el navegador lo pida."}
           </p>
         </div>
-        <button
-          onClick={probarNotificacion}
-          className="mt-3 w-full bg-slate-900 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
-        >
-          Enviar notificacion de prueba
-        </button>
-        <div className="mt-3 bg-blue-50 border border-blue-200 rounded-2xl p-3">
+        <div className="mt-3 grid grid-cols-1 gap-3">
+          <button
+            onClick={toggleAlertasNavegador}
+            className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all ${alertasActivas ? "bg-slate-100 border border-slate-200 text-slate-700" : "bg-blue-600 text-white"}`}
+          >
+            {alertasActivas ? "Desactivar avisos" : "Activar avisos"}
+          </button>
+          <button
+            onClick={probarNotificacion}
+            className="w-full bg-slate-900 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+          >
+            Probar aviso ahora
+          </button>
+        </div>
+        <div className="mt-3 bg-blue-50 border border-blue-200 rounded-2xl p-4">
           <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider">
-            Proba la alerta con la app abierta, instalada y tambien en segundo plano para validar si tu dispositivo realmente la muestra.
+            Como usarlo
           </p>
+          <div className="mt-2 space-y-1 text-[11px] font-bold leading-relaxed text-blue-800">
+            <p>1. Activá los avisos y aceptá el permiso.</p>
+            <p>2. Tocá "Probar aviso ahora".</p>
+            <p>3. Si no aparece nada, revisá que el navegador no las tenga bloqueadas.</p>
+          </div>
         </div>
       </Card>
 
