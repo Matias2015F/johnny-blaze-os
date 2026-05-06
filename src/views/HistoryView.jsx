@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronRight, FileText, Search, User, Wrench, Check, AlertTriangle, Camera, Upload } from "lucide-react";
+import jsQR from "jsqr";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { formatMoney } from "../utils/format.js";
@@ -8,22 +9,18 @@ import { LS } from "../lib/storage.js";
 
 GlobalWorkerOptions.workerSrc = pdfWorker;
 
-const barcodeDisponible = typeof window !== "undefined" && "BarcodeDetector" in window;
+function detectarQRDesdeCanvas(canvas) {
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const resultado = jsQR(imageData.data, imageData.width, imageData.height, {
+    inversionAttempts: "attemptBoth",
+  });
 
-async function detectarQRDesdeCanvas(canvas) {
-  if (!barcodeDisponible) {
-    throw new Error("Este dispositivo no permite escanear QR automáticamente. Podés pegar el JSON manualmente.");
-  }
-
-  const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
-  const resultados = await detector.detect(canvas);
-  const codigo = resultados?.find((item) => item?.rawValue)?.rawValue;
-
-  if (!codigo) {
+  if (!resultado?.data) {
     throw new Error("No encontramos un código QR legible.");
   }
 
-  return codigo;
+  return resultado.data;
 }
 
 async function detectarQRDesdeImagen(file) {
@@ -33,7 +30,7 @@ async function detectarQRDesdeImagen(file) {
   canvas.height = bitmap.height;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
   ctx.drawImage(bitmap, 0, 0);
-  const qr = await detectarQRDesdeCanvas(canvas);
+  const qr = detectarQRDesdeCanvas(canvas);
   bitmap.close?.();
   return qr;
 }
@@ -54,7 +51,7 @@ async function detectarQRDesdePdf(file) {
     await page.render({ canvasContext: context, viewport }).promise;
 
     try {
-      return await detectarQRDesdeCanvas(canvas);
+      return detectarQRDesdeCanvas(canvas);
     } catch (error) {
       if (pageNumber === paginasARevisar) {
         throw new Error("No encontramos un código QR dentro del PDF.");
@@ -127,9 +124,10 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
     try {
       procesarTextoQR(qrInputValue);
     } catch (e) {
+      const mensaje = e instanceof SyntaxError ? "JSON inválido" : e.message;
       setValidacionActual({
         valido: false,
-        razon: e.message === "Unexpected token" ? "JSON inválido" : e.message,
+        razon: mensaje,
         fecha: new Date().toISOString()
       });
       setScanFeedback("Revisá el contenido pegado e intentá de nuevo.");
@@ -297,14 +295,14 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 onClick={() => cameraInputRef.current?.click()}
-                disabled={scanLoading || !barcodeDisponible}
+                disabled={scanLoading}
                 className="flex items-center justify-center gap-2 rounded-[1.5rem] border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-[11px] font-black uppercase text-blue-200 transition-all disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500 active:scale-95"
               >
                 <Camera size={16} /> Abrir cámara / foto
               </button>
               <button
                 onClick={() => pdfInputRef.current?.click()}
-                disabled={scanLoading || !barcodeDisponible}
+                disabled={scanLoading}
                 className="flex items-center justify-center gap-2 rounded-[1.5rem] border border-white/10 bg-black/20 px-4 py-3 text-[11px] font-black uppercase text-white transition-all disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500 active:scale-95"
               >
                 <Upload size={16} /> Abrir PDF
@@ -331,9 +329,7 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
           </div>
 
           <p className="mt-3 text-[9px] font-bold text-slate-500">
-            {barcodeDisponible
-              ? "En celular, el botón de cámara puede abrir la cámara o la galería según el dispositivo."
-              : "Este navegador no permite escanear QR automático. Podés seguir validando pegando el JSON manualmente."}
+            En celular, el botón de cámara puede abrir la cámara o la galería según el dispositivo. En PC, podés elegir una imagen o un PDF guardado.
           </p>
 
           {scanFeedback && (
