@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Bell, Clock, History, LogOut, MessageCircle, PlusCircle, ReceiptText, Wrench } from "lucide-react";
+import { Bell, Calendar, Clock, History, LogOut, MessageCircle, PlusCircle, ReceiptText, Wrench } from "lucide-react";
 import { auth } from "../firebase.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { evaluarEstado } from "../lib/calc.js";
@@ -168,6 +168,18 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
           <div>
             <p className="mb-1 text-2xl font-black uppercase leading-none tracking-tighter">Nuevo ingreso</p>
             <p className="text-xs font-bold uppercase tracking-widest text-white/80">Ingresar moto al taller</p>
+          </div>
+        </div>
+      </button>
+
+      <button onClick={() => setView("agenda")} className="w-full rounded-[2rem] border border-blue-500/20 bg-blue-500/10 p-5 text-left shadow-xl transition-all active:scale-95">
+        <div className="flex items-center gap-4">
+          <div className="rounded-2xl bg-blue-600/20 p-3">
+            <Calendar className="text-blue-400" size={24} />
+          </div>
+          <div>
+            <p className="text-sm font-black uppercase tracking-widest text-white">Agenda semanal</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Ocupación y trabajos por día</p>
           </div>
         </div>
       </button>

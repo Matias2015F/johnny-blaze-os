@@ -358,6 +358,35 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
         </div>
 
         <div className="space-y-6">
+
+        {/* Flujo profesional — acceso rápido a las pantallas del flujo nuevo */}
+        <div className="rounded-[2rem] border border-slate-700 bg-slate-900/60 p-4 space-y-3">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Flujo profesional</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "Espera aprobación", view: "esperandoAprobacion", states: ["diagnostico","presupuesto"] },
+              { label: "Ejecución", view: "ejecucion", states: ["aprobacion","reparacion"] },
+              { label: "Finalización", view: "finalizacion", states: ["finalizada","listo_para_emitir"] },
+              { label: "Pago / Retiro", view: "pago", states: ["cerrado_emitido"] },
+            ].map((step) => {
+              const esPaso = step.states.includes(order.estado);
+              return (
+                <button
+                  key={step.view}
+                  onClick={() => setView(step.view)}
+                  className={`rounded-2xl py-3 px-3 text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 text-left ${
+                    esPaso
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                      : "border border-slate-700 bg-slate-900/50 text-slate-500"
+                  }`}
+                >
+                  {esPaso ? "▶ " : ""}{step.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {isLocked && (
           <div className="flex items-center gap-3 rounded-[2rem] border border-blue-500/20 bg-blue-500/10 p-4 shadow-lg backdrop-blur">
             <div className="rounded-xl bg-blue-500 p-2 text-white"><ShieldCheck size={20} /></div>
