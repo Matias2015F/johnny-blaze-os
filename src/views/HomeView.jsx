@@ -8,6 +8,7 @@ import { LS, useCollection } from "../lib/storage.js";
 import { trackEvent } from "../lib/telemetry.js";
 import { obtenerTiempoActual } from "../lib/timer.js";
 import { formatMoney } from "../utils/format.js";
+import { normalizarTelWA } from "../lib/messages.js";
 
 const ESTADO_BADGE = {
   NORMAL: "bg-green-500/20 text-green-300 border-green-500/30",
@@ -272,7 +273,7 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
                         entityId: recordatorio.id,
                         metadata: { estado: recordatorio.estado, testMode: !!recordatorio.testMode },
                       }).catch(console.error);
-                      window.open(`https://wa.me/${tel.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
+                      window.open(`https://wa.me/${normalizarTelWA(tel)}?text=${encodeURIComponent(msg)}`, "_blank");
                       LS.updateDoc("recordatorios", recordatorio.id, { estado: "avisado", enviado: true });
                     }}
                     className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white py-3 px-3 text-[9px] font-black uppercase active:scale-95 transition-all shadow-lg"

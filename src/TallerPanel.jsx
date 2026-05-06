@@ -160,6 +160,7 @@ export default function TallerPanel() {
   const orders        = useCollection("trabajos");
   const titularidades = useCollection("titularidades");
   useCollection("config");
+  useCollection("repuestosHistorial");
 
   const syncStatus = useSyncStatus();
 

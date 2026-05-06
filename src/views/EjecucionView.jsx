@@ -39,7 +39,7 @@ export default function EjecucionView({ ordenId, setView }) {
     [tareas]
   );
   const totalRepuestos = useMemo(
-    () => (orden?.repuestos || []).reduce((s, r) => s + (r.monto || 0), 0),
+    () => (orden?.repuestos || []).reduce((s, r) => s + (r.monto || 0) * (r.cantidad || 1), 0),
     [orden]
   );
   const totalFletes = useMemo(

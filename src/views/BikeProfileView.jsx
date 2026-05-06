@@ -4,6 +4,7 @@ import { formatMoney } from "../utils/format.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { LS, useCollection } from "../lib/storage.js";
 import { evaluarEstadoRecordatorio, generarMensajeWhatsApp } from "../lib/proximoControl.js";
+import { normalizarTelWA } from "../lib/messages.js";
 
 export default function BikeProfileView({ bikeId, orders, bikes, clients, setView, handleStartNewService }) {
   const b = bikes.find((x) => x.id === bikeId);
@@ -76,7 +77,7 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
                     onClick={() => {
                       const msg = generarMensajeWhatsApp(c, b, r, config);
                       const tel = c?.whatsapp || c?.telefono || c?.tel || "";
-                      window.open(`https://wa.me/${tel.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
+                      window.open(`https://wa.me/${normalizarTelWA(tel)}?text=${encodeURIComponent(msg)}`, "_blank");
                       LS.updateDoc("recordatorios", r.id, { estado: "avisado", enviado: true });
                     }}
                     className="bg-green-600 text-white px-4 py-2 rounded-2xl font-black text-[9px] uppercase flex items-center gap-1 active:scale-95 flex-shrink-0"

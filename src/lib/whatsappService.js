@@ -1,3 +1,5 @@
+import { normalizarTelWA } from "./messages.js";
+
 export function generarEnlacePresupuesto(orden, monto, cliente, moto) {
   const nombreCliente = cliente?.nombre || orden?.clienteNombre || "Cliente";
   const marcaMoto = moto?.marca || orden?.moto?.marca || "";
@@ -13,7 +15,7 @@ export function generarEnlacePresupuesto(orden, monto, cliente, moto) {
     `Por favor confirmá para que podamos continuar.\n\n` +
     `${new Date().toLocaleString("es-AR")}`;
 
-  const numero = tel.replace(/[^0-9]/g, "");
+  const numero = normalizarTelWA(tel);
   return `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
 }
 
@@ -28,7 +30,7 @@ export function generarEnlaceMontoFinal(orden, monto, cliente, moto) {
     `Patente: ${patente}\n\n` +
     `¿Cuándo pasás a retirar? Avisame.`;
 
-  const numero = tel.replace(/[^0-9]/g, "");
+  const numero = normalizarTelWA(tel);
   return `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
 }
 
@@ -36,6 +38,6 @@ export function generarEnlaceConfirmacion(orden, cliente) {
   const patente = orden?.moto?.patente || "";
   const tel = cliente?.tel || cliente?.telefono || "";
   const mensaje = `Confirmo la ejecución del trabajo en ${patente}.`;
-  const numero = tel.replace(/[^0-9]/g, "");
+  const numero = normalizarTelWA(tel);
   return `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
 }

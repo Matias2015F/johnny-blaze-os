@@ -71,7 +71,16 @@ Total: $${Math.round(total).toLocaleString()}
 Podés pasar cuando quieras. ¡Gracias!`;
 }
 
+export function normalizarTelWA(tel) {
+  const solo = String(tel || "").replace(/\D/g, "");
+  if (!solo) return "";
+  if (solo.startsWith("549")) return solo;
+  if (solo.startsWith("54")) return "549" + solo.slice(2);
+  return "549" + solo;
+}
+
 export function abrirWhatsApp(tel, mensaje) {
-  const url = `https://wa.me/549${tel}?text=${encodeURIComponent(mensaje)}`;
+  const numero = normalizarTelWA(tel);
+  const url = `https://wa.me/${numero}?text=${encodeURIComponent(mensaje)}`;
   window.open(url, "_blank");
 }

@@ -31,7 +31,7 @@ export default function FinalizacionView({ ordenId, setView }) {
   }
 
   const totalManoObra = (orden.tareas || []).reduce((s, t) => s + (t.monto || 0), 0);
-  const totalRepuestos = (orden.repuestos || []).reduce((s, r) => s + (r.monto || 0), 0);
+  const totalRepuestos = (orden.repuestos || []).reduce((s, r) => s + (r.monto || 0) * (r.cantidad || 1), 0);
   const totalInsumos = (orden.insumos || []).reduce((s, i) => s + (i.monto || 0), 0);
   const totalFletes = (orden.fletes || []).reduce((s, f) => s + (f.monto || 0), 0);
   const totalMateriales = totalRepuestos + totalInsumos + totalFletes;

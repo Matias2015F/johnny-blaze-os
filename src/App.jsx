@@ -86,7 +86,7 @@ function PantallaBloqueo({ account, settings }) {
 
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const tel = (config.telefonoTaller || "").replace(/\D/g, "");
-  const waLink = tel ? `https://wa.me/54${tel}` : null;
+  const waLink = tel ? `https://wa.me/${tel.startsWith("549") ? tel : tel.startsWith("54") ? "549" + tel.slice(2) : "549" + tel}` : null;
   const userLabel = auth.currentUser?.email || auth.currentUser?.phoneNumber || "";
   const access = resolveAccountAccess(account || {});
   const plansUi = buildPlansForUi(settings);

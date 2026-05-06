@@ -40,11 +40,10 @@ export default function PagoView({ ordenId, setView }) {
   const recibido = Number(montoRecibido) || 0;
   const diferencia = recibido - costoFinal;
   const totalManoObra = (orden.tareas || []).reduce((s, t) => s + (t.monto || 0), 0);
-  const totalMateriales = [
-    ...(orden.repuestos || []),
-    ...(orden.insumos || []),
-    ...(orden.fletes || []),
-  ].reduce((s, i) => s + (i.monto || 0), 0);
+  const totalMateriales =
+    (orden.repuestos || []).reduce((s, r) => s + (r.monto || 0) * (r.cantidad || 1), 0) +
+    (orden.insumos   || []).reduce((s, i) => s + (i.monto || 0) * (i.cantidad || 1), 0) +
+    (orden.fletes    || []).reduce((s, f) => s + (f.monto || 0), 0);
   const gananciaNeta = totalManoObra;
 
   const handleRegistrarPago = () => {
