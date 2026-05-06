@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ArrowLeft, FileText, AlertCircle } from "lucide-react";
-import { LS } from "../lib/storage.js";
+import { LS, generarNumeroComprobante, crearSnapshotVerificable } from "../lib/storage.js";
 import { PLANTILLAS_GARANTIA, CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { trackEvent } from "../lib/telemetry.js";
@@ -15,29 +15,53 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
 
   const irAlPdf = () => {
     if (saldo > 0) return;
-    const numeroComprobante = order.numeroComprobante || `COMP-${String(Date.now()).slice(-8)}`;
+
+    // Generar número comprobante seguro con checksum
+    const numeroComprobante = generarNumeroComprobante(order.id);
+
+    // Obtener datos de cliente y moto
+    const cliente = LS.getDoc("clientes", order.clientId);
+    const moto = LS.getDoc("motos", order.bikeId);
+
+    // Crear snapshot verificable e inmutable
+    const snapshotFinal = crearSnapshotVerificable(
+      order,
+      numeroComprobante,
+      cliente,
+      moto
+    );
+
     trackEvent("emitir_comprobante", {
       screen: "prePdf",
       entityType: "trabajo",
       entityId: order.id,
-      metadata: { numeroComprobante, total: totalOrden },
+      metadata: { numeroComprobante, total: totalOrden, hashVerificacion: snapshotFinal.hash },
     }).catch(console.error);
+
     LS.updateDoc("trabajos", order.id, {
       pdfEntregado: true,
       estado: "cerrado_emitido",
       numeroComprobante,
       fechaComprobante: new Date().toISOString(),
       garantiaFinal: garantia,
-      snapshotFinal: {
-        tareas: order.tareas || [],
-        repuestos: order.repuestos || [],
-        insumos: order.insumos || [],
-        fletes: order.fletes || [],
-        pagos: order.pagos || [],
-        total: totalOrden,
-      },
+      snapshotFinal,
+      aprobacionCliente: {
+        fecha: new Date().toISOString(),
+        metodo: order.aprobadoPor || 'manual',
+        comprobante: numeroComprobante
+      }
     });
-    setFinalPdfData({ garantia, numeroComprobante });
+
+    setFinalPdfData({
+      garantia,
+      numeroComprobante,
+      qrData: {
+        numeroComprobante,
+        orderId: order.id,
+        hash: snapshotFinal.hash,
+        fecha: snapshotFinal.fechaComprobante
+      }
+    });
     setView("imprimirOrden");
   };
 

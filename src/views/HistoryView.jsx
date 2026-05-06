@@ -1,9 +1,160 @@
-import React, { useMemo, useState } from "react";
-import { ArrowLeft, ChevronRight, FileText, Search, User, Wrench } from "lucide-react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
+import { ArrowLeft, ChevronRight, FileText, Search, User, Wrench, Camera, Check, AlertTriangle, X, Upload } from "lucide-react";
 import { formatMoney } from "../utils/format.js";
+import { validarComprobante } from "../lib/comprobante-validation.js";
+import { LS } from "../lib/storage.js";
+import { Html5Qrcode } from "html5-qrcode";
 
 export default function HistoryView({ orders, bikes, clients, setView, setSelectedBikeId }) {
   const [search, setSearch] = useState("");
+  const [validaciones, setValidaciones] = useState([]);
+  const [qrInputValue, setQrInputValue] = useState("");
+  const [validacionActual, setValidacionActual] = useState(null);
+  const [modoEscaneo, setModoEscaneo] = useState(null); // "camara" | "archivo" | null
+  const [camaraActiva, setCamaraActiva] = useState(false);
+  const qrReaderRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const html5QrcodeRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (html5QrcodeRef.current) {
+        html5QrcodeRef.current.stop().catch(() => {});
+      }
+    };
+  }, []);
+
+  const procesarQRData = (qrData) => {
+    try {
+      const { numeroComprobante, orderId, hash } = qrData;
+
+      const ordenOriginal = LS.getDoc("trabajos", orderId);
+      if (!ordenOriginal) {
+        setValidacionActual({
+          valido: false,
+          razon: "No encontrada en registros",
+          numeroComprobante,
+          fecha: new Date().toISOString()
+        });
+        return;
+      }
+
+      const resultado = validarComprobante(numeroComprobante, qrData, ordenOriginal);
+      const validacion = {
+        ...resultado,
+        numeroComprobante,
+        fecha: new Date().toISOString(),
+        id: Date.now()
+      };
+
+      setValidacionActual(validacion);
+      setValidaciones([validacion, ...validaciones]);
+      setQrInputValue("");
+      setModoEscaneo(null);
+      setCamaraActiva(false);
+
+      if (html5QrcodeRef.current) {
+        html5QrcodeRef.current.stop();
+      }
+    } catch (e) {
+      setValidacionActual({
+        valido: false,
+        razon: "Código QR inválido o corrupto: " + e.message,
+        fecha: new Date().toISOString()
+      });
+    }
+  };
+
+  const validarQR = () => {
+    if (!qrInputValue.trim()) return;
+    try {
+      const qrData = JSON.parse(qrInputValue);
+      procesarQRData(qrData);
+    } catch (e) {
+      setValidacionActual({
+        valido: false,
+        razon: "JSON inválido",
+        fecha: new Date().toISOString()
+      });
+    }
+  };
+
+  const iniciarEscaneo = async () => {
+    setModoEscaneo("camara");
+    setCamaraActiva(true);
+
+    try {
+      const html5QrCode = new Html5Qrcode("qr-reader");
+      html5QrcodeRef.current = html5QrCode;
+
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          try {
+            const qrData = JSON.parse(decodedText);
+            procesarQRData(qrData);
+          } catch {
+            // Reintentar si no es JSON válido
+          }
+        },
+        (errorMessage) => {
+          // Error silencioso de escaneo
+        }
+      );
+    } catch (err) {
+      setValidacionActual({
+        valido: false,
+        razon: "No se pudo acceder a la cámara: " + err.message,
+        fecha: new Date().toISOString()
+      });
+      setCamaraActiva(false);
+    }
+  };
+
+  const detenerEscaneo = async () => {
+    if (html5QrcodeRef.current) {
+      try {
+        await html5QrcodeRef.current.stop();
+      } catch (e) {
+        console.error("Error deteniendo escáner:", e);
+      }
+    }
+    setCamaraActiva(false);
+    setModoEscaneo(null);
+  };
+
+  const cargarArchivo = (e) => {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+
+    const lector = new FileReader();
+    lector.onload = (evento) => {
+      try {
+        // Buscar el JSON en el contenido del archivo (simulado)
+        const contenido = evento.target?.result;
+        const match = contenido.match(/\{"numeroComprobante".*?"hash":"[^"]+"\}/);
+
+        if (match) {
+          const qrData = JSON.parse(match[0]);
+          procesarQRData(qrData);
+        } else {
+          setValidacionActual({
+            valido: false,
+            razon: "No se encontró código QR válido en el archivo",
+            fecha: new Date().toISOString()
+          });
+        }
+      } catch (err) {
+        setValidacionActual({
+          valido: false,
+          razon: "Error al procesar archivo: " + err.message,
+          fecha: new Date().toISOString()
+        });
+      }
+    };
+    lector.readAsText(archivo);
+  };
 
   const results = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -105,6 +256,129 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
             />
           </div>
           <p className="mt-3 px-1 text-[10px] font-black uppercase tracking-widest text-slate-500">{helperText}</p>
+        </div>
+
+        <div className="rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="bg-blue-500/20 p-2 rounded-xl">
+              <Camera className="text-blue-400" size={18} />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase text-slate-300">Validar comprobante</p>
+              <p className="text-[9px] font-bold text-slate-500">Escanea, carga PDF o pega código QR</p>
+            </div>
+          </div>
+
+          {!camaraActiva ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={iniciarEscaneo}
+                  className="py-3 rounded-xl bg-blue-600 text-white font-black uppercase text-xs hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Camera size={14} /> Cámara
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="py-3 rounded-xl bg-amber-600 text-white font-black uppercase text-xs hover:bg-amber-700 transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Upload size={14} /> PDF
+                </button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.txt"
+                onChange={cargarArchivo}
+                className="hidden"
+              />
+
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder='O pega el JSON aquí'
+                  value={qrInputValue}
+                  onChange={(e) => setQrInputValue(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && validarQR()}
+                  className="w-full rounded-[1.75rem] border border-white/10 bg-black/20 p-3 font-mono text-xs text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
+                />
+              </div>
+              <button
+                onClick={validarQR}
+                disabled={!qrInputValue.trim()}
+                className="w-full py-3 rounded-2xl bg-blue-600 text-white font-black uppercase text-sm disabled:bg-slate-700 disabled:text-slate-400 transition-all active:scale-95"
+              >
+                Validar
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div id="qr-reader" className="rounded-xl overflow-hidden border-2 border-blue-500"></div>
+              <button
+                onClick={detenerEscaneo}
+                className="w-full py-3 rounded-2xl bg-red-600 text-white font-black uppercase text-sm hover:bg-red-700 transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                <X size={16} /> Cerrar cámara
+              </button>
+            </div>
+          )}
+
+          {validacionActual && (
+            <div className={`mt-4 p-4 rounded-2xl border-2 ${
+              validacionActual.valido
+                ? 'bg-green-500/10 border-green-500/30'
+                : 'bg-red-500/10 border-red-500/30'
+            }`}>
+              <div className="flex items-start gap-3">
+                {validacionActual.valido ? (
+                  <Check className="text-green-400 shrink-0 mt-1" size={18} />
+                ) : (
+                  <AlertTriangle className="text-red-400 shrink-0 mt-1" size={18} />
+                )}
+                <div className="min-w-0">
+                  <p className={`text-[10px] font-black uppercase ${
+                    validacionActual.valido ? 'text-green-300' : 'text-red-300'
+                  }`}>
+                    {validacionActual.razon}
+                  </p>
+                  {validacionActual.numeroComprobante && (
+                    <p className="mt-1 text-[9px] text-slate-300">
+                      Número: <span className="font-mono font-bold">{validacionActual.numeroComprobante}</span>
+                    </p>
+                  )}
+                  {validacionActual.detalles && (
+                    <div className="mt-2 text-[9px] text-slate-400 space-y-1">
+                      <p>Cliente: {validacionActual.detalles.cliente?.nombre || 'N/A'}</p>
+                      <p>Moto: {validacionActual.detalles.moto?.patente || 'N/A'}</p>
+                      <p>Monto: {formatMoney(validacionActual.detalles.monto || 0)}</p>
+                      <p>Fecha: {validacionActual.detalles.fecha?.slice(0, 10) || 'N/A'}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {validaciones.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-slate-700">
+              <p className="text-[9px] font-black uppercase text-slate-500 mb-2">Historial de validaciones</p>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {validaciones.slice(0, 5).map(v => (
+                  <div key={v.id} className={`p-3 rounded-lg text-[9px] border ${
+                    v.valido
+                      ? 'bg-green-500/10 border-green-500/20 text-green-300'
+                      : 'bg-red-500/10 border-red-500/20 text-red-300'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      {v.valido ? <Check size={12} /> : <AlertTriangle size={12} />}
+                      <span className="font-bold font-mono">{v.numeroComprobante?.slice(0, 15)}</span>
+                      <span className="text-[8px]">{new Date(v.fecha).toLocaleTimeString('es-AR')}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {search.trim() && (

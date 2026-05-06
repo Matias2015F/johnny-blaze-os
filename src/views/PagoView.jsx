@@ -57,9 +57,9 @@ export default function PagoView({ ordenId, setView }) {
         ...pagosActuales,
         {
           monto: recibido,
-          metodoPago,
+          metodo: metodoPago,
           comprobante,
-          fecha: Date.now(),
+          fecha: new Date().toISOString().slice(0, 10),
           tipo: "pago_final",
         },
       ],

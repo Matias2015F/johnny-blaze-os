@@ -175,7 +175,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   };
 
   const accionPrincipal = isLocked
-    ? null
+    ? { label: "Ver / reimprimir comprobante", action: () => setView("imprimirOrden"), className: "bg-slate-700 text-white" }
     : order.estado === "diagnostico"
       ? { label: "Pasar a presupuesto", action: () => cambiarEstado("presupuesto"), className: "bg-violet-600 text-white" }
       : order.estado === "presupuesto"
@@ -188,7 +188,9 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               ? { label: "Finalizar trabajo", action: () => setView("finalizacion"), className: "bg-orange-600 text-white" }
               : order.estado === "listo_para_emitir"
                 ? { label: "Registrar cobro", action: () => setView("pago"), className: "bg-green-600 text-white" }
-                : null;
+                : order.estado === "cerrado_emitido"
+                  ? { label: "Emitir comprobante", action: () => setView("prePdf"), className: "bg-blue-600 text-white" }
+                  : null;
 
   const eliminarItem = (lista, index) => {
     if (isLocked) {
@@ -241,8 +243,16 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const handleSinCronometro = () => LS.updateDoc("trabajos", order.id, trabajarSinCronometro(order));
 
   const ejecutarPaso = (idx) => {
-    if (isLocked || !accionPrincipal) return;
+    if (isLocked) return;
+    const pasoId = STEP_UI[idx]?.id;
+
+    if (idx < currentStepIndex) {
+      cambiarEstado(pasoId);
+      showToast(`Volviendo a ${ESTADO_LABEL[pasoId]}`);
+      return;
+    }
     if (idx === currentStepIndex || idx === currentStepIndex + 1) {
+      if (!accionPrincipal) return;
       accionPrincipal.action();
       return;
     }
@@ -258,8 +268,8 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       <div className="bg-gradient-to-b from-slate-800 to-slate-900 px-5 pb-8 pt-5 text-white shadow-2xl">
         <div className="mx-auto max-w-[440px]">
           <div className="mb-4 flex items-center justify-between">
-            <button onClick={() => setView("ordenes")} className="rounded-2xl border border-slate-700/60 bg-slate-900/60 p-2 text-blue-400 shadow-lg backdrop-blur active:scale-90">
-              <ArrowLeft size={20} />
+            <button onClick={() => setView("ordenes")} className="rounded-2xl border-2 border-blue-500/50 bg-blue-600/20 p-3 text-blue-300 hover:text-blue-100 hover:bg-blue-600/40 shadow-lg backdrop-blur transition-all active:scale-90">
+              <ArrowLeft size={22} />
             </button>
             <div className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest shadow-lg ${ESTADO_CSS[order.estado]}`}>
               {ESTADO_LABEL[order.estado]}
@@ -367,7 +377,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           </div>
         )}
 
-        {!isLocked && accionPrincipal && (
+        {accionPrincipal && (
           <button
             onClick={accionPrincipal.action}
             className={`w-full rounded-[1.75rem] py-4 text-[11px] font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 ${accionPrincipal.className}`}

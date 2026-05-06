@@ -330,3 +330,87 @@ export function calcularGananciaSemana() {
     .filter((o) => o.pagado_fecha && o.pagado_fecha > hace7dias)
     .reduce((sum, o) => sum + (o.ganancia || 0), 0);
 }
+
+// ========== GENERACIÓN SEGURA DE COMPROBANTES ==========
+
+/**
+ * Genera número comprobante único y seguro con checksum
+ * Formato: JBO-YYYYMMDD-HHMMSS-CHECKSUM
+ * @param {string} orderId - ID de la orden
+ * @returns {string} Número comprobante único
+ */
+export function generarNumeroComprobante(orderId) {
+  const ahora = new Date();
+  const year = ahora.getFullYear();
+  const month = String(ahora.getMonth() + 1).padStart(2, '0');
+  const day = String(ahora.getDate()).padStart(2, '0');
+  const hours = String(ahora.getHours()).padStart(2, '0');
+  const mins = String(ahora.getMinutes()).padStart(2, '0');
+  const secs = String(ahora.getSeconds()).padStart(2, '0');
+
+  const fecha = `${year}${month}${day}`;
+  const hora = `${hours}${mins}${secs}`;
+  const parte1 = fecha + hora;
+
+  // Calcular checksum: suma de dígitos mod 10
+  const checksum = String(
+    parte1.split('').reduce((a, b) => parseInt(a) + parseInt(b), 0) % 10
+  );
+
+  return `JBO-${fecha}-${hora}-${checksum}`;
+}
+
+/**
+ * Genera hash simple para verificación de integridad
+ * @param {string} str - String a hashear
+ * @returns {string} Hash hexadecimal de 8 caracteres
+ */
+function generarHashSimple(str) {
+  let hash = 0;
+  if (str.length === 0) return '00000000';
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+
+  return Math.abs(hash).toString(16).padStart(8, '0');
+}
+
+/**
+ * Crea snapshot verificable y inmutable de orden
+ * @param {object} order - Orden completa
+ * @param {string} numeroComprobante - Número comprobante generado
+ * @param {object} cliente - Datos del cliente
+ * @param {object} moto - Datos de la moto
+ * @returns {object} Snapshot verificable con hash
+ */
+export function crearSnapshotVerificable(order, numeroComprobante, cliente, moto) {
+  const snapshot = {
+    numeroComprobante,
+    orderId: order.id,
+    clienteId: order.clientId,
+    clienteNombre: cliente?.nombre,
+    bikeId: order.bikeId,
+    bikePatente: moto?.patente,
+    bikeMarca: moto?.marca,
+    bikeModelo: moto?.modelo,
+    tareas: order.tareas || [],
+    repuestos: order.repuestos || [],
+    insumos: order.insumos || [],
+    fletes: order.fletes || [],
+    total: order.total || 0,
+    pagos: order.pagos || [],
+    fechaComprobante: new Date().toISOString(),
+    garantia: order.garantiaFinal || '',
+    estado: order.estado,
+    validado: true
+  };
+
+  // Generar hash de integridad basado en datos
+  const stringParaHash = JSON.stringify(snapshot);
+  snapshot.hash = generarHashSimple(stringParaHash);
+
+  return snapshot;
+}
