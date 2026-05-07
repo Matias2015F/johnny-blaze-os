@@ -162,7 +162,7 @@ function PantallaBloqueo({ account, settings }) {
                   <p className="text-sm font-black text-white">{plan.label}</p>
                   <p className="text-[10px] text-slate-400 font-bold">{plan.detalle}</p>
                 </div>
-                <span className="text-blue-400 font-black text-sm">{pagando ? "..." : plan.precio}</span>
+                <span className="text-orange-400 font-black text-sm">{pagando ? "..." : plan.precio}</span>
               </button>
             ))}
           </div>

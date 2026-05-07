@@ -1,4 +1,4 @@
-ï»¿import React, { useState, useEffect, lazy, Suspense } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { Wrench, Clock, History, Settings, DollarSign, HelpCircle, RefreshCw } from "lucide-react";
@@ -10,7 +10,7 @@ import { APP_BUILD } from "./generated/appVersion.js";
 import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, promptInstallApp } from "./lib/appUpdate.js";
 import { ensureAccountProfile, trackEvent } from "./lib/telemetry.js";
 
-// HomeView se carga de forma eager â€” es la pantalla inicial
+// HomeView se carga de forma eager — es la pantalla inicial
 import HomeView from "./views/HomeView.jsx";
 
 // El resto se carga bajo demanda (code splitting) y reduce el bundle inicial
@@ -287,7 +287,7 @@ export default function TallerPanel() {
       }).id;
     }
 
-    // Titularidad: relaciÃ³n histÃ³rica cliente ? moto
+    // Titularidad: relación histórica cliente ? moto
     const titActual = titularidades.find(t => t.motoId === bikeId && t.titularActual === true);
     if (!titActual || titActual.clienteId !== clientId) {
       if (titActual) {
@@ -354,8 +354,8 @@ export default function TallerPanel() {
   const loadDemoData = () => {
     const hoy = hoyEstable();
 
-    // Moto 1 â€” Juan GarcÃ­a / Honda Wave 110
-    const c1 = LS.addDoc("clientes", { nombre: "Juan GarcÃ­a", tel: "3434123456", telefono: "3434123456", whatsapp: "3434123456", etiquetas: [], activo: true, createdAt: Date.now() });
+    // Moto 1 — Juan García / Honda Wave 110
+    const c1 = LS.addDoc("clientes", { nombre: "Juan García", tel: "3434123456", telefono: "3434123456", whatsapp: "3434123456", etiquetas: [], activo: true, createdAt: Date.now() });
     const b1 = LS.addDoc("motos", { patente: "ABC123", patenteNormalizada: "ABC123", marca: "Honda", modelo: "Wave 110", cilindrada: 110, km: 15400, kilometrajeActual: 15400, estado: "activa", clienteId: c1.id, ultimaVisita: hoy, proximoService: 17500, createdAt: Date.now() });
     LS.addDoc("titularidades", { clienteId: c1.id, motoId: b1.id, fechaDesde: hoy, fechaHasta: null, titularActual: true, createdAt: Date.now() });
     LS.addDoc("trabajos", {
@@ -366,14 +366,14 @@ export default function TallerPanel() {
       tareas: [{ nombre: "Cambio de aceite y filtro", monto: 18000, horasBase: 0.5 }],
       repuestos: [{ nombre: "Aceite 10W40", monto: 12000, cantidad: 1 }, { nombre: "Filtro de aceite", monto: 8000, cantidad: 1 }],
       insumos: [], fletes: [], km: 15400, kmIngreso: 15400, kmEntrega: null,
-      motivoIngreso: "Service periÃ³dico y revisiÃ³n general.",
-      diagnostico: "Service periÃ³dico y revisiÃ³n general.",
-      observacionesProxima: "PrÃ³ximo service a los 17500 km.",
+      motivoIngreso: "Service periódico y revisión general.",
+      diagnostico: "Service periódico y revisión general.",
+      observacionesProxima: "Próximo service a los 17500 km.",
       pdfEntregado: false, createdAt: Date.now(),
     });
 
-    // Moto 2 â€” MarÃ­a LÃ³pez / Yamaha FZ 16
-    const c2 = LS.addDoc("clientes", { nombre: "MarÃ­a LÃ³pez", tel: "3434654321", telefono: "3434654321", whatsapp: "3434654321", etiquetas: [], activo: true, createdAt: Date.now() });
+    // Moto 2 — María López / Yamaha FZ 16
+    const c2 = LS.addDoc("clientes", { nombre: "María López", tel: "3434654321", telefono: "3434654321", whatsapp: "3434654321", etiquetas: [], activo: true, createdAt: Date.now() });
     const b2 = LS.addDoc("motos", { patente: "XYZ789", patenteNormalizada: "XYZ789", marca: "Yamaha", modelo: "FZ 16", cilindrada: 160, km: 8920, kilometrajeActual: 8920, estado: "activa", clienteId: c2.id, ultimaVisita: hoy, proximoService: 11000, createdAt: Date.now() });
     LS.addDoc("titularidades", { clienteId: c2.id, motoId: b2.id, fechaDesde: hoy, fechaHasta: null, titularActual: true, createdAt: Date.now() });
     LS.addDoc("trabajos", {
@@ -388,11 +388,11 @@ export default function TallerPanel() {
       pdfEntregado: false, createdAt: Date.now(),
     });
 
-    showToast("Demo cargado âœ“");
+    showToast("Demo cargado ?");
   };
 
   const clearAllData = () => {
-    showConfirm("Â¿Borrar todos los datos? Esta accion no se puede deshacer.", async () => {
+    showConfirm("¿Borrar todos los datos? Esta accion no se puede deshacer.", async () => {
       const uid = auth.currentUser?.uid;
       if (uid) await clearFirestoreData(uid);
       localStorage.removeItem("jbos_fs_migrated_v1");
@@ -500,7 +500,7 @@ export default function TallerPanel() {
 
   // -- Render -----------------------------------------------------------------
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#0A0A0A] relative text-left selection:bg-blue-500 overflow-x-hidden font-bold">
+    <div className="max-w-md mx-auto min-h-screen bg-[#0A0A0A] relative text-left selection:bg-orange-500 overflow-x-hidden font-bold">
 
       <ChunkErrorBoundary>
       <Suspense fallback={<Cargando />}>
@@ -541,7 +541,7 @@ export default function TallerPanel() {
             setSelectedInstallPlatform("auto");
             setShowHelp(true);
           }}
-          className="fixed right-4 top-4 z-[120] flex items-center gap-2 rounded-full border border-blue-500/30 bg-slate-950/95 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-blue-400 shadow-xl active:scale-95"
+          className="fixed right-4 top-4 z-[120] flex items-center gap-2 rounded-full border border-orange-500/30 bg-slate-950/95 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-orange-400 shadow-xl active:scale-95"
         >
           <HelpCircle size={14} /> Ayuda
         </button>
@@ -549,9 +549,9 @@ export default function TallerPanel() {
 
       {updateInfo && (
         <div className="fixed inset-0 z-[190] flex items-center justify-center bg-black/70 p-6">
-          <div className="w-full max-w-sm rounded-[2rem] border border-blue-500/20 bg-[#151515] p-6 space-y-5">
+          <div className="w-full max-w-sm rounded-[2rem] border border-orange-500/20 bg-[#151515] p-6 space-y-5">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-blue-600 p-3 text-white">
+              <div className="rounded-2xl bg-orange-600 p-3 text-white">
                 <RefreshCw size={18} />
               </div>
               <div>
@@ -566,7 +566,7 @@ export default function TallerPanel() {
                 {new Date(APP_BUILD.buildTime).toLocaleString("es-AR")}
               </p>
               <p className="mt-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Ultimo deploy</p>
-              <p className="text-sm font-black text-blue-400">{updateInfo.version}</p>
+              <p className="text-sm font-black text-orange-400">{updateInfo.version}</p>
               {updateInfo.buildTime && (
                 <p className="text-[10px] font-bold text-slate-500">
                   {new Date(updateInfo.buildTime).toLocaleString("es-AR")}
@@ -585,7 +585,7 @@ export default function TallerPanel() {
               </button>
               <button
                 onClick={aplicarActualizacion}
-                className="rounded-2xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
+                className="rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
               >
                 Actualizar ahora
               </button>
@@ -598,7 +598,7 @@ export default function TallerPanel() {
         <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/70 p-6">
           <div className="w-full max-w-sm rounded-[2rem] border border-slate-700 bg-[#151515] p-6 space-y-5">
             <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-blue-600 p-3 text-white">
+              <div className="rounded-2xl bg-orange-600 p-3 text-white">
                 <HelpCircle size={18} />
               </div>
               <div>
@@ -613,9 +613,9 @@ export default function TallerPanel() {
                 </div>
               ))}
             </div>
-            <div className="space-y-3 rounded-2xl border border-blue-500/20 bg-slate-950/70 p-4">
+            <div className="space-y-3 rounded-2xl border border-orange-500/20 bg-slate-950/70 p-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Instalar app</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-orange-400">Instalar app</p>
                 <p className="mt-1 text-sm font-black text-white">{activeInstallGuide.title}</p>
                 <p className="mt-1 text-[10px] font-bold text-slate-400">
                   {displayMode.installed ? "Esta app ya esta instalada en este dispositivo." : "Podes instalarla desde aca si tu navegador lo permite."}
@@ -632,7 +632,7 @@ export default function TallerPanel() {
                     onClick={() => setSelectedInstallPlatform(item.key)}
                     className={`rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest active:scale-95 ${
                       selectedInstallPlatform === item.key
-                        ? "bg-blue-600 text-white"
+                        ? "bg-orange-600 text-white"
                         : "bg-slate-900 text-slate-300"
                     }`}
                   >
@@ -643,7 +643,7 @@ export default function TallerPanel() {
               <div className="space-y-2">
                 {activeInstallGuide.steps.map((step, index) => (
                   <div key={`${index}-${step.title}`} className="rounded-2xl bg-slate-900 p-4">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-blue-400">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-orange-400">
                       Paso {index + 1}
                     </p>
                     <p className="mt-1 text-sm font-black text-white">{step.title}</p>
@@ -680,7 +680,7 @@ export default function TallerPanel() {
             </div>
             <button
               onClick={() => setShowHelp(false)}
-              className="w-full rounded-2xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
+              className="w-full rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
             >
               Entendido
             </button>
@@ -688,7 +688,7 @@ export default function TallerPanel() {
         </div>
       )}
 
-      {/* Modal de confirmaciÃ³n â€” reemplaza window.confirm */}
+      {/* Modal de confirmación — reemplaza window.confirm */}
       {confirm && (
         <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-6">
           <div className="bg-[#151515] border border-slate-800 rounded-[2rem] p-8 w-full max-w-sm space-y-5">
@@ -709,25 +709,25 @@ export default function TallerPanel() {
 
       {NAV_VIEWS.includes(view) && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-gradient-to-t from-black/95 via-slate-950/90 to-slate-900/50 backdrop-blur-3xl border-t border-white/10 px-2 py-3 flex justify-around items-center z-50 rounded-t-[3rem] shadow-2xl">
-          {/* Indicador de sincronizaciÃ³n */}
+          {/* Indicador de sincronización */}
           <div className={`absolute top-2 right-4 flex items-center gap-1 text-[8px] font-black uppercase tracking-widest ${syncStatus === "synced" ? "text-green-500" : syncStatus === "syncing" ? "text-yellow-400" : "text-red-400"}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${syncStatus === "synced" ? "bg-green-500" : syncStatus === "syncing" ? "bg-yellow-400 animate-pulse" : "bg-red-400"}`} />
             {syncStatus === "synced" ? "Guardado" : syncStatus === "syncing" ? "Guardando..." : "Error al guardar"}
           </div>
-          <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "home" ? "text-blue-400 bg-blue-500/20 scale-105 shadow-lg shadow-blue-500/20" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "home" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-slate-500 hover:text-slate-300"}`}>
             <Wrench size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Inicio</span>
           </button>
-          <button onClick={() => setView("ordenes")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "ordenes" ? "text-blue-400 bg-blue-500/20 scale-105 shadow-lg shadow-blue-500/20" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("ordenes")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "ordenes" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-slate-500 hover:text-slate-300"}`}>
             <Clock size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Trabajos</span>
           </button>
-          <button onClick={() => setView("historial")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "historial" || view === "perfilMoto" ? "text-blue-400 bg-blue-500/20 scale-105 shadow-lg shadow-blue-500/20" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("historial")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "historial" || view === "perfilMoto" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-slate-500 hover:text-slate-300"}`}>
             <History size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Historial</span>
           </button>
-          <button onClick={() => setView("pagosView")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "pagosView" ? "text-blue-400 bg-blue-500/20 scale-105 shadow-lg shadow-blue-500/20" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("pagosView")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "pagosView" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-slate-500 hover:text-slate-300"}`}>
             <DollarSign size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Pagos</span>
           </button>
-          <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "config" ? "text-blue-400 bg-blue-500/20 scale-105 shadow-lg shadow-blue-500/20" : "text-slate-500 hover:text-slate-300"}`}>
-            <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">MÃ¡s</span>
+          <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "config" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-slate-500 hover:text-slate-300"}`}>
+            <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Más</span>
           </button>
         </nav>
       )}
@@ -740,4 +740,5 @@ export default function TallerPanel() {
     </div>
   );
 }
+
 

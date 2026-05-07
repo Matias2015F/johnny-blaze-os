@@ -2,7 +2,9 @@ export const theme = {
   colors: {
     bg:      "#0F172A",
     card:    "#1E293B",
-    primary: "#3B82F6",
+    primary: "#F97316",
+    primarySoft: "rgba(249, 115, 22, 0.18)",
+    primaryText: "#FDBA74",
     success: "#22C55E",
     warning: "#F59E0B",
     danger:  "#EF4444",
