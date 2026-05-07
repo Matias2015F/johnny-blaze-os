@@ -335,7 +335,28 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const restante = Math.max(tiempoMax - tiempoActual, 0);
 
   return (
-    <div className="min-h-screen bg-slate-950 pb-32 text-left text-slate-100 animate-in slide-in-from-right duration-300">
+    <div className="min-h-screen bg-slate-950 pb-40 text-left text-slate-100 animate-in slide-in-from-right duration-300">
+      {/* Sticky total bar */}
+      {res.total > 0 && (
+        <div className="fixed bottom-[64px] left-0 right-0 z-40 px-4 pb-2 pointer-events-none">
+          <div className="mx-auto max-w-[440px]">
+            <div className="flex items-center justify-between rounded-[1.5rem] border border-slate-700/80 bg-slate-900/95 px-5 py-3 shadow-2xl backdrop-blur">
+              <div className="flex items-center gap-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total</p>
+                <p className="text-lg font-black text-white">{formatMoney(res.total)}</p>
+              </div>
+              {saldoPendiente > 0 && (
+                <p className="text-[10px] font-black text-red-400">
+                  Saldo: {formatMoney(saldoPendiente)}
+                </p>
+              )}
+              {saldoPendiente <= 0 && totalPagado > 0 && (
+                <p className="text-[10px] font-black text-emerald-400">Pagado ✓</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="bg-gradient-to-b from-slate-800 to-slate-900 px-5 pb-8 pt-5 text-white shadow-2xl">
         <div className="mx-auto max-w-[440px]">
           <div className="mb-4 flex items-center justify-between">

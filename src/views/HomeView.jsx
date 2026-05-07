@@ -113,6 +113,18 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
     return sum + Math.max(saldo, 0);
   }, 0);
 
+  const hoy = new Date().toLocaleDateString("sv-SE");
+  const listasParaEntregar = ordenesActivas.filter(
+    (o) => o.estado === "finalizada" || o.estado === "listo_para_emitir"
+  ).length;
+  const ingresosHoy = (orders || []).filter((o) => {
+    const fecha = o.fechaIngreso || (o.createdAt ? new Date(o.createdAt).toLocaleDateString("sv-SE") : "");
+    return fecha === hoy;
+  }).length;
+  const cobradoHoy = (orders || []).flatMap((o) => o.pagos || []).filter(
+    (p) => (p.fecha || "").slice(0, 10) === hoy
+  ).reduce((s, p) => s + (p.monto || 0), 0);
+
   useEffect(() => {
     trackEvent("open_home", { screen: "home" }).catch(console.error);
   }, []);
@@ -160,6 +172,24 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
           </div>
         </div>
       </header>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-[2rem] border border-slate-800 bg-slate-900 p-4 text-center">
+          <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Listas hoy</p>
+          <p className="mt-2 text-2xl font-black text-emerald-400">{listasParaEntregar}</p>
+          <p className="mt-1 text-[9px] font-bold text-slate-600">Para entregar</p>
+        </div>
+        <div className="rounded-[2rem] border border-slate-800 bg-slate-900 p-4 text-center">
+          <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Ingresos hoy</p>
+          <p className="mt-2 text-2xl font-black text-blue-400">{ingresosHoy}</p>
+          <p className="mt-1 text-[9px] font-bold text-slate-600">Motos nuevas</p>
+        </div>
+        <div className="rounded-[2rem] border border-slate-800 bg-slate-900 p-4 text-center">
+          <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Cobrado</p>
+          <p className="mt-2 text-xl font-black text-yellow-400">{cobradoHoy > 0 ? formatMoney(cobradoHoy) : "$0"}</p>
+          <p className="mt-1 text-[9px] font-bold text-slate-600">Hoy</p>
+        </div>
+      </div>
 
       <button onClick={() => {
         trackEvent("nuevo_ingreso", { screen: "home" }).catch(console.error);

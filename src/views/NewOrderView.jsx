@@ -18,29 +18,24 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
   });
   const [ignorarSugerencia, setIgnorarSugerencia] = useState(false);
 
+  // Autocomplete: detecta moto conocida apenas se escribe la patente
   const coincidenciaMoto = useMemo(() => {
     if (prefill) return null;
     const patente = normalizar(f.patente);
-    const marca = normalizar(f.marca);
-    const modelo = normalizar(f.modelo);
-    const cilindrada = Number(f.cilindrada || 0);
-    if (!patente || !marca || !modelo || !cilindrada) return null;
-
-    const moto = bikes.find((bike) =>
-      normalizar(bike.patenteNormalizada || bike.patente) === patente &&
-      normalizar(bike.marca) === marca &&
-      normalizar(bike.modelo) === modelo &&
-      Number(bike.cilindrada || 0) === cilindrada
-    );
+    if (patente.length < 3) return null;
+    const moto = bikes.find((b) => normalizar(b.patenteNormalizada || b.patente) === patente);
     if (!moto) return null;
-    const cliente = clients.find((client) => client.id === moto.clienteId) || null;
+    const cliente = clients.find((c) => c.id === moto.clienteId) || null;
     return { moto, cliente };
-  }, [bikes, clients, f.cilindrada, f.marca, f.modelo, f.patente, prefill]);
+  }, [bikes, clients, f.patente, prefill]);
 
   const usarHistorial = () => {
     if (!coincidenciaMoto) return;
     setF((actual) => ({
       ...actual,
+      marca: coincidenciaMoto.moto?.marca || actual.marca,
+      modelo: coincidenciaMoto.moto?.modelo || actual.modelo,
+      cilindrada: coincidenciaMoto.moto?.cilindrada || actual.cilindrada,
       nombre: coincidenciaMoto.cliente?.nombre || actual.nombre,
       tel: coincidenciaMoto.cliente?.tel || coincidenciaMoto.cliente?.telefono || actual.tel,
       km: actual.km || coincidenciaMoto.moto?.kilometrajeActual || coincidenciaMoto.moto?.km || "",
