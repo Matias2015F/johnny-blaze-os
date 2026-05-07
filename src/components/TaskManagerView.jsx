@@ -267,7 +267,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   const [seccionActiva, setSeccionActiva] = useState("servicio");
   const [selectedId, setSelectedId] = useState(null);
   const [editForm, setEditForm] = useState({
-    nombre: "", horasBase: 1, dificultad: "normal", repuestos: [], insumos: [], observacionesProxima: "",
+    nombre: "", horasBase: 1, dificultad: "normal", repuestos: [], insumos: [], fletes: order.fletes || [], observacionesProxima: "",
   });
   const [sugerencia, setSugerencia] = useState(null);
   const [margenPct, setMargenPct] = useState(defaultMargen);
@@ -305,6 +305,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
         dificultad: serviceToEdit.dificultad || "normal",
         repuestos: serviceToEdit.repuestos || [],
         insumos: serviceToEdit.insumos || [],
+        fletes: order.fletes || [],
         observacionesProxima: serviceToEdit.observacionesProxima || order.observacionesProxima || "",
       });
       setMargenPct(serviceToEdit.margenPct ?? defaultMargen);
@@ -433,7 +434,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   const handleSelect = (id) => {
     setSelectedId(id);
     if (!id) {
-      setEditForm({ nombre: "", horasBase: 1, dificultad: "normal", repuestos: [], insumos: [], observacionesProxima: "" });
+      setEditForm({ nombre: "", horasBase: 1, dificultad: "normal", repuestos: [], insumos: [], fletes: order.fletes || [], observacionesProxima: "" });
       setSugerencia(null);
       return;
     }
@@ -449,6 +450,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
         dificultad: previo?.tarea?.dificultad || s.dificultad || "normal",
         repuestos: clonarLista(repuestosBase),
         insumos: clonarLista(insumosBase),
+        fletes: order.fletes || [],
         observacionesProxima: previo?.trabajo?.observacionesProxima || s.observacionesProxima || order.observacionesProxima || "",
       });
       setMargenPct(previo?.tarea?.margenPct ?? s.margenPct ?? defaultMargen);
@@ -467,7 +469,8 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   const abrirSiguiente = (seccionActual) => {
     if (seccionActual === "servicio" && completoServicio()) setSeccionActiva("repuestos");
     else if (seccionActual === "repuestos") setSeccionActiva("insumos");
-    else if (seccionActual === "insumos") setSeccionActiva("observaciones");
+    else if (seccionActual === "insumos") setSeccionActiva("fletes");
+    else if (seccionActual === "fletes") setSeccionActiva("observaciones");
   };
 
   const updateListItem = (lista, idx, field, val) => {
@@ -491,7 +494,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     const repPrecio = repCosto;
 
     // Fletes: al cliente al costo
-    const fleCosto  = (order.fletes || []).reduce((s, f) => s + (f.monto || 0), 0);
+    const fleCosto  = (editForm.fletes || []).reduce((s, f) => s + (f.monto || 0), 0);
     const flePrecio = fleCosto;
 
     // Insumos/terceros: al cliente al costo
@@ -598,11 +601,12 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     const nuevosRepuestos = [...prevRepuestos, ...repuestosGuardados];
     const nuevosInsumos   = [...prevInsumos,   ...insumosGuardados];
 
-    const nTotal = calcularNuevoTotal(nuevasTareas, nuevosRepuestos, order.fletes, nuevosInsumos);
+    const nTotal = calcularNuevoTotal(nuevasTareas, nuevosRepuestos, editForm.fletes, nuevosInsumos);
     LS.updateDoc("trabajos", order.id, {
       tareas: nuevasTareas,
       repuestos: nuevosRepuestos,
       insumos: nuevosInsumos,
+      fletes: editForm.fletes,
       total: nTotal,
       observacionesProxima: editForm.observacionesProxima || order.observacionesProxima,
     });
@@ -840,14 +844,91 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             )}
             <button onClick={() => abrirSiguiente("insumos")}
               className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
+              Siguiente → Flete
+            </button>
+          </div>
+        </AccordionSection>
+
+        {/* SECCIÓN 4: FLETE / CADETERÍA */}
+        <AccordionSection
+          numero="4"
+          titulo="Flete / Cadetería"
+          completo={editForm.fletes.length > 0}
+          activo={seccionActiva === "fletes"}
+          onClick={() => setSeccionActiva("fletes")}
+        >
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Envíos y cadetería</p>
+                <p className="text-[9px] text-slate-400 font-bold">Se cobran al cliente sin ganancia adicional</p>
+              </div>
+              <button
+                onClick={() => setEditForm({ ...editForm, fletes: [...editForm.fletes, { nombre: "", monto: 0 }] })}
+                className="rounded-xl bg-purple-500/10 p-2 text-purple-400">
+                <Plus size={18} />
+              </button>
+            </div>
+            {editForm.fletes.length === 0 && (
+              <p className="text-[10px] text-slate-400 font-bold text-center py-4 bg-slate-800/30 rounded-2xl">Sin fletes cargados</p>
+            )}
+            {editForm.fletes.map((item, idx) => (
+              <div key={idx} className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-3">
+                <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
+                  <input
+                    type="text"
+                    className="w-full bg-transparent text-xs font-black uppercase text-white outline-none placeholder:text-slate-600"
+                    placeholder="Concepto (ej: Cadetería zona norte)"
+                    value={item.nombre}
+                    onChange={(e) => {
+                      const updated = editForm.fletes.map((f, i) => i === idx ? { ...f, nombre: e.target.value } : f);
+                      setEditForm({ ...editForm, fletes: updated });
+                    }}
+                  />
+                </div>
+                <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+                  <div>
+                    <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Monto total</p>
+                    <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
+                      <span className="text-[10px] font-black text-slate-300">$</span>
+                      <input
+                        type="text" inputMode="numeric"
+                        className="w-full min-w-0 bg-transparent text-right text-xs font-black text-purple-400 outline-none"
+                        placeholder="0"
+                        value={item.monto > 0 ? item.monto.toLocaleString("es-AR") : ""}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, "");
+                          const monto = digits ? Number(digits) : 0;
+                          const updated = editForm.fletes.map((f, i) => i === idx ? { ...f, monto } : f);
+                          setEditForm({ ...editForm, fletes: updated });
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setEditForm({ ...editForm, fletes: editForm.fletes.filter((_, i) => i !== idx) })}
+                    className="self-center p-1 text-slate-500 hover:text-red-400 transition-colors">
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+            {editForm.fletes.length > 0 && stats.flePrecio > 0 && (
+              <div className="flex justify-between border-t border-white/10 px-1 pt-2 text-[10px] font-black">
+                <span className="text-slate-500">Total flete</span>
+                <span className="text-purple-400">{formatMoney(stats.flePrecio)}</span>
+              </div>
+            )}
+            <button onClick={() => abrirSiguiente("fletes")}
+              className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
               Siguiente → Observaciones
             </button>
           </div>
         </AccordionSection>
 
-        {/* SECCIÓN 4: OBSERVACIONES Y PRÓXIMO CONTROL */}
+        {/* SECCIÓN 5: OBSERVACIONES Y PRÓXIMO CONTROL */}
         <AccordionSection
-          numero="4"
+          numero="5"
           titulo="Observaciones y Próximo Control"
           completo={editForm.observacionesProxima.trim().length > 0 || !!proximoTipo}
           activo={seccionActiva === "observaciones"}
