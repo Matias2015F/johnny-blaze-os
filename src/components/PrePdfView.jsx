@@ -6,9 +6,18 @@ import { calcularResultadosOrden } from "../lib/calc.js";
 import { trackEvent } from "../lib/telemetry.js";
 import { formatMoney } from "../utils/format.js";
 
+function calcularVencimiento(dias) {
+  const d = new Date();
+  d.setDate(d.getDate() + (Number(dias) || 7));
+  return d.toLocaleDateString("sv-SE");
+}
+
 export default function PrePdfView({ order, setView, setFinalPdfData }) {
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const [garantia, setGarantia] = useState(order.garantiaFinal || config.garantiaDefault || PLANTILLAS_GARANTIA[0].texto);
+  const [vencimientoGarantia, setVencimientoGarantia] = useState(
+    order.vencimientoGarantia || calcularVencimiento(config.garantiaDias)
+  );
   const totalOrden = calcularResultadosOrden(order).total;
   const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
   const saldo = totalOrden - totalPagado;
@@ -44,6 +53,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
       numeroComprobante,
       fechaComprobante: new Date().toISOString(),
       garantiaFinal: garantia,
+      vencimientoGarantia,
       snapshotFinal,
       aprobacionCliente: {
         fecha: new Date().toISOString(),
@@ -54,6 +64,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
 
     setFinalPdfData({
       garantia,
+      vencimientoGarantia,
       numeroComprobante,
       qrData: {
         numeroComprobante,
@@ -127,6 +138,37 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
         <div>
           <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Texto de garantía (podés editarlo)</label>
           <textarea value={garantia} onChange={(e) => setGarantia(e.target.value)} rows="5" className="w-full border-2 border-slate-100 rounded-2xl p-4 font-bold text-sm text-slate-700 outline-none focus:border-blue-500 mt-2" />
+        </div>
+
+        <div>
+          <label className="text-[10px] font-black uppercase text-slate-400 ml-2 tracking-widest">Válido hasta (término de garantía)</label>
+          <div className="flex items-center gap-3 mt-2">
+            <input
+              type="date"
+              value={vencimientoGarantia}
+              onChange={(e) => setVencimientoGarantia(e.target.value)}
+              className="flex-1 border-2 border-slate-100 rounded-2xl px-4 py-3 font-black text-sm text-slate-700 outline-none focus:border-blue-500 bg-white"
+            />
+            <div className="flex gap-2">
+              {[
+                { label: "7d", dias: 7 },
+                { label: "30d", dias: 30 },
+                { label: "90d", dias: 90 },
+                { label: "180d", dias: 180 },
+              ].map(({ label, dias }) => (
+                <button
+                  key={dias}
+                  onClick={() => setVencimientoGarantia(calcularVencimiento(dias))}
+                  className="rounded-xl bg-slate-100 px-3 py-2 text-[10px] font-black uppercase text-slate-600 active:bg-blue-500 active:text-white transition-colors"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="mt-1 ml-2 text-[10px] font-bold text-slate-400">
+            Esta fecha aparece en el comprobante entregado al cliente.
+          </p>
         </div>
 
         {saldo > 0 && (

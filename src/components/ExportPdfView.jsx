@@ -33,6 +33,10 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
   const numeroComprobante = extraData?.numeroComprobante || order.numeroComprobante || `COMP-${order.id.slice(-6).toUpperCase()}`;
   const kilometraje = order.kmIngreso || order.km || bike?.kilometrajeActual || bike?.km;
   const proximoControl = order.proximoControl || null;
+  const vencimientoRaw = extraData?.vencimientoGarantia || order.vencimientoGarantia || null;
+  const vencimientoLabel = vencimientoRaw
+    ? new Date(vencimientoRaw + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })
+    : null;
 
   useEffect(() => {
     const tituloAnterior = document.title;
@@ -193,7 +197,14 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
             <div className="border border-slate-300 p-4">
               <p className="text-[9px] font-black uppercase text-slate-600 tracking-wide">Garantía</p>
-              <p className="mt-3 text-[10px] leading-relaxed text-slate-700">
+              {vencimientoLabel && (
+                <div className="mt-2 inline-block rounded bg-slate-900 px-2 py-1">
+                  <p className="text-[9px] font-black uppercase tracking-wide text-white">
+                    Válido hasta: {vencimientoLabel}
+                  </p>
+                </div>
+              )}
+              <p className="mt-2 text-[10px] leading-relaxed text-slate-700">
                 {extraData?.garantia || order.garantiaFinal || "Sin texto de garantía cargado."}
               </p>
               {proximoControl?.activo && (
