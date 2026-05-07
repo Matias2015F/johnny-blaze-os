@@ -1,15 +1,21 @@
-// Cron diario: detecta suscripciones próximas a vencer y envía alertas por email
-// Vercel ejecuta este endpoint según el schedule en vercel.json
-// El header Authorization: Bearer ${CRON_SECRET} es inyectado automáticamente por Vercel
+// Cron diario 10:00 AM — detecta vencimientos próximos, período de gracia y suspensiones
+// Vercel cron inyecta Authorization: Bearer ${CRON_SECRET} automáticamente
 
 const { db } = require("./_firebase-admin.js");
-const { sendEmail, templateAlertaVencimiento } = require("./_email.js");
+const {
+  sendEmail,
+  templateVencimientoProximo,
+  templateEnGracia,
+  templateSuspendido,
+} = require("./_email.js");
 
 const MS_DAY = 24 * 60 * 60 * 1000;
-const UMBRALES_DIAS = [7, 3]; // alertas a X días del vencimiento
+const DIAS_GRACIA_DEFAULT = 3;
+
+// Días antes del vencimiento en que se envían alertas
+const UMBRALES_DIAS = [7, 3, 1];
 
 module.exports = async function handler(req, res) {
-  // Verificar que es Vercel quien llama (o un admin con el secret)
   const auth = req.headers.authorization;
   const secret = process.env.CRON_SECRET;
   if (secret && auth !== `Bearer ${secret}`) {
@@ -17,63 +23,122 @@ module.exports = async function handler(req, res) {
   }
 
   const now = Date.now();
-  let enviados = 0;
-  let omitidos = 0;
+  const resultados = { vencimientoProximo: 0, gracia: 0, suspendidos: 0, omitidos: 0, errores: 0 };
 
   try {
-    // Traer todos los usuarios activos (trial o activo) con activoHasta definido
-    const snap = await db.collection("usuarios")
-      .where("estado", "in", ["activo", "trial"])
-      .get();
-
+    const snap = await db.collection("usuarios").get();
     const batch = db.batch();
     const emailPromises = [];
 
     for (const userDoc of snap.docs) {
-      const userData = userDoc.data();
-      const activoHasta = userData.activoHasta;
-      if (!activoHasta) continue;
+      const u = userDoc.data();
+      const emailDestino = u.emailNotificacion || u.email;
+      if (!emailDestino) { resultados.omitidos++; continue; }
 
-      const msRestantes = activoHasta - now;
-      if (msRestantes <= 0 || msRestantes > 8 * MS_DAY) continue; // fuera de ventana
+      const activoHasta = u.activoHasta || u.trialEndsAt || null;
+      const estado = (u.estado || "trial").toLowerCase();
+      const esAdmin = u.isPlatformAdmin || u.rol === "admin";
+      if (esAdmin) continue;
 
-      const diasRestantes = Math.ceil(msRestantes / MS_DAY);
-      const umbral = UMBRALES_DIAS.find((u) => diasRestantes <= u);
-      if (!umbral) continue;
+      // ── 1. Vencimiento próximo (estado activo o trial, con fecha futura) ────
+      if ((estado === "activo" || estado === "trial") && activoHasta && activoHasta > now) {
+        const msRestantes = activoHasta - now;
+        if (msRestantes <= 8 * MS_DAY) {
+          const diasRestantes = Math.max(1, Math.ceil(msRestantes / MS_DAY));
+          const umbral = UMBRALES_DIAS.find((u) => diasRestantes <= u);
 
-      // Campo que marca si ya se envió la alerta de este umbral
-      const alertaKey = `alertas.d${umbral}SentAt`;
-      const yaEnviado = userData.alertas?.[`d${umbral}SentAt`];
-      if (yaEnviado && now - yaEnviado < 20 * MS_DAY) {
-        omitidos++;
-        continue; // ya se envió recientemente para este umbral
+          if (umbral) {
+            const alertaKey = `alertas.d${umbral}SentAt`;
+            const yaEnviado = u.alertas?.[`d${umbral}SentAt`];
+
+            if (!yaEnviado || now - yaEnviado > 20 * MS_DAY) {
+              const tpl = templateVencimientoProximo({ diasRestantes, activoHasta });
+              emailPromises.push(
+                sendEmail({ to: emailDestino, ...tpl })
+                  .then((ok) => {
+                    if (ok) {
+                      batch.set(userDoc.ref, { alertas: { [`d${umbral}SentAt`]: now } }, { merge: true });
+                      resultados.vencimientoProximo++;
+                    }
+                  })
+                  .catch((err) => { console.error("vencimientoProximo error:", emailDestino, err); resultados.errores++; })
+              );
+            } else {
+              resultados.omitidos++;
+            }
+          }
+        }
+        continue;
       }
 
-      const emailDestino = userData.emailNotificacion || userData.email;
-      if (!emailDestino) { omitidos++; continue; }
+      // ── 2. Período de gracia (venció pero aún tiene graceEndsAt futuro) ────
+      const graceEndsAt = u.graceEndsAt || null;
+      if (activoHasta && activoHasta < now && graceEndsAt && graceEndsAt > now) {
+        const diasGracia = Math.max(1, Math.ceil((graceEndsAt - now) / MS_DAY));
+        const yaEnviado = u.alertas?.graciaSentAt;
 
-      const tpl = templateAlertaVencimiento({ diasRestantes, activoHasta });
-      emailPromises.push(
-        sendEmail({ to: emailDestino, ...tpl })
-          .then((ok) => {
-            if (ok) {
-              // Marcar que se envió esta alerta
-              batch.set(userDoc.ref, { alertas: { [`d${umbral}SentAt`]: now } }, { merge: true });
-              enviados++;
-            }
-          })
-          .catch((err) => console.error("Error enviando alerta a", emailDestino, err))
-      );
+        if (!yaEnviado || now - yaEnviado > 2 * MS_DAY) {
+          const tpl = templateEnGracia({ graceEndsAt, diasRestantes: diasGracia });
+          emailPromises.push(
+            sendEmail({ to: emailDestino, ...tpl })
+              .then((ok) => {
+                if (ok) {
+                  batch.set(userDoc.ref, { alertas: { graciaSentAt: now } }, { merge: true });
+                  resultados.gracia++;
+                }
+              })
+              .catch((err) => { console.error("gracia error:", emailDestino, err); resultados.errores++; })
+          );
+        } else {
+          resultados.omitidos++;
+        }
+        continue;
+      }
+
+      // ── 3. Suspensión (venció sin gracia, estado activo/trial/gracia) ───────
+      const estadosSuspendibles = ["activo", "trial", "gracia"];
+      if (
+        activoHasta &&
+        activoHasta < now &&
+        estadosSuspendibles.includes(estado) &&
+        (!graceEndsAt || graceEndsAt < now)
+      ) {
+        const yaEnviado = u.alertas?.suspendidoSentAt;
+
+        if (!yaEnviado) {
+          // Calcular graceEndsAt por si corresponde aplicar gracia
+          const diasGracia = u.graceDays || DIAS_GRACIA_DEFAULT;
+          const graceCalculado = activoHasta + diasGracia * MS_DAY;
+
+          const tpl = templateSuspendido();
+          emailPromises.push(
+            sendEmail({ to: emailDestino, ...tpl })
+              .then((ok) => {
+                if (ok) {
+                  batch.set(userDoc.ref, {
+                    alertas: { suspendidoSentAt: now },
+                    // Aplicar gracia si no la tiene
+                    ...(graceEndsAt ? {} : { graceEndsAt: graceCalculado }),
+                  }, { merge: true });
+                  resultados.suspendidos++;
+                }
+              })
+              .catch((err) => { console.error("suspendido error:", emailDestino, err); resultados.errores++; })
+          );
+        } else {
+          resultados.omitidos++;
+        }
+      }
     }
 
     await Promise.all(emailPromises);
     await batch.commit();
 
-    console.log(`[check-expirations] Enviados: ${enviados}, Omitidos: ${omitidos}`);
-    return res.status(200).json({ ok: true, enviados, omitidos });
+    console.log("[check-expirations]", JSON.stringify(resultados));
+    return res.status(200).json({ ok: true, ...resultados });
 
   } catch (err) {
-    console.error("[check-expirations] Error:", err);
+    console.error("[check-expirations] Error fatal:", err);
     return res.status(500).json({ error: err.message });
   }
 };

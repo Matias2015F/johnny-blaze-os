@@ -265,11 +265,22 @@ export async function ensureSaasUserProfile(authUser, extras = {}) {
     updatedAt: serverTimestamp(),
   };
 
-  if (!existing) {
+  const esNuevo = !existing;
+
+  if (esNuevo) {
     canonicalPayload.createdAt = serverTimestamp();
   }
 
   await setDoc(doc(db, SAAS_COLLECTIONS.usuarios, authUser.uid), canonicalPayload, { merge: true });
+
+  // Disparar email de bienvenida en cuentas nuevas (fire-and-forget, sin bloquear)
+  if (esNuevo) {
+    fetch("/api/send-welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ uid: authUser.uid }),
+    }).catch(() => {});
+  }
 
   return normalizeSaasUser({
     ...canonicalPayload,

@@ -1,15 +1,21 @@
 const { db } = require("./_firebase-admin.js");
 const { FieldValue } = require("firebase-admin/firestore");
-const { sendEmail, templateReciboPago, templateCambioPlan } = require("./_email.js");
+const {
+  sendEmail,
+  templatePagoAprobado,
+  templatePagoFallido,
+  templateCambioPlan,
+  templateReactivado,
+} = require("./_email.js");
 
 const BILLING_DAYS = 30;
+const ESTADOS_BLOQUEADOS = ["suspendido", "vencido", "trial_vencido"];
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   try {
     const { type, data } = req.body || {};
-
     if (type !== "payment") return res.status(200).end();
 
     const paymentId = data?.id;
@@ -18,10 +24,7 @@ module.exports = async function handler(req, res) {
     const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` },
     });
-
     const payment = await mpRes.json();
-
-    if (payment.status !== "approved") return res.status(200).end();
 
     const uid = payment.metadata?.uid || payment.external_reference;
     const planPagado = payment.metadata?.plan || null;
@@ -34,22 +37,45 @@ module.exports = async function handler(req, res) {
     const userRef = db.collection("usuarios").doc(uid);
     const userSnap = await userRef.get();
     const userData = userSnap.exists ? userSnap.data() : {};
+    const emailDestino = userData.emailNotificacion || userData.email;
 
-    // Deduplicar por paymentId (no por activoHasta, para que las renovaciones funcionen)
+    // ── Pago rechazado / cancelado ────────────────────────────────────────────
+    if (payment.status === "rejected" || payment.status === "cancelled") {
+      console.log(`Pago ${payment.status} → uid:${uid} plan:${planPagado}`);
+
+      if (emailDestino) {
+        const tpl = templatePagoFallido({
+          plan: planPagado || userData.plan || "base",
+          monto: Number(payment.transaction_amount || 0),
+          motivo: payment.status_detail || "",
+        });
+        await sendEmail({ to: emailDestino, ...tpl });
+      }
+
+      return res.status(200).end();
+    }
+
+    // ── Pago pendiente — sin acción por ahora ────────────────────────────────
+    if (payment.status !== "approved") return res.status(200).end();
+
+    // ── Pago aprobado ─────────────────────────────────────────────────────────
+
+    // Deduplicar por paymentId
     if (userData?.ultimoPago?.paymentId === String(paymentId)) {
       console.log("Pago duplicado (mismo paymentId), ignorando:", paymentId);
       return res.status(200).end();
     }
 
-    // Si el usuario ya tiene período activo, extender desde activoHasta (renovación)
+    const estabaBloquado = ESTADOS_BLOQUEADOS.includes(userData.estado);
+    const planAnterior = userData.plan || null;
+    const nuevoPlan = planPagado || planAnterior || "base";
+
+    // Extender desde activoHasta si ya tiene período activo (renovación anticipada)
     const baseTime =
       userData?.activoHasta && userData.activoHasta > Date.now()
         ? userData.activoHasta
         : Date.now();
     const nuevoActivoHasta = baseTime + BILLING_DAYS * 24 * 60 * 60 * 1000;
-
-    const planAnterior = userData.plan || null;
-    const nuevoPlan = planPagado || planAnterior || "base";
 
     const updateData = {
       estado: "activo",
@@ -64,7 +90,6 @@ module.exports = async function handler(req, res) {
       updatedAt: Date.now(),
     };
 
-    // Limpiar solicitud de cambio de plan si estaba pendiente
     if (userData.requestedAction) {
       updateData.requestedAction = FieldValue.delete();
       updateData.requestedPlan = FieldValue.delete();
@@ -72,7 +97,7 @@ module.exports = async function handler(req, res) {
 
     await userRef.set(updateData, { merge: true });
 
-    // Registrar factura en subcolección
+    // Registrar en historial de facturas
     await userRef.collection("billingInvoices").add({
       paymentId: String(paymentId),
       plan: nuevoPlan,
@@ -82,19 +107,22 @@ module.exports = async function handler(req, res) {
       activoHasta: nuevoActivoHasta,
     });
 
-    // Enviar email (usa emailNotificacion del usuario si está configurado, sino email de login)
-    const emailDestino = userData.emailNotificacion || userData.email;
+    // Emails
     if (emailDestino) {
       const huboCarbioPlan = planAnterior && planPagado && planAnterior !== planPagado;
 
-      if (huboCarbioPlan) {
-        // Email de cambio de plan + recibo
+      if (estabaBloquado) {
+        // Reactivación desde suspendido
+        const tpl = templateReactivado({ plan: nuevoPlan, activoHasta: nuevoActivoHasta });
+        await sendEmail({ to: emailDestino, ...tpl });
+      } else if (huboCarbioPlan) {
+        // Cambio de plan
         const tpl = templateCambioPlan({ planAnterior, planNuevo: nuevoPlan, activoHasta: nuevoActivoHasta });
         await sendEmail({ to: emailDestino, ...tpl });
       }
 
       // Siempre enviar recibo
-      const tpl = templateReciboPago({
+      const tpl = templatePagoAprobado({
         plan: nuevoPlan,
         monto: Number(payment.transaction_amount || 0),
         activoHasta: nuevoActivoHasta,

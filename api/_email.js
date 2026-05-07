@@ -1,9 +1,7 @@
-// Email helper usando Resend REST API (sin SDK, solo fetch)
-// Variables de entorno requeridas:
-//   RESEND_API_KEY    — clave API de resend.com
-//   RESEND_FROM_EMAIL — remitente verificado, ej: "Johnny Blaze OS <no-reply@tudominio.com>"
+// Email helper — Resend REST API (sin SDK, solo fetch)
+// Vars requeridas: RESEND_API_KEY, RESEND_FROM_EMAIL
 
-const FROM_DEFAULT = "Johnny Blaze OS <no-reply@johnnyblazetaller.com.ar>";
+const FROM_DEFAULT = "Johnny Blaze OS <noreply@motogestion.ar>";
 
 async function sendEmail({ to, subject, html }) {
   const key = process.env.RESEND_API_KEY;
@@ -33,32 +31,50 @@ async function sendEmail({ to, subject, html }) {
   return true;
 }
 
-// ── Templates ────────────────────────────────────────────────────────────────
+// ── Template base ─────────────────────────────────────────────────────────────
 
-function wrapTemplate(body) {
+function wrapTemplate(body, { accentColor = "#E85A1A" } = {}) {
   return `<!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:system-ui,sans-serif;">
-  <div style="max-width:520px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-    <div style="background:#0f172a;padding:20px 28px;display:flex;align-items:center;gap:12px;">
-      <span style="font-size:22px;">🔧</span>
-      <span style="color:#fff;font-weight:900;font-size:16px;letter-spacing:0.05em;">JOHNNY BLAZE OS</span>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Johnny Blaze OS</title>
+</head>
+<body style="margin:0;padding:0;background:#111111;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
+
+    <!-- Logo header -->
+    <div style="background:#0A0A0A;border-radius:16px 16px 0 0;border:1px solid #2A2A2A;border-bottom:2px solid ${accentColor};padding:22px 28px;display:flex;align-items:center;gap:14px;">
+      <div style="background:${accentColor};border-radius:10px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🔧</div>
+      <div>
+        <p style="margin:0;font-size:9px;color:${accentColor};font-weight:800;letter-spacing:0.35em;text-transform:uppercase;">Mecánica de Motos</p>
+        <p style="margin:0;font-size:19px;color:#ffffff;font-weight:900;letter-spacing:-0.03em;line-height:1;">JOHNNY BLAZE</p>
+      </div>
     </div>
-    <div style="padding:28px;">
+
+    <!-- Contenido principal -->
+    <div style="background:#ffffff;padding:32px 28px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb;">
       ${body}
     </div>
-    <div style="padding:16px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;">
-      <p style="margin:0;font-size:11px;color:#94a3b8;text-align:center;">Este es un correo automático. No respondas este mensaje.</p>
+
+    <!-- Footer -->
+    <div style="background:#0A0A0A;border-radius:0 0 16px 16px;border:1px solid #2A2A2A;border-top:none;padding:16px 28px;text-align:center;">
+      <p style="margin:0;font-size:11px;color:#555;">Correo automático · no respondas este mensaje</p>
+      <p style="margin:4px 0 0;font-size:11px;color:#333;font-weight:600;">motogestion.ar</p>
     </div>
+
   </div>
 </body>
 </html>`;
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function planLabel(plan = "") {
   if (plan === "pro") return "Plan Pro";
   if (plan === "base") return "Plan Base";
+  if (plan === "trial") return "Período de prueba";
   return plan || "Plan activo";
 }
 
@@ -67,91 +83,203 @@ function formatARS(monto = 0) {
 }
 
 function formatFecha(ms) {
-  return new Date(ms).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" });
+  return new Date(Number(ms)).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" });
 }
 
-// Recibo de pago aprobado
-function templateReciboPago({ plan, monto, activoHasta, paymentId }) {
-  const subject = `✅ Recibo de pago — ${planLabel(plan)}`;
+function btnPrimario(texto, url = "https://app.motogestion.ar") {
+  return `<a href="${url}" style="display:inline-block;background:#E85A1A;color:#ffffff;font-weight:800;font-size:13px;text-decoration:none;padding:14px 28px;border-radius:10px;letter-spacing:0.03em;">${texto}</a>`;
+}
+
+function infoRow(label, value) {
+  return `<tr>
+    <td style="padding:10px 0;color:#6b7280;font-size:13px;border-bottom:1px solid #f3f4f6;">${label}</td>
+    <td style="padding:10px 0;font-weight:700;text-align:right;color:#111827;font-size:13px;border-bottom:1px solid #f3f4f6;">${value}</td>
+  </tr>`;
+}
+
+function alertBox(color, text) {
+  const palettes = {
+    green:  { bg: "#f0fdf4", border: "#86efac", text: "#166534" },
+    orange: { bg: "#fff7ed", border: "#fdba74", text: "#9a3412" },
+    red:    { bg: "#fef2f2", border: "#fca5a5", text: "#991b1b" },
+    blue:   { bg: "#eff6ff", border: "#93c5fd", text: "#1e40af" },
+  };
+  const p = palettes[color] || palettes.blue;
+  return `<div style="background:${p.bg};border:1px solid ${p.border};border-radius:10px;padding:14px 16px;margin-bottom:20px;">
+    <p style="margin:0;font-size:13px;color:${p.text};font-weight:600;">${text}</p>
+  </div>`;
+}
+
+// ── Templates ─────────────────────────────────────────────────────────────────
+
+function templateBienvenida({ email, diasTrial, trialHasta }) {
+  const subject = "¡Bienvenido a Johnny Blaze OS! Tu prueba gratuita está activa";
   const html = wrapTemplate(`
-    <h2 style="margin:0 0 4px;font-size:20px;color:#1e293b;">Recibo de pago</h2>
-    <p style="margin:0 0 20px;font-size:13px;color:#64748b;">Tu suscripción fue activada correctamente.</p>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px;">
-      <tr style="border-bottom:1px solid #f1f5f9;">
-        <td style="padding:10px 0;color:#64748b;">Plan</td>
-        <td style="padding:10px 0;font-weight:700;text-align:right;color:#1e293b;">${planLabel(plan)}</td>
-      </tr>
-      <tr style="border-bottom:1px solid #f1f5f9;">
-        <td style="padding:10px 0;color:#64748b;">Monto abonado</td>
-        <td style="padding:10px 0;font-weight:700;text-align:right;color:#1e293b;">${formatARS(monto)}</td>
-      </tr>
-      <tr style="border-bottom:1px solid #f1f5f9;">
-        <td style="padding:10px 0;color:#64748b;">Válido hasta</td>
-        <td style="padding:10px 0;font-weight:700;text-align:right;color:#1e293b;">${formatFecha(activoHasta)}</td>
-      </tr>
+    <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">¡Bienvenido al taller!</h2>
+    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">Tu cuenta fue creada exitosamente. Ya podés empezar a gestionar tu taller.</p>
+
+    ${alertBox("green", `✓ Tu período de prueba gratuita está activo por ${diasTrial} días — hasta el ${formatFecha(trialHasta)}.`)}
+
+    <p style="margin:0 0 16px;font-size:14px;color:#374151;">Con Johnny Blaze OS podés:</p>
+    <ul style="margin:0 0 24px;padding:0 0 0 20px;font-size:14px;color:#374151;line-height:2;">
+      <li>Registrar y seguir el estado de cada trabajo</li>
+      <li>Gestionar clientes, motos y pagos</li>
+      <li>Emitir comprobantes y PDFs</li>
+      <li>Programar recordatorios de service</li>
+      <li>Ver agenda semanal y estadísticas</li>
+    </ul>
+
+    <p style="margin:0 0 20px;text-align:center;">${btnPrimario("Abrir la app →", "https://app.motogestion.ar")}</p>
+
+    <p style="margin:0;font-size:12px;color:#9ca3af;">Cuenta: ${email}</p>
+  `);
+  return { subject, html };
+}
+
+function templatePagoAprobado({ plan, monto, activoHasta, paymentId }) {
+  const subject = `✅ Pago recibido — ${planLabel(plan)} activo`;
+  const html = wrapTemplate(`
+    <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">Recibo de pago</h2>
+    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">Tu suscripción fue activada correctamente.</p>
+
+    ${alertBox("green", `✓ ${planLabel(plan)} activo hasta el ${formatFecha(activoHasta)}.`)}
+
+    <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+      ${infoRow("Plan", planLabel(plan))}
+      ${infoRow("Monto abonado", formatARS(monto))}
+      ${infoRow("Válido hasta", formatFecha(activoHasta))}
       <tr>
-        <td style="padding:10px 0;color:#64748b;font-size:11px;">N° de pago</td>
-        <td style="padding:10px 0;text-align:right;color:#94a3b8;font-size:11px;">${paymentId}</td>
+        <td style="padding:10px 0;color:#9ca3af;font-size:11px;">N° de pago</td>
+        <td style="padding:10px 0;text-align:right;color:#9ca3af;font-size:11px;">${paymentId}</td>
       </tr>
     </table>
-    <div style="background:#f0fdf4;border-radius:10px;padding:14px 16px;">
-      <p style="margin:0;font-size:13px;color:#166534;font-weight:600;">✓ Suscripción activa hasta el ${formatFecha(activoHasta)}.</p>
-    </div>
+
+    <p style="margin:0 0 20px;text-align:center;">${btnPrimario("Ir al taller →", "https://app.motogestion.ar")}</p>
   `);
   return { subject, html };
 }
 
-// Alerta de vencimiento próximo
-function templateAlertaVencimiento({ diasRestantes, activoHasta }) {
+function templatePagoFallido({ plan, monto, motivo }) {
+  const subject = "⚠️ No pudimos procesar tu pago — Johnny Blaze OS";
+  const html = wrapTemplate(`
+    <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">Pago no procesado</h2>
+    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">Tu pago no pudo completarse. Tus datos están seguros.</p>
+
+    ${alertBox("red", `✗ El pago de ${formatARS(monto)} para el ${planLabel(plan)} fue rechazado.${motivo ? ` Motivo: ${motivo}.` : ""}`)}
+
+    <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.6;">
+      Puede deberse a fondos insuficientes, datos incorrectos de la tarjeta, o una restricción del banco. Revisá los datos e intentá de nuevo.
+    </p>
+
+    <p style="margin:0 0 20px;text-align:center;">${btnPrimario("Reintentar el pago →", "https://app.motogestion.ar")}</p>
+
+    <p style="margin:0;font-size:12px;color:#9ca3af;">Si el problema persiste, contactanos por WhatsApp.</p>
+  `, { accentColor: "#dc2626" });
+  return { subject, html };
+}
+
+function templateVencimientoProximo({ diasRestantes, activoHasta }) {
   const urgente = diasRestantes <= 3;
   const subject = urgente
-    ? `⚠️ Tu suscripción vence en ${diasRestantes} días — Renovar ahora`
-    : `📅 Tu suscripción vence en ${diasRestantes} días`;
+    ? `⚠️ Tu plan vence en ${diasRestantes} día${diasRestantes !== 1 ? "s" : ""} — Renovar ahora`
+    : `📅 Tu plan vence en ${diasRestantes} días — Johnny Blaze OS`;
   const html = wrapTemplate(`
-    <h2 style="margin:0 0 8px;font-size:20px;color:${urgente ? "#92400e" : "#1e293b"};">
-      ${urgente ? "⚠️" : "📅"} Tu suscripción vence pronto
-    </h2>
-    <p style="margin:0 0 16px;font-size:14px;color:#475569;">
-      Hola, te avisamos que tu suscripción de <strong>Johnny Blaze OS</strong> vence
-      el <strong>${formatFecha(activoHasta)}</strong> — en <strong>${diasRestantes} días</strong>.
+    <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">${urgente ? "⚠️" : "📅"} Tu plan vence pronto</h2>
+    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">
+      Tu suscripción vence el <strong>${formatFecha(activoHasta)}</strong> — en <strong>${diasRestantes} día${diasRestantes !== 1 ? "s" : ""}</strong>.
     </p>
-    <div style="background:${urgente ? "#fef3c7" : "#eff6ff"};border-radius:10px;padding:14px 16px;margin-bottom:20px;">
-      <p style="margin:0;font-size:13px;color:${urgente ? "#92400e" : "#1d4ed8"};">
-        ${urgente
-          ? "⚠️ Quedan pocos días. Si no renovás, la app quedará bloqueada al vencer."
-          : "ℹ️ Acordate de renovar antes del vencimiento para no interrumpir el uso de la app."
-        }
-      </p>
-    </div>
-    <p style="margin:0;font-size:13px;color:#64748b;">
-      Para renovar, ingresá a la app y dirigite a <strong>Configuración → Suscripción</strong>.
+
+    ${alertBox(urgente ? "orange" : "blue",
+      urgente
+        ? `⚠️ Quedan pocos días. Si no renovás, la app quedará bloqueada al vencer.`
+        : `ℹ️ Acordate de renovar antes del vencimiento para no interrumpir el servicio.`
+    )}
+
+    <p style="margin:0 0 20px;font-size:14px;color:#374151;">Para renovar ingresá a la app → <strong>Configuración → Suscripción</strong>.</p>
+
+    <p style="margin:0 0 20px;text-align:center;">${btnPrimario("Renovar ahora →", "https://app.motogestion.ar")}</p>
+  `, { accentColor: urgente ? "#d97706" : "#E85A1A" });
+  return { subject, html };
+}
+
+function templateEnGracia({ graceEndsAt, diasRestantes }) {
+  const subject = `🔴 Período de gracia — te quedan ${diasRestantes} días para renovar`;
+  const html = wrapTemplate(`
+    <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">Estás en período de gracia</h2>
+    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">
+      Tu suscripción venció pero todavía podés renovar antes del <strong>${formatFecha(graceEndsAt)}</strong>.
     </p>
+
+    ${alertBox("red", `⚠️ Te quedan ${diasRestantes} día${diasRestantes !== 1 ? "s" : ""} de gracia. Después de esa fecha tu acceso será suspendido.`)}
+
+    <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.6;">
+      Tus datos están guardados y seguros. Renovando recuperás el acceso completo al instante.
+    </p>
+
+    <p style="margin:0 0 20px;text-align:center;">${btnPrimario("Renovar mi plan →", "https://app.motogestion.ar")}</p>
+  `, { accentColor: "#dc2626" });
+  return { subject, html };
+}
+
+function templateSuspendido() {
+  const subject = "🔒 Tu acceso a Johnny Blaze OS fue suspendido";
+  const html = wrapTemplate(`
+    <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">Acceso suspendido</h2>
+    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">Tu suscripción venció y el período de gracia finalizó.</p>
+
+    ${alertBox("red", "✗ Tu acceso a la app fue suspendido. Tus datos están guardados y seguros.")}
+
+    <p style="margin:0 0 16px;font-size:14px;color:#374151;line-height:1.6;">
+      Para recuperar el acceso completo simplemente renovás tu plan. En cuanto el pago se confirme, la app se desbloquea automáticamente.
+    </p>
+
+    <p style="margin:0 0 20px;text-align:center;">${btnPrimario("Reactivar mi cuenta →", "https://app.motogestion.ar")}</p>
+
+    <p style="margin:0;font-size:12px;color:#9ca3af;">¿Necesitás ayuda? Contactanos por WhatsApp desde la pantalla de bloqueo.</p>
+  `, { accentColor: "#dc2626" });
+  return { subject, html };
+}
+
+function templateReactivado({ plan, activoHasta }) {
+  const subject = "✅ Tu acceso fue reactivado — ¡Bienvenido de vuelta!";
+  const html = wrapTemplate(`
+    <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">¡Acceso reactivado!</h2>
+    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">Tu pago fue procesado y tu cuenta está activa de nuevo.</p>
+
+    ${alertBox("green", `✓ ${planLabel(plan)} activo hasta el ${formatFecha(activoHasta)}.`)}
+
+    <p style="margin:0 0 20px;font-size:14px;color:#374151;">Todos tus datos siguen intactos. Podés seguir gestionando tu taller desde donde lo dejaste.</p>
+
+    <p style="margin:0 0 20px;text-align:center;">${btnPrimario("Volver al taller →", "https://app.motogestion.ar")}</p>
   `);
   return { subject, html };
 }
 
-// Cambio de plan
 function templateCambioPlan({ planAnterior, planNuevo, activoHasta }) {
   const subject = `🔄 Tu plan fue actualizado — ${planLabel(planNuevo)}`;
   const html = wrapTemplate(`
-    <h2 style="margin:0 0 8px;font-size:20px;color:#1e293b;">Plan actualizado</h2>
-    <p style="margin:0 0 16px;font-size:14px;color:#475569;">Tu plan de suscripción fue cambiado exitosamente.</p>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:20px;">
-      <tr style="border-bottom:1px solid #f1f5f9;">
-        <td style="padding:10px 0;color:#64748b;">Plan anterior</td>
-        <td style="padding:10px 0;font-weight:700;text-align:right;color:#64748b;">${planLabel(planAnterior)}</td>
-      </tr>
-      <tr style="border-bottom:1px solid #f1f5f9;">
-        <td style="padding:10px 0;color:#64748b;">Plan nuevo</td>
-        <td style="padding:10px 0;font-weight:700;text-align:right;color:#2563eb;">${planLabel(planNuevo)}</td>
-      </tr>
-      <tr>
-        <td style="padding:10px 0;color:#64748b;">Válido hasta</td>
-        <td style="padding:10px 0;font-weight:700;text-align:right;color:#1e293b;">${formatFecha(activoHasta)}</td>
-      </tr>
+    <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">Plan actualizado</h2>
+    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">Tu plan de suscripción fue cambiado exitosamente.</p>
+
+    <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+      ${infoRow("Plan anterior", planLabel(planAnterior))}
+      ${infoRow("Plan nuevo", `<span style="color:#E85A1A;">${planLabel(planNuevo)}</span>`)}
+      ${infoRow("Válido hasta", formatFecha(activoHasta))}
     </table>
+
+    <p style="margin:0 0 20px;text-align:center;">${btnPrimario("Ir al taller →", "https://app.motogestion.ar")}</p>
   `);
   return { subject, html };
 }
 
-module.exports = { sendEmail, templateReciboPago, templateAlertaVencimiento, templateCambioPlan };
+module.exports = {
+  sendEmail,
+  templateBienvenida,
+  templatePagoAprobado,
+  templatePagoFallido,
+  templateVencimientoProximo,
+  templateEnGracia,
+  templateSuspendido,
+  templateReactivado,
+  templateCambioPlan,
+};
