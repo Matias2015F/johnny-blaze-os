@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
-import { LS, obtenerOrden, actualizarOrden } from "../lib/storage.js";
+import { LS, generateId, obtenerOrden, actualizarOrden } from "../lib/storage.js";
+import { hoyEstable } from "../lib/constants.js";
 import { formatMoney } from "../utils/format.js";
 
 const METODOS = [
@@ -48,20 +49,28 @@ export default function PagoView({ ordenId, setView }) {
 
   const handleRegistrarPago = () => {
     const pagosActuales = orden.pagos || [];
+    const nuevoPago = {
+      id: generateId(),
+      monto: recibido,
+      metodo: metodoPago,
+      comprobante,
+      fecha: hoyEstable(),
+      hora: new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
+      tipo: "pago_final",
+    };
     actualizarOrden(ordenId, {
       estado: "cerrado_emitido",
       pagado_fecha: Date.now(),
       ganancia: gananciaNeta,
-      pagos: [
-        ...pagosActuales,
-        {
-          monto: recibido,
-          metodo: metodoPago,
-          comprobante,
-          fecha: new Date().toISOString().slice(0, 10),
-          tipo: "pago_final",
-        },
-      ],
+      pagos: [...pagosActuales, nuevoPago],
+    });
+    LS.addDoc("caja", {
+      fecha: hoyEstable(),
+      tipo: "ingreso",
+      concepto: `Pago trabajo ${orden.numeroTrabajo || ordenId.slice(-4).toUpperCase()}`,
+      monto: recibido,
+      metodo: metodoPago,
+      comprobante,
     });
     setView("retiro");
   };
