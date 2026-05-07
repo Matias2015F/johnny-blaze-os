@@ -22,6 +22,20 @@ export const CONFIG_DEFAULT = {
   alertasNavegadorActivas: true,
   factorDificultad: { facil: 1, normal: 1.3, dificil: 1.7, complicado: 2.2 },
   cronometroAlertas: { activo: true, frecuenciaMin: 30 },
+  datosCobro: {
+    titular: "",
+    banco: "",
+    alias: "",
+    cbu: "",
+    cuit: "",
+    tipoCuenta: "",
+  },
+  presupuestoConfig: {
+    adelantoPct: 30,
+    incluirAlias: true,
+    incluirCBU: true,
+    advertenciaAbierto: true,
+  },
 };
 
 export const SERVICIOS_DEFAULT = [

@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, ClipboardList, DollarSign, Edit2, FileText, Play, Send, ShieldCheck, ThumbsUp, Trash2, Truck, Wrench } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronDown, ClipboardList, DollarSign, Edit2, FileText, Play, Send, ShieldCheck, ThumbsUp, Trash2, Truck, Wrench, X } from "lucide-react";
 import { LS } from "../lib/storage.js";
 import { CONFIG_DEFAULT, ESTADO_CSS, ESTADO_LABEL } from "../lib/constants.js";
 import { calcularNuevoRango, calcularNuevoTotal, calcularResultadosOrden } from "../lib/calc.js";
@@ -13,7 +13,7 @@ import {
   pausarCronometro,
   trabajarSinCronometro,
 } from "../lib/timer.js";
-import { abrirWhatsApp, mensajeBloqueo, mensajePresupuesto } from "../lib/messages.js";
+import { abrirWhatsApp, generarMensajePresupuestoConDatos, mensajeBloqueo, mensajePresupuesto } from "../lib/messages.js";
 import { trackEvent } from "../lib/telemetry.js";
 import { MOTIVOS_BLOQUEO } from "../lib/theme.js";
 import { formatMoney } from "../utils/format.js";
@@ -46,6 +46,13 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const [editingClient, setEditingClient] = useState(false);
   const [clientNombre, setClientNombre] = useState("");
   const [clientTel, setClientTel] = useState("");
+  const [showPresupuestoSheet, setShowPresupuestoSheet] = useState(false);
+  const [presupuestoSent, setPresupuestoSent] = useState(false);
+  const [sheetAdelantoPct, setSheetAdelantoPct] = useState(30);
+  const [sheetIncluirDatos, setSheetIncluirDatos] = useState(true);
+  const [sheetMensaje, setSheetMensaje] = useState("");
+  const [sheetEditando, setSheetEditando] = useState(false);
+  const [sheetPreview, setSheetPreview] = useState(false);
 
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
 
@@ -165,6 +172,49 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     cerrado_emitido: "Trabajo cerrado con comprobante emitido",
   }[order.estado] || "Revisá este trabajo";
 
+  const presupuestoMinSheet = nivelRiesgo === "bajo"
+    ? presupuestoEditable
+    : Math.min(presupuestoEditable, Math.max(presBase, Math.round(nuevoMin)));
+  const presupuestoMaxSheet = nivelRiesgo === "bajo"
+    ? presupuestoEditable
+    : Math.max(presupuestoEditable, Math.round(nuevoMax));
+
+  const mensajeAutoSheet = generarMensajePresupuestoConDatos({
+    client,
+    bike,
+    total: res.total || presupuestoEditable,
+    min: presupuestoMinSheet,
+    max: presupuestoMaxSheet,
+    nivel: nivelRiesgo,
+    adelantoPct: sheetAdelantoPct,
+    incluirDatos: sheetIncluirDatos,
+    datosCobro: config.datosCobro || {},
+    nombreTaller: config.nombreTaller,
+  });
+
+  const abrirSheet = () => {
+    setSheetAdelantoPct(config.presupuestoConfig?.adelantoPct ?? 30);
+    setSheetIncluirDatos(config.presupuestoConfig?.incluirAlias !== false);
+    setSheetMensaje("");
+    setSheetEditando(false);
+    setSheetPreview(false);
+    setShowPresupuestoSheet(true);
+  };
+
+  const handleEnviarDesdeSheet = () => {
+    const msg = sheetEditando && sheetMensaje ? sheetMensaje : mensajeAutoSheet;
+    abrirWhatsApp(client.tel, msg);
+    trackEvent("enviar_presupuesto_whatsapp", {
+      screen: "detalleOrden",
+      entityType: "trabajo",
+      entityId: order.id,
+      metadata: { adelantoPct: sheetAdelantoPct, nivel: nivelRiesgo },
+    }).catch(console.error);
+    cambiarEstado("aprobacion");
+    setPresupuestoSent(true);
+    setShowPresupuestoSheet(false);
+  };
+
   const cambiarEstado = (nuevo) => {
     if (isLocked) {
       showToast("No se puede modificar: ya se generó el comprobante");
@@ -179,7 +229,9 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     : order.estado === "diagnostico"
       ? { label: "Pasar a presupuesto", action: () => cambiarEstado("presupuesto"), className: "bg-violet-600 text-white" }
       : order.estado === "presupuesto"
-        ? { label: "Enviar presupuesto", action: () => setView("esperandoAprobacion"), className: "bg-amber-400 text-slate-950" }
+        ? presupuestoSent
+          ? { label: "✓ Presupuesto enviado", action: abrirSheet, className: "bg-emerald-600 text-white" }
+          : { label: "Enviar presupuesto", action: abrirSheet, className: "bg-amber-400 text-slate-950" }
         : order.estado === "aprobacion"
           ? { label: "Iniciar reparación", action: () => setView("ejecucion"), className: "bg-blue-600 text-white" }
           : order.estado === "reparacion"
@@ -392,6 +444,118 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           </button>
         )}
       </div>
+
+      {showPresupuestoSheet && (
+        <div className="fixed inset-0 z-50 flex items-end">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowPresupuestoSheet(false)} />
+          <div className="relative w-full max-h-[92vh] overflow-y-auto rounded-t-[2rem] bg-slate-900 border-t border-slate-700 shadow-2xl animate-in slide-in-from-bottom duration-300">
+            <div className="mx-auto max-w-[440px] p-6 space-y-5">
+
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Enviar Presupuesto</h3>
+                <button onClick={() => setShowPresupuestoSheet(false)} className="rounded-xl bg-slate-800 p-2 text-slate-400 hover:text-white active:scale-90 transition-all">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="rounded-2xl bg-slate-800/50 border border-slate-700 p-4">
+                <p className="text-sm font-black text-white">{client.nombre || "Cliente"}</p>
+                <p className="text-xs text-slate-400">{bike.marca || ""} {bike.modelo || ""} {bike.patente ? `— ${bike.patente}` : ""}</p>
+              </div>
+
+              <div className="text-center py-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total estimado</p>
+                <p className="text-5xl font-black text-white mt-1">{formatMoney(res.total || presupuestoEditable)}</p>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  {nivelRiesgo === "bajo" ? "Presupuesto fijo" : `Estimado: ${formatMoney(presupuestoMinSheet)} – ${formatMoney(presupuestoMaxSheet)}`}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Adelanto</p>
+                <div className="flex gap-2">
+                  {[0, 25, 30, 50, 70].map((pct) => (
+                    <button
+                      key={pct}
+                      onClick={() => setSheetAdelantoPct(pct)}
+                      className={`flex-1 rounded-xl py-2.5 text-xs font-black transition-all active:scale-95 ${
+                        sheetAdelantoPct === pct
+                          ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+                          : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                      }`}
+                    >
+                      {pct}%
+                    </button>
+                  ))}
+                </div>
+                {sheetAdelantoPct > 0 && (
+                  <p className="mt-2 text-center text-sm font-black text-blue-400">
+                    Monto: {formatMoney(Math.round((res.total || presupuestoEditable) * (sheetAdelantoPct / 100)))}
+                  </p>
+                )}
+              </div>
+
+              <button
+                onClick={() => setSheetIncluirDatos((v) => !v)}
+                className="flex w-full items-center justify-between rounded-2xl bg-slate-800/50 border border-slate-700 p-4 active:scale-95 transition-all"
+              >
+                <span className="text-sm font-black text-slate-300">Incluir datos de transferencia</span>
+                <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center transition-all ${sheetIncluirDatos ? "border-blue-500 bg-blue-600" : "border-slate-600 bg-transparent"}`}>
+                  {sheetIncluirDatos && <CheckCircle2 size={12} className="text-white" />}
+                </div>
+              </button>
+
+              <div className="rounded-2xl bg-slate-800/50 border border-slate-700 overflow-hidden">
+                <button
+                  onClick={() => setSheetPreview((v) => !v)}
+                  className="flex w-full items-center justify-between p-4"
+                >
+                  <span className="text-xs font-black uppercase tracking-widest text-slate-400">Vista previa</span>
+                  <ChevronDown size={16} className={`text-slate-500 transition-transform duration-200 ${sheetPreview ? "rotate-180" : ""}`} />
+                </button>
+                {sheetPreview && (
+                  sheetEditando ? (
+                    <div className="px-4 pb-4">
+                      <textarea
+                        value={sheetMensaje}
+                        onChange={(e) => setSheetMensaje(e.target.value)}
+                        rows={10}
+                        className="w-full bg-slate-900 text-slate-200 text-xs rounded-xl p-3 border border-slate-600 focus:border-blue-500 outline-none resize-none font-mono leading-relaxed"
+                      />
+                    </div>
+                  ) : (
+                    <div className="px-4 pb-4">
+                      <pre className="whitespace-pre-wrap text-xs text-slate-300 leading-relaxed font-mono">{mensajeAutoSheet}</pre>
+                    </div>
+                  )
+                )}
+              </div>
+
+              <div className="flex gap-3 pb-2">
+                <button
+                  onClick={() => {
+                    if (!sheetEditando) {
+                      setSheetMensaje(mensajeAutoSheet);
+                      setSheetPreview(true);
+                    }
+                    setSheetEditando((v) => !v);
+                  }}
+                  className="flex-1 rounded-[1.5rem] border border-slate-600 bg-slate-800 py-4 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-700 active:scale-95 transition-all"
+                >
+                  {sheetEditando ? "Auto" : "Editar"}
+                </button>
+                <button
+                  onClick={handleEnviarDesdeSheet}
+                  className="flex-[2] rounded-[1.5rem] bg-emerald-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl hover:bg-emerald-500 active:scale-95 transition-all"
+                >
+                  Enviar por WhatsApp
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

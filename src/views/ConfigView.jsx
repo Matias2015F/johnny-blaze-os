@@ -925,6 +925,96 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
         />
       </Card>
 
+      {/* Datos de Cobro */}
+      <Card>
+        <SectionTitle>Datos de Cobro</SectionTitle>
+        <p className="text-[10px] text-slate-400 font-bold mb-4">Se usan para generar mensajes de presupuesto automaticamente</p>
+        <div className="space-y-3">
+          {[
+            ["datosCobro.titular",    "Titular de cuenta", "text"],
+            ["datosCobro.banco",      "Banco / Billetera", "text"],
+            ["datosCobro.alias",      "Alias",             "text"],
+            ["datosCobro.cbu",        "CBU / CVU",         "text"],
+            ["datosCobro.cuit",       "CUIT / CUIL",       "text"],
+            ["datosCobro.tipoCuenta", "Tipo de cuenta",    "text"],
+          ].map(([field, label, type]) => {
+            const [parent, child] = field.split(".");
+            const val = cfg[parent]?.[child] ?? "";
+            return (
+              <div key={field}>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">{label}</label>
+                <input
+                  type={type}
+                  value={val}
+                  onChange={e => setCfg({ ...cfg, [parent]: { ...(cfg[parent] || {}), [child]: e.target.value } })}
+                  className="w-full border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-colors bg-slate-50"
+                />
+              </div>
+            );
+          })}
+          {(cfg.datosCobro?.alias || cfg.datosCobro?.cbu) && (
+            <div className="flex gap-2 pt-1">
+              {cfg.datosCobro?.alias && (
+                <button
+                  onClick={() => { navigator.clipboard?.writeText(cfg.datosCobro.alias); }}
+                  className="flex-1 py-2.5 rounded-2xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase active:scale-95"
+                >
+                  Copiar alias
+                </button>
+              )}
+              {cfg.datosCobro?.cbu && (
+                <button
+                  onClick={() => { navigator.clipboard?.writeText(cfg.datosCobro.cbu); }}
+                  className="flex-1 py-2.5 rounded-2xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase active:scale-95"
+                >
+                  Copiar CBU
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Configuracion de Presupuestos */}
+      <Card>
+        <SectionTitle>Configuracion de Presupuestos</SectionTitle>
+        <div className="space-y-5">
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Adelanto predeterminado</label>
+            <div className="grid grid-cols-4 gap-2">
+              {[0, 25, 30, 50, 70].map(pct => (
+                <button
+                  key={pct}
+                  onClick={() => setCfg({ ...cfg, presupuestoConfig: { ...(cfg.presupuestoConfig || {}), adelantoPct: pct } })}
+                  className={`py-3 rounded-2xl text-sm font-black uppercase transition-all active:scale-95 ${
+                    (cfg.presupuestoConfig?.adelantoPct ?? 30) === pct
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {pct}%
+                </button>
+              ))}
+            </div>
+          </div>
+          {[
+            ["incluirAlias",       "Incluir alias en el mensaje"],
+            ["incluirCBU",         "Incluir CBU en el mensaje"],
+            ["advertenciaAbierto", "Mostrar advertencia de presupuesto abierto"],
+          ].map(([key, label]) => (
+            <div key={key} className="flex items-center justify-between">
+              <span className="text-sm font-bold text-slate-700">{label}</span>
+              <button
+                onClick={() => setCfg({ ...cfg, presupuestoConfig: { ...(cfg.presupuestoConfig || {}), [key]: !(cfg.presupuestoConfig?.[key] ?? true) } })}
+                className={`w-12 h-6 rounded-full transition-all ${(cfg.presupuestoConfig?.[key] ?? true) ? "bg-blue-600" : "bg-slate-300"}`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform mx-0.5 ${(cfg.presupuestoConfig?.[key] ?? true) ? "translate-x-6" : "translate-x-0"}`} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       <button
         onClick={guardar}
         className="w-full bg-blue-600 text-white py-4 rounded-3xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
