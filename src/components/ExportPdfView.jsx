@@ -43,9 +43,15 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
   }, [numeroComprobante]);
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 font-sans text-left text-slate-900 animate-in fade-in">
-      <div className="mx-auto max-w-[960px] bg-white print:max-w-none">
-        <div className="border-b-2 border-slate-900 px-12 py-8 print:py-10" style={bloqueCompletoStyle}>
+    <div className="min-h-screen bg-slate-100 p-4 font-sans text-left text-slate-900 animate-in fade-in print:bg-white print:p-0">
+      <style>{`
+        @media print {
+          @page { size: A4 portrait; margin: 14mm 14mm 14mm 14mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      `}</style>
+      <div className="mx-auto max-w-[740px] bg-white print:max-w-none">
+        <div className="border-b-2 border-slate-900 px-8 py-6" style={bloqueCompletoStyle}>
           <div className="flex items-start justify-between gap-8">
             <div className="flex-1">
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-600">
@@ -85,7 +91,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                       fecha: order.fechaComprobante,
                       hash: snapshot.hash
                     })}
-                    size={140}
+                    size={110}
                     level="H"
                     marginSize={2}
                     fgColor="#000000"
@@ -98,8 +104,8 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           </div>
         </div>
 
-        <div className="space-y-6 px-12 py-6 print:py-8">
-          <div className="grid grid-cols-2 gap-6" style={bloqueCompletoStyle}>
+        <div className="space-y-5 px-8 py-5">
+          <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
             <div className="border border-slate-300 bg-slate-50 p-4">
               <p className="text-[9px] font-black uppercase text-slate-600 tracking-wide">Cliente</p>
               <p className="mt-2 text-sm font-black text-slate-900">{client?.nombre || "---"}</p>
@@ -184,7 +190,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-6" style={bloqueCompletoStyle}>
+          <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
             <div className="border border-slate-300 p-4">
               <p className="text-[9px] font-black uppercase text-slate-600 tracking-wide">Garantía</p>
               <p className="mt-3 text-[10px] leading-relaxed text-slate-700">
