@@ -53,6 +53,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const [sheetMensaje, setSheetMensaje] = useState("");
   const [sheetEditando, setSheetEditando] = useState(false);
   const [sheetPreview, setSheetPreview] = useState(false);
+  const [sheetTipoFijo, setSheetTipoFijo] = useState(false);
 
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
 
@@ -179,13 +180,15 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     ? presupuestoEditable
     : Math.max(presupuestoEditable, Math.round(nuevoMax));
 
+  const nivelEfectivo = sheetTipoFijo ? "bajo" : nivelRiesgo;
+
   const mensajeAutoSheet = generarMensajePresupuestoConDatos({
     client,
     bike,
     total: res.total || presupuestoEditable,
     min: presupuestoMinSheet,
     max: presupuestoMaxSheet,
-    nivel: nivelRiesgo,
+    nivel: nivelEfectivo,
     adelantoPct: sheetAdelantoPct,
     incluirDatos: sheetIncluirDatos,
     datosCobro: config.datosCobro || {},
@@ -193,6 +196,8 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   });
 
   const abrirSheet = () => {
+    const autoFijo = presupuestoMinSheet === presupuestoMaxSheet;
+    setSheetTipoFijo(autoFijo);
     setSheetAdelantoPct(config.presupuestoConfig?.adelantoPct ?? 30);
     setSheetIncluirDatos(config.presupuestoConfig?.incluirAlias !== false);
     setSheetMensaje("");
@@ -208,8 +213,9 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       screen: "detalleOrden",
       entityType: "trabajo",
       entityId: order.id,
-      metadata: { adelantoPct: sheetAdelantoPct, nivel: nivelRiesgo },
+      metadata: { adelantoPct: sheetAdelantoPct, tipoPresupuesto: sheetTipoFijo ? "fijo" : "estimado" },
     }).catch(console.error);
+    LS.updateDoc("trabajos", order.id, { tipoPresupuesto: sheetTipoFijo ? "fijo" : "estimado" });
     cambiarEstado("aprobacion");
     setPresupuestoSent(true);
     setShowPresupuestoSheet(false);
@@ -464,11 +470,31 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               </div>
 
               <div className="text-center py-2">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total estimado</p>
-                <p className="text-5xl font-black text-white mt-1">{formatMoney(res.total || presupuestoEditable)}</p>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  {nivelRiesgo === "bajo" ? "Presupuesto fijo" : `Estimado: ${formatMoney(presupuestoMinSheet)} – ${formatMoney(presupuestoMaxSheet)}`}
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  {sheetTipoFijo ? "Total fijo" : "Presupuesto estimado"}
                 </p>
+                <p className="text-5xl font-black text-white mt-1">{formatMoney(res.total || presupuestoEditable)}</p>
+                {!sheetTipoFijo && presupuestoMinSheet !== presupuestoMaxSheet && (
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Rango: {formatMoney(presupuestoMinSheet)} – {formatMoney(presupuestoMaxSheet)}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                {[{ label: "Fijo", val: true }, { label: "Estimado", val: false }].map(({ label, val }) => (
+                  <button
+                    key={label}
+                    onClick={() => setSheetTipoFijo(val)}
+                    className={`flex-1 rounded-xl py-2.5 text-xs font-black transition-all active:scale-95 ${
+                      sheetTipoFijo === val
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+                        : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
 
               <div>
