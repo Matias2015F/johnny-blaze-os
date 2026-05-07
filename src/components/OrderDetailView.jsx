@@ -54,6 +54,8 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const [sheetEditando, setSheetEditando] = useState(false);
   const [sheetPreview, setSheetPreview] = useState(false);
   const [sheetTipoFijo, setSheetTipoFijo] = useState(false);
+  const [sheetMin, setSheetMin] = useState("");
+  const [sheetMax, setSheetMax] = useState("");
 
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
 
@@ -181,13 +183,16 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     : Math.max(presupuestoEditable, Math.round(nuevoMax));
 
   const nivelEfectivo = sheetTipoFijo ? "bajo" : nivelRiesgo;
+  const sheetMinVal = Number(sheetMin) > 0 ? Number(sheetMin) : presupuestoMinSheet;
+  const sheetMaxVal = Number(sheetMax) > 0 ? Number(sheetMax) : presupuestoMaxSheet;
+  const sheetTotalBase = sheetTipoFijo ? sheetMinVal : sheetMaxVal;
 
   const mensajeAutoSheet = generarMensajePresupuestoConDatos({
     client,
     bike,
-    total: res.total || presupuestoEditable,
-    min: presupuestoMinSheet,
-    max: presupuestoMaxSheet,
+    total: sheetTotalBase,
+    min: sheetMinVal,
+    max: sheetMaxVal,
     nivel: nivelEfectivo,
     adelantoPct: sheetAdelantoPct,
     incluirDatos: sheetIncluirDatos,
@@ -198,6 +203,8 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const abrirSheet = () => {
     const autoFijo = presupuestoMinSheet === presupuestoMaxSheet;
     setSheetTipoFijo(autoFijo);
+    setSheetMin(String(Math.round(presupuestoMinSheet) || ""));
+    setSheetMax(String(Math.round(presupuestoMaxSheet) || ""));
     setSheetAdelantoPct(config.presupuestoConfig?.adelantoPct ?? 30);
     setSheetIncluirDatos(config.presupuestoConfig?.incluirAlias !== false);
     setSheetMensaje("");
@@ -469,23 +476,14 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 <p className="text-xs text-slate-400">{bike.marca || ""} {bike.modelo || ""} {bike.patente ? `— ${bike.patente}` : ""}</p>
               </div>
 
-              <div className="text-center py-2">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  {sheetTipoFijo ? "Total fijo" : "Presupuesto estimado"}
-                </p>
-                <p className="text-5xl font-black text-white mt-1">{formatMoney(res.total || presupuestoEditable)}</p>
-                {!sheetTipoFijo && presupuestoMinSheet !== presupuestoMaxSheet && (
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Rango: {formatMoney(presupuestoMinSheet)} – {formatMoney(presupuestoMaxSheet)}
-                  </p>
-                )}
-              </div>
-
               <div className="flex gap-2">
                 {[{ label: "Fijo", val: true }, { label: "Estimado", val: false }].map(({ label, val }) => (
                   <button
                     key={label}
-                    onClick={() => setSheetTipoFijo(val)}
+                    onClick={() => {
+                      setSheetTipoFijo(val);
+                      if (val) setSheetMax(sheetMin);
+                    }}
                     className={`flex-1 rounded-xl py-2.5 text-xs font-black transition-all active:scale-95 ${
                       sheetTipoFijo === val
                         ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
@@ -496,6 +494,45 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   </button>
                 ))}
               </div>
+
+              {sheetTipoFijo ? (
+                <div>
+                  <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Monto total</p>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={sheetMin}
+                    onChange={(e) => { setSheetMin(e.target.value); setSheetMax(e.target.value); }}
+                    placeholder="0"
+                    className="w-full text-center text-4xl font-black bg-transparent text-white border-b-2 border-slate-600 focus:border-blue-500 outline-none py-2"
+                  />
+                </div>
+              ) : (
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Mínimo</p>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={sheetMin}
+                      onChange={(e) => setSheetMin(e.target.value)}
+                      placeholder="0"
+                      className="w-full text-center text-2xl font-black bg-transparent text-white border-b-2 border-slate-600 focus:border-blue-500 outline-none py-2"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">Máximo</p>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={sheetMax}
+                      onChange={(e) => setSheetMax(e.target.value)}
+                      placeholder="0"
+                      className="w-full text-center text-2xl font-black bg-transparent text-white border-b-2 border-slate-600 focus:border-blue-500 outline-none py-2"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Adelanto</p>
@@ -516,7 +553,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 </div>
                 {sheetAdelantoPct > 0 && (
                   <p className="mt-2 text-center text-sm font-black text-blue-400">
-                    Monto: {formatMoney(Math.round((res.total || presupuestoEditable) * (sheetAdelantoPct / 100)))}
+                    Monto: {formatMoney(Math.round(sheetTotalBase * (sheetAdelantoPct / 100)))}
                   </p>
                 )}
               </div>
