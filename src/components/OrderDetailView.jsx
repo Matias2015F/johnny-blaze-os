@@ -456,6 +456,15 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             {accionPrincipal.label}
           </button>
         )}
+
+        {!isLocked && order.estado !== "cerrado_emitido" && (
+          <button
+            onClick={() => setView("gestionarTareas")}
+            className="w-full rounded-[1.75rem] border border-slate-700 bg-slate-900 py-4 text-[11px] font-black uppercase tracking-widest text-slate-300 shadow-lg transition-all active:scale-95"
+          >
+            Gestionar tareas / repuestos
+          </button>
+        )}
       </div>
 
       {showPresupuestoSheet && (
