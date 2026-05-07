@@ -320,8 +320,8 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
   return (
     <>
       <div className="animate-in slide-in-from-right duration-300 space-y-4 pb-28 text-left">
-        <div className="sticky top-0 z-40 rounded-b-[2.5rem] bg-slate-950 px-4 pb-5 pt-4 shadow-lg">
-          <div className="rounded-[2rem] border border-white/10 bg-slate-900/90 p-5 shadow-2xl backdrop-blur-xl">
+        <div className="sticky top-0 z-40 rounded-b-[2.5rem] bg-zinc-950 px-4 pb-5 pt-4 shadow-lg">
+          <div className="rounded-[2rem] border border-white/10 bg-zinc-900/90 p-5 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setView("home")}
@@ -330,9 +330,9 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
                 <ArrowLeft size={20} />
               </button>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Historial</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-400">Historial</p>
                 <h2 className="mt-1 text-xl font-black uppercase tracking-widest text-white">Buscar y revisar</h2>
-                <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">
                   Patente, cliente, trabajo o comprobante
                 </p>
               </div>
@@ -341,27 +341,27 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
         </div>
 
         <div className="space-y-4 px-4">
-          <div className="rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
+          <div className="rounded-[2.5rem] border border-zinc-800 bg-zinc-900 p-5 shadow-xl">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
               <input
                 placeholder="Buscar patente, cliente, trabajo o comprobante"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-[1.75rem] border border-white/10 bg-black/20 p-5 pl-12 font-black text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
+                className="w-full rounded-[1.75rem] border border-white/10 bg-black/20 p-5 pl-12 font-black text-white outline-none placeholder:text-zinc-600 focus:border-orange-500"
               />
             </div>
-            <p className="mt-3 px-1 text-[10px] font-black uppercase tracking-widest text-slate-500">{helperText}</p>
+            <p className="mt-3 px-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">{helperText}</p>
           </div>
 
-          <div className="rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
+          <div className="rounded-[2.5rem] border border-zinc-800 bg-zinc-900 p-5 shadow-xl">
             <div className="mb-4 flex items-center gap-3">
-              <div className="rounded-xl bg-blue-500/20 p-2">
-                <Check className="text-blue-400" size={18} />
+              <div className="rounded-xl bg-orange-500/20 p-2">
+                <Check className="text-orange-400" size={18} />
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase text-slate-300">Validar comprobante</p>
-                <p className="text-[9px] font-bold text-slate-500">Pegá el JSON, escaneá el QR en vivo o abrí el PDF desde el dispositivo</p>
+                <p className="text-[10px] font-black uppercase text-zinc-300">Validar comprobante</p>
+                <p className="text-[9px] font-bold text-zinc-500">Pegá el JSON, escaneá el QR en vivo o abrí el PDF desde el dispositivo</p>
               </div>
             </div>
 
@@ -384,14 +384,14 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
                 <button
                   onClick={() => setScannerOpen(true)}
                   disabled={scanLoading || scannerOpen}
-                  className="flex items-center justify-center gap-2 rounded-[1.5rem] border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-[11px] font-black uppercase text-blue-200 transition-all disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500 active:scale-95"
+                  className="flex items-center justify-center gap-2 rounded-[1.5rem] border border-orange-500/30 bg-orange-500/10 px-4 py-3 text-[11px] font-black uppercase text-orange-200 transition-all disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500 active:scale-95"
                 >
                   <Camera size={16} /> Escanear con cámara
                 </button>
                 <button
                   onClick={() => pdfInputRef.current?.click()}
                   disabled={scanLoading}
-                  className="flex items-center justify-center gap-2 rounded-[1.5rem] border border-white/10 bg-black/20 px-4 py-3 text-[11px] font-black uppercase text-white transition-all disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500 active:scale-95"
+                  className="flex items-center justify-center gap-2 rounded-[1.5rem] border border-white/10 bg-black/20 px-4 py-3 text-[11px] font-black uppercase text-white transition-all disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500 active:scale-95"
                 >
                   <Upload size={16} /> Abrir PDF o imagen
                 </button>
@@ -404,24 +404,24 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
                   value={qrInputValue}
                   onChange={(e) => setQrInputValue(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && validarQR()}
-                  className="w-full rounded-[1.75rem] border border-white/10 bg-black/20 p-3 font-mono text-xs text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
+                  className="w-full rounded-[1.75rem] border border-white/10 bg-black/20 p-3 font-mono text-xs text-white outline-none placeholder:text-zinc-600 focus:border-orange-500"
                 />
               </div>
               <button
                 onClick={validarQR}
                 disabled={!qrInputValue.trim() || scanLoading}
-                className="w-full rounded-2xl bg-blue-600 py-3 text-sm font-black uppercase text-white transition-all disabled:bg-slate-700 disabled:text-slate-400 active:scale-95"
+                className="w-full rounded-2xl bg-orange-600 py-3 text-sm font-black uppercase text-white transition-all disabled:bg-zinc-700 disabled:text-zinc-400 active:scale-95"
               >
                 {scanLoading ? "Procesando..." : "Validar"}
               </button>
             </div>
 
-            <p className="mt-3 text-[9px] font-bold text-slate-500">
+            <p className="mt-3 text-[9px] font-bold text-zinc-500">
               La cámara ahora funciona como lector en vivo. Si ya tenés el comprobante, también podés subir el PDF o una imagen del QR.
             </p>
 
             {scanFeedback && (
-              <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-bold text-slate-300">
+              <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-[10px] font-bold text-zinc-300">
                 {scanFeedback}
               </div>
             )}
@@ -445,12 +445,12 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
                       {validacionActual.razon}
                     </p>
                     {validacionActual.numeroComprobante && (
-                      <p className="mt-1 text-[9px] text-slate-300">
+                      <p className="mt-1 text-[9px] text-zinc-300">
                         Número: <span className="font-mono font-bold">{validacionActual.numeroComprobante}</span>
                       </p>
                     )}
                     {validacionActual.detalles && (
-                      <div className="mt-2 space-y-1 text-[9px] text-slate-400">
+                      <div className="mt-2 space-y-1 text-[9px] text-zinc-400">
                         <p>Cliente: {validacionActual.detalles.cliente?.nombre || "N/A"}</p>
                         <p>Moto: {validacionActual.detalles.moto?.patente || "N/A"}</p>
                         <p>Monto: {formatMoney(validacionActual.detalles.monto || 0)}</p>
@@ -463,8 +463,8 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
             )}
 
             {validaciones.length > 0 && (
-              <div className="mt-4 border-t border-slate-700 pt-4">
-                <p className="mb-2 text-[9px] font-black uppercase text-slate-500">Historial de validaciones</p>
+              <div className="mt-4 border-t border-zinc-700 pt-4">
+                <p className="mb-2 text-[9px] font-black uppercase text-zinc-500">Historial de validaciones</p>
                 <div className="max-h-48 space-y-2 overflow-y-auto">
                   {validaciones.slice(0, 5).map((v) => (
                     <div key={v.id} className={`rounded-lg border p-3 text-[9px] ${
@@ -486,20 +486,20 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
 
           {search.trim() && (
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-[1.75rem] border border-slate-800 bg-slate-900 p-4 shadow-xl">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Motos encontradas</p>
+              <div className="rounded-[1.75rem] border border-zinc-800 bg-zinc-900 p-4 shadow-xl">
+                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Motos encontradas</p>
                 <p className="mt-2 text-2xl font-black text-white">{resumen.motos}</p>
               </div>
-              <div className="rounded-[1.75rem] border border-slate-800 bg-slate-900 p-4 shadow-xl">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Trabajos relacionados</p>
+              <div className="rounded-[1.75rem] border border-zinc-800 bg-zinc-900 p-4 shadow-xl">
+                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Trabajos relacionados</p>
                 <p className="mt-2 text-2xl font-black text-white">{resumen.trabajos}</p>
               </div>
-              <div className="rounded-[1.75rem] border border-slate-800 bg-slate-900 p-4 shadow-xl">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Comprobantes</p>
+              <div className="rounded-[1.75rem] border border-zinc-800 bg-zinc-900 p-4 shadow-xl">
+                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Comprobantes</p>
                 <p className="mt-2 text-2xl font-black text-white">{resumen.comprobantes}</p>
               </div>
-              <div className="rounded-[1.75rem] border border-slate-800 bg-slate-900 p-4 shadow-xl">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Repuestos y gastos</p>
+              <div className="rounded-[1.75rem] border border-zinc-800 bg-zinc-900 p-4 shadow-xl">
+                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Repuestos y gastos</p>
                 <p className="mt-2 text-2xl font-black text-white">{resumen.repuestos + resumen.gastos}</p>
               </div>
             </div>
@@ -514,57 +514,57 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
                     setSelectedBikeId(item.bike.id);
                     setView("perfilMoto");
                   }}
-                  className="w-full rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-[0.98]"
+                  className="w-full rounded-[2.5rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-[0.98]"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-3xl font-black leading-none text-white">{item.bike.patente}</p>
-                      <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">
                         {item.bike.marca} {item.bike.modelo} {item.bike.cilindrada ? `· ${item.bike.cilindrada}cc` : ""}
                       </p>
-                      <div className="mt-3 flex items-center gap-2 text-[11px] font-black text-slate-300">
-                        <User size={14} className="text-slate-500" />
+                      <div className="mt-3 flex items-center gap-2 text-[11px] font-black text-zinc-300">
+                        <User size={14} className="text-zinc-500" />
                         <span className="truncate uppercase">{item.client?.nombre || "Cliente sin nombre"}</span>
                       </div>
                     </div>
-                    <ChevronRight size={24} className="shrink-0 text-slate-600" />
+                    <ChevronRight size={24} className="shrink-0 text-zinc-600" />
                   </div>
 
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     <div className="rounded-[1.25rem] border border-white/5 bg-black/20 px-3 py-3">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Trabajos</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Trabajos</p>
                       <p className="mt-1 text-lg font-black text-white">{item.trabajos}</p>
                     </div>
                     <div className="rounded-[1.25rem] border border-white/5 bg-black/20 px-3 py-3">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Comprobantes</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Comprobantes</p>
                       <p className="mt-1 text-lg font-black text-white">{item.comprobantes}</p>
                     </div>
                   </div>
 
                   <div className="mt-3 space-y-2 rounded-[1.5rem] border border-white/5 bg-black/20 p-3">
                     <div className="flex items-center justify-between text-[11px] font-black">
-                      <span className="flex items-center gap-2 text-slate-400">
-                        <Wrench size={14} className="text-blue-400" />
+                      <span className="flex items-center gap-2 text-zinc-400">
+                        <Wrench size={14} className="text-orange-400" />
                         Repuestos usados
                       </span>
                       <span className="text-white">{item.repuestos}</span>
                     </div>
                     <div className="flex items-center justify-between text-[11px] font-black">
-                      <span className="flex items-center gap-2 text-slate-400">
+                      <span className="flex items-center gap-2 text-zinc-400">
                         <FileText size={14} className="text-orange-400" />
                         Gastos e insumos
                       </span>
                       <span className="text-white">{item.gastos}</span>
                     </div>
                     <div className="flex items-center justify-between border-t border-white/10 pt-2 text-[11px] font-black">
-                      <span className="text-slate-400">Total histórico</span>
+                      <span className="text-zinc-400">Total histórico</span>
                       <span className="text-white">{formatMoney(item.totalCobrado)}</span>
                     </div>
                   </div>
 
                   {item.orders[0] && (
-                    <div className="mt-3 rounded-[1.5rem] border border-blue-500/20 bg-blue-500/10 px-3 py-3">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-blue-300">Último movimiento</p>
+                    <div className="mt-3 rounded-[1.5rem] border border-orange-500/20 bg-orange-500/10 px-3 py-3">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-orange-300">Último movimiento</p>
                       <p className="mt-1 text-[11px] font-black uppercase text-white">
                         {item.orders[0].numeroComprobante
                           ? `Comprobante ${item.orders[0].numeroComprobante}`
@@ -575,8 +575,8 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
                 </button>
               ))
             ) : (
-              <div className="rounded-[2.5rem] border border-dashed border-slate-700 bg-slate-900 px-6 py-16 text-center shadow-xl">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+              <div className="rounded-[2.5rem] border border-dashed border-zinc-700 bg-zinc-900 px-6 py-16 text-center shadow-xl">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
                   {search.trim()
                     ? "No encontramos resultados con esa búsqueda"
                     : "Escribí patente, cliente, trabajo o comprobante para ver el historial"}
@@ -588,11 +588,11 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
       </div>
 
       {scannerOpen && (
-        <div className="fixed inset-0 z-[90] flex items-end bg-slate-950/90 p-4 backdrop-blur-sm sm:items-center sm:justify-center">
-          <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-slate-900 p-4 shadow-2xl">
+        <div className="fixed inset-0 z-[90] flex items-end bg-zinc-950/90 p-4 backdrop-blur-sm sm:items-center sm:justify-center">
+          <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-zinc-900 p-4 shadow-2xl">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Lector QR</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-400">Lector QR</p>
                 <p className="mt-1 text-sm font-black uppercase text-white">Escaneá el comprobante</p>
               </div>
               <button
@@ -604,11 +604,11 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
             </div>
 
             <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/40 p-3">
-              <div id={scannerRegionId} className="min-h-[320px] rounded-[1.25rem] bg-slate-950" />
+              <div id={scannerRegionId} className="min-h-[320px] rounded-[1.25rem] bg-zinc-950" />
             </div>
 
             <div className="mt-3 space-y-2">
-              <p className="text-[10px] font-bold text-slate-300">
+              <p className="text-[10px] font-bold text-zinc-300">
                 {scannerReady ? "Apuntá el QR al centro del recuadro." : "Preparando cámara..."}
               </p>
               {scannerError && (
@@ -623,3 +623,4 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
     </>
   );
 }
+

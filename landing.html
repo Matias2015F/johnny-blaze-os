@@ -1,0 +1,2593 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MotoGestión — Sistema operativo para tu taller de motos</title>
+<meta name="description" content="App PWA para taller mecánico de motos. Reemplaza la libreta, el Excel y la calculadora. Presupuestos por WhatsApp, cronómetro de trabajo, control de rentabilidad y comprobantes PDF. Desde tu celular.">
+<meta name="theme-color" content="#ff6b00">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================
+   RESET & BASE
+   ============================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #0a0a0a;
+  color: #f0f0f0;
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+img { max-width: 100%; display: block; }
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+
+:root {
+  --bg: #0a0a0a;
+  --bg-2: #111;
+  --surface: #181818;
+  --surface-2: #222;
+  --border: #2a2a2a;
+  --border-strong: #3a3a3a;
+  --orange: #ff6b00;
+  --orange-glow: #ff8a3d;
+  --red: #ff3333;
+  --yellow: #ffc000;
+  --green: #00d96b;
+  --text: #f0f0f0;
+  --text-muted: #999;
+  --text-dim: #666;
+  --max-width: 1200px;
+}
+
+/* ============================================
+   UTILITY
+   ============================================ */
+.container { max-width: var(--max-width); margin: 0 auto; padding: 0 24px; }
+.section { padding: 100px 0; position: relative; }
+.section-tight { padding: 70px 0; }
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--orange);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.eyebrow::before {
+  content: '';
+  width: 28px;
+  height: 2px;
+  background: var(--orange);
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  color: var(--text);
+}
+h2.section-title {
+  font-size: clamp(40px, 6vw, 72px);
+  margin-bottom: 24px;
+}
+.section-subtitle {
+  font-size: 18px;
+  color: var(--text-muted);
+  max-width: 680px;
+  margin-bottom: 60px;
+  line-height: 1.5;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 28px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  position: relative;
+  white-space: nowrap;
+}
+.btn-primary {
+  background: var(--orange);
+  color: #000;
+  box-shadow: 0 4px 0 #cc5500, 0 8px 24px rgba(255,107,0,0.3);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #cc5500, 0 12px 32px rgba(255,107,0,0.4);
+}
+.btn-primary:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #cc5500;
+}
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 2px solid var(--border-strong);
+}
+.btn-secondary:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.btn-ghost:hover { color: var(--orange); }
+
+/* Hex grid background */
+.hex-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(30deg, transparent 49.5%, rgba(255,107,0,0.04) 49.5%, rgba(255,107,0,0.04) 50.5%, transparent 50.5%),
+    linear-gradient(-30deg, transparent 49.5%, rgba(255,107,0,0.04) 49.5%, rgba(255,107,0,0.04) 50.5%, transparent 50.5%),
+    linear-gradient(90deg, transparent 49.5%, rgba(255,107,0,0.04) 49.5%, rgba(255,107,0,0.04) 50.5%, transparent 50.5%);
+  background-size: 60px 104px;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Caution stripes */
+.stripe-caution {
+  height: 8px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--orange) 0,
+    var(--orange) 14px,
+    #000 14px,
+    #000 28px
+  );
+}
+
+/* ============================================
+   NAV
+   ============================================ */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: rgba(10,10,10,0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  max-width: var(--max-width);
+  margin: 0 auto;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 28px;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+.logo-mark {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: var(--orange);
+  color: #000;
+  font-weight: 900;
+  font-family: 'Bebas Neue';
+  font-size: 22px;
+  border-radius: 4px;
+  position: relative;
+  transform: skewX(-8deg);
+}
+.logo-mark span { transform: skewX(8deg); display: block; }
+.logo-text-orange { color: var(--orange); }
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+.nav-links a {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--orange); }
+.nav-cta {
+  padding: 10px 20px;
+  background: var(--orange);
+  color: #000;
+  border-radius: 4px;
+  font-weight: 700;
+}
+.nav-cta:hover { color: #000 !important; background: var(--orange-glow); }
+
+.menu-toggle { display: none; }
+
+@media (max-width: 880px) {
+  .nav-links { display: none; }
+  .menu-toggle {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 8px;
+  }
+  .menu-toggle span {
+    width: 22px;
+    height: 2px;
+    background: var(--text);
+    display: block;
+  }
+  .nav-links.open {
+    display: flex;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    background: var(--bg-2);
+    padding: 24px;
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+  }
+}
+
+/* ============================================
+   HERO
+   ============================================ */
+.hero {
+  min-height: 100vh;
+  padding: 140px 0 80px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at top right, rgba(255,107,0,0.15), transparent 60%),
+    radial-gradient(ellipse at bottom left, rgba(255,51,51,0.08), transparent 50%),
+    var(--bg);
+  z-index: 0;
+}
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 50px 50px;
+  mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 0%, transparent 75%);
+  z-index: 0;
+}
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 60px;
+  align-items: center;
+  width: 100%;
+}
+.hero-content { max-width: 640px; }
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: rgba(255,107,0,0.1);
+  border: 1px solid rgba(255,107,0,0.3);
+  border-radius: 100px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--orange);
+  margin-bottom: 28px;
+}
+.hero-badge .dot {
+  width: 8px;
+  height: 8px;
+  background: var(--green);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(0,217,107,0.2);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+h1.hero-title {
+  font-size: clamp(48px, 8vw, 96px);
+  line-height: 0.95;
+  margin-bottom: 24px;
+}
+h1.hero-title .accent {
+  color: var(--orange);
+  display: block;
+}
+.hero-sub {
+  font-size: 20px;
+  color: var(--text-muted);
+  margin-bottom: 36px;
+  line-height: 1.5;
+  max-width: 560px;
+}
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+}
+.hero-stat-num {
+  font-family: 'Bebas Neue';
+  font-size: 36px;
+  color: var(--orange);
+  line-height: 1;
+}
+.hero-stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 6px;
+}
+
+/* Phone mockup */
+.phone-mock {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  aspect-ratio: 9 / 19;
+  background: #000;
+  border-radius: 36px;
+  border: 8px solid #1a1a1a;
+  box-shadow:
+    0 0 0 2px #2a2a2a,
+    0 30px 80px rgba(0,0,0,0.6),
+    0 0 60px rgba(255,107,0,0.2);
+  overflow: hidden;
+  padding: 14px 12px;
+}
+.phone-screen {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, #0a0a0a, #151515);
+  border-radius: 24px;
+  padding: 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.phone-status {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #999;
+  font-family: 'JetBrains Mono';
+  margin-bottom: 4px;
+}
+.phone-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #222;
+}
+.phone-header .h-title {
+  font-family: 'Bebas Neue';
+  font-size: 14px;
+  color: var(--orange);
+}
+.phone-counter-row {
+  display: flex;
+  gap: 6px;
+}
+.phone-counter {
+  flex: 1;
+  text-align: center;
+  padding: 8px 4px;
+  background: #181818;
+  border-radius: 6px;
+  border: 1px solid #222;
+}
+.phone-counter .num {
+  font-family: 'Bebas Neue';
+  font-size: 18px;
+  color: var(--text);
+  line-height: 1;
+}
+.phone-counter .lbl {
+  font-size: 7px;
+  color: #777;
+  text-transform: uppercase;
+  margin-top: 2px;
+  letter-spacing: 0.05em;
+}
+.phone-counter.alert .num { color: var(--yellow); }
+.phone-counter.danger .num { color: var(--red); }
+.phone-cta {
+  padding: 12px;
+  background: var(--orange);
+  color: #000;
+  border-radius: 8px;
+  text-align: center;
+  font-family: 'Bebas Neue';
+  font-size: 14px;
+  letter-spacing: 0.05em;
+}
+.phone-list { display: flex; flex-direction: column; gap: 6px; }
+.phone-item {
+  padding: 9px 10px;
+  background: #181818;
+  border-radius: 6px;
+  border-left: 3px solid var(--green);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.phone-item.alert { border-left-color: var(--yellow); }
+.phone-item.stop { border-left-color: var(--red); }
+.phone-item .pat {
+  font-family: 'JetBrains Mono';
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text);
+}
+.phone-item .cli { font-size: 8px; color: #888; margin-top: 2px; }
+.phone-item .right { text-align: right; }
+.phone-item .price {
+  font-family: 'JetBrains Mono';
+  font-size: 9px;
+  color: var(--orange);
+  font-weight: 700;
+}
+.phone-item .time { font-size: 7px; color: #666; margin-top: 2px; }
+.phone-nav {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  padding: 8px 4px;
+  background: #0a0a0a;
+  border-radius: 8px;
+  border: 1px solid #222;
+}
+.phone-nav-item {
+  text-align: center;
+  font-size: 7px;
+  color: #555;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.phone-nav-item.active { color: var(--orange); }
+.phone-nav-item .ico {
+  font-size: 14px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+@media (max-width: 880px) {
+  .hero-inner { grid-template-columns: 1fr; gap: 40px; }
+  .hero-content { max-width: 100%; }
+  .phone-mock { max-width: 280px; }
+  .hero-stats { grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .hero-stat-num { font-size: 28px; }
+}
+
+/* ============================================
+   TICKER
+   ============================================ */
+.ticker {
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  padding: 24px 0;
+}
+.ticker-track {
+  display: flex;
+  gap: 60px;
+  animation: ticker 30s linear infinite;
+  white-space: nowrap;
+}
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ticker-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'JetBrains Mono';
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.ticker-item .dot {
+  width: 6px;
+  height: 6px;
+  background: var(--orange);
+  border-radius: 50%;
+}
+
+/* ============================================
+   REPLACE SECTION
+   ============================================ */
+.replace-section { background: var(--bg-2); }
+.replace-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: start;
+  margin-top: 60px;
+}
+.replace-col h3 {
+  font-size: 32px;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.replace-col.old h3 { color: #777; }
+.replace-col.new h3 { color: var(--orange); }
+.replace-list { list-style: none; }
+.replace-list li {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 16px;
+  color: var(--text-muted);
+}
+.replace-col.old li { text-decoration: line-through; opacity: 0.5; }
+.replace-col.new li { color: var(--text); }
+.replace-list .icon {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.replace-col.old .icon { background: #2a2a2a; color: #888; }
+.replace-col.new .icon { background: var(--orange); color: #000; font-weight: 900; }
+
+@media (max-width: 880px) {
+  .replace-grid { grid-template-columns: 1fr; gap: 40px; }
+}
+
+/* ============================================
+   USE CASES
+   ============================================ */
+.use-cases {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 40px;
+}
+.use-case {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  position: relative;
+  transition: all 0.2s;
+}
+.use-case:hover {
+  border-color: var(--orange);
+  transform: translateY(-2px);
+}
+.use-case-num {
+  font-family: 'JetBrains Mono';
+  font-size: 11px;
+  color: var(--orange);
+  margin-bottom: 12px;
+  letter-spacing: 0.1em;
+}
+.use-case-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 0;
+  line-height: 1.3;
+}
+
+/* ============================================
+   SCREENS
+   ============================================ */
+.screens-section { background: var(--bg); position: relative; }
+.screens-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 20px;
+  margin-top: 40px;
+}
+.screen-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.25s;
+  display: flex;
+  flex-direction: column;
+}
+.screen-card:hover {
+  border-color: var(--orange);
+  box-shadow: 0 12px 40px rgba(255,107,0,0.1);
+  transform: translateY(-4px);
+}
+.screen-card .head {
+  padding: 18px 20px;
+  background: linear-gradient(135deg, #1f1f1f, #161616);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.screen-num {
+  width: 38px;
+  height: 38px;
+  background: var(--orange);
+  color: #000;
+  display: grid;
+  place-items: center;
+  font-family: 'Bebas Neue';
+  font-size: 18px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transform: skewX(-8deg);
+}
+.screen-num span { transform: skewX(8deg); display: block; }
+.screen-name {
+  font-family: 'Bebas Neue';
+  font-size: 22px;
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+.screen-card .body {
+  padding: 20px;
+  flex: 1;
+}
+.screen-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+.screen-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: 'JetBrains Mono';
+  font-size: 12px;
+}
+.screen-block {
+  padding: 8px 10px;
+  background: var(--bg);
+  border-left: 2px solid var(--orange);
+  border-radius: 0 4px 4px 0;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+.screen-block .tag {
+  color: var(--orange);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+.screen-block .desc { color: var(--text-muted); font-family: 'Inter'; }
+
+/* ============================================
+   BUTTONS PANELS
+   ============================================ */
+.buttons-section { background: var(--bg-2); }
+.buttons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 18px;
+  margin-top: 40px;
+}
+.btn-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.btn-panel-head {
+  padding: 14px 18px;
+  background: linear-gradient(90deg, var(--orange), #cc5500);
+  color: #000;
+  font-family: 'Bebas Neue';
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.btn-panel-head .count {
+  font-family: 'JetBrains Mono';
+  font-size: 11px;
+  background: rgba(0,0,0,0.25);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.btn-panel-list { padding: 6px 0; }
+.btn-row {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+  padding: 10px 18px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  align-items: baseline;
+}
+.btn-row:last-child { border-bottom: none; }
+.btn-row .name {
+  font-family: 'JetBrains Mono';
+  color: var(--orange);
+  font-weight: 600;
+  font-size: 12px;
+}
+.btn-row .desc { color: var(--text-muted); }
+
+@media (max-width: 700px) {
+  .btn-row { grid-template-columns: 1fr; gap: 4px; }
+}
+
+/* ============================================
+   FLOW
+   ============================================ */
+.flow-section { background: var(--bg); position: relative; }
+.flow-section .hex-bg { opacity: 0.3; }
+.flow-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+.flow-tab {
+  padding: 10px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: 'JetBrains Mono';
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+.flow-tab.active {
+  background: var(--orange);
+  color: #000;
+  border-color: var(--orange);
+}
+.flow-tab:hover:not(.active) { border-color: var(--orange); color: var(--text); }
+.flow-panel { display: none; }
+.flow-panel.active { display: block; animation: fadeIn 0.3s; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.flow-diagram {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  position: relative;
+}
+.flow-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  position: relative;
+  padding-bottom: 28px;
+}
+.flow-step:last-child { padding-bottom: 0; }
+.flow-step-num {
+  width: 44px;
+  height: 44px;
+  background: var(--bg);
+  border: 2px solid var(--orange);
+  color: var(--orange);
+  display: grid;
+  place-items: center;
+  font-family: 'Bebas Neue';
+  font-size: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+.flow-step::before {
+  content: '';
+  position: absolute;
+  left: 21px;
+  top: 44px;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, var(--orange), transparent);
+  opacity: 0.4;
+}
+.flow-step:last-child::before { display: none; }
+.flow-step-content { flex: 1; padding-top: 6px; }
+.flow-step-title {
+  font-family: 'Bebas Neue';
+  font-size: 22px;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.flow-step-desc { font-size: 14px; color: var(--text-muted); }
+.flow-step-action {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 10px;
+  background: rgba(255,107,0,0.15);
+  border: 1px solid rgba(255,107,0,0.3);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono';
+  font-size: 11px;
+  color: var(--orange);
+}
+
+/* ============================================
+   SYSTEMS
+   ============================================ */
+.systems-section { background: var(--bg-2); }
+.systems-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  margin-top: 40px;
+}
+.system-card {
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+.system-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--orange);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s;
+}
+.system-card:hover::before { transform: scaleX(1); }
+.system-card:hover { border-color: var(--border-strong); }
+.system-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  background: rgba(255,107,0,0.1);
+  border: 1px solid rgba(255,107,0,0.3);
+  border-radius: 8px;
+  margin-bottom: 18px;
+  color: var(--orange);
+}
+.system-icon svg { width: 24px; height: 24px; stroke-width: 2; }
+.system-title {
+  font-family: 'Bebas Neue';
+  font-size: 24px;
+  letter-spacing: 0.03em;
+  margin-bottom: 10px;
+}
+.system-text { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+.system-formula {
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-left: 3px solid var(--orange);
+  font-family: 'JetBrains Mono';
+  font-size: 12px;
+  color: var(--text);
+  border-radius: 0 4px 4px 0;
+}
+
+.states-timeline {
+  margin-top: 40px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  overflow-x: auto;
+}
+.states-track {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(140px, 1fr));
+  gap: 12px;
+  position: relative;
+}
+.state-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--orange);
+  border-radius: 6px;
+  padding: 16px 12px;
+  text-align: center;
+}
+.state-num { font-family: 'JetBrains Mono'; font-size: 11px; color: var(--orange); margin-bottom: 6px; }
+.state-name {
+  font-family: 'Bebas Neue';
+  font-size: 16px;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+.state-desc { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+
+/* ============================================
+   BACKUP
+   ============================================ */
+.backup-section { background: var(--bg); }
+.backup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-top: 40px;
+}
+.backup-card {
+  padding: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+.backup-layer {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-family: 'Bebas Neue';
+  font-size: 56px;
+  color: var(--bg);
+  -webkit-text-stroke: 1px var(--border-strong);
+  line-height: 1;
+}
+.backup-card h3 { font-size: 26px; margin-bottom: 12px; color: var(--orange); }
+.backup-card p { font-size: 14px; color: var(--text-muted); margin-bottom: 12px; }
+.backup-card ul { list-style: none; }
+.backup-card li {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding-left: 18px;
+  position: relative;
+  padding-bottom: 6px;
+}
+.backup-card li::before {
+  content: '▸';
+  color: var(--orange);
+  position: absolute;
+  left: 0;
+}
+
+@media (max-width: 700px) { .backup-grid { grid-template-columns: 1fr; } }
+
+/* ============================================
+   BENEFITS
+   ============================================ */
+.benefits-section { background: var(--bg-2); }
+.benefits-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-top: 40px;
+}
+.benefit {
+  padding: 32px 28px;
+  background: var(--surface);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  position: relative;
+  transition: all 0.25s;
+}
+.benefit:hover {
+  border-color: var(--orange);
+  transform: translateY(-4px);
+}
+.benefit-icon {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, var(--orange), #cc5500);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 20px;
+  color: #000;
+}
+.benefit-icon svg { width: 28px; height: 28px; }
+.benefit-title {
+  font-family: 'Bebas Neue';
+  font-size: 24px;
+  letter-spacing: 0.03em;
+  margin-bottom: 12px;
+}
+.benefit-desc { color: var(--text-muted); font-size: 14px; }
+.benefit-list { list-style: none; margin-top: 14px; }
+.benefit-list li {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 6px 0;
+  display: flex;
+  gap: 8px;
+}
+.benefit-list li::before { content: '▸'; color: var(--orange); }
+
+/* ============================================
+   DATA
+   ============================================ */
+.data-section { background: var(--bg); }
+.data-section .container { display: grid; grid-template-columns: 1.2fr 1fr; gap: 60px; align-items: start; }
+.data-collections {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  font-family: 'JetBrains Mono';
+}
+.data-collection {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 20px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  align-items: baseline;
+}
+.data-collection:last-child { border-bottom: none; }
+.data-collection .name { color: var(--orange); font-weight: 700; }
+.data-collection .fields { color: var(--text-muted); }
+
+@media (max-width: 880px) {
+  .data-section .container { grid-template-columns: 1fr; gap: 40px; }
+  .data-collection { grid-template-columns: 1fr; gap: 4px; }
+}
+
+/* ============================================
+   TECH
+   ============================================ */
+.tech-section { background: var(--bg-2); }
+.tech-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 40px;
+}
+.tech-card {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: center;
+  transition: all 0.2s;
+}
+.tech-card:hover { border-color: var(--orange); background: var(--surface-2); }
+.tech-card .name {
+  font-family: 'Bebas Neue';
+  font-size: 22px;
+  color: var(--orange);
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
+}
+.tech-card .role { font-size: 12px; color: var(--text-muted); }
+
+.endpoints {
+  margin-top: 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  font-family: 'JetBrains Mono';
+}
+.endpoints-title {
+  font-family: 'Inter';
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--orange);
+  margin-bottom: 14px;
+}
+.endpoint-row {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 16px;
+  padding: 8px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+.endpoint-row:last-child { border-bottom: none; }
+.endpoint-row .url { color: var(--green); font-weight: 600; }
+.endpoint-row .desc { color: var(--text-muted); }
+
+/* ============================================
+   PLANS
+   ============================================ */
+.plans-section { background: var(--bg); position: relative; overflow: hidden; }
+.plans-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(255,107,0,0.08), transparent 60%);
+}
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 50px;
+  position: relative;
+}
+.plan {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 36px 30px;
+  position: relative;
+  transition: all 0.3s;
+}
+.plan:hover { transform: translateY(-6px); }
+.plan.featured {
+  border: 2px solid var(--orange);
+  background: linear-gradient(180deg, #1f1f1f, #181818);
+  box-shadow: 0 20px 60px rgba(255,107,0,0.2);
+  transform: scale(1.04);
+}
+.plan-badge {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--orange);
+  color: #000;
+  padding: 6px 16px;
+  border-radius: 100px;
+  font-family: 'JetBrains Mono';
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.plan-name {
+  font-family: 'Bebas Neue';
+  font-size: 32px;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+.plan-tagline { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+.plan-price {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.plan-price .currency { font-size: 18px; color: var(--text-muted); }
+.plan-price .amount {
+  font-family: 'Bebas Neue';
+  font-size: 56px;
+  color: var(--orange);
+  line-height: 1;
+}
+.plan-price .period { font-size: 13px; color: var(--text-muted); }
+.plan-price.free .amount { color: var(--green); }
+.plan-features { list-style: none; margin-bottom: 32px; min-height: 220px; }
+.plan-features li {
+  font-size: 14px;
+  padding: 8px 0;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  color: var(--text-muted);
+}
+.plan-features li::before { content: '✓'; color: var(--orange); font-weight: 900; }
+.plan .btn { width: 100%; }
+
+@media (max-width: 880px) {
+  .plans-grid { grid-template-columns: 1fr; }
+  .plan.featured { transform: none; }
+  .plan-features { min-height: auto; }
+}
+
+.activation-flow {
+  margin-top: 60px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+}
+.activation-flow h3 { font-size: 24px; margin-bottom: 24px; color: var(--orange); }
+.activation-steps {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.activation-step {
+  flex: 1;
+  min-width: 140px;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-align: center;
+  font-family: 'JetBrains Mono';
+  font-size: 12px;
+}
+.activation-step .step-n {
+  display: block;
+  font-family: 'Bebas Neue';
+  font-size: 22px;
+  color: var(--orange);
+  margin-bottom: 4px;
+}
+.activation-arrow { color: var(--orange); font-size: 24px; flex-shrink: 0; }
+
+@media (max-width: 700px) {
+  .activation-arrow { display: none; }
+  .activation-step { width: 100%; }
+}
+
+/* ============================================
+   CTA FINAL
+   ============================================ */
+.cta-final {
+  background:
+    radial-gradient(ellipse at center, rgba(255,107,0,0.2), transparent 70%),
+    var(--bg-2);
+  padding: 120px 0;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+.cta-final::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--orange) 0,
+    var(--orange) 14px,
+    #000 14px,
+    #000 28px
+  );
+}
+.cta-final h2 {
+  font-size: clamp(40px, 7vw, 84px);
+  margin-bottom: 20px;
+  line-height: 0.95;
+}
+.cta-final h2 .accent { color: var(--orange); }
+.cta-final p {
+  font-size: 18px;
+  color: var(--text-muted);
+  margin-bottom: 40px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.cta-final .hero-actions { justify-content: center; }
+
+/* ============================================
+   FOOTER
+   ============================================ */
+.footer {
+  background: var(--bg);
+  padding: 60px 0 30px;
+  border-top: 1px solid var(--border);
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 40px;
+  margin-bottom: 40px;
+}
+.footer-brand p {
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--text-muted);
+  max-width: 320px;
+}
+.footer-col h4 {
+  font-family: 'Bebas Neue';
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  margin-bottom: 16px;
+  color: var(--orange);
+}
+.footer-col ul { list-style: none; }
+.footer-col li { padding: 6px 0; }
+.footer-col a {
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+.footer-col a:hover { color: var(--orange); }
+.footer-bottom {
+  padding-top: 30px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-dim);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.footer-bottom .domain {
+  font-family: 'JetBrains Mono';
+  color: var(--orange);
+}
+
+@media (max-width: 700px) {
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="logo">
+      <div class="logo-mark"><span>M</span></div>
+      <span>MOTO<span class="logo-text-orange">GESTIÓN</span></span>
+    </a>
+    <div class="nav-links" id="nav-links">
+      <a href="#pantallas">Pantallas</a>
+      <a href="#funciones">Funciones</a>
+      <a href="#flujo">Flujo</a>
+      <a href="#tecnologia">Tecnología</a>
+      <a href="#planes">Planes</a>
+      <a href="https://aplicacion.motogestion.ar" class="nav-cta">Probar gratis</a>
+    </div>
+    <button class="menu-toggle" id="menu-toggle" aria-label="Menú">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="container">
+    <div class="hero-inner">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="dot"></span>
+          <span>SISTEMA OPERATIVO PARA TU TALLER</span>
+        </div>
+        <h1 class="hero-title">
+          Tu taller<br>
+          en el bolsillo.<br>
+          <span class="accent">Sin papel.</span>
+        </h1>
+        <p class="hero-sub">
+          App PWA pensada para mecánicos de motos: ingresá una orden en 30 segundos, mandá el presupuesto por WhatsApp y cobrás con comprobante PDF — todo desde el celular, mientras laburás.
+        </p>
+        <div class="hero-actions">
+          <a href="https://aplicacion.motogestion.ar" class="btn btn-primary">Probar gratis →</a>
+          <a href="#pantallas" class="btn btn-secondary">Ver cómo funciona</a>
+        </div>
+        <div class="hero-stats">
+          <div>
+            <div class="hero-stat-num">13</div>
+            <div class="hero-stat-label">Pantallas operativas</div>
+          </div>
+          <div>
+            <div class="hero-stat-num">30s</div>
+            <div class="hero-stat-label">Para crear una OT</div>
+          </div>
+          <div>
+            <div class="hero-stat-num">100%</div>
+            <div class="hero-stat-label">Desde el celular</div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="phone-mock">
+          <div class="phone-screen">
+            <div class="phone-status">
+              <span>9:41</span>
+              <span>● ● ●</span>
+            </div>
+            <div class="phone-header">
+              <div class="h-title">TALLER BLAZE</div>
+              <div style="font-size:10px;color:#666;">ON</div>
+            </div>
+            <div class="phone-counter-row">
+              <div class="phone-counter">
+                <div class="num">7</div>
+                <div class="lbl">Activas</div>
+              </div>
+              <div class="phone-counter alert">
+                <div class="num">2</div>
+                <div class="lbl">Alerta</div>
+              </div>
+              <div class="phone-counter danger">
+                <div class="num">1</div>
+                <div class="lbl">Detenida</div>
+              </div>
+            </div>
+            <div class="phone-cta">+ NUEVO INGRESO</div>
+            <div class="phone-list">
+              <div class="phone-item">
+                <div>
+                  <div class="pat">AB123CD</div>
+                  <div class="cli">Carlos M. · YBR125</div>
+                </div>
+                <div class="right">
+                  <div class="price">$24.500</div>
+                  <div class="time">02:14:33</div>
+                </div>
+              </div>
+              <div class="phone-item alert">
+                <div>
+                  <div class="pat">XR456ZT</div>
+                  <div class="cli">Lucía R. · CB190R</div>
+                </div>
+                <div class="right">
+                  <div class="price">$48.200</div>
+                  <div class="time">04:08:12</div>
+                </div>
+              </div>
+              <div class="phone-item stop">
+                <div>
+                  <div class="pat">JK789LM</div>
+                  <div class="cli">Pedro G. · Rouser</div>
+                </div>
+                <div class="right">
+                  <div class="price">$67.800</div>
+                  <div class="time">06:42:50</div>
+                </div>
+              </div>
+              <div class="phone-item">
+                <div>
+                  <div class="pat">FF321PG</div>
+                  <div class="cli">Jorge T. · Smash</div>
+                </div>
+                <div class="right">
+                  <div class="price">$12.300</div>
+                  <div class="time">00:48:09</div>
+                </div>
+              </div>
+            </div>
+            <div class="phone-nav">
+              <div class="phone-nav-item active"><span class="ico">⌂</span>Taller</div>
+              <div class="phone-nav-item"><span class="ico">⚒</span>Trabajos</div>
+              <div class="phone-nav-item"><span class="ico">⊙</span>Histor.</div>
+              <div class="phone-nav-item"><span class="ico">$</span>Precios</div>
+              <div class="phone-nav-item"><span class="ico">◉</span>Cuenta</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-track">
+    <div class="ticker-item"><span class="dot"></span>NUMERACIÓN AUTOMÁTICA OT</div>
+    <div class="ticker-item"><span class="dot"></span>CRONÓMETRO DE TRABAJO</div>
+    <div class="ticker-item"><span class="dot"></span>PRESUPUESTO POR WHATSAPP</div>
+    <div class="ticker-item"><span class="dot"></span>PDF DE COMPROBANTE</div>
+    <div class="ticker-item"><span class="dot"></span>BACKUP EN LA NUBE</div>
+    <div class="ticker-item"><span class="dot"></span>APRENDIZAJE DE PRECIOS</div>
+    <div class="ticker-item"><span class="dot"></span>CONTROL DE RENTABILIDAD</div>
+    <div class="ticker-item"><span class="dot"></span>HISTORIAL POR PATENTE</div>
+    <div class="ticker-item"><span class="dot"></span>NUMERACIÓN AUTOMÁTICA OT</div>
+    <div class="ticker-item"><span class="dot"></span>CRONÓMETRO DE TRABAJO</div>
+    <div class="ticker-item"><span class="dot"></span>PRESUPUESTO POR WHATSAPP</div>
+    <div class="ticker-item"><span class="dot"></span>PDF DE COMPROBANTE</div>
+    <div class="ticker-item"><span class="dot"></span>BACKUP EN LA NUBE</div>
+    <div class="ticker-item"><span class="dot"></span>APRENDIZAJE DE PRECIOS</div>
+    <div class="ticker-item"><span class="dot"></span>CONTROL DE RENTABILIDAD</div>
+    <div class="ticker-item"><span class="dot"></span>HISTORIAL POR PATENTE</div>
+  </div>
+</div>
+
+<!-- 01 — APLICACIONES Y CASOS DE USO -->
+<section class="section replace-section">
+  <div class="container">
+    <div class="eyebrow">01 / Aplicaciones y casos de uso</div>
+    <h2 class="section-title">Adiós libreta.<br>Adiós Excel.</h2>
+    <p class="section-subtitle">
+      MotoGestión está pensada para mecánicos de motos independientes y talleres pequeños. Funciona desde el celular, sin necesidad de PC ni planillas. Reemplaza todo lo que hoy hacés a mano.
+    </p>
+
+    <div class="replace-grid">
+      <div class="replace-col old">
+        <h3>Lo que reemplaza</h3>
+        <ul class="replace-list">
+          <li><span class="icon">✕</span> Libreta de trabajos en papel</li>
+          <li><span class="icon">✕</span> Planilla de clientes</li>
+          <li><span class="icon">✕</span> Calculadora de presupuestos</li>
+          <li><span class="icon">✕</span> Registro manual de pagos</li>
+          <li><span class="icon">✕</span> Comprobantes escritos a mano</li>
+        </ul>
+      </div>
+      <div class="replace-col new">
+        <h3>Lo que te da</h3>
+        <ul class="replace-list">
+          <li><span class="icon">✓</span> Órdenes digitales numeradas (OT-000001)</li>
+          <li><span class="icon">✓</span> Base de clientes y motos automática</li>
+          <li><span class="icon">✓</span> Presupuestos calculados con margen</li>
+          <li><span class="icon">✓</span> Caja del mes en tiempo real</li>
+          <li><span class="icon">✓</span> Comprobantes PDF firmados y bloqueados</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="margin-top:80px;">
+      <h3 style="font-size:32px;margin-bottom:8px;">Casos de uso principales</h3>
+      <p style="color:var(--text-muted);font-size:14px;">8 cosas que vas a hacer todos los días sin pensarlo</p>
+      <div class="use-cases">
+        <div class="use-case"><div class="use-case-num">USO / 01</div><div class="use-case-title">Ingresar una moto al taller y generar la OT</div></div>
+        <div class="use-case"><div class="use-case-num">USO / 02</div><div class="use-case-title">Calcular cuánto cobrar por mano de obra con margen</div></div>
+        <div class="use-case"><div class="use-case-num">USO / 03</div><div class="use-case-title">Enviar presupuesto al cliente por WhatsApp</div></div>
+        <div class="use-case"><div class="use-case-num">USO / 04</div><div class="use-case-title">Registrar cobros parciales o totales</div></div>
+        <div class="use-case"><div class="use-case-num">USO / 05</div><div class="use-case-title">Generar y enviar PDF de comprobante</div></div>
+        <div class="use-case"><div class="use-case-num">USO / 06</div><div class="use-case-title">Consultar el historial completo de una moto por patente</div></div>
+        <div class="use-case"><div class="use-case-num">USO / 07</div><div class="use-case-title">Ver cuánto ganó el taller en el mes</div></div>
+        <div class="use-case"><div class="use-case-num">USO / 08</div><div class="use-case-title">Hacer backup de todos los datos</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 — 13 PANTALLAS -->
+<section class="section screens-section" id="pantallas">
+  <div class="hex-bg"></div>
+  <div class="container" style="position:relative;z-index:1;">
+    <div class="eyebrow">02 / Pantallas de la aplicación</div>
+    <h2 class="section-title">13 pantallas.<br>Una sola lógica.</h2>
+    <p class="section-subtitle">
+      5 pantallas principales (navegación inferior fija) y 8 pantallas de flujo. Cada una optimizada para hacer una cosa rápido, sin distracciones, con dedos grasosos.
+    </p>
+
+    <div class="screens-grid">
+
+      <div class="screen-card">
+        <div class="head"><div class="screen-num"><span>1</span></div><div class="screen-name">HOME / TALLER</div></div>
+        <div class="body">
+          <p class="screen-desc">La portada. Ves todas las órdenes activas del taller, contadores por estado y botón gigante para abrir una nueva OT.</p>
+          <div class="screen-blocks">
+            <div class="screen-block"><span class="tag">[HEADER]</span><span class="desc">Logo + usuario + Salir + 3 contadores estadísticos</span></div>
+            <div class="screen-block"><span class="tag">[INGRESO]</span><span class="desc">Botón grande naranja "Nuevo Ingreso"</span></div>
+            <div class="screen-block"><span class="tag">[ACTIVAS]</span><span class="desc">Lista de órdenes con estado cromático del cronómetro</span></div>
+            <div class="screen-block"><span class="tag">[GRID NAV]</span><span class="desc">Atajos rápidos a Trabajos e Historial</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen-card">
+        <div class="head"><div class="screen-num"><span>2</span></div><div class="screen-name">TRABAJOS ACTIVOS</div></div>
+        <div class="body">
+          <p class="screen-desc">Lista pura de todas las órdenes que NO están entregadas. Tarjeta por orden con patente, cliente, estado y total.</p>
+          <div class="screen-blocks">
+            <div class="screen-block"><span class="tag">[HEADER]</span><span class="desc">Título + botón volver</span></div>
+            <div class="screen-block"><span class="tag">[LISTA]</span><span class="desc">Tarjetas clicables por orden — abren el detalle</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen-card">
+        <div class="head"><div class="screen-num"><span>3</span></div><div class="screen-name">HISTORIAL</div></div>
+        <div class="body">
+          <p class="screen-desc">Buscador maestro. Encontrá cualquier moto por patente, cliente o número de comprobante.</p>
+          <div class="screen-blocks">
+            <div class="screen-block"><span class="tag">[HEADER]</span><span class="desc">Título + botón volver</span></div>
+            <div class="screen-block"><span class="tag">[BUSCADOR]</span><span class="desc">Campo con ícono de lupa — match instantáneo</span></div>
+            <div class="screen-block"><span class="tag">[RESULTADOS]</span><span class="desc">Tarjetas patente + cliente + marca</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen-card">
+        <div class="head"><div class="screen-num"><span>4</span></div><div class="screen-name">PRECIOS</div></div>
+        <div class="body">
+          <p class="screen-desc">Tabla de precios sugeridos basada en tu propio historial. La app aprende qué tareas tardan cuánto y cuánto cobraste antes.</p>
+          <div class="screen-blocks">
+            <div class="screen-block"><span class="tag">[TABLA]</span><span class="desc">Por tipo de tarea + cilindrada</span></div>
+            <div class="screen-block"><span class="tag">[CONFIANZA]</span><span class="desc">Indicador bajo/medio/alto según cantidad de datos</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen-card">
+        <div class="head"><div class="screen-num"><span>5</span></div><div class="screen-name">CUENTA / CONFIG</div></div>
+        <div class="body">
+          <p class="screen-desc">4 pestañas internas: Resumen, Taller, Datos, Sistema. Acá vive todo lo administrativo del negocio.</p>
+          <div class="screen-blocks">
+            <div class="screen-block"><span class="tag">[RESUMEN]</span><span class="desc">Caja del mes, órdenes, total cobrado, ganancia estimada</span></div>
+            <div class="screen-block"><span class="tag">[TALLER]</span><span class="desc">Nombre, costo hora interno, margen default, multiplicadores</span></div>
+            <div class="screen-block"><span class="tag">[DATOS]</span><span class="desc">Exportar Excel/CSV, backup .json, restaurar</span></div>
+            <div class="screen-block"><span class="tag">[SISTEMA]</span><span class="desc">Versión, recargar, datos demo, borrar todo, sign out</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen-card">
+        <div class="head"><div class="screen-num"><span>6</span></div><div class="screen-name">NUEVO INGRESO</div></div>
+        <div class="body">
+          <p class="screen-desc">Formulario inteligente: si la patente ya existe, no te pide marca/modelo. Si el cliente ya existe, lo reutiliza.</p>
+          <div class="screen-blocks">
+            <div class="screen-block"><span class="tag">[CAMPOS]</span><span class="desc">Patente · Km · Marca/Modelo · Cliente · Tel · Falla</span></div>
+            <div class="screen-block"><span class="tag">[INTELIGENTE]</span><span class="desc">Detecta moto y cliente existentes</span></div>
+            <div class="screen-block"><span class="tag">[TITULARIDAD]</span><span class="desc">Si cambió de dueño, registra nueva titularidad</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen-card">
+        <div class="head"><div class="screen-num"><span>7</span></div><div class="screen-name">DETALLE DE ORDEN</div></div>
+        <div class="body">
+          <p class="screen-desc">La pantalla más completa. Todo sobre una OT en un solo scroll: financiero, estado, presupuesto, cronómetro, ítems y acciones.</p>
+          <div class="screen-blocks">
+            <div class="screen-block"><span class="tag">[HEADER]</span><span class="desc">Patente, cliente, estado, ganancia en vivo</span></div>
+            <div class="screen-block"><span class="tag">[FINANCIERO]</span><span class="desc">Ganancia, total cobrado, saldo, rentabilidad %</span></div>
+            <div class="screen-block"><span class="tag">[ESTADO]</span><span class="desc">Botones de avance de etapa</span></div>
+            <div class="screen-block"><span class="tag">[PRESUPUESTO]</span><span class="desc">Rango min-max + envío WA + confirmación</span></div>
+            <div class="screen-block"><span class="tag">[CRONÓMETRO]</span><span class="desc">Timer en vivo, semáforo, alerta de 80%</span></div>
+            <div class="screen-block"><span class="tag">[ITEMS]</span><span class="desc">Tareas, repuestos, insumos, fletes — editables</span></div>
+            <div class="screen-block"><span class="tag">[ACCIONES]</span><span class="desc">Editar Tareas + Cobrar + Generar PDF</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen-card">
+        <div class="head"><div class="screen-num"><span>8</span></div><div class="screen-name">GESTIONAR TAREAS</div></div>
+        <div class="body">
+          <p class="screen-desc">Donde se arman los servicios. Catálogo, sugerencia de tiempo real, repuestos, insumos, presets de margen y precio hero.</p>
+          <div class="screen-blocks">
+            <div class="screen-block"><span class="tag">[SELECTOR]</span><span class="desc">Dropdown del catálogo de servicios</span></div>
+            <div class="screen-block"><span class="tag">[SUGERENCIA]</span><span class="desc">Tiempo promedio real ± variabilidad + confianza</span></div>
+            <div class="screen-block"><span class="tag">[MO]</span><span class="desc">Horas × Costo hora × Factor dificultad</span></div>
+            <div class="screen-block"><span class="tag">[REPUESTOS]</span><span class="desc">Lista editable con botón "+"</span></div>
+            <div class="screen-block"><span class="tag">[INSUMOS]</span><span class="desc">Insumos/terceros sin markup</span></div>
+            <div class="screen-block"><span class="tag">[MARGEN]</span><span class="desc">Presets 10/20/30/50/80% + slider custom</span></div>
+            <div class="screen-block"><span class="tag">[HERO]</span><span class="desc">Número grande con precio total al cliente</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen-card">
+        <div class="head"><div class="screen-num"><span>9</span></div><div class="screen-name">LOGÍSTICA</div></div>
+        <div class="body">
+          <p class="screen-desc">Cargá fletes y viajes de retiro/entrega. El costo se suma al total y se registra como egreso en caja.</p>
+          <div class="screen-blocks">
+            <div class="screen-block"><span class="tag">[MOTIVO]</span><span class="desc">"Retiro/Entrega" por defecto, editable</span></div>
+            <div class="screen-block"><span class="tag">[COSTO]</span><span class="desc">Monto del viaje en pesos</span></div>
+            <div class="screen-block"><span class="tag">[CARGAR]</span><span class="desc">Botón guarda y vuelve al detalle</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen-card">
+        <div class="head"><div class="screen-num"><span>10</span></div><div class="screen-name">COBROS / PAGOS</div></div>
+        <div class="body">
+          <p class="screen-desc">Registrá pagos parciales o totales. Cada pago actualiza el saldo en tiempo real y queda historial detallado.</p>
+          <div class="screen-blocks">
+            <div class="screen-block"><span class="tag">[SALDO]</span><span class="desc">Número grande con lo que falta cobrar</span></div>
+            <div class="screen-block"><span class="tag">[TOTAL]</span><span class="desc">Botón "Cliente paga el total" — pre-carga saldo</span></div>
+            <div class="screen-block"><span class="tag">[MÉTODO]</span><span class="desc">Efectivo / Transferencia / Mercado Pago</span></div>
+            <div class="screen-block"><span class="tag">[COMPROBANTE]</span><span class="desc">Campo para nro de referencia</span></div>
+            <div class="screen-block"><span class="tag">[HISTORIAL]</span><span class="desc">Pagos anteriores con método, fecha, hora</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen-card">
+        <div class="head"><div class="screen-num"><span>11</span></div><div class="screen-name">PRE-PDF</div></div>
+        <div class="body">
+          <p class="screen-desc">Antes de generar el comprobante, elegís la plantilla de garantía que aplica al trabajo.</p>
+          <div class="screen-blocks">
+            <div class="screen-block"><span class="tag">[ESTÁNDAR]</span><span class="desc">3 meses o 5.000 km</span></div>
+            <div class="screen-block"><span class="tag">[MOTOR]</span><span class="desc">30 días o 300 km</span></div>
+            <div class="screen-block"><span class="tag">[ELÉCTRICA]</span><span class="desc">15 días</span></div>
+            <div class="screen-block"><span class="tag">[ACEITE]</span><span class="desc">Cambio de aceite</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen-card">
+        <div class="head"><div class="screen-num"><span>12</span></div><div class="screen-name">PDF / COMPROBANTE</div></div>
+        <div class="body">
+          <p class="screen-desc">Comprobante completo con datos del taller, número OT, cliente, moto, tareas, repuestos, total, pagos y garantía. Bloquea la orden.</p>
+          <div class="screen-blocks">
+            <div class="screen-block"><span class="tag">[DATOS]</span><span class="desc">Taller (nombre, tel, mecánico) + OT-000001</span></div>
+            <div class="screen-block"><span class="tag">[CLIENTE]</span><span class="desc">Datos del cliente y moto (patente, marca, km)</span></div>
+            <div class="screen-block"><span class="tag">[DETALLE]</span><span class="desc">Tareas, repuestos, total, pagos, garantía</span></div>
+            <div class="screen-block"><span class="tag">[BLOQUEO]</span><span class="desc">No se puede editar montos ni tareas después</span></div>
+            <div class="screen-block"><span class="tag">[COMPARTIR]</span><span class="desc">WhatsApp / imprimir / guardar</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen-card">
+        <div class="head"><div class="screen-num"><span>13</span></div><div class="screen-name">PERFIL DE MOTO</div></div>
+        <div class="body">
+          <p class="screen-desc">Ficha de la moto: patente, marca, modelo, km, cliente actual y TODO el historial de servicios expandible.</p>
+          <div class="screen-blocks">
+            <div class="screen-block"><span class="tag">[FICHA]</span><span class="desc">Patente, marca, modelo, km, cliente</span></div>
+            <div class="screen-block"><span class="tag">[HISTORIAL]</span><span class="desc">Todos los servicios — expandibles, con tareas y obs.</span></div>
+            <div class="screen-block"><span class="tag">[+ AZUL]</span><span class="desc">Inicia nuevo ingreso con datos pre-cargados</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- 03 — TODOS LOS BOTONES -->
+<section class="section buttons-section">
+  <div class="container">
+    <div class="eyebrow">03 / Todos los botones del sistema</div>
+    <h2 class="section-title">Cada botón<br>tiene una función exacta.</h2>
+    <p class="section-subtitle">
+      Sin botones de adorno. Sin menúes que esconden cosas. Acá está el inventario completo de qué hace cada botón en cada pantalla.
+    </p>
+
+    <div class="buttons-grid">
+
+      <div class="btn-panel">
+        <div class="btn-panel-head"><span>HOME</span><span class="count">5 botones</span></div>
+        <div class="btn-panel-list">
+          <div class="btn-row"><span class="name">Salir</span><span class="desc">Cierra la sesión del usuario</span></div>
+          <div class="btn-row"><span class="name">Nuevo Ingreso</span><span class="desc">Abre el formulario de nueva orden</span></div>
+          <div class="btn-row"><span class="name">Tarjeta orden</span><span class="desc">Abre el detalle de esa orden</span></div>
+          <div class="btn-row"><span class="name">Trabajos</span><span class="desc">Navega a la lista de órdenes activas</span></div>
+          <div class="btn-row"><span class="name">Historial</span><span class="desc">Navega al buscador de historial</span></div>
+        </div>
+      </div>
+
+      <div class="btn-panel">
+        <div class="btn-panel-head"><span>NUEVO INGRESO</span><span class="count">2 botones</span></div>
+        <div class="btn-panel-list">
+          <div class="btn-row"><span class="name">← Volver</span><span class="desc">Vuelve al home (o historial si prefill)</span></div>
+          <div class="btn-row"><span class="name">Ingresar al Taller</span><span class="desc">Crea cliente + moto + orden y va al detalle</span></div>
+        </div>
+      </div>
+
+      <div class="btn-panel">
+        <div class="btn-panel-head"><span>LISTA DE TRABAJOS</span><span class="count">2 botones</span></div>
+        <div class="btn-panel-list">
+          <div class="btn-row"><span class="name">← Volver</span><span class="desc">Vuelve al home</span></div>
+          <div class="btn-row"><span class="name">Tarjeta orden</span><span class="desc">Abre el detalle de esa orden</span></div>
+        </div>
+      </div>
+
+      <div class="btn-panel">
+        <div class="btn-panel-head"><span>DETALLE DE ORDEN</span><span class="count">17 botones</span></div>
+        <div class="btn-panel-list">
+          <div class="btn-row"><span class="name">← Volver</span><span class="desc">Vuelve a la lista de trabajos</span></div>
+          <div class="btn-row"><span class="name">Pasar a Presupuesto</span><span class="desc">Cambia estado a "presupuesto"</span></div>
+          <div class="btn-row"><span class="name">Esperando Aprobación</span><span class="desc">Cambia estado a "aprobacion"</span></div>
+          <div class="btn-row"><span class="name">Iniciar Reparación</span><span class="desc">Cambia estado a "reparacion"</span></div>
+          <div class="btn-row"><span class="name">Finalizar Trabajo</span><span class="desc">Cambia estado a "finalizada"</span></div>
+          <div class="btn-row"><span class="name">Marcar Entregado</span><span class="desc">Cambia estado a "entregada"</span></div>
+          <div class="btn-row"><span class="name">Enviar presup. WA</span><span class="desc">Abre WhatsApp con mensaje generado</span></div>
+          <div class="btn-row"><span class="name">Cliente confirmó</span><span class="desc">Registra aprobación y avanza</span></div>
+          <div class="btn-row"><span class="name">▶ Iniciar cronómetro</span><span class="desc">Inicia el timer de trabajo</span></div>
+          <div class="btn-row"><span class="name">⏸ Pausar cronómetro</span><span class="desc">Pausa el timer</span></div>
+          <div class="btn-row"><span class="name">⚠ Pedir autorización WA</span><span class="desc">Envía alerta al cliente cuando se acerca al límite</span></div>
+          <div class="btn-row"><span class="name">Generar PDF</span><span class="desc">Va a la pantalla de pre-PDF</span></div>
+          <div class="btn-row"><span class="name">Editar tarea</span><span class="desc">Abre TaskManager con esa tarea</span></div>
+          <div class="btn-row"><span class="name">Eliminar ítem</span><span class="desc">Borra tarea/repuesto/flete/insumo</span></div>
+          <div class="btn-row"><span class="name">+ Logística</span><span class="desc">Abre la pantalla de logística</span></div>
+          <div class="btn-row"><span class="name">Editar Tareas</span><span class="desc">Abre TaskManager vacío</span></div>
+          <div class="btn-row"><span class="name">Cobrar</span><span class="desc">Abre la pantalla de pagos</span></div>
+        </div>
+      </div>
+
+      <div class="btn-panel">
+        <div class="btn-panel-head"><span>GESTIONAR TAREAS</span><span class="count">9 botones</span></div>
+        <div class="btn-panel-list">
+          <div class="btn-row"><span class="name">← Volver</span><span class="desc">Vuelve al detalle sin guardar</span></div>
+          <div class="btn-row"><span class="name">Dropdown catálogo</span><span class="desc">Selecciona servicio del catálogo</span></div>
+          <div class="btn-row"><span class="name">+ Agregar repuesto</span><span class="desc">Agrega fila de repuesto</span></div>
+          <div class="btn-row"><span class="name">x Quitar repuesto</span><span class="desc">Elimina fila de repuesto</span></div>
+          <div class="btn-row"><span class="name">+ Agregar insumo</span><span class="desc">Agrega fila de insumo/tercero</span></div>
+          <div class="btn-row"><span class="name">x Quitar insumo</span><span class="desc">Elimina fila de insumo</span></div>
+          <div class="btn-row"><span class="name">10/20/30/50/80%</span><span class="desc">Presets de margen de ganancia</span></div>
+          <div class="btn-row"><span class="name">Custom</span><span class="desc">Abre campo para ingresar % manual</span></div>
+          <div class="btn-row"><span class="name">Confirmar y agregar</span><span class="desc">Guarda la tarea en la orden</span></div>
+        </div>
+      </div>
+
+      <div class="btn-panel">
+        <div class="btn-panel-head"><span>LOGÍSTICA</span><span class="count">2 botones</span></div>
+        <div class="btn-panel-list">
+          <div class="btn-row"><span class="name">← Volver</span><span class="desc">Vuelve al detalle sin cargar</span></div>
+          <div class="btn-row"><span class="name">Cargar Viaje</span><span class="desc">Guarda el flete y vuelve al detalle</span></div>
+        </div>
+      </div>
+
+      <div class="btn-panel">
+        <div class="btn-panel-head"><span>COBROS</span><span class="count">6 botones</span></div>
+        <div class="btn-panel-list">
+          <div class="btn-row"><span class="name">← Volver</span><span class="desc">Vuelve al detalle</span></div>
+          <div class="btn-row"><span class="name">Cliente paga total</span><span class="desc">Pre-carga el saldo pendiente</span></div>
+          <div class="btn-row"><span class="name">Efectivo</span><span class="desc">Selecciona método de pago</span></div>
+          <div class="btn-row"><span class="name">Transferencia</span><span class="desc">Selecciona método de pago</span></div>
+          <div class="btn-row"><span class="name">Mercado Pago</span><span class="desc">Selecciona método de pago</span></div>
+          <div class="btn-row"><span class="name">Registrar pago</span><span class="desc">Guarda el pago en la orden y caja</span></div>
+        </div>
+      </div>
+
+      <div class="btn-panel">
+        <div class="btn-panel-head"><span>HISTORIAL</span><span class="count">2 botones</span></div>
+        <div class="btn-panel-list">
+          <div class="btn-row"><span class="name">← Volver</span><span class="desc">Vuelve al home</span></div>
+          <div class="btn-row"><span class="name">Tarjeta moto</span><span class="desc">Abre el perfil de la moto</span></div>
+        </div>
+      </div>
+
+      <div class="btn-panel">
+        <div class="btn-panel-head"><span>PERFIL DE MOTO</span><span class="count">3 botones</span></div>
+        <div class="btn-panel-list">
+          <div class="btn-row"><span class="name">← Historial</span><span class="desc">Vuelve al historial</span></div>
+          <div class="btn-row"><span class="name">+ azul</span><span class="desc">Inicia nuevo service con datos pre-cargados</span></div>
+          <div class="btn-row"><span class="name">Tarjeta service</span><span class="desc">Expande/contrae el detalle del trabajo</span></div>
+        </div>
+      </div>
+
+      <div class="btn-panel">
+        <div class="btn-panel-head"><span>CONFIGURACIÓN</span><span class="count">14 botones</span></div>
+        <div class="btn-panel-list">
+          <div class="btn-row"><span class="name">Pestañas (4)</span><span class="desc">Resumen / Taller / Datos / Sistema</span></div>
+          <div class="btn-row"><span class="name">− / + Stepper</span><span class="desc">Ajusta valor numérico</span></div>
+          <div class="btn-row"><span class="name">Slider margen</span><span class="desc">Ajusta % de ganancia</span></div>
+          <div class="btn-row"><span class="name">Guardar cambios</span><span class="desc">Persiste la configuración</span></div>
+          <div class="btn-row"><span class="name">Exportar a Excel</span><span class="desc">Descarga archivo Excel</span></div>
+          <div class="btn-row"><span class="name">CSV Clientes</span><span class="desc">Descarga clientes.csv</span></div>
+          <div class="btn-row"><span class="name">CSV Balance</span><span class="desc">Descarga balance.csv</span></div>
+          <div class="btn-row"><span class="name">CSV Repuestos</span><span class="desc">Descarga repuestos.csv</span></div>
+          <div class="btn-row"><span class="name">Descargar copia</span><span class="desc">Descarga backup.json</span></div>
+          <div class="btn-row"><span class="name">Restaurar archivo</span><span class="desc">Carga backup.json</span></div>
+          <div class="btn-row"><span class="name">Restaurar auto</span><span class="desc">Restaura el último auto-guardado</span></div>
+          <div class="btn-row"><span class="name">Recargar app</span><span class="desc">window.location.reload()</span></div>
+          <div class="btn-row"><span class="name">Cargar datos demo</span><span class="desc">Carga ejemplo de prueba</span></div>
+          <div class="btn-row"><span class="name">Borrar todo</span><span class="desc">Limpia Firestore + LS</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- 04 — FLUJO DE TRABAJO -->
+<section class="section flow-section" id="flujo">
+  <div class="hex-bg"></div>
+  <div class="container" style="position:relative;z-index:1;">
+    <div class="eyebrow">04 / Flujo de trabajo</div>
+    <h2 class="section-title">Cómo se conectan<br>todas las pantallas.</h2>
+    <p class="section-subtitle">
+      Tres flujos cubren el 100% de tu día: una orden nueva, una moto que vuelve y un presupuesto que se desborda. Tocá una pestaña para ver el camino completo.
+    </p>
+
+    <div class="flow-tabs">
+      <button class="flow-tab active" data-flow="1">FLUJO PRINCIPAL — OT NUEVA</button>
+      <button class="flow-tab" data-flow="2">MOTO QUE REGRESA</button>
+      <button class="flow-tab" data-flow="3">ALERTA DE PRESUPUESTO</button>
+    </div>
+
+    <div class="flow-panel active" data-flow="1">
+      <div class="flow-diagram">
+        <div class="flow-step">
+          <div class="flow-step-num">1</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">HOME</div>
+            <div class="flow-step-desc">Abrís la app y ves todas las órdenes activas.</div>
+            <span class="flow-step-action">tocás → [Nuevo Ingreso]</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">2</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">FORMULARIO NUEVO INGRESO</div>
+            <div class="flow-step-desc">Cargás patente, km y falla. Si la moto ya existe, no te pide marca/modelo.</div>
+            <span class="flow-step-action">tocás → [Ingresar al Taller]</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">3</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">DETALLE DE ORDEN</div>
+            <div class="flow-step-desc">Se crea cliente + moto + orden con número OT automático. Cargás tareas, repuestos, fletes.</div>
+            <span class="flow-step-action">→ [Editar Tareas] / [+ Logística] / [Cobrar]</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">4</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">PASAR A PRESUPUESTO</div>
+            <div class="flow-step-desc">La app calcula precio cerrado o rango min-max según dificultad de las tareas.</div>
+            <span class="flow-step-action">→ [Enviar presupuesto WA]</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">5</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">INICIAR REPARACIÓN</div>
+            <div class="flow-step-desc">Cliente confirmó por WhatsApp. Se activa el cronómetro con semáforo Normal/Alerta/Bloqueado.</div>
+            <span class="flow-step-action">→ ▶ Iniciar cronómetro</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">6</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">FINALIZAR + COBRAR</div>
+            <div class="flow-step-desc">Marcás finalizado, abrís Cobros, registrás efectivo / transferencia / Mercado Pago.</div>
+            <span class="flow-step-action">→ [Registrar pago]</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">7</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">PRE-PDF → PDF</div>
+            <div class="flow-step-desc">Elegís garantía, generás comprobante. La orden queda bloqueada (no se puede editar más).</div>
+            <span class="flow-step-action">→ [Generar PDF] → [Compartir WA]</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">8</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">MARCAR ENTREGADO</div>
+            <div class="flow-step-desc">La moto sale del taller. La OT desaparece de "activas" y queda guardada en historial.</div>
+            <span class="flow-step-action">→ [Marcar Entregado]</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-panel" data-flow="2">
+      <div class="flow-diagram">
+        <div class="flow-step">
+          <div class="flow-step-num">1</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">HOME / BARRA NAV</div>
+            <div class="flow-step-desc">Tocás "Historial" en la barra inferior.</div>
+            <span class="flow-step-action">→ [Historial]</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">2</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">BUSCADOR</div>
+            <div class="flow-step-desc">Escribís patente, nombre o número de comprobante. Resultados al instante.</div>
+            <span class="flow-step-action">→ tocás moto encontrada</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">3</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">PERFIL DE MOTO</div>
+            <div class="flow-step-desc">Ves toda la ficha + historial completo de servicios anteriores expandible.</div>
+            <span class="flow-step-action">→ tocás [+ azul]</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">4</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">FORMULARIO PRE-CARGADO</div>
+            <div class="flow-step-desc">Marca, modelo y datos del cliente ya cargados. Sólo escribís Km actuales y la falla.</div>
+            <span class="flow-step-action">→ [Ingresar al Taller]</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">5</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">DETALLE DE ORDEN</div>
+            <div class="flow-step-desc">Continúa el flujo principal normal: tareas → presupuesto → reparación → cobro → PDF.</div>
+            <span class="flow-step-action">→ flujo normal</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-panel" data-flow="3">
+      <div class="flow-diagram">
+        <div class="flow-step">
+          <div class="flow-step-num">1</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">CRONÓMETRO CORRIENDO — NORMAL</div>
+            <div class="flow-step-desc">Reparación en curso. Costo acumulado por debajo del 80% del máximo autorizado.</div>
+            <span class="flow-step-action" style="background:rgba(0,217,107,0.15);border-color:rgba(0,217,107,0.3);color:var(--green);">● Estado: NORMAL (verde)</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">2</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">SUPERA EL 80% — ALERTA</div>
+            <div class="flow-step-desc">El semáforo cambia a amarillo. Aparece botón para pedir autorización al cliente.</div>
+            <span class="flow-step-action" style="background:rgba(255,192,0,0.15);border-color:rgba(255,192,0,0.3);color:var(--yellow);">⚠ Estado: ALERTA (amarillo)</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">3</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">PEDIR AUTORIZACIÓN WA</div>
+            <div class="flow-step-desc">Tocás el botón. WhatsApp se abre con mensaje generado: "Te aviso que estamos al X%, necesitamos extender hasta $Y para terminar".</div>
+            <span class="flow-step-action">→ enviás al cliente</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">4</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">SUPERA EL 100% — BLOQUEADO</div>
+            <div class="flow-step-desc">El cronómetro se detiene. Hay que seleccionar el motivo del bloqueo antes de seguir.</div>
+            <span class="flow-step-action" style="background:rgba(255,51,51,0.15);border-color:rgba(255,51,51,0.3);color:var(--red);">⛔ Estado: BLOQUEADO (rojo)</span>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="flow-step-num">5</div>
+          <div class="flow-step-content">
+            <div class="flow-step-title">PEDIR AUTORIZACIÓN DETALLADA</div>
+            <div class="flow-step-desc">Se genera mensaje WhatsApp con motivo del bloqueo, costo actual y nuevo rango solicitado.</div>
+            <span class="flow-step-action">→ cliente confirma → reanuda cronómetro</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 — FUNCIONES DEL SISTEMA -->
+<section class="section systems-section" id="funciones">
+  <div class="container">
+    <div class="eyebrow">05 / Funciones del sistema</div>
+    <h2 class="section-title">La app trabaja por vos<br>mientras vos arreglás motos.</h2>
+    <p class="section-subtitle">
+      Numeración automática, cronómetros, aprendizaje de tiempos, gestión de titularidad. Lo que la libreta no puede hacer y el Excel no quiere.
+    </p>
+
+    <div class="systems-grid">
+      <div class="system-card">
+        <div class="system-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        </div>
+        <div class="system-title">Numeración automática</div>
+        <div class="system-text">Cada trabajo tiene un número único OT-000001, OT-000002… asignado al crear la orden. Visible en header, historial y PDF.</div>
+        <div class="system-formula">OT-000042</div>
+      </div>
+
+      <div class="system-card">
+        <div class="system-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        </div>
+        <div class="system-title">Cálculo automático</div>
+        <div class="system-text">Costos, precios, márgenes y rentabilidad calculados al instante. Repuestos e insumos pasan al costo sin markup.</div>
+        <div class="system-formula">Horas × Costo hora × Factor = Costo</div>
+      </div>
+
+      <div class="system-card">
+        <div class="system-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div class="system-title">Cronómetro de trabajo</div>
+        <div class="system-text">Inicia/pausa manual. Persiste entre sesiones. Se actualiza cada segundo. Calcula costo acumulado en tiempo real con semáforo automático.</div>
+        <div class="system-formula">Normal / Alerta 80% / Bloqueado 100%</div>
+      </div>
+
+      <div class="system-card">
+        <div class="system-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <div class="system-title">Aprendizaje de precios</div>
+        <div class="system-text">Cada vez que aplicás una tarea, registra horas reales en historial. La próxima vez muestra el promedio + variabilidad + nivel de confianza por tipo de tarea y cilindrada.</div>
+      </div>
+
+      <div class="system-card">
+        <div class="system-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        </div>
+        <div class="system-title">Gestión de clientes y motos</div>
+        <div class="system-text">Si la patente existe, actualiza km. Si el cliente existe (nombre+tel) lo reutiliza. Si la moto cambia de dueño, abre nueva titularidad y guarda la anterior.</div>
+      </div>
+
+      <div class="system-card">
+        <div class="system-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div class="system-title">Caja del taller</div>
+        <div class="system-text">Cada pago = movimiento de caja (ingreso). Cada flete = movimiento de caja (egreso). El balance es la suma — sin hacer cuentas.</div>
+        <div class="system-formula">Balance = Σ ingresos − Σ egresos</div>
+      </div>
+
+      <div class="system-card">
+        <div class="system-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        </div>
+        <div class="system-title">Mensajes WhatsApp generados</div>
+        <div class="system-text">Presupuesto normal, alerta o bloqueo: la app arma el mensaje completo con datos de moto, cliente, tareas y rango de precios. Vos sólo enviás.</div>
+      </div>
+
+      <div class="system-card">
+        <div class="system-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        </div>
+        <div class="system-title">Migración automática</div>
+        <div class="system-text">Si tenías datos en localStorage de versiones anteriores, la app los mueve a Firestore al iniciar sesión. Las colecciones viejas se traducen solas.</div>
+      </div>
+    </div>
+
+    <h3 style="font-size:32px;margin-top:80px;margin-bottom:8px;">Estado de las órdenes — flujo de 8 etapas</h3>
+    <p style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">Cada orden viaja por estos estados de manera lineal, con botones explícitos para avanzar.</p>
+    <div class="states-timeline">
+      <div class="states-track">
+        <div class="state-card"><div class="state-num">01</div><div class="state-name">Diagnóstico</div><div class="state-desc">Recién ingresada, sin presupuesto</div></div>
+        <div class="state-card"><div class="state-num">02</div><div class="state-name">Presupuesto</div><div class="state-desc">Calculado y listo para enviar</div></div>
+        <div class="state-card"><div class="state-num">03</div><div class="state-name">Esperando aprobación</div><div class="state-desc">Enviado al cliente</div></div>
+        <div class="state-card"><div class="state-num">04</div><div class="state-name">En reparación</div><div class="state-desc">Cliente aprobó, se trabaja</div></div>
+        <div class="state-card"><div class="state-num">05</div><div class="state-name">Listo cobrar</div><div class="state-desc">Trabajo terminado</div></div>
+        <div class="state-card"><div class="state-num">06</div><div class="state-name">Listo comprobante</div><div class="state-desc">Cobro registrado</div></div>
+        <div class="state-card"><div class="state-num">07</div><div class="state-name">Comprobante emitido</div><div class="state-desc">PDF generado y bloqueado</div></div>
+        <div class="state-card"><div class="state-num">08</div><div class="state-name">Entregado</div><div class="state-desc">Moto retirada por el cliente</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 — RESPALDO -->
+<section class="section backup-section">
+  <div class="container">
+    <div class="eyebrow">06 / Respaldo y seguridad de datos</div>
+    <h2 class="section-title">4 capas de respaldo.<br>0 datos perdidos.</h2>
+    <p class="section-subtitle">
+      Tus datos están a salvo en la nube de Google, en tu celular, en backups automáticos y en archivos descargables. Si rompés el teléfono, los datos siguen.
+    </p>
+
+    <div class="backup-grid">
+      <div class="backup-card">
+        <div class="backup-layer">01</div>
+        <h3>FIRESTORE (principal)</h3>
+        <p>Datos sincronizados en tiempo real con la nube de Google.</p>
+        <ul>
+          <li>Accesibles desde cualquier dispositivo con la misma cuenta</li>
+          <li>No se pierden si borrás la app o cambiás de teléfono</li>
+          <li>Si trabajás en 2 dispositivos, ambos ven los cambios al instante</li>
+        </ul>
+      </div>
+
+      <div class="backup-card">
+        <div class="backup-layer">02</div>
+        <h3>BACKUP MANUAL</h3>
+        <p>Descargás un archivo .json con TODOS tus datos.</p>
+        <ul>
+          <li>Se guarda en las descargas del dispositivo</li>
+          <li>Lo podés guardar en Drive, en una USB, donde quieras</li>
+          <li>Restaurable después desde el mismo .json</li>
+        </ul>
+      </div>
+
+      <div class="backup-card">
+        <div class="backup-layer">03</div>
+        <h3>AUTO-BACKUP</h3>
+        <p>La app genera copias periódicas automáticamente.</p>
+        <ul>
+          <li>Sin que tengas que acordarte de hacerlo</li>
+          <li>Restaurable sin necesidad del archivo externo</li>
+          <li>Disponible desde la pestaña "Datos" en Configuración</li>
+        </ul>
+      </div>
+
+      <div class="backup-card">
+        <div class="backup-layer">04</div>
+        <h3>BLOQUEO DE PDF</h3>
+        <p>Una vez generado el comprobante, la orden queda bloqueada.</p>
+        <ul>
+          <li>No se pueden modificar montos ni tareas</li>
+          <li>Integridad del comprobante garantizada</li>
+          <li>Candado visible con ícono de escudo en el header</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="margin-top:60px;padding:32px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">
+      <h3 style="font-size:24px;margin-bottom:20px;color:var(--orange);">Exportación de datos disponible</h3>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+        <div>
+          <div style="font-family:'JetBrains Mono';font-size:11px;color:var(--orange);margin-bottom:6px;">EXCEL</div>
+          <div style="font-size:14px;color:var(--text-muted);">Todos los trabajos + resumen financiero (2 hojas)</div>
+        </div>
+        <div>
+          <div style="font-family:'JetBrains Mono';font-size:11px;color:var(--orange);margin-bottom:6px;">CSV CLIENTES</div>
+          <div style="font-size:14px;color:var(--text-muted);">Base de clientes con datos de contacto</div>
+        </div>
+        <div>
+          <div style="font-family:'JetBrains Mono';font-size:11px;color:var(--orange);margin-bottom:6px;">CSV BALANCE</div>
+          <div style="font-size:14px;color:var(--text-muted);">Facturación mensual histórica</div>
+        </div>
+        <div>
+          <div style="font-family:'JetBrains Mono';font-size:11px;color:var(--orange);margin-bottom:6px;">CSV REPUESTOS</div>
+          <div style="font-size:14px;color:var(--text-muted);">Qué repuestos usaste más y en qué cantidad</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 07 — PRACTICIDAD Y BENEFICIOS -->
+<section class="section benefits-section">
+  <div class="container">
+    <div class="eyebrow">07 / Practicidad y beneficios</div>
+    <h2 class="section-title">Diseñada para<br>laburar con guantes.</h2>
+    <p class="section-subtitle">
+      No es un sistema de oficina adaptado al taller. Es un sistema pensado desde cero para usarse parado, con grasa en los dedos, mientras una moto está en el elevador.
+    </p>
+
+    <div class="benefits-grid">
+
+      <div class="benefit">
+        <div class="benefit-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        </div>
+        <div class="benefit-title">DESDE EL CELULAR</div>
+        <div class="benefit-desc">PWA: se instala como app en Android/iOS sin pasar por Play Store.</div>
+        <ul class="benefit-list">
+          <li>Diseño táctil con botones grandes y tipografía clara</li>
+          <li>Modo offline: funciona sin internet</li>
+          <li>Auto-recarga: si hay actualización, se aplica sola</li>
+        </ul>
+      </div>
+
+      <div class="benefit">
+        <div class="benefit-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <div class="benefit-title">RAPIDEZ</div>
+        <div class="benefit-desc">Crear una orden en 30 segundos sin perder ningún dato.</div>
+        <ul class="benefit-list">
+          <li>Patente + km + falla = OT lista</li>
+          <li>Si la moto ya existe, marca y modelo pre-cargados</li>
+          <li>Catálogo de servicios para no escribir "cambio de aceite" cada vez</li>
+          <li>Precios sugeridos por aprendizaje histórico</li>
+        </ul>
+      </div>
+
+      <div class="benefit">
+        <div class="benefit-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+        </div>
+        <div class="benefit-title">COMUNICACIÓN WA</div>
+        <div class="benefit-desc">Presupuestos, alertas y bloqueos por WhatsApp con un solo botón.</div>
+        <ul class="benefit-list">
+          <li>Mensaje generado automáticamente</li>
+          <li>Incluye tareas, rango de precios y nombre del cliente</li>
+          <li>Si hay imprevistos: alerta automática con nuevo rango</li>
+        </ul>
+      </div>
+
+      <div class="benefit">
+        <div class="benefit-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <div class="benefit-title">CONTROL DE RENTABILIDAD</div>
+        <div class="benefit-desc">Cada orden te dice en vivo si estás ganando o perdiendo plata.</div>
+        <ul class="benefit-list">
+          <li>Semáforo del cronómetro avisa antes de pasarse</li>
+          <li>% de rentabilidad en color (verde/amarillo/rojo)</li>
+          <li>Resumen mensual con ganancia total sin hacer cuentas</li>
+        </ul>
+      </div>
+
+      <div class="benefit">
+        <div class="benefit-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+        <div class="benefit-title">ORDEN Y TRAZABILIDAD</div>
+        <div class="benefit-desc">Cualquier trabajo, cualquier moto, encontrable en 2 segundos.</div>
+        <ul class="benefit-list">
+          <li>Cada orden con número único OT-000001…</li>
+          <li>Búsqueda por patente, cliente o número de comprobante</li>
+          <li>Historial completo de cada moto con fechas, km y repuestos</li>
+          <li>Cambios de titularidad registrados</li>
+        </ul>
+      </div>
+
+      <div class="benefit">
+        <div class="benefit-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        </div>
+        <div class="benefit-title">SEGURIDAD POR DISEÑO</div>
+        <div class="benefit-desc">Tus datos blindados con 4 capas de respaldo y bloqueo de comprobantes.</div>
+        <ul class="benefit-list">
+          <li>Sincronización en la nube de Google</li>
+          <li>Backup manual + auto-backup</li>
+          <li>OT con PDF emitido = orden bloqueada</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- 08 — ORGANIZACIÓN DE DATOS -->
+<section class="section data-section">
+  <div class="container">
+    <div>
+      <div class="eyebrow">08 / Organización de datos</div>
+      <h2 class="section-title">Estructura<br>de Firestore.</h2>
+      <p class="section-subtitle">
+        Cada usuario tiene su propio espacio de colecciones en Firestore. Datos relacionales bien normalizados: clientes, motos, titularidades, trabajos, catálogo, caja, configuración y aprendizaje de precios.
+      </p>
+      <p style="font-size:14px;color:var(--text-muted);">
+        Los datos viven en la nube de Google bajo tu cuenta. Vos sos dueño de todo lo que cargás. Podés exportarlo cuando quieras y restaurarlo en cualquier dispositivo.
+      </p>
+    </div>
+
+    <div class="data-collections">
+      <div class="data-collection"><span class="name">clientes</span><span class="fields">nombre, teléfono, whatsapp, activo, fecha creación</span></div>
+      <div class="data-collection"><span class="name">motos</span><span class="fields">patente normalizada, marca, modelo, cilindrada, km, color, año, estado, última visita, próximo service</span></div>
+      <div class="data-collection"><span class="name">titularidades</span><span class="fields">quién es el dueño de cada moto y desde/hasta cuándo</span></div>
+      <div class="data-collection"><span class="name">trabajos</span><span class="fields">número OT, cliente, moto, estado, km, tareas[], repuestos[], insumos[], fletes[], pagos[], total, próximo control, cronómetro, PDF emitido, observaciones</span></div>
+      <div class="data-collection"><span class="name">catalogoTareas</span><span class="fields">catálogo de servicios propios del mecánico</span></div>
+      <div class="data-collection"><span class="name">caja</span><span class="fields">movimientos financieros: ingresos y egresos</span></div>
+      <div class="data-collection"><span class="name">config/global</span><span class="fields">configuración del taller: precios, márgenes, datos del mecánico</span></div>
+      <div class="data-collection"><span class="name">precioHistorial</span><span class="fields">aprendizaje automático de tiempos reales por tarea + cilindrada</span></div>
+      <div class="data-collection"><span class="name">usuarios/{uid}</span><span class="fields">estado (activo/trial/bloqueado), plan, activoHasta, ultimoPago, updatedAt</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 09 — TECNOLOGÍA -->
+<section class="section tech-section" id="tecnologia">
+  <div class="container">
+    <div class="eyebrow">09 / Conexiones y tecnología</div>
+    <h2 class="section-title">Stack<br>de grado industrial.</h2>
+    <p class="section-subtitle">
+      Sin reinventar la rueda. Cada pieza es la herramienta más probada del mercado para lo que hace. Resultado: una app rápida, confiable y barata de mantener.
+    </p>
+
+    <div class="tech-grid">
+      <div class="tech-card"><div class="name">FIREBASE AUTH</div><div class="role">Registro y login de usuarios (email/contraseña)</div></div>
+      <div class="tech-card"><div class="name">FIRESTORE</div><div class="role">Base de datos en tiempo real en la nube</div></div>
+      <div class="tech-card"><div class="name">MERCADO PAGO</div><div class="role">Procesamiento de pagos de suscripción</div></div>
+      <div class="tech-card"><div class="name">WHATSAPP</div><div class="role">Apertura de chat con mensajes pre-generados (wa.me)</div></div>
+      <div class="tech-card"><div class="name">VERCEL</div><div class="role">Deploy del frontend y endpoints de Mercado Pago</div></div>
+      <div class="tech-card"><div class="name">CLOUDFLARE</div><div class="role">DNS para el dominio motogestion.ar</div></div>
+      <div class="tech-card"><div class="name">PWA / SW</div><div class="role">Instalación en celular + funcionamiento offline</div></div>
+    </div>
+
+    <div class="endpoints">
+      <div class="endpoints-title">ENDPOINTS PROPIOS (Vercel Functions)</div>
+      <div class="endpoint-row">
+        <span class="url">POST /api/mp-create-preference</span>
+        <span class="desc">Crea el link de pago de Mercado Pago</span>
+      </div>
+      <div class="endpoint-row">
+        <span class="url">POST /api/mp-webhook</span>
+        <span class="desc">Recibe la confirmación de pago y activa la cuenta</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 — PLANES -->
+<section class="section plans-section" id="planes">
+  <div class="container" style="position:relative;z-index:1;">
+    <div class="eyebrow">10 / Planes de acceso</div>
+    <h2 class="section-title" style="text-align:center;">Probalo gratis.<br>Pagás cuando funciona.</h2>
+    <p class="section-subtitle" style="text-align:center;margin-left:auto;margin-right:auto;">
+      Trial gratuito sin tarjeta. Si te sirve, activás el plan que querés en 1 clic con Mercado Pago. Si no, cerrás y listo.
+    </p>
+
+    <div class="plans-grid">
+
+      <div class="plan">
+        <div class="plan-name">TRIAL</div>
+        <div class="plan-tagline">Para probar todo sin compromiso</div>
+        <div class="plan-price free">
+          <span class="amount">$0</span>
+          <span class="period">/ tiempo limitado</span>
+        </div>
+        <ul class="plan-features">
+          <li>Acceso completo a la app</li>
+          <li>Carga ilimitada de órdenes</li>
+          <li>Backups en la nube</li>
+          <li>Generación de PDF</li>
+          <li>Presupuestos por WhatsApp</li>
+          <li>Sin tarjeta para empezar</li>
+        </ul>
+        <a href="https://aplicacion.motogestion.ar" class="btn btn-secondary">Empezar ahora</a>
+      </div>
+
+      <div class="plan featured">
+        <div class="plan-badge">Recomendado</div>
+        <div class="plan-name">PLAN BASE</div>
+        <div class="plan-tagline">El estándar para talleres en marcha</div>
+        <div class="plan-price">
+          <span class="currency">$</span>
+          <span class="amount">5.000</span>
+          <span class="period">ARS / 30 días</span>
+        </div>
+        <ul class="plan-features">
+          <li>Todo lo del Trial</li>
+          <li>Acceso continuo sin cortes</li>
+          <li>Sincronización multi-dispositivo</li>
+          <li>Aprendizaje de precios activado</li>
+          <li>Exportación a Excel y CSV</li>
+          <li>Historial ilimitado de motos</li>
+          <li>Soporte por WhatsApp</li>
+        </ul>
+        <a href="https://aplicacion.motogestion.ar" class="btn btn-primary">Activar plan Base →</a>
+      </div>
+
+      <div class="plan">
+        <div class="plan-name">PLAN PRO</div>
+        <div class="plan-tagline">Para talleres con varios mecánicos</div>
+        <div class="plan-price">
+          <span class="currency">$</span>
+          <span class="amount">12.000</span>
+          <span class="period">ARS / 30 días</span>
+        </div>
+        <ul class="plan-features">
+          <li>Todo lo del plan Base</li>
+          <li>Funcionalidades diferenciadas Pro</li>
+          <li>Prioridad en soporte</li>
+          <li>Acceso anticipado a nuevas features</li>
+          <li>Reportes financieros avanzados</li>
+          <li>Etiquetado y filtros extendidos</li>
+        </ul>
+        <a href="https://aplicacion.motogestion.ar" class="btn btn-secondary">Activar plan Pro</a>
+      </div>
+
+    </div>
+
+    <div class="activation-flow">
+      <h3>Flujo de activación — sin intervención manual</h3>
+      <div class="activation-steps">
+        <div class="activation-step"><span class="step-n">1</span>Elegís plan en la app</div>
+        <div class="activation-arrow">→</div>
+        <div class="activation-step"><span class="step-n">2</span>Pagás en Mercado Pago</div>
+        <div class="activation-arrow">→</div>
+        <div class="activation-step"><span class="step-n">3</span>Webhook recibe confirmación</div>
+        <div class="activation-arrow">→</div>
+        <div class="activation-step"><span class="step-n">4</span>Firestore actualiza activoHasta</div>
+        <div class="activation-arrow">→</div>
+        <div class="activation-step"><span class="step-n">5</span>App se desbloquea sola</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta-final">
+  <div class="container">
+    <h2>Tu próxima OT<br><span class="accent">empieza ahora.</span></h2>
+    <p>Probá MotoGestión gratis. Sin tarjeta, sin instalación, sin curso de capacitación. Si en 5 minutos no estás cargando órdenes, te debemos algo.</p>
+    <div class="hero-actions">
+      <a href="https://aplicacion.motogestion.ar" class="btn btn-primary">Probar gratis ahora →</a>
+      <a href="#planes" class="btn btn-secondary">Ver planes</a>
+    </div>
+  </div>
+</section>
+
+<div class="stripe-caution"></div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="#" class="logo">
+          <div class="logo-mark"><span>M</span></div>
+          <span>MOTO<span class="logo-text-orange">GESTIÓN</span></span>
+        </a>
+        <p>Sistema operativo para tu taller mecánico de motos. Diseñado en Argentina, hecho para mecánicos que aman su laburo.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Producto</h4>
+        <ul>
+          <li><a href="#pantallas">Pantallas</a></li>
+          <li><a href="#funciones">Funciones</a></li>
+          <li><a href="#flujo">Flujo de trabajo</a></li>
+          <li><a href="#planes">Planes</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Acceso</h4>
+        <ul>
+          <li><a href="https://aplicacion.motogestion.ar">Probar gratis</a></li>
+          <li><a href="https://aplicacion.motogestion.ar">Iniciar sesión</a></li>
+          <li><a href="#tecnologia">Tecnología</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Contacto</h4>
+        <ul>
+          <li><a href="mailto:hola@motogestion.ar">hola@motogestion.ar</a></li>
+          <li><a href="https://wa.me/">WhatsApp soporte</a></li>
+          <li><a href="#">Términos y privacidad</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 MotoGestión · Sistema operativo para tu taller</span>
+      <span class="domain">motogestion.ar &nbsp;|&nbsp; aplicacion.motogestion.ar</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Mobile menu toggle
+  const toggle = document.getElementById('menu-toggle');
+  const links = document.getElementById('nav-links');
+  toggle.addEventListener('click', () => links.classList.toggle('open'));
+  links.querySelectorAll('a').forEach(a => a.addEventListener('click', () => links.classList.remove('open')));
+
+  // Flow tabs
+  document.querySelectorAll('.flow-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const flow = tab.dataset.flow;
+      document.querySelectorAll('.flow-tab').forEach(t => t.classList.toggle('active', t.dataset.flow === flow));
+      document.querySelectorAll('.flow-panel').forEach(p => p.classList.toggle('active', p.dataset.flow === flow));
+    });
+  });
+</script>
+
+</body>
+</html>

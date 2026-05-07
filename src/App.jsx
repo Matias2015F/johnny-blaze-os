@@ -137,30 +137,30 @@ function PantallaBloqueo({ account, settings }) {
         </div>
 
         <div className="p-6 space-y-4">
-          <div className="bg-slate-900 rounded-2xl p-4 text-center space-y-1">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{motivoLabel}</p>
-            {vencioStr && <p className="text-sm font-black text-slate-300">{vencioStr}</p>}
-            {userLabel && <p className="text-[10px] text-slate-500 truncate">{userLabel}</p>}
+          <div className="bg-zinc-900 rounded-2xl p-4 text-center space-y-1">
+            <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{motivoLabel}</p>
+            {vencioStr && <p className="text-sm font-black text-zinc-300">{vencioStr}</p>}
+            {userLabel && <p className="text-[10px] text-zinc-500 truncate">{userLabel}</p>}
           </div>
 
-          <p className="text-slate-400 text-xs text-center leading-relaxed">
+          <p className="text-zinc-400 text-xs text-center leading-relaxed">
             Tus datos estan guardados y seguros.
             <br />
             Renovando el acceso los recuperas al instante.
           </p>
 
           <div className="space-y-2">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">Elegi tu plan</p>
+            <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest text-center">Elegi tu plan</p>
             {plansUi.map((plan) => (
               <button
                 key={plan.key}
                 onClick={() => handlePagar(plan.key)}
                 disabled={pagando}
-                className="w-full flex items-center justify-between bg-slate-800 hover:bg-slate-700 border border-slate-700 active:scale-[0.98] transition-all rounded-2xl p-4 disabled:opacity-50"
+                className="w-full flex items-center justify-between bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 active:scale-[0.98] transition-all rounded-2xl p-4 disabled:opacity-50"
               >
                 <div className="text-left">
                   <p className="text-sm font-black text-white">{plan.label}</p>
-                  <p className="text-[10px] text-slate-400 font-bold">{plan.detalle}</p>
+                  <p className="text-[10px] text-zinc-400 font-bold">{plan.detalle}</p>
                 </div>
                 <span className="text-orange-400 font-black text-sm">{pagando ? "..." : plan.precio}</span>
               </button>
@@ -185,7 +185,7 @@ function PantallaBloqueo({ account, settings }) {
 
           <button
             onClick={() => auth.signOut()}
-            className="w-full text-slate-600 hover:text-slate-400 transition-colors text-[10px] font-black uppercase tracking-widest py-2"
+            className="w-full text-zinc-600 hover:text-zinc-400 transition-colors text-[10px] font-black uppercase tracking-widest py-2"
           >
             Cerrar sesion
           </button>

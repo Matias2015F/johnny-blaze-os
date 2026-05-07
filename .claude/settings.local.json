@@ -20,7 +20,13 @@
       "Bash(git commit -m ' *)",
       "Bash(gh pr *)",
       "Bash(npm install *)",
-      "Bash(pkill -f vite)"
+      "Bash(pkill -f vite)",
+      "Bash(git checkout *)",
+      "mcp__Claude_in_Chrome__navigate",
+      "Bash(npx tsc *)",
+      "Bash(pkill -f \"node|vite|npm\")",
+      "Bash(grep -E \"\\\\.jsx$\")",
+      "Bash(curl -s -I http://localhost:5173)"
     ]
   }
 }

@@ -35,7 +35,7 @@ const RetiroView              = lazy(() => import("./views/RetiroView.jsx"));
 const AgendaView              = lazy(() => import("./views/AgendaView.jsx"));
 
 const Cargando = () => (
-  <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-slate-600 text-[10px] font-black uppercase tracking-widest">
+  <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">
     Cargando...
   </div>
 );
@@ -541,7 +541,7 @@ export default function TallerPanel() {
             setSelectedInstallPlatform("auto");
             setShowHelp(true);
           }}
-          className="fixed right-4 top-4 z-[120] flex items-center gap-2 rounded-full border border-orange-500/30 bg-slate-950/95 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-orange-400 shadow-xl active:scale-95"
+          className="fixed right-4 top-4 z-[120] flex items-center gap-2 rounded-full border border-orange-500/30 bg-zinc-950/95 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-orange-400 shadow-xl active:scale-95"
         >
           <HelpCircle size={14} /> Ayuda
         </button>
@@ -556,30 +556,30 @@ export default function TallerPanel() {
               </div>
               <div>
                 <p className="text-sm font-black uppercase tracking-widest text-white">Actualizacion disponible</p>
-                <p className="text-[10px] font-bold text-slate-400">Version nueva detectada en Vercel</p>
+                <p className="text-[10px] font-bold text-zinc-400">Version nueva detectada en Vercel</p>
               </div>
             </div>
-            <div className="rounded-2xl bg-slate-900 p-4 space-y-1">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Version actual</p>
+            <div className="rounded-2xl bg-zinc-900 p-4 space-y-1">
+              <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Version actual</p>
               <p className="text-sm font-black text-white">{APP_BUILD.version}</p>
-              <p className="text-[10px] font-bold text-slate-500">
+              <p className="text-[10px] font-bold text-zinc-500">
                 {new Date(APP_BUILD.buildTime).toLocaleString("es-AR")}
               </p>
-              <p className="mt-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Ultimo deploy</p>
+              <p className="mt-3 text-[9px] font-black uppercase tracking-widest text-zinc-500">Ultimo deploy</p>
               <p className="text-sm font-black text-orange-400">{updateInfo.version}</p>
               {updateInfo.buildTime && (
-                <p className="text-[10px] font-bold text-slate-500">
+                <p className="text-[10px] font-bold text-zinc-500">
                   {new Date(updateInfo.buildTime).toLocaleString("es-AR")}
                 </p>
               )}
             </div>
-            <p className="text-[10px] font-bold leading-relaxed text-slate-400">
+            <p className="text-[10px] font-bold leading-relaxed text-zinc-400">
               Si aceptas, la app recarga la ultima version publicada para que la instalacion quede actualizada como una app profesional.
             </p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setUpdateInfo(null)}
-                className="rounded-2xl bg-slate-800 py-4 text-[10px] font-black uppercase tracking-widest text-slate-300 active:scale-95"
+                className="rounded-2xl bg-zinc-800 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-300 active:scale-95"
               >
                 Despues
               </button>
@@ -596,28 +596,28 @@ export default function TallerPanel() {
 
       {showHelp && helpInfo && (
         <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/70 p-6">
-          <div className="w-full max-w-sm rounded-[2rem] border border-slate-700 bg-[#151515] p-6 space-y-5">
+          <div className="w-full max-w-sm rounded-[2rem] border border-zinc-700 bg-[#151515] p-6 space-y-5">
             <div className="flex items-center gap-3">
               <div className="rounded-2xl bg-orange-600 p-3 text-white">
                 <HelpCircle size={18} />
               </div>
               <div>
                 <p className="text-sm font-black uppercase tracking-widest text-white">{helpInfo.titulo}</p>
-                <p className="text-[10px] font-bold text-slate-400">Guia rapida y simple</p>
+                <p className="text-[10px] font-bold text-zinc-400">Guia rapida y simple</p>
               </div>
             </div>
             <div className="space-y-3">
               {helpInfo.items.map((item) => (
-                <div key={item} className="rounded-2xl bg-slate-900 p-4 text-[11px] font-bold leading-relaxed text-slate-200">
+                <div key={item} className="rounded-2xl bg-zinc-900 p-4 text-[11px] font-bold leading-relaxed text-zinc-200">
                   {item}
                 </div>
               ))}
             </div>
-            <div className="space-y-3 rounded-2xl border border-orange-500/20 bg-slate-950/70 p-4">
+            <div className="space-y-3 rounded-2xl border border-orange-500/20 bg-zinc-950/70 p-4">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-orange-400">Instalar app</p>
                 <p className="mt-1 text-sm font-black text-white">{activeInstallGuide.title}</p>
-                <p className="mt-1 text-[10px] font-bold text-slate-400">
+                <p className="mt-1 text-[10px] font-bold text-zinc-400">
                   {displayMode.installed ? "Esta app ya esta instalada en este dispositivo." : "Podes instalarla desde aca si tu navegador lo permite."}
                 </p>
               </div>
@@ -633,7 +633,7 @@ export default function TallerPanel() {
                     className={`rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest active:scale-95 ${
                       selectedInstallPlatform === item.key
                         ? "bg-orange-600 text-white"
-                        : "bg-slate-900 text-slate-300"
+                        : "bg-zinc-900 text-zinc-300"
                     }`}
                   >
                     {item.label}
@@ -642,12 +642,12 @@ export default function TallerPanel() {
               </div>
               <div className="space-y-2">
                 {activeInstallGuide.steps.map((step, index) => (
-                  <div key={`${index}-${step.title}`} className="rounded-2xl bg-slate-900 p-4">
+                  <div key={`${index}-${step.title}`} className="rounded-2xl bg-zinc-900 p-4">
                     <p className="text-[9px] font-black uppercase tracking-widest text-orange-400">
                       Paso {index + 1}
                     </p>
                     <p className="mt-1 text-sm font-black text-white">{step.title}</p>
-                    <p className="mt-1 text-[11px] font-bold leading-relaxed text-slate-300">
+                    <p className="mt-1 text-[11px] font-bold leading-relaxed text-zinc-300">
                       {step.detail}
                     </p>
                   </div>
@@ -660,7 +660,7 @@ export default function TallerPanel() {
                     className={`w-full rounded-2xl py-4 text-[10px] font-black uppercase tracking-widest active:scale-95 ${
                       activeInstallGuide.platform === "ios" || installAvailable
                         ? "bg-emerald-600 text-white"
-                        : "bg-slate-800 text-slate-400"
+                        : "bg-zinc-800 text-zinc-400"
                     }`}
                   >
                     {activeInstallGuide.platform === "ios"
@@ -671,7 +671,7 @@ export default function TallerPanel() {
                   </button>
                   <button
                     onClick={copiarEnlaceApp}
-                    className="w-full rounded-2xl bg-slate-900 py-4 text-[10px] font-black uppercase tracking-widest text-slate-200 active:scale-95"
+                    className="w-full rounded-2xl bg-zinc-900 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-200 active:scale-95"
                   >
                     Copiar enlace de la app
                   </button>
@@ -691,11 +691,11 @@ export default function TallerPanel() {
       {/* Modal de confirmación — reemplaza window.confirm */}
       {confirm && (
         <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-6">
-          <div className="bg-[#151515] border border-slate-800 rounded-[2rem] p-8 w-full max-w-sm space-y-5">
+          <div className="bg-[#151515] border border-zinc-800 rounded-[2rem] p-8 w-full max-w-sm space-y-5">
             <p className="text-white font-black text-sm text-center">{confirm.mensaje}</p>
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => setConfirm(null)}
-                className="bg-slate-800 text-slate-300 py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">
+                className="bg-zinc-800 text-zinc-300 py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">
                 Cancelar
               </button>
               <button onClick={() => { confirm.onOk(); setConfirm(null); }}
@@ -708,25 +708,25 @@ export default function TallerPanel() {
       )}
 
       {NAV_VIEWS.includes(view) && (
-        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-gradient-to-t from-black/95 via-slate-950/90 to-slate-900/50 backdrop-blur-3xl border-t border-white/10 px-2 py-3 flex justify-around items-center z-50 rounded-t-[3rem] shadow-2xl">
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-gradient-to-t from-black/95 via-zinc-950/90 to-zinc-900/50 backdrop-blur-3xl border-t border-white/10 px-2 py-3 flex justify-around items-center z-50 rounded-t-[3rem] shadow-2xl">
           {/* Indicador de sincronización */}
           <div className={`absolute top-2 right-4 flex items-center gap-1 text-[8px] font-black uppercase tracking-widest ${syncStatus === "synced" ? "text-green-500" : syncStatus === "syncing" ? "text-yellow-400" : "text-red-400"}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${syncStatus === "synced" ? "bg-green-500" : syncStatus === "syncing" ? "bg-yellow-400 animate-pulse" : "bg-red-400"}`} />
             {syncStatus === "synced" ? "Guardado" : syncStatus === "syncing" ? "Guardando..." : "Error al guardar"}
           </div>
-          <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "home" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "home" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-zinc-500 hover:text-zinc-300"}`}>
             <Wrench size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Inicio</span>
           </button>
-          <button onClick={() => setView("ordenes")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "ordenes" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("ordenes")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "ordenes" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-zinc-500 hover:text-zinc-300"}`}>
             <Clock size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Trabajos</span>
           </button>
-          <button onClick={() => setView("historial")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "historial" || view === "perfilMoto" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("historial")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "historial" || view === "perfilMoto" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-zinc-500 hover:text-zinc-300"}`}>
             <History size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Historial</span>
           </button>
-          <button onClick={() => setView("pagosView")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "pagosView" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("pagosView")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "pagosView" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-zinc-500 hover:text-zinc-300"}`}>
             <DollarSign size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Pagos</span>
           </button>
-          <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "config" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-slate-500 hover:text-slate-300"}`}>
+          <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "config" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-zinc-500 hover:text-zinc-300"}`}>
             <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Más</span>
           </button>
         </nav>

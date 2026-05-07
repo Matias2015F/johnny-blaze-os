@@ -47,7 +47,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
   }, [numeroComprobante]);
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 font-sans text-left text-slate-900 animate-in fade-in print:bg-white print:p-0">
+    <div className="min-h-screen bg-zinc-100 p-4 font-sans text-left text-zinc-900 animate-in fade-in print:bg-white print:p-0">
       <style>{`
         @media print {
           @page { size: A4 portrait; margin: 14mm 14mm 14mm 14mm; }
@@ -55,7 +55,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         }
       `}</style>
       <div className="mx-auto max-w-[740px] bg-white print:max-w-none">
-        <div className="border-b-2 border-slate-900 px-8 py-6" style={bloqueCompletoStyle}>
+        <div className="border-b-2 border-zinc-900 px-8 py-6" style={bloqueCompletoStyle}>
           <div className="flex items-start justify-between gap-8">
             <div className="flex-1">
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-600">
@@ -64,10 +64,10 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               <h1 className="mt-3 max-w-xs text-2xl font-black uppercase leading-tight tracking-tight">
                 {config.nombreTaller}
               </h1>
-              <p className="mt-2 text-xs font-bold text-slate-600">
+              <p className="mt-2 text-xs font-bold text-zinc-600">
                 Documento de entrega y detalle del trabajo realizado
               </p>
-              <div className="mt-4 space-y-1 text-[10px] leading-relaxed text-slate-700">
+              <div className="mt-4 space-y-1 text-[10px] leading-relaxed text-zinc-700">
                 <p><span className="font-black">TÃ©cnico:</span> {config.mecanicoResponsable}</p>
                 <p>Sara Romero e/ Eva PerÃ³n y Belgrano â€¢ Diamante, ER</p>
                 <p><span className="font-black">WhatsApp:</span> {config.telefonoTaller}</p>
@@ -79,16 +79,16 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               <div className="text-center">
                 <p className="text-[9px] font-black uppercase text-orange-600 tracking-wide">Comprobante NÂ°</p>
                 <p className="mt-1 text-lg font-black tracking-tight">{numeroComprobante}</p>
-                <p className="mt-2 text-[9px] font-bold text-slate-600">
+                <p className="mt-2 text-[9px] font-bold text-zinc-600">
                   Trabajo {order.numeroTrabajo || `#${order.id.slice(-4).toUpperCase()}`}
                 </p>
-                <p className="mt-1 text-[10px] font-bold text-slate-700">
+                <p className="mt-1 text-[10px] font-bold text-zinc-700">
                   {order.fechaComprobante?.slice(0, 10) || order.fechaIngreso}
                 </p>
               </div>
 
               {snapshot.hash && (
-                <div className="rounded-lg border-3 border-slate-900 bg-white p-2 print:p-3" style={bloqueCompletoStyle}>
+                <div className="rounded-lg border-3 border-zinc-900 bg-white p-2 print:p-3" style={bloqueCompletoStyle}>
                   <QRCodeCanvas
                     value={JSON.stringify({
                       numeroComprobante,
@@ -102,7 +102,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                     fgColor="#000000"
                     bgColor="#FFFFFF"
                   />
-                  <p className="mt-2 text-center text-[8px] font-bold text-slate-700">ESCANEA PARA VALIDAR</p>
+                  <p className="mt-2 text-center text-[8px] font-bold text-zinc-700">ESCANEA PARA VALIDAR</p>
                 </div>
               )}
             </div>
@@ -111,58 +111,58 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
         <div className="space-y-5 px-8 py-5">
           <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
-            <div className="border border-slate-300 bg-slate-50 p-4">
-              <p className="text-[9px] font-black uppercase text-slate-600 tracking-wide">Cliente</p>
-              <p className="mt-2 text-sm font-black text-slate-900">{client?.nombre || "---"}</p>
-              <p className="mt-1 text-xs text-slate-600">{client?.tel || client?.telefono || "---"}</p>
+            <div className="border border-zinc-300 bg-zinc-50 p-4">
+              <p className="text-[9px] font-black uppercase text-zinc-600 tracking-wide">Cliente</p>
+              <p className="mt-2 text-sm font-black text-zinc-900">{client?.nombre || "---"}</p>
+              <p className="mt-1 text-xs text-zinc-600">{client?.tel || client?.telefono || "---"}</p>
             </div>
-            <div className="border border-slate-300 bg-slate-50 p-4">
-              <p className="text-[9px] font-black uppercase text-slate-600 tracking-wide">Motocicleta</p>
-              <p className="mt-2 text-sm font-black text-slate-900">
+            <div className="border border-zinc-300 bg-zinc-50 p-4">
+              <p className="text-[9px] font-black uppercase text-zinc-600 tracking-wide">Motocicleta</p>
+              <p className="mt-2 text-sm font-black text-zinc-900">
                 {bike?.marca} {bike?.modelo}
               </p>
-              <p className="mt-1 text-xs font-bold text-slate-700">
+              <p className="mt-1 text-xs font-bold text-zinc-700">
                 {bike?.patente || "---"} {kilometraje ? `â€¢ ${kilometraje} km` : ""}
               </p>
             </div>
           </div>
 
           <div style={bloqueCompletoStyle}>
-            <h3 className="mb-2 text-[10px] font-black uppercase text-slate-700 tracking-wide">Trabajos realizados</h3>
-            <div className="border border-slate-300">
-              <div className="bg-slate-900 px-4 py-2">
+            <h3 className="mb-2 text-[10px] font-black uppercase text-zinc-700 tracking-wide">Trabajos realizados</h3>
+            <div className="border border-zinc-300">
+              <div className="bg-zinc-900 px-4 py-2">
                 <p className="text-[9px] font-black uppercase tracking-wide text-white">DescripciÃ³n â€¢ Monto</p>
               </div>
               {tareas.length > 0 ? (
                 tareas.map((t, i) => (
-                  <div key={i} className={`flex justify-between px-4 py-3 text-sm ${i < tareas.length - 1 ? "border-b border-slate-200" : ""}`}>
+                  <div key={i} className={`flex justify-between px-4 py-3 text-sm ${i < tareas.length - 1 ? "border-b border-zinc-200" : ""}`}>
                     <div>
-                      <p className="font-black text-slate-900">{t.nombre}</p>
-                      <p className="text-[10px] font-bold text-slate-500">Mano de obra</p>
+                      <p className="font-black text-zinc-900">{t.nombre}</p>
+                      <p className="text-[10px] font-bold text-zinc-500">Mano de obra</p>
                     </div>
-                    <p className="font-black text-slate-900">{formatMoney(t.monto || 0)}</p>
+                    <p className="font-black text-zinc-900">{formatMoney(t.monto || 0)}</p>
                   </div>
                 ))
               ) : (
-                <p className="px-4 py-3 text-xs font-bold text-slate-400">Sin trabajos cargados</p>
+                <p className="px-4 py-3 text-xs font-bold text-zinc-400">Sin trabajos cargados</p>
               )}
             </div>
           </div>
 
           {repuestos.length > 0 && (
             <div style={bloqueCompletoStyle}>
-              <h3 className="mb-2 text-[10px] font-black uppercase text-slate-700 tracking-wide">Repuestos utilizados</h3>
-              <div className="border border-slate-300">
-                <div className="border-b border-slate-300 bg-slate-100 px-4 py-2">
-                  <p className="text-[9px] font-black uppercase tracking-wide text-slate-700">DescripciÃ³n â€¢ Monto</p>
+              <h3 className="mb-2 text-[10px] font-black uppercase text-zinc-700 tracking-wide">Repuestos utilizados</h3>
+              <div className="border border-zinc-300">
+                <div className="border-b border-zinc-300 bg-zinc-100 px-4 py-2">
+                  <p className="text-[9px] font-black uppercase tracking-wide text-zinc-700">DescripciÃ³n â€¢ Monto</p>
                 </div>
                 {repuestos.map((r, i) => (
-                  <div key={`rep-${i}`} className={`flex justify-between px-4 py-3 text-sm ${i < repuestos.length - 1 ? "border-b border-slate-200" : ""}`}>
+                  <div key={`rep-${i}`} className={`flex justify-between px-4 py-3 text-sm ${i < repuestos.length - 1 ? "border-b border-zinc-200" : ""}`}>
                     <div>
-                      <p className="font-black text-slate-900">{r.cantidad > 1 ? `${r.cantidad}x ` : ""}{r.nombre}</p>
-                      <p className="text-[10px] font-bold text-slate-500">{r.cantidad || 1} Ã— {formatMoney(r.monto || 0)}</p>
+                      <p className="font-black text-zinc-900">{r.cantidad > 1 ? `${r.cantidad}x ` : ""}{r.nombre}</p>
+                      <p className="text-[10px] font-bold text-zinc-500">{r.cantidad || 1} Ã— {formatMoney(r.monto || 0)}</p>
                     </div>
-                    <p className="font-black text-slate-900">{formatMoney((r.monto || 0) * (r.cantidad || 1))}</p>
+                    <p className="font-black text-zinc-900">{formatMoney((r.monto || 0) * (r.cantidad || 1))}</p>
                   </div>
                 ))}
               </div>
@@ -171,23 +171,23 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
           {pagos.length > 0 && (
             <div style={bloqueCompletoStyle}>
-              <h3 className="mb-2 text-[10px] font-black uppercase text-slate-700 tracking-wide">Pagos registrados</h3>
-              <table className="w-full border border-slate-300">
+              <h3 className="mb-2 text-[10px] font-black uppercase text-zinc-700 tracking-wide">Pagos registrados</h3>
+              <table className="w-full border border-zinc-300">
                 <thead>
-                  <tr className="border-b border-slate-300 bg-slate-100">
-                    <th className="px-4 py-2 text-left text-[9px] font-black text-slate-700">Fecha</th>
-                    <th className="px-4 py-2 text-left text-[9px] font-black text-slate-700">Medio</th>
-                    <th className="px-4 py-2 text-left text-[9px] font-black text-slate-700">NÂ° pago</th>
-                    <th className="px-4 py-2 text-right text-[9px] font-black text-slate-700">Monto</th>
+                  <tr className="border-b border-zinc-300 bg-zinc-100">
+                    <th className="px-4 py-2 text-left text-[9px] font-black text-zinc-700">Fecha</th>
+                    <th className="px-4 py-2 text-left text-[9px] font-black text-zinc-700">Medio</th>
+                    <th className="px-4 py-2 text-left text-[9px] font-black text-zinc-700">NÂ° pago</th>
+                    <th className="px-4 py-2 text-right text-[9px] font-black text-zinc-700">Monto</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pagos.map((p, i) => (
-                    <tr key={i} className={i < pagos.length - 1 ? "border-b border-slate-200" : ""}>
-                      <td className="px-4 py-2 text-[10px] text-slate-700">{p.fecha}</td>
-                      <td className="px-4 py-2 text-[10px] font-bold uppercase text-slate-700">{labelMetodo(p.metodo)}</td>
-                      <td className="px-4 py-2 text-[10px] text-slate-700">{p.comprobante || "---"}</td>
-                      <td className="px-4 py-2 text-right text-[10px] font-black text-slate-900">{formatMoney(p.monto || 0)}</td>
+                    <tr key={i} className={i < pagos.length - 1 ? "border-b border-zinc-200" : ""}>
+                      <td className="px-4 py-2 text-[10px] text-zinc-700">{p.fecha}</td>
+                      <td className="px-4 py-2 text-[10px] font-bold uppercase text-zinc-700">{labelMetodo(p.metodo)}</td>
+                      <td className="px-4 py-2 text-[10px] text-zinc-700">{p.comprobante || "---"}</td>
+                      <td className="px-4 py-2 text-right text-[10px] font-black text-zinc-900">{formatMoney(p.monto || 0)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -196,22 +196,22 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           )}
 
           <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
-            <div className="border border-slate-300 p-4">
-              <p className="text-[9px] font-black uppercase text-slate-600 tracking-wide">GarantÃ­a</p>
+            <div className="border border-zinc-300 p-4">
+              <p className="text-[9px] font-black uppercase text-zinc-600 tracking-wide">GarantÃ­a</p>
               {vencimientoLabel && (
-                <div className="mt-2 inline-block rounded bg-slate-900 px-2 py-1">
+                <div className="mt-2 inline-block rounded bg-zinc-900 px-2 py-1">
                   <p className="text-[9px] font-black uppercase tracking-wide text-white">
                     VÃ¡lido hasta: {vencimientoLabel}
                   </p>
                 </div>
               )}
-              <p className="mt-2 text-[10px] leading-relaxed text-slate-700">
+              <p className="mt-2 text-[10px] leading-relaxed text-zinc-700">
                 {extraData?.garantia || order.garantiaFinal || "Sin texto de garantÃ­a cargado."}
               </p>
               {proximoControl?.activo && (
-                <div className="mt-3 border-t border-slate-300 pt-3">
+                <div className="mt-3 border-t border-zinc-300 pt-3">
                   <p className="text-[9px] font-black uppercase text-orange-700">PrÃ³ximo control</p>
-                  <p className="mt-1 text-[10px] font-bold text-slate-700">
+                  <p className="mt-1 text-[10px] font-bold text-zinc-700">
                     {proximoControl.unidad === "km"
                       ? `A los ${Number(proximoControl.kmObjetivo || 0).toLocaleString("es-AR")} km`
                       : `En ${proximoControl.valorObjetivo} dÃ­as`}
@@ -220,18 +220,18 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               )}
             </div>
 
-            <div className="space-y-2 border border-slate-300 p-4">
+            <div className="space-y-2 border border-zinc-300 p-4">
               <div className="flex justify-between text-sm">
-                <span className="font-bold text-slate-600">Total trabajo:</span>
-                <span className="font-black text-slate-900">{formatMoney(totalOrden)}</span>
+                <span className="font-bold text-zinc-600">Total trabajo:</span>
+                <span className="font-black text-zinc-900">{formatMoney(totalOrden)}</span>
               </div>
               {totalPagado > 0 && (
-                <div className="flex justify-between border-t border-slate-300 pt-2 text-sm">
+                <div className="flex justify-between border-t border-zinc-300 pt-2 text-sm">
                   <span className="font-bold text-green-700">Total pagado:</span>
                   <span className="font-black text-green-700">{formatMoney(totalPagado)}</span>
                 </div>
               )}
-              <div className={`mt-3 flex justify-between rounded px-3 py-3 font-black text-white ${saldo <= 0 ? "bg-green-600" : "bg-slate-900"}`}>
+              <div className={`mt-3 flex justify-between rounded px-3 py-3 font-black text-white ${saldo <= 0 ? "bg-green-600" : "bg-zinc-900"}`}>
                 <span>{saldo <= 0 ? "PAGADO" : "SALDO PENDIENTE"}</span>
                 <span>{formatMoney(Math.max(saldo, 0))}</span>
               </div>
@@ -241,25 +241,25 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           <div className="space-y-2 border-2 border-yellow-300 bg-yellow-50 p-4" style={bloqueCompletoStyle}>
             <p className="text-[10px] font-black uppercase tracking-wide text-yellow-800">âš ï¸ TÃ©rminos de garantÃ­a y validez</p>
             <ul className="space-y-1">
-              <li className="text-[9px] text-slate-700">âœ“ Sin comprobante NO se pueden realizar reclamos de garantÃ­a</li>
-              <li className="text-[9px] text-slate-700">âœ“ GarantÃ­a mano de obra: 30 dÃ­as â€¢ Repuestos: segÃºn fabricante</li>
-              <li className="text-[9px] text-slate-700">âœ“ Documento NO modificable, generado automÃ¡ticamente</li>
-              <li className="text-[9px] text-slate-700">âœ“ NÃºmero Ãºnico verificable â€¢ Escanea QR para validar</li>
+              <li className="text-[9px] text-zinc-700">âœ“ Sin comprobante NO se pueden realizar reclamos de garantÃ­a</li>
+              <li className="text-[9px] text-zinc-700">âœ“ GarantÃ­a mano de obra: 30 dÃ­as â€¢ Repuestos: segÃºn fabricante</li>
+              <li className="text-[9px] text-zinc-700">âœ“ Documento NO modificable, generado automÃ¡ticamente</li>
+              <li className="text-[9px] text-zinc-700">âœ“ NÃºmero Ãºnico verificable â€¢ Escanea QR para validar</li>
             </ul>
           </div>
 
-          <div className="space-y-2 border-t-2 border-slate-300 pt-4" style={bloqueCompletoStyle}>
-            <p className="text-[10px] font-black uppercase text-slate-700 tracking-wide">Conformidad</p>
-            <p className="text-[10px] leading-relaxed text-slate-600">
+          <div className="space-y-2 border-t-2 border-zinc-300 pt-4" style={bloqueCompletoStyle}>
+            <p className="text-[10px] font-black uppercase text-zinc-700 tracking-wide">Conformidad</p>
+            <p className="text-[10px] leading-relaxed text-zinc-600">
               La recepciÃ³n de este documento implica conformidad con el trabajo detallado, los pagos registrados y la garantÃ­a informada.
             </p>
           </div>
 
-          <div className="space-y-1 border-t border-slate-300 pt-3 text-center" style={bloqueCompletoStyle}>
-            <p className="text-[8px] text-slate-600">
+          <div className="space-y-1 border-t border-zinc-300 pt-3 text-center" style={bloqueCompletoStyle}>
+            <p className="text-[8px] text-zinc-600">
               <span className="font-black">Hash:</span> <span className="font-mono">{snapshot.hash}</span>
             </p>
-            <p className="text-[8px] text-slate-500">
+            <p className="text-[8px] text-zinc-500">
               {order.fechaComprobante?.slice(0, 10) || order.fechaIngreso} â€¢ Johnny Blaze OS
             </p>
           </div>
@@ -269,7 +269,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
       <div className="fixed bottom-8 left-1/2 flex -translate-x-1/2 gap-3 print:hidden">
         <button
           onClick={() => setView("detalleOrden")}
-          className="rounded-2xl border border-slate-200 bg-slate-100 p-4 text-[10px] font-black uppercase shadow-lg active:scale-95"
+          className="rounded-2xl border border-zinc-200 bg-zinc-100 p-4 text-[10px] font-black uppercase shadow-lg active:scale-95"
         >
           Cerrar
         </button>

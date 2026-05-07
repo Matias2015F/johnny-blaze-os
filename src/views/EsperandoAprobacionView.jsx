@@ -43,7 +43,7 @@ export default function EsperandoAprobacionView({ ordenId, setView }) {
 
   if (!orden) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-slate-500 text-xs font-black uppercase">
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-zinc-500 text-xs font-black uppercase">
         Cargando...
       </div>
     );
@@ -55,12 +55,12 @@ export default function EsperandoAprobacionView({ ordenId, setView }) {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setView("detalleOrden")}
-            className="p-3 rounded-2xl bg-slate-900 border border-white/5 active:scale-95"
+            className="p-3 rounded-2xl bg-zinc-900 border border-white/5 active:scale-95"
           >
             <ArrowLeft size={16} className="text-white" />
           </button>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
               {moto?.patente} · {cliente?.nombre}
             </p>
             <h1 className="text-xl font-black text-white">Esperando Aprobación</h1>
@@ -75,30 +75,30 @@ export default function EsperandoAprobacionView({ ordenId, setView }) {
           <p className="font-mono text-5xl font-black text-yellow-400">
             {String(horas).padStart(2, "0")}:{String(minutos).padStart(2, "0")}:{String(segundos).padStart(2, "0")}
           </p>
-          <p className="text-[10px] font-bold text-slate-500">Esperando respuesta...</p>
+          <p className="text-[10px] font-bold text-zinc-500">Esperando respuesta...</p>
         </div>
 
-        <div className="rounded-[2rem] border border-slate-800 bg-slate-900/50 p-5 space-y-3">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Presupuesto enviado</p>
+        <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900/50 p-5 space-y-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Presupuesto enviado</p>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-slate-400">Mano de obra</span>
+            <span className="text-sm text-zinc-400">Mano de obra</span>
             <span className="font-black text-white">{formatMoney(totalTareas)}</span>
           </div>
           {totalRepuestos > 0 && (
             <div className="flex justify-between items-center">
-              <span className="text-sm text-slate-400">Repuestos</span>
+              <span className="text-sm text-zinc-400">Repuestos</span>
               <span className="font-black text-white">{formatMoney(totalRepuestos)}</span>
             </div>
           )}
           {(totalInsumos + totalFletes) > 0 && (
             <div className="flex justify-between items-center">
-              <span className="text-sm text-slate-400">Insumos / Fletes</span>
+              <span className="text-sm text-zinc-400">Insumos / Fletes</span>
               <span className="font-black text-white">{formatMoney(totalInsumos + totalFletes)}</span>
             </div>
           )}
-          <div className="border-t border-slate-700 pt-3 flex justify-between items-center">
+          <div className="border-t border-zinc-700 pt-3 flex justify-between items-center">
             <span className="text-sm font-black text-white">Total</span>
-            <span className="text-xl font-black text-blue-400">{formatMoney(totalPresupuesto)}</span>
+            <span className="text-xl font-black text-orange-400">{formatMoney(totalPresupuesto)}</span>
           </div>
         </div>
 
@@ -111,7 +111,7 @@ export default function EsperandoAprobacionView({ ordenId, setView }) {
 
         <button
           onClick={handleModificar}
-          className="w-full rounded-[2rem] border border-slate-700 bg-slate-900 py-4 text-[11px] font-black uppercase tracking-widest text-slate-300 active:scale-95 transition-all"
+          className="w-full rounded-[2rem] border border-zinc-700 bg-zinc-900 py-4 text-[11px] font-black uppercase tracking-widest text-zinc-300 active:scale-95 transition-all"
         >
           Modificar presupuesto
         </button>
@@ -119,3 +119,4 @@ export default function EsperandoAprobacionView({ ordenId, setView }) {
     </div>
   );
 }
+

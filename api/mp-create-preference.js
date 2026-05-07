@@ -5,7 +5,7 @@ try {
   console.error("Firebase Admin error:", e.message);
 }
 
-const PLANES = {
+const PLANES_FALLBACK = {
   base: { label: "Plan Base", monto: 5000 },
   pro:  { label: "Plan Pro",  monto: 12000 },
 };
@@ -17,19 +17,34 @@ module.exports = async function handler(req, res) {
   if (!db) return res.status(500).json({ error: "Firebase no inicializado" });
 
   const { uid, plan } = req.body || {};
-  if (!uid || !PLANES[plan]) return res.status(400).json({ error: "uid y plan requeridos" });
+  if (!uid || !PLANES_FALLBACK[plan]) return res.status(400).json({ error: "uid y plan requeridos" });
 
   const token = process.env.MP_ACCESS_TOKEN;
   if (!token) return res.status(500).json({ error: "MP_ACCESS_TOKEN no configurado" });
 
-  const p = PLANES[plan];
+  // Leer precios desde Firestore, con fallback a los valores hardcodeados
+  let planesConfig = { ...PLANES_FALLBACK };
+  try {
+    const adminSnap = await db.collection("admin_settings").doc("global").get();
+    if (adminSnap.exists) {
+      const adminData = adminSnap.data();
+      if (adminData?.planes && typeof adminData.planes === "object") {
+        planesConfig = { ...PLANES_FALLBACK, ...adminData.planes };
+      }
+    }
+  } catch (e) {
+    console.warn("No se pudo leer precios de Firestore, usando fallback:", e.message);
+  }
+
+  const p = planesConfig[plan];
   const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
     method: "POST",
     headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       items: [{ title: `Johnny Blaze OS — ${p.label}`, quantity: 1, unit_price: p.monto, currency_id: "ARS" }],
       external_reference: uid,
-      metadata: { uid },
+      // plan incluido en metadata para que el webhook lo lea
+      metadata: { uid, plan },
       back_urls: {
         success: `${BASE_URL}/?pago=ok`,
         failure: `${BASE_URL}/?pago=error`,

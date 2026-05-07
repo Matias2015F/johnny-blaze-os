@@ -131,15 +131,17 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
 
   return (
     <div className="space-y-5 p-4 pb-28 text-left animate-in fade-in duration-500">
-      <header className="rounded-[2.5rem] border border-white/10 bg-gradient-to-br from-blue-600/20 via-slate-900 to-slate-950 p-8 shadow-2xl backdrop-blur">
+      <header className="relative overflow-hidden rounded-[2.5rem] border border-orange-600/20 bg-gradient-to-b from-[#1C1004] via-[#141414] to-[#0A0A0A] p-8 shadow-2xl">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-500/60 to-transparent" />
+        <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-orange-600/10 blur-3xl" />
         <div className="font-bold">
-          <p className="mb-1 text-xs font-black uppercase tracking-[0.4em] text-blue-500">Taller OS</p>
+          <p className="mb-1 text-[10px] font-black uppercase tracking-[0.4em] text-orange-500">Mecánica de Motos</p>
           <h1 className="mb-1 text-4xl font-black leading-none tracking-tighter text-white">JOHNNY BLAZE</h1>
           <div className="mb-5 flex items-center justify-between gap-3">
-            <p className="max-w-[75%] truncate text-[10px] font-normal text-slate-400">{userLabel}</p>
+            <p className="max-w-[75%] truncate text-[10px] font-normal text-zinc-400">{userLabel}</p>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-slate-500 transition-all hover:text-red-400 active:scale-95"
+              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-zinc-500 transition-all hover:text-red-400 active:scale-95"
             >
               <LogOut size={13} /> Salir
             </button>
@@ -151,10 +153,10 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
               <p className="mt-2 text-2xl font-black text-emerald-400">{ordenesActivas.length}</p>
               <p className="mt-1 text-[10px] font-bold text-emerald-600">En movimiento hoy</p>
             </div>
-            <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4">
-              <p className="text-[9px] font-black uppercase tracking-wider text-blue-300">Pendiente de cobro</p>
-              <p className="mt-2 text-2xl font-black text-blue-400">{formatMoney(totalPendienteCobro)}</p>
-              <p className="mt-1 text-[10px] font-bold text-blue-600">Saldo total</p>
+            <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
+              <p className="text-[9px] font-black uppercase tracking-wider text-orange-300">Pendiente de cobro</p>
+              <p className="mt-2 text-2xl font-black text-orange-400">{formatMoney(totalPendienteCobro)}</p>
+              <p className="mt-1 text-[10px] font-bold text-orange-600">Saldo total</p>
             </div>
           </div>
 
@@ -174,27 +176,27 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
       </header>
 
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-[2rem] border border-slate-800 bg-slate-900 p-4 text-center">
-          <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Listas hoy</p>
+        <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-4 text-center">
+          <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Listas hoy</p>
           <p className="mt-2 text-2xl font-black text-emerald-400">{listasParaEntregar}</p>
-          <p className="mt-1 text-[9px] font-bold text-slate-600">Para entregar</p>
+          <p className="mt-1 text-[9px] font-bold text-zinc-600">Para entregar</p>
         </div>
-        <div className="rounded-[2rem] border border-slate-800 bg-slate-900 p-4 text-center">
-          <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Ingresos hoy</p>
-          <p className="mt-2 text-2xl font-black text-blue-400">{ingresosHoy}</p>
-          <p className="mt-1 text-[9px] font-bold text-slate-600">Motos nuevas</p>
+        <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-4 text-center">
+          <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Ingresos hoy</p>
+          <p className="mt-2 text-2xl font-black text-orange-400">{ingresosHoy}</p>
+          <p className="mt-1 text-[9px] font-bold text-zinc-600">Motos nuevas</p>
         </div>
-        <div className="rounded-[2rem] border border-slate-800 bg-slate-900 p-4 text-center">
-          <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Cobrado</p>
+        <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-4 text-center">
+          <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Cobrado</p>
           <p className="mt-2 text-xl font-black text-yellow-400">{cobradoHoy > 0 ? formatMoney(cobradoHoy) : "$0"}</p>
-          <p className="mt-1 text-[9px] font-bold text-slate-600">Hoy</p>
+          <p className="mt-1 text-[9px] font-bold text-zinc-600">Hoy</p>
         </div>
       </div>
 
       <button onClick={() => {
         trackEvent("nuevo_ingreso", { screen: "home" }).catch(console.error);
         setView("nuevaOrden");
-      }} className="w-full rounded-[2.5rem] bg-blue-600 p-8 text-white shadow-xl transition-all active:scale-[0.98]">
+      }} className="w-full rounded-[2.5rem] bg-orange-600 p-8 text-white shadow-xl transition-all active:scale-[0.98]">
         <div className="flex items-center gap-5 text-left font-bold">
           <div className="rounded-3xl bg-white/20 p-4"><PlusCircle size={32} /></div>
           <div>
@@ -204,14 +206,14 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
         </div>
       </button>
 
-      <button onClick={() => setView("agenda")} className="w-full rounded-[2rem] border border-blue-500/20 bg-blue-500/10 p-5 text-left shadow-xl transition-all active:scale-95">
+      <button onClick={() => setView("agenda")} className="w-full rounded-[2rem] border border-orange-500/20 bg-orange-500/10 p-5 text-left shadow-xl transition-all active:scale-95">
         <div className="flex items-center gap-4">
-          <div className="rounded-2xl bg-blue-600/20 p-3">
-            <Calendar className="text-blue-400" size={24} />
+          <div className="rounded-2xl bg-orange-600/20 p-3">
+            <Calendar className="text-orange-400" size={24} />
           </div>
           <div>
             <p className="text-sm font-black uppercase tracking-widest text-white">Agenda semanal</p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Ocupación y trabajos por día</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Ocupación y trabajos por día</p>
           </div>
         </div>
       </button>
@@ -220,34 +222,34 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
         <button onClick={() => {
           trackEvent("open_trabajos", { screen: "home" }).catch(console.error);
           setView("ordenes");
-        }} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
-          <Clock className="text-blue-400" size={24} />
+        }} className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-95">
+          <Clock className="text-orange-400" size={24} />
           <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Trabajos</p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Ver y seguir trabajos activos</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Ver y seguir trabajos activos</p>
         </button>
         <button onClick={() => {
           trackEvent("open_pagos", { screen: "home" }).catch(console.error);
           setView("pagosView");
-        }} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
+        }} className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-95">
           <ReceiptText className="text-emerald-400" size={24} />
           <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Pagos</p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Cobrar y emitir comprobantes</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Cobrar y emitir comprobantes</p>
         </button>
         <button onClick={() => {
           trackEvent("open_historial", { screen: "home" }).catch(console.error);
           setView("historial");
-        }} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
-          <History className="text-blue-400" size={24} />
+        }} className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-95">
+          <History className="text-orange-400" size={24} />
           <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Historial</p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Buscar patente, cliente o comprobante</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Buscar patente, cliente o comprobante</p>
         </button>
         <button onClick={() => {
           trackEvent("open_config", { screen: "home" }).catch(console.error);
           setView("config");
-        }} className="rounded-[2rem] border border-slate-800 bg-slate-900 p-5 text-left shadow-xl transition-all active:scale-95">
-          <Wrench className="text-slate-300" size={24} />
+        }} className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-95">
+          <Wrench className="text-zinc-300" size={24} />
           <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Más</p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">Configuración y herramientas</p>
+          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Configuración y herramientas</p>
         </button>
       </div>
 
@@ -279,14 +281,14 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
                       {recordatorio.estado === "service_vencido" ? "⚠️ SERVICE VENCIDO" : "🔔 PRÓXIMO SERVICE"} · {recordatorio.descripcion}
                     </p>
                     {recordatorio.kmObjetivo && (
-                      <p className="mt-2 text-[9px] text-slate-200">
+                      <p className="mt-2 text-[9px] text-zinc-200">
                         Km actual: <span className="font-black text-white">{(recordatorio.moto?.kilometrajeActual || recordatorio.moto?.km || 0).toLocaleString("es-AR")}</span> / Objetivo: <span className="font-black text-white">{recordatorio.kmObjetivo.toLocaleString("es-AR")} km</span>
                       </p>
                     )}
                   </div>
                   <button
                     onClick={() => LS.updateDoc("recordatorios", recordatorio.id, { estado: "hecho" })}
-                    className="shrink-0 text-slate-400 hover:text-red-400 text-2xl font-black active:scale-110 transition-colors"
+                    className="shrink-0 text-zinc-400 hover:text-red-400 text-2xl font-black active:scale-110 transition-colors"
                     title="Cerrar notificación"
                   >
                     ✕
@@ -313,7 +315,7 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
                   </button>
                   <button
                     onClick={() => LS.updateDoc("recordatorios", recordatorio.id, { estado: "hecho" })}
-                    className="rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 py-3 px-3 text-[9px] font-black uppercase active:scale-95 transition-all"
+                    className="rounded-xl bg-zinc-700 hover:bg-zinc-600 text-zinc-200 py-3 px-3 text-[9px] font-black uppercase active:scale-95 transition-all"
                   >
                     Marcar leído
                   </button>
@@ -325,8 +327,8 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
       )}
 
       {ordenesActivas.length > 0 && (
-        <div className="space-y-3 rounded-[2rem] border border-slate-800 bg-slate-900 p-5 shadow-xl">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Trabajos en curso</p>
+        <div className="space-y-3 rounded-[2rem] border border-zinc-800 bg-zinc-900 p-5 shadow-xl">
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Trabajos en curso</p>
           {ordenesActivas.map((order) => {
             const bike = bikes?.find((item) => item.id === order.bikeId) || {};
             return (
@@ -353,7 +355,7 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
                 </div>
                 {order.maxAutorizado > 0 && (
                   <div className="text-right">
-                    <p className="text-[9px] font-black uppercase text-slate-500">Acumulado</p>
+                    <p className="text-[9px] font-black uppercase text-zinc-500">Acumulado</p>
                     <p className="text-sm font-black text-white">{formatMoney(order.costoActual)}</p>
                   </div>
                 )}
@@ -365,3 +367,4 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
     </div>
   );
 }
+

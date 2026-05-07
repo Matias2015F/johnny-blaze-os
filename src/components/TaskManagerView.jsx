@@ -47,21 +47,21 @@ function clonarLista(items = []) {
 
 function AccordionSection({ titulo, numero, completo, activo, onClick, children }) {
   return (
-    <div className="rounded-[2rem] border border-slate-800 bg-slate-900/50 overflow-hidden">
+    <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900/50 overflow-hidden">
       <button
         onClick={onClick}
         className={`w-full flex items-center justify-between p-5 transition-all ${
-          activo ? "bg-blue-600/20 border-b border-blue-500/30" : "hover:bg-slate-800/50"
+          activo ? "bg-orange-600/20 border-b border-orange-500/30" : "hover:bg-zinc-800/50"
         }`}
       >
         <div className="flex items-center gap-3">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${
-            completo ? "bg-green-500/20 text-green-400" : "bg-slate-700 text-slate-300"
+            completo ? "bg-green-500/20 text-green-400" : "bg-zinc-700 text-zinc-300"
           }`}>
             {completo ? "✓" : numero}
           </div>
           <span className={`font-black uppercase text-sm ${
-            activo ? "text-blue-300" : completo ? "text-green-300" : "text-slate-300"
+            activo ? "text-orange-300" : completo ? "text-green-300" : "text-zinc-300"
           }`}>{titulo}</span>
         </div>
         <svg className={`w-5 h-5 transition-transform ${activo ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -100,11 +100,11 @@ function RepuestoConAutocomplete({ repuesto, cilindrada, onUpdate, onSelect, onD
   return (
     <div className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-3 relative">
       <div className="relative">
-        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
-          <Search size={14} className="text-slate-500" />
+        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2">
+          <Search size={14} className="text-zinc-500" />
           <input
             type="text"
-            className="w-full border-none bg-transparent text-xs font-black uppercase text-white outline-none placeholder:text-slate-600"
+            className="w-full border-none bg-transparent text-xs font-black uppercase text-white outline-none placeholder:text-zinc-600"
             placeholder="Buscar repuesto..."
             value={busqueda}
             onChange={(e) => handleBusqueda(e.target.value)}
@@ -112,15 +112,15 @@ function RepuestoConAutocomplete({ repuesto, cilindrada, onUpdate, onSelect, onD
           />
         </div>
         {mostrarSugerencias && sugerencias.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-white/10 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-white/10 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
             {sugerencias.map((rep) => (
               <button
                 key={rep.id}
                 onMouseDown={() => { onSelect(rep); setBusqueda(rep.nombre); setMostrarSugerencias(false); }}
-                className="w-full text-left px-3 py-2 hover:bg-blue-600/20 transition-colors border-b border-white/5 last:border-b-0"
+                className="w-full text-left px-3 py-2 hover:bg-orange-600/20 transition-colors border-b border-white/5 last:border-b-0"
               >
                 <p className="text-xs font-black text-white">{rep.nombre}</p>
-                <p className="text-[9px] text-blue-400">$ {rep.precio.toLocaleString("es-AR")} · Usos: {rep.usos}</p>
+                <p className="text-[9px] text-orange-400">$ {rep.precio.toLocaleString("es-AR")} · Usos: {rep.usos}</p>
               </button>
             ))}
           </div>
@@ -128,21 +128,21 @@ function RepuestoConAutocomplete({ repuesto, cilindrada, onUpdate, onSelect, onD
       </div>
       <div className="grid grid-cols-[80px_minmax(0,1fr)_auto] gap-2 items-end">
         <div>
-          <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Cant.</p>
+          <p className="text-[9px] font-black text-zinc-300 uppercase mb-1">Cant.</p>
           <input
             type="text" inputMode="numeric"
-            className="w-full rounded-xl border border-white/10 bg-slate-950/80 p-2 text-center text-xs font-black text-white outline-none focus:border-blue-500"
+            className="w-full rounded-xl border border-white/10 bg-zinc-950/80 p-2 text-center text-xs font-black text-white outline-none focus:border-orange-500"
             value={repuesto.cantidad || 1}
             onChange={(e) => onUpdate("cantidad", Number(e.target.value.replace(/\D/g, "")) || 1)}
           />
         </div>
         <div>
-          <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Precio unit.</p>
-          <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
-            <span className="text-[10px] font-black text-slate-300">$</span>
+          <p className="text-[9px] font-black text-zinc-300 uppercase mb-1">Precio unit.</p>
+          <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2">
+            <span className="text-[10px] font-black text-zinc-300">$</span>
             <input
               type="text" inputMode="numeric"
-              className="w-full min-w-0 bg-transparent text-right text-xs font-black text-blue-400 outline-none"
+              className="w-full min-w-0 bg-transparent text-right text-xs font-black text-orange-400 outline-none"
               placeholder="0"
               value={repuesto.monto > 0 ? repuesto.monto.toLocaleString("es-AR") : ""}
               onChange={(e) => {
@@ -154,13 +154,13 @@ function RepuestoConAutocomplete({ repuesto, cilindrada, onUpdate, onSelect, onD
             />
           </div>
         </div>
-        <button onClick={onDelete} className="self-center p-1 text-slate-500 hover:text-red-400 transition-colors">
+        <button onClick={onDelete} className="self-center p-1 text-zinc-500 hover:text-red-400 transition-colors">
           <X size={16} />
         </button>
       </div>
       <div className="flex justify-between items-center border-t border-white/10 pt-2">
-        <p className="text-[9px] font-black text-slate-400 uppercase">Total repuesto</p>
-        <p className="text-sm font-black text-blue-400">${((repuesto.cantidad || 1) * (repuesto.monto || 0)).toLocaleString("es-AR")}</p>
+        <p className="text-[9px] font-black text-zinc-400 uppercase">Total repuesto</p>
+        <p className="text-sm font-black text-orange-400">${((repuesto.cantidad || 1) * (repuesto.monto || 0)).toLocaleString("es-AR")}</p>
       </div>
     </div>
   );
@@ -185,10 +185,10 @@ function InsumoConAutocomplete({ insumo, cilindrada, onUpdate, onSelect, onDelet
   return (
     <div className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-3">
       <div className="relative">
-        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
-          <Search size={14} className="text-slate-500 flex-shrink-0" />
+        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2">
+          <Search size={14} className="text-zinc-500 flex-shrink-0" />
           <input
-            className="w-full min-w-0 bg-transparent text-xs font-black uppercase text-white outline-none placeholder:text-slate-600"
+            className="w-full min-w-0 bg-transparent text-xs font-black uppercase text-white outline-none placeholder:text-zinc-600"
             placeholder="Insumo / servicio..."
             value={busqueda}
             onChange={(e) => handleBusqueda(e.target.value)}
@@ -197,15 +197,15 @@ function InsumoConAutocomplete({ insumo, cilindrada, onUpdate, onSelect, onDelet
           />
         </div>
         {mostrarSugerencias && sugerencias.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-white/10 rounded-xl shadow-xl z-10 max-h-48 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-white/10 rounded-xl shadow-xl z-10 max-h-48 overflow-y-auto">
             {sugerencias.map((item, i) => (
               <button
                 key={i}
                 onMouseDown={() => { onSelect(item); setBusqueda(item.nombre); setMostrarSugerencias(false); }}
-                className="w-full text-left px-3 py-2 hover:bg-slate-800 border-b border-white/5 text-[10px] last:border-b-0 active:bg-slate-700"
+                className="w-full text-left px-3 py-2 hover:bg-zinc-800 border-b border-white/5 text-[10px] last:border-b-0 active:bg-zinc-700"
               >
                 <p className="font-black text-white">{item.nombre}</p>
-                <p className="text-slate-400">{formatMoney(item.precio)} · {item.usos || 0} usos</p>
+                <p className="text-zinc-400">{formatMoney(item.precio)} · {item.usos || 0} usos</p>
               </button>
             ))}
           </div>
@@ -213,10 +213,10 @@ function InsumoConAutocomplete({ insumo, cilindrada, onUpdate, onSelect, onDelet
       </div>
       <div className="grid grid-cols-[80px_minmax(0,1fr)_auto] gap-2 items-end">
         <div>
-          <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Cant.</p>
+          <p className="text-[9px] font-black text-zinc-300 uppercase mb-1">Cant.</p>
           <input
             type="text" inputMode="numeric"
-            className="w-full rounded-xl border border-white/10 bg-slate-950/80 p-2 text-center text-xs font-black text-white outline-none"
+            className="w-full rounded-xl border border-white/10 bg-zinc-950/80 p-2 text-center text-xs font-black text-white outline-none"
             value={insumo.cantidad || 1}
             onChange={(e) => {
               const digits = e.target.value.replace(/\D/g, "");
@@ -225,9 +225,9 @@ function InsumoConAutocomplete({ insumo, cilindrada, onUpdate, onSelect, onDelet
           />
         </div>
         <div>
-          <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Costo unit.</p>
-          <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
-            <span className="text-[10px] font-black text-slate-300">$</span>
+          <p className="text-[9px] font-black text-zinc-300 uppercase mb-1">Costo unit.</p>
+          <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2">
+            <span className="text-[10px] font-black text-zinc-300">$</span>
             <input
               type="text" inputMode="numeric"
               className="w-full min-w-0 bg-transparent text-right text-xs font-black text-orange-400 outline-none"
@@ -242,12 +242,12 @@ function InsumoConAutocomplete({ insumo, cilindrada, onUpdate, onSelect, onDelet
             />
           </div>
         </div>
-        <button onClick={onDelete} className="self-center p-1 text-slate-500 active:text-red-400">
+        <button onClick={onDelete} className="self-center p-1 text-zinc-500 active:text-red-400">
           <X size={16} />
         </button>
       </div>
       <div className="flex justify-between items-center border-t border-white/10 pt-2">
-        <p className="text-[9px] font-black text-slate-300 uppercase">Total gasto</p>
+        <p className="text-[9px] font-black text-zinc-300 uppercase">Total gasto</p>
         <p className="text-[11px] font-black text-orange-400">{formatMoney((insumo.monto || 0) * (insumo.cantidad || 1))}</p>
       </div>
     </div>
@@ -660,7 +660,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   const factor = (config.factorDificultad || CONFIG_DEFAULT.factorDificultad)[editForm.dificultad] || 1;
 
   return (
-    <div className="animate-in slide-in-from-bottom duration-300 bg-slate-950 px-4 pb-32 pt-4 text-left">
+    <div className="animate-in slide-in-from-bottom duration-300 bg-zinc-950 px-4 pb-32 pt-4 text-left">
       <div className="flex items-center gap-4 mb-6">
         <button onClick={() => { setServiceToEdit(null); setView("detalleOrden"); }}
           className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-white active:scale-90 transition-all">
@@ -681,23 +681,23 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
         >
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Seleccionar servicio</label>
+              <label className="text-[10px] font-black uppercase text-zinc-400 ml-1">Seleccionar servicio</label>
               <select value={selectedId || ""} onChange={e => handleSelect(e.target.value)}
-                className="w-full rounded-[1.5rem] border border-white/10 bg-black/20 p-4 text-sm font-black text-white outline-none focus:border-blue-500">
+                className="w-full rounded-[1.5rem] border border-white/10 bg-black/20 p-4 text-sm font-black text-white outline-none focus:border-orange-500">
                 <option value="">-- Escribir manualmente --</option>
                 {serviciosDisponibles.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
               </select>
             </div>
             <div className="space-y-1">
-              <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre del servicio</label>
+              <label className="ml-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">Nombre del servicio</label>
               <input value={editForm.nombre} onChange={e => setEditForm({ ...editForm, nombre: e.target.value })}
                 placeholder="Ej: Cambio de cubierta"
-                className="w-full rounded-[1.5rem] border border-white/10 bg-black/20 p-4 font-black text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
+                className="w-full rounded-[1.5rem] border border-white/10 bg-black/20 p-4 font-black text-white outline-none placeholder:text-zinc-600 focus:border-orange-500"
               />
             </div>
 
             {sugerencia && (
-              <div className={`rounded-[2rem] border p-4 space-y-2 ${sugerencia.confianza?.badge || "bg-slate-50 border-slate-200"}`}>
+              <div className={`rounded-[2rem] border p-4 space-y-2 ${sugerencia.confianza?.badge || "bg-zinc-50 border-zinc-200"}`}>
                 <div className="flex items-center gap-2">
                   <Sparkles size={14} className="flex-shrink-0" />
                   <p className="text-[10px] font-black uppercase tracking-widest">
@@ -722,18 +722,18 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="ml-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">Horas</label>
+                <label className="ml-1 text-[9px] font-bold uppercase tracking-widest text-zinc-500">Horas</label>
                 <input type="text" inputMode="decimal" value={editForm.horasBase || ""}
                   onChange={e => {
                     const cleaned = e.target.value.replace(",", ".").replace(/[^0-9.]/g, "");
                     setEditForm({ ...editForm, horasBase: cleaned === "" ? 0 : Number(cleaned) });
                   }}
-                  className="w-full rounded-xl border border-white/10 bg-black/20 p-3 text-center font-black text-white outline-none focus:border-blue-500" />
+                  className="w-full rounded-xl border border-white/10 bg-black/20 p-3 text-center font-black text-white outline-none focus:border-orange-500" />
               </div>
               <div className="space-y-1">
-                <label className="ml-1 text-[9px] font-bold uppercase tracking-widest text-slate-500">Dificultad</label>
+                <label className="ml-1 text-[9px] font-bold uppercase tracking-widest text-zinc-500">Dificultad</label>
                 <select value={editForm.dificultad} onChange={e => setEditForm({ ...editForm, dificultad: e.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-black/20 p-3 text-xs font-black uppercase text-white outline-none focus:border-blue-500">
+                  className="w-full rounded-xl border border-white/10 bg-black/20 p-3 text-xs font-black uppercase text-white outline-none focus:border-orange-500">
                   <option value="facil">Fácil</option>
                   <option value="normal">Normal</option>
                   <option value="dificil">Difícil</option>
@@ -744,7 +744,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
             {completoServicio() && (
               <button onClick={() => abrirSiguiente("servicio")}
-                className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
+                className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
                 Siguiente → Repuestos
               </button>
             )}
@@ -762,17 +762,17 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Repuestos y materiales</p>
-                <p className="text-[9px] text-slate-400 font-bold">Se cobran al cliente sin ganancia adicional</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Repuestos y materiales</p>
+                <p className="text-[9px] text-zinc-400 font-bold">Se cobran al cliente sin ganancia adicional</p>
               </div>
               <button
                 onClick={() => setEditForm({ ...editForm, repuestos: [...editForm.repuestos, { nombre: "", monto: 0, cantidad: 1 }] })}
-                className="rounded-xl bg-blue-500/10 p-2 text-blue-400">
+                className="rounded-xl bg-orange-500/10 p-2 text-orange-400">
                 <Plus size={18} />
               </button>
             </div>
             {editForm.repuestos.length === 0 && (
-              <p className="text-[10px] text-slate-400 font-bold text-center py-4 bg-slate-800/30 rounded-2xl">Sin repuestos cargados</p>
+              <p className="text-[10px] text-zinc-400 font-bold text-center py-4 bg-zinc-800/30 rounded-2xl">Sin repuestos cargados</p>
             )}
             {editForm.repuestos.map((item, idx) => (
               <RepuestoConAutocomplete
@@ -789,12 +789,12 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             ))}
             {editForm.repuestos.length > 0 && stats.repPrecio > 0 && (
               <div className="flex justify-between border-t border-white/10 px-1 pt-2 text-[10px] font-black">
-                <span className="text-slate-500">Total repuestos</span>
-                <span className="text-blue-400">{formatMoney(stats.repPrecio)}</span>
+                <span className="text-zinc-500">Total repuestos</span>
+                <span className="text-orange-400">{formatMoney(stats.repPrecio)}</span>
               </div>
             )}
             <button onClick={() => abrirSiguiente("repuestos")}
-              className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
+              className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
               Siguiente → Insumos
             </button>
           </div>
@@ -811,8 +811,8 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Otros gastos</p>
-                <p className="text-[9px] text-slate-400 font-bold">Se cobran al cliente sin ganancia adicional</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Otros gastos</p>
+                <p className="text-[9px] text-zinc-400 font-bold">Se cobran al cliente sin ganancia adicional</p>
               </div>
               <button
                 onClick={() => setEditForm({ ...editForm, insumos: [...editForm.insumos, { nombre: "", monto: 0, cantidad: 1 }] })}
@@ -821,7 +821,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
               </button>
             </div>
             {editForm.insumos.length === 0 && (
-              <p className="text-[10px] text-slate-400 font-bold text-center py-4 bg-slate-800/30 rounded-2xl">Sin insumos cargados</p>
+              <p className="text-[10px] text-zinc-400 font-bold text-center py-4 bg-zinc-800/30 rounded-2xl">Sin insumos cargados</p>
             )}
             {editForm.insumos.map((item, idx) => (
               <InsumoConAutocomplete
@@ -838,12 +838,12 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             ))}
             {editForm.insumos.length > 0 && stats.insPrecio > 0 && (
               <div className="flex justify-between border-t border-white/10 px-1 pt-2 text-[10px] font-black">
-                <span className="text-slate-500">Total insumos</span>
+                <span className="text-zinc-500">Total insumos</span>
                 <span className="text-orange-400">{formatMoney(stats.insPrecio)}</span>
               </div>
             )}
             <button onClick={() => abrirSiguiente("insumos")}
-              className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
+              className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
               Siguiente → Flete
             </button>
           </div>
@@ -860,8 +860,8 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Envíos y cadetería</p>
-                <p className="text-[9px] text-slate-400 font-bold">Se cobran al cliente sin ganancia adicional</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Envíos y cadetería</p>
+                <p className="text-[9px] text-zinc-400 font-bold">Se cobran al cliente sin ganancia adicional</p>
               </div>
               <button
                 onClick={() => setEditForm({ ...editForm, fletes: [...editForm.fletes, { nombre: "", monto: 0 }] })}
@@ -870,14 +870,14 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
               </button>
             </div>
             {editForm.fletes.length === 0 && (
-              <p className="text-[10px] text-slate-400 font-bold text-center py-4 bg-slate-800/30 rounded-2xl">Sin fletes cargados</p>
+              <p className="text-[10px] text-zinc-400 font-bold text-center py-4 bg-zinc-800/30 rounded-2xl">Sin fletes cargados</p>
             )}
             {editForm.fletes.map((item, idx) => (
               <div key={idx} className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-3">
-                <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
+                <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2">
                   <input
                     type="text"
-                    className="w-full bg-transparent text-xs font-black uppercase text-white outline-none placeholder:text-slate-600"
+                    className="w-full bg-transparent text-xs font-black uppercase text-white outline-none placeholder:text-zinc-600"
                     placeholder="Concepto (ej: Cadetería zona norte)"
                     value={item.nombre}
                     onChange={(e) => {
@@ -888,9 +888,9 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 </div>
                 <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
                   <div>
-                    <p className="text-[9px] font-black text-slate-300 uppercase mb-1">Monto total</p>
-                    <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2">
-                      <span className="text-[10px] font-black text-slate-300">$</span>
+                    <p className="text-[9px] font-black text-zinc-300 uppercase mb-1">Monto total</p>
+                    <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2">
+                      <span className="text-[10px] font-black text-zinc-300">$</span>
                       <input
                         type="text" inputMode="numeric"
                         className="w-full min-w-0 bg-transparent text-right text-xs font-black text-purple-400 outline-none"
@@ -907,7 +907,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                   </div>
                   <button
                     onClick={() => setEditForm({ ...editForm, fletes: editForm.fletes.filter((_, i) => i !== idx) })}
-                    className="self-center p-1 text-slate-500 hover:text-red-400 transition-colors">
+                    className="self-center p-1 text-zinc-500 hover:text-red-400 transition-colors">
                     <X size={16} />
                   </button>
                 </div>
@@ -915,12 +915,12 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             ))}
             {editForm.fletes.length > 0 && stats.flePrecio > 0 && (
               <div className="flex justify-between border-t border-white/10 px-1 pt-2 text-[10px] font-black">
-                <span className="text-slate-500">Total flete</span>
+                <span className="text-zinc-500">Total flete</span>
                 <span className="text-purple-400">{formatMoney(stats.flePrecio)}</span>
               </div>
             )}
             <button onClick={() => abrirSiguiente("fletes")}
-              className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
+              className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
               Siguiente → Observaciones
             </button>
           </div>
@@ -936,22 +936,22 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
         >
           <div className="space-y-4">
             <div className="space-y-1">
-              <label className="text-[10px] uppercase text-slate-400 ml-1 font-black tracking-widest">Notas para la próxima visita</label>
+              <label className="text-[10px] uppercase text-zinc-400 ml-1 font-black tracking-widest">Notas para la próxima visita</label>
               <textarea
                 value={editForm.observacionesProxima}
                 onChange={e => setEditForm({ ...editForm, observacionesProxima: e.target.value })}
                 rows="2"
-                className="w-full rounded-2xl border border-white/10 bg-black/20 p-4 font-bold text-sm text-white outline-none placeholder:text-slate-600 focus:border-blue-500"
+                className="w-full rounded-2xl border border-white/10 bg-black/20 p-4 font-bold text-sm text-white outline-none placeholder:text-zinc-600 focus:border-orange-500"
                 placeholder="Ej: Revisar transmisión en 2000km..."
               />
             </div>
 
-            <div className="space-y-5 rounded-[2.5rem] border border-slate-800 bg-slate-900 p-5">
+            <div className="space-y-5 rounded-[2.5rem] border border-zinc-800 bg-zinc-900 p-5">
               <div className="flex items-center gap-2">
                 <Bell size={16} className="text-yellow-500" />
-                <p className="text-[10px] font-black uppercase text-slate-700 tracking-widest">Próximo control (opcional)</p>
+                <p className="text-[10px] font-black uppercase text-zinc-700 tracking-widest">Próximo control (opcional)</p>
               </div>
-              <p className="text-[10px] text-slate-400 font-bold -mt-2">Dejá avisado si esta moto tiene que volver por revisión o service</p>
+              <p className="text-[10px] text-zinc-400 font-bold -mt-2">Dejá avisado si esta moto tiene que volver por revisión o service</p>
 
               {deteccion && !proximoTipo && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 space-y-3">
@@ -962,19 +962,19 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                     <button onClick={() => { setProximoTipo(deteccion.tipo); setProximoUnidad(deteccion.unidad); setProximoValor(deteccion.valorObjetivo); setDeteccion(null); }}
                       className="flex-1 bg-yellow-500 text-white py-2.5 rounded-xl font-black text-[10px] uppercase active:scale-95">Usar</button>
                     <button onClick={() => setDeteccion(null)}
-                      className="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl font-black text-[10px] uppercase active:scale-95">Ignorar</button>
+                      className="flex-1 bg-zinc-100 text-zinc-600 py-2.5 rounded-xl font-black text-[10px] uppercase active:scale-95">Ignorar</button>
                   </div>
                 </div>
               )}
 
               <div className="space-y-2">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paso 1: qué hay que controlar</p>
+                <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Paso 1: qué hay que controlar</p>
                 <div className="grid grid-cols-3 gap-2">
                   {TIPOS_RAPIDOS.map(t => (
                     <button key={String(t.id)}
                       onClick={() => { setProximoTipo(t.id); if (!t.id) { setProximoValor(null); setProximoUnidad("km"); setProximoCustom(false); setProximoCustomInput(""); } }}
                       className={`py-3 px-2 rounded-2xl text-[10px] font-black uppercase text-center transition-all active:scale-95 leading-tight ${
-                        proximoTipo === t.id ? (t.id ? "bg-yellow-500 text-white" : "bg-slate-200 text-slate-700") : "bg-slate-50 border border-slate-100 text-slate-600"
+                        proximoTipo === t.id ? (t.id ? "bg-yellow-500 text-white" : "bg-zinc-200 text-zinc-700") : "bg-zinc-50 border border-zinc-100 text-zinc-600"
                       }`}>{t.label}
                     </button>
                   ))}
@@ -983,46 +983,46 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
               {proximoTipo === "otro" && (
                 <div className="space-y-2">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paso 2: escribí el control</p>
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Paso 2: escribí el control</p>
                   <input value={proximoDesc} onChange={e => setProximoDesc(e.target.value)} placeholder="¿Qué hay que controlar?"
-                    className="w-full border-2 border-slate-100 rounded-2xl p-3 text-sm font-bold outline-none focus:border-yellow-500" />
+                    className="w-full border-2 border-zinc-100 rounded-2xl p-3 text-sm font-bold outline-none focus:border-yellow-500" />
                 </div>
               )}
 
               {proximoTipo && (
                 <div className="space-y-3">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">
                     {proximoTipo === "otro" ? "Paso 3: cuándo avisar" : "Paso 2: cuándo avisar"}
                   </p>
                   <div className="space-y-2">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Por kilómetros</p>
+                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Por kilómetros</p>
                     <div className="grid grid-cols-3 gap-2">
                       {PLAZOS_KM.map(v => (
                         <button key={v}
                           onClick={() => { setProximoUnidad("km"); setProximoValor(v); setProximoCustom(false); setProximoCustomInput(""); }}
                           className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
-                            proximoUnidad === "km" && proximoValor === v ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
+                            proximoUnidad === "km" && proximoValor === v ? "bg-orange-600 text-white" : "bg-zinc-50 border border-zinc-100 text-zinc-600"
                           }`}>{v.toLocaleString("es-AR")} km</button>
                       ))}
                       <button onClick={() => { setProximoUnidad("km"); setProximoValor(null); setProximoCustom(true); setProximoCustomInput(""); }}
                         className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
-                          proximoCustom && proximoUnidad === "km" ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
+                          proximoCustom && proximoUnidad === "km" ? "bg-orange-600 text-white" : "bg-zinc-50 border border-zinc-100 text-zinc-600"
                         }`}>Personalizado</button>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Por días</p>
+                    <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Por días</p>
                     <div className="grid grid-cols-3 gap-2">
                       {PLAZOS_DIAS.map(v => (
                         <button key={v}
                           onClick={() => { setProximoUnidad("dias"); setProximoValor(v); setProximoCustom(false); setProximoCustomInput(""); }}
                           className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
-                            proximoUnidad === "dias" && proximoValor === v ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
+                            proximoUnidad === "dias" && proximoValor === v ? "bg-orange-600 text-white" : "bg-zinc-50 border border-zinc-100 text-zinc-600"
                           }`}>{v} días</button>
                       ))}
                       <button onClick={() => { setProximoUnidad("dias"); setProximoValor(null); setProximoCustom(true); setProximoCustomInput(""); }}
                         className={`py-3 rounded-2xl text-[10px] font-black uppercase transition-all active:scale-95 ${
-                          proximoCustom && proximoUnidad === "dias" ? "bg-blue-600 text-white" : "bg-slate-50 border border-slate-100 text-slate-600"
+                          proximoCustom && proximoUnidad === "dias" ? "bg-orange-600 text-white" : "bg-zinc-50 border border-zinc-100 text-zinc-600"
                         }`}>Personalizado</button>
                     </div>
                   </div>
@@ -1030,9 +1030,9 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                     <div className="grid grid-cols-[1fr_auto] gap-2">
                       <input value={proximoCustomInput} onChange={e => setProximoCustomInput(e.target.value)}
                         placeholder={proximoUnidad === "km" ? "Ej: 1800" : "Ej: 45"}
-                        className="w-full border-2 border-slate-100 rounded-2xl p-3 text-sm font-bold outline-none focus:border-blue-500" />
+                        className="w-full border-2 border-zinc-100 rounded-2xl p-3 text-sm font-bold outline-none focus:border-orange-500" />
                       <button onClick={() => { const v = Number(String(proximoCustomInput).replace(/\D/g, "")); if (v) setProximoValor(v); }}
-                        className="px-4 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase active:scale-95">Usar</button>
+                        className="px-4 rounded-2xl bg-zinc-900 text-white text-[10px] font-black uppercase active:scale-95">Usar</button>
                     </div>
                   )}
                   {proximoValor && (
@@ -1048,7 +1048,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
               )}
 
               {testMode && (
-                <div className="border-t border-slate-100 pt-4 space-y-2">
+                <div className="border-t border-zinc-100 pt-4 space-y-2">
                   <p className="text-[9px] font-black text-purple-500 uppercase tracking-widest flex items-center gap-1">
                     <span className="bg-purple-500 text-white px-2 py-0.5 rounded text-[8px]">PRUEBA</span>
                     Opciones de test
@@ -1077,3 +1077,4 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     </div>
   );
 }
+

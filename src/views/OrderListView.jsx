@@ -17,7 +17,7 @@ export default function OrderListView({ orders, bikes, clients, setSelectedOrder
       </div>
       <div className="space-y-3">
         {activas.length === 0 ? (
-          <p className="text-center py-20 text-slate-500 font-bold uppercase text-[10px] tracking-[0.2em]">No hay órdenes activas</p>
+          <p className="text-center py-20 text-zinc-500 font-bold uppercase text-[10px] tracking-[0.2em]">No hay órdenes activas</p>
         ) : (
           activas.map((o) => {
             const b = bikes.find((x) => x.id === o.bikeId);

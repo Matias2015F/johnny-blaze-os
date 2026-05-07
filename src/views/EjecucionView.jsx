@@ -77,7 +77,7 @@ export default function EjecucionView({ ordenId, setView }) {
 
   if (!orden) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-slate-500 text-xs font-black uppercase">
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-zinc-500 text-xs font-black uppercase">
         Cargando...
       </div>
     );
@@ -90,26 +90,26 @@ export default function EjecucionView({ ordenId, setView }) {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setView("detalleOrden")}
-              className="p-3 rounded-2xl bg-slate-900 border border-white/5 active:scale-95"
+              className="p-3 rounded-2xl bg-zinc-900 border border-white/5 active:scale-95"
             >
               <ArrowLeft size={16} className="text-white" />
             </button>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
                 {moto?.patente} · {cliente?.nombre}
               </p>
               <h1 className="text-xl font-black text-white">En Ejecución</h1>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Total</p>
-            <p className="text-lg font-black text-blue-400">{formatMoney(orden.total || 0)}</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Total</p>
+            <p className="text-lg font-black text-orange-400">{formatMoney(orden.total || 0)}</p>
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-blue-500/20 bg-gradient-to-b from-blue-600/10 to-transparent p-6 text-center space-y-4">
-          <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Cronómetro</p>
-          <p className="font-mono text-6xl font-black text-blue-400 tracking-tight">
+        <div className="rounded-[2rem] border border-orange-500/20 bg-gradient-to-b from-orange-600/10 to-transparent p-6 text-center space-y-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-orange-400">Cronómetro</p>
+          <p className="font-mono text-6xl font-black text-orange-400 tracking-tight">
             {String(horas).padStart(2, "0")}:{String(minutosRest).padStart(2, "0")}:{String(segundos).padStart(2, "0")}
           </p>
           <div className="flex gap-3 justify-center">
@@ -118,7 +118,7 @@ export default function EjecucionView({ ordenId, setView }) {
               className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-sm transition-all active:scale-95 ${
                 isRunning
                   ? "bg-yellow-500 text-black"
-                  : "bg-blue-600 text-white"
+                  : "bg-orange-600 text-white"
               }`}
             >
               {isRunning ? <Pause size={16} /> : <Play size={16} />}
@@ -126,7 +126,7 @@ export default function EjecucionView({ ordenId, setView }) {
             </button>
             <button
               onClick={handleGuardar}
-              className="px-5 py-3 rounded-2xl bg-slate-800 border border-white/5 text-slate-300 text-sm font-black active:scale-95"
+              className="px-5 py-3 rounded-2xl bg-zinc-800 border border-white/5 text-zinc-300 text-sm font-black active:scale-95"
             >
               Guardar
             </button>
@@ -144,16 +144,16 @@ export default function EjecucionView({ ordenId, setView }) {
         <div className="rounded-[2rem] border border-emerald-500/20 bg-emerald-500/10 p-5 space-y-2">
           <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Total en vivo</p>
           <div className="flex justify-between">
-            <span className="text-sm text-slate-400">Mano de obra</span>
+            <span className="text-sm text-zinc-400">Mano de obra</span>
             <span className="font-black text-white">{formatMoney(totalTareas)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm text-slate-400">Repuestos</span>
+            <span className="text-sm text-zinc-400">Repuestos</span>
             <span className="font-black text-white">{formatMoney(totalRepuestos)}</span>
           </div>
           {totalFletes > 0 && (
             <div className="flex justify-between">
-              <span className="text-sm text-slate-400">Fletes</span>
+              <span className="text-sm text-zinc-400">Fletes</span>
               <span className="font-black text-white">{formatMoney(totalFletes)}</span>
             </div>
           )}
@@ -164,7 +164,7 @@ export default function EjecucionView({ ordenId, setView }) {
         </div>
 
         <div className="space-y-3">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tareas</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Tareas</p>
           {tareas.map((tarea, idx) => (
             <button
               key={idx}
@@ -172,12 +172,12 @@ export default function EjecucionView({ ordenId, setView }) {
               className={`w-full flex items-center gap-3 p-4 rounded-2xl border transition-all active:scale-95 ${
                 tarea.completada
                   ? "border-emerald-500/30 bg-emerald-500/10"
-                  : "border-slate-700 bg-slate-900/50"
+                  : "border-zinc-700 bg-zinc-900/50"
               }`}
             >
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                  tarea.completada ? "border-emerald-500 bg-emerald-500" : "border-slate-600"
+                  tarea.completada ? "border-emerald-500 bg-emerald-500" : "border-zinc-600"
                 }`}
               >
                 {tarea.completada && <span className="text-[10px] text-white font-black">✓</span>}
@@ -187,18 +187,18 @@ export default function EjecucionView({ ordenId, setView }) {
                   {tarea.nombre}
                 </p>
               </div>
-              <span className="text-sm font-black text-slate-400">{formatMoney(tarea.monto || 0)}</span>
+              <span className="text-sm font-black text-zinc-400">{formatMoney(tarea.monto || 0)}</span>
             </button>
           ))}
           {tareas.length === 0 && (
-            <p className="text-xs text-slate-500 text-center py-2">Sin tareas cargadas</p>
+            <p className="text-xs text-zinc-500 text-center py-2">Sin tareas cargadas</p>
           )}
         </div>
 
         <div className="space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notas del trabajo</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Notas del trabajo</p>
           <textarea
-            className="w-full bg-slate-900 border border-white/5 rounded-2xl p-4 text-white text-sm outline-none focus:border-blue-600 resize-none"
+            className="w-full bg-zinc-900 border border-white/5 rounded-2xl p-4 text-white text-sm outline-none focus:border-orange-600 resize-none"
             rows={3}
             value={notas}
             onChange={(e) => setNotas(e.target.value)}
@@ -217,3 +217,4 @@ export default function EjecucionView({ ordenId, setView }) {
     </div>
   );
 }
+

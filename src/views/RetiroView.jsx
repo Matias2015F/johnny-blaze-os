@@ -19,7 +19,7 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
 
   if (!orden) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-slate-500 text-xs font-black uppercase">
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-zinc-500 text-xs font-black uppercase">
         Cargando...
       </div>
     );
@@ -48,12 +48,12 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setView("pago")}
-            className="p-3 rounded-2xl bg-slate-900 border border-white/5 active:scale-95"
+            className="p-3 rounded-2xl bg-zinc-900 border border-white/5 active:scale-95"
           >
             <ArrowLeft size={16} className="text-white" />
           </button>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
               {moto?.patente} · {cliente?.nombre}
             </p>
             <h1 className="text-xl font-black text-white">Retiro</h1>
@@ -63,32 +63,32 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
         <div className="text-center space-y-3 py-4">
           <div className="text-6xl">✅</div>
           <h2 className="text-2xl font-black text-white">Trabajo completado y pagado</h2>
-          <p className="text-slate-400 text-sm">{cliente?.nombre}</p>
+          <p className="text-zinc-400 text-sm">{cliente?.nombre}</p>
         </div>
 
-        <div className="rounded-[2rem] border border-slate-800 bg-slate-900/50 p-5 space-y-3">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Resumen</p>
+        <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900/50 p-5 space-y-3">
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Resumen</p>
           <div className="flex justify-between">
-            <span className="text-sm text-slate-400">Fecha</span>
+            <span className="text-sm text-zinc-400">Fecha</span>
             <span className="font-black text-white">{fecha}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm text-slate-400">Total pagado</span>
+            <span className="text-sm text-zinc-400">Total pagado</span>
             <span className="font-black text-emerald-400">{formatMoney(totalPagado)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm text-slate-400">Tu ganancia</span>
+            <span className="text-sm text-zinc-400">Tu ganancia</span>
             <span className="font-black text-emerald-400">{formatMoney(orden.ganancia || totalManoObra)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-sm text-slate-400">Moto</span>
+            <span className="text-sm text-zinc-400">Moto</span>
             <span className="font-black text-white">{moto?.marca} {moto?.modelo}</span>
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-blue-500/20 bg-blue-500/10 p-5 space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Garantía</p>
-          <ul className="space-y-2 text-sm text-slate-300">
+        <div className="rounded-[2rem] border border-orange-500/20 bg-orange-500/10 p-5 space-y-2">
+          <p className="text-[10px] font-black uppercase tracking-widest text-orange-400">Garantía</p>
+          <ul className="space-y-2 text-sm text-zinc-300">
             <li>✓ 15 días en mano de obra</li>
             <li>✓ Repuestos con garantía de fábrica</li>
             <li>✓ Presentar este comprobante para reclamar</li>
@@ -112,7 +112,7 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
 
         <button
           onClick={handleVerPDF}
-          className="w-full flex items-center justify-center gap-2 rounded-[2rem] border border-slate-700 bg-slate-900 py-4 text-[11px] font-black uppercase tracking-widest text-slate-300 active:scale-95 transition-all"
+          className="w-full flex items-center justify-center gap-2 rounded-[2rem] border border-zinc-700 bg-zinc-900 py-4 text-[11px] font-black uppercase tracking-widest text-zinc-300 active:scale-95 transition-all"
         >
           <Download size={16} />
           Descargar Orden (PDF)
@@ -120,7 +120,7 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
 
         <button
           onClick={handleVolverHome}
-          className="w-full rounded-[2rem] bg-blue-600 py-5 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+          className="w-full rounded-[2rem] bg-orange-600 py-5 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
         >
           ← Volver a Inicio
         </button>
@@ -128,3 +128,4 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
     </div>
   );
 }
+

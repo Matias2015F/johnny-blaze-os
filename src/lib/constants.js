@@ -12,6 +12,7 @@ export const CONFIG_DEFAULT = {
   mecanicoResponsable: "Matías Fleischmann",
   dniMecanico: "---",
   telefonoTaller: "3434XXXXXX",
+  emailNotificacion: "",
   garantiaDias: 7,
   garantiaKm: 500,
   garantiaDefault: PLANTILLAS_GARANTIA[0].texto,

@@ -1,4 +1,4 @@
-ï»¿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, ChevronDown, ClipboardList, DollarSign, Edit2, FileText, Play, Send, ShieldCheck, ThumbsUp, Trash2, Truck, Wrench, X } from "lucide-react";
 import { LS } from "../lib/storage.js";
 import { CONFIG_DEFAULT, ESTADO_CSS, ESTADO_LABEL } from "../lib/constants.js";
@@ -23,7 +23,7 @@ const RANGO_FACTOR = { bajo: 1.0, medio: 1.3, alto: 1.5 };
 
 const CRON_MSG = {
   NORMAL: { texto: "Vas dentro del presupuesto", color: "text-green-400", bg: "bg-green-500/10 border-green-500/30" },
-  ALERTA: { texto: "EstÃ¡s cerca del lÃ­mite", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/30" },
+  ALERTA: { texto: "Estás cerca del límite", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/30" },
   BLOQUEADO: { texto: "Te pasaste del presupuesto", color: "text-red-400", bg: "bg-red-500/10 border-red-500/30" },
 };
 
@@ -167,13 +167,13 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const presupuestoEditable = Number(maxInput) > 0 ? Number(maxInput) : presBase;
   const estadoPaso = {
     diagnostico: "Siguiente paso: armar presupuesto",
-    presupuesto: "Siguiente paso: esperar aprobaciÃ³n",
-    aprobacion: "Siguiente paso: iniciar reparaciÃ³n",
+    presupuesto: "Siguiente paso: esperar aprobación",
+    aprobacion: "Siguiente paso: iniciar reparación",
     reparacion: "Siguiente paso: dejar listo para cobrar",
     finalizada: "Siguiente paso: registrar pago",
     listo_para_emitir: "Siguiente paso: emitir comprobante",
     cerrado_emitido: "Trabajo cerrado con comprobante emitido",
-  }[order.estado] || "RevisÃ¡ este trabajo";
+  }[order.estado] || "Revisá este trabajo";
 
   const presupuestoMinSheet = nivelRiesgo === "bajo"
     ? presupuestoEditable
@@ -230,7 +230,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
   const cambiarEstado = (nuevo) => {
     if (isLocked) {
-      showToast("No se puede modificar: ya se generÃ³ el comprobante");
+      showToast("No se puede modificar: ya se generó el comprobante");
       return;
     }
     LS.updateDoc("trabajos", order.id, { estado: nuevo });
@@ -238,28 +238,28 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   };
 
   const accionPrincipal = isLocked
-    ? { label: "Ver / reimprimir comprobante", action: () => setView("imprimirOrden"), className: "bg-slate-700 text-white" }
+    ? { label: "Ver / reimprimir comprobante", action: () => setView("imprimirOrden"), className: "bg-zinc-700 text-white" }
     : order.estado === "diagnostico"
       ? { label: "Pasar a presupuesto", action: () => cambiarEstado("presupuesto"), className: "bg-violet-600 text-white" }
       : order.estado === "presupuesto"
         ? presupuestoSent
-          ? { label: "âœ“ Presupuesto enviado", action: abrirSheet, className: "bg-emerald-600 text-white" }
-          : { label: "Enviar presupuesto", action: abrirSheet, className: "bg-amber-400 text-slate-950" }
+          ? { label: "? Presupuesto enviado", action: abrirSheet, className: "bg-emerald-600 text-white" }
+          : { label: "Enviar presupuesto", action: abrirSheet, className: "bg-amber-400 text-zinc-950" }
         : order.estado === "aprobacion"
-          ? { label: "Iniciar reparaciÃ³n", action: () => setView("ejecucion"), className: "bg-blue-600 text-white" }
+          ? { label: "Iniciar reparación", action: () => setView("ejecucion"), className: "bg-orange-600 text-white" }
           : order.estado === "reparacion"
-            ? { label: "Continuar ejecuciÃ³n", action: () => setView("ejecucion"), className: "bg-blue-600 text-white" }
+            ? { label: "Continuar ejecución", action: () => setView("ejecucion"), className: "bg-orange-600 text-white" }
             : order.estado === "finalizada"
               ? { label: "Finalizar trabajo", action: () => setView("finalizacion"), className: "bg-orange-600 text-white" }
               : order.estado === "listo_para_emitir"
                 ? { label: "Registrar cobro", action: () => setView("pago"), className: "bg-green-600 text-white" }
                 : order.estado === "cerrado_emitido"
-                  ? { label: "Emitir comprobante", action: () => setView("prePdf"), className: "bg-blue-600 text-white" }
+                  ? { label: "Emitir comprobante", action: () => setView("prePdf"), className: "bg-orange-600 text-white" }
                   : null;
 
   const eliminarItem = (lista, index) => {
     if (isLocked) {
-      showToast("No se puede modificar: ya se generÃ³ el comprobante");
+      showToast("No se puede modificar: ya se generó el comprobante");
       return;
     }
     const nuevaLista = [...(order[lista] || [])];
@@ -327,7 +327,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       accionPrincipal.action();
       return;
     }
-    showToast("Ese paso todavÃ­a no corresponde");
+    showToast("Ese paso todavía no corresponde");
   };
 
   const tiempoMax = order.maxAutorizado > 0 ? order.maxAutorizado / valorHora : 0;
@@ -335,14 +335,14 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const restante = Math.max(tiempoMax - tiempoActual, 0);
 
   return (
-    <div className="min-h-screen bg-slate-950 pb-40 text-left text-slate-100 animate-in slide-in-from-right duration-300">
+    <div className="min-h-screen bg-zinc-950 pb-40 text-left text-zinc-100 animate-in slide-in-from-right duration-300">
       {/* Sticky total bar */}
       {res.total > 0 && (
         <div className="fixed bottom-[64px] left-0 right-0 z-40 px-4 pb-2 pointer-events-none">
           <div className="mx-auto max-w-[440px]">
-            <div className="flex items-center justify-between rounded-[1.5rem] border border-slate-700/80 bg-slate-900/95 px-5 py-3 shadow-2xl backdrop-blur">
+            <div className="flex items-center justify-between rounded-[1.5rem] border border-zinc-700/80 bg-zinc-900/95 px-5 py-3 shadow-2xl backdrop-blur">
               <div className="flex items-center gap-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Total</p>
                 <p className="text-lg font-black text-white">{formatMoney(res.total)}</p>
               </div>
               {saldoPendiente > 0 && (
@@ -351,16 +351,16 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 </p>
               )}
               {saldoPendiente <= 0 && totalPagado > 0 && (
-                <p className="text-[10px] font-black text-emerald-400">Pagado âœ“</p>
+                <p className="text-[10px] font-black text-emerald-400">Pagado ?</p>
               )}
             </div>
           </div>
         </div>
       )}
-      <div className="bg-gradient-to-b from-slate-800 to-slate-900 px-5 pb-8 pt-5 text-white shadow-2xl">
+      <div className="bg-gradient-to-b from-zinc-800 to-zinc-900 px-5 pb-8 pt-5 text-white shadow-2xl">
         <div className="mx-auto max-w-[440px]">
           <div className="mb-4 flex items-center justify-between">
-            <button onClick={() => setView("ordenes")} className="rounded-2xl border-2 border-blue-500/50 bg-blue-600/20 p-3 text-blue-300 hover:text-blue-100 hover:bg-blue-600/40 shadow-lg backdrop-blur transition-all active:scale-90">
+            <button onClick={() => setView("ordenes")} className="rounded-2xl border-2 border-orange-500/50 bg-orange-600/20 p-3 text-orange-300 hover:text-orange-100 hover:bg-orange-600/40 shadow-lg backdrop-blur transition-all active:scale-90">
               <ArrowLeft size={22} />
             </button>
             <div className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest shadow-lg ${ESTADO_CSS[order.estado]}`}>
@@ -372,36 +372,36 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             <div className="flex-1">
               <div className="flex items-center gap-3">
                 <h2 className="text-4xl font-black leading-none tracking-tighter uppercase">{bike?.patente || "---"}</h2>
-                {isLocked && <ShieldCheck className="text-blue-400" size={22} />}
+                {isLocked && <ShieldCheck className="text-orange-400" size={22} />}
               </div>
-              <p className="mt-1 text-[10px] font-black uppercase tracking-[0.25em] text-blue-400">{trabajoLabel}</p>
+              <p className="mt-1 text-[10px] font-black uppercase tracking-[0.25em] text-orange-400">{trabajoLabel}</p>
 
               {editingClient ? (
-                <div className="mt-3 space-y-2 rounded-2xl bg-slate-800/50 p-3 border border-slate-700">
+                <div className="mt-3 space-y-2 rounded-2xl bg-zinc-800/50 p-3 border border-zinc-700">
                   <input
                     type="text"
                     value={clientNombre}
                     onChange={e => setClientNombre(e.target.value)}
                     placeholder="Nombre del cliente"
-                    className="w-full bg-black/60 text-white text-sm px-3 py-2 rounded-lg border border-white/10 focus:border-blue-500 outline-none"
+                    className="w-full bg-black/60 text-white text-sm px-3 py-2 rounded-lg border border-white/10 focus:border-orange-500 outline-none"
                   />
                   <input
                     type="tel"
                     value={clientTel}
                     onChange={e => setClientTel(e.target.value)}
-                    placeholder="TelÃ©fono"
-                    className="w-full bg-black/60 text-white text-sm px-3 py-2 rounded-lg border border-white/10 focus:border-blue-500 outline-none"
+                    placeholder="Teléfono"
+                    className="w-full bg-black/60 text-white text-sm px-3 py-2 rounded-lg border border-white/10 focus:border-orange-500 outline-none"
                   />
                   <div className="flex gap-2">
                     <button
                       onClick={guardarCliente}
-                      className="flex-1 bg-blue-600 text-white text-xs font-black py-2 rounded-lg hover:bg-blue-500 active:scale-95"
+                      className="flex-1 bg-orange-600 text-white text-xs font-black py-2 rounded-lg hover:bg-orange-500 active:scale-95"
                     >
                       Guardar
                     </button>
                     <button
                       onClick={() => setEditingClient(false)}
-                      className="flex-1 bg-slate-700 text-slate-200 text-xs font-black py-2 rounded-lg hover:bg-slate-600 active:scale-95"
+                      className="flex-1 bg-zinc-700 text-zinc-200 text-xs font-black py-2 rounded-lg hover:bg-zinc-600 active:scale-95"
                     >
                       Cancelar
                     </button>
@@ -412,22 +412,22 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   onClick={() => setEditingClient(true)}
                   className="mt-2 text-left w-full group"
                 >
-                  <p className="text-sm font-black uppercase tracking-tight text-slate-300 group-hover:text-blue-400 transition-colors">{clientNombre || "Cliente desconocido"}</p>
-                  <p className="text-[9px] text-slate-500 group-hover:text-slate-400 transition-colors">{clientTel || "Sin telÃ©fono"}</p>
+                  <p className="text-sm font-black uppercase tracking-tight text-zinc-300 group-hover:text-orange-400 transition-colors">{clientNombre || "Cliente desconocido"}</p>
+                  <p className="text-[9px] text-zinc-500 group-hover:text-zinc-400 transition-colors">{clientTel || "Sin teléfono"}</p>
                 </button>
               )}
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ganancia</p>
-              <div className="rounded-[1.5rem] border border-emerald-400/20 bg-slate-950/50 px-4 py-3 shadow-xl backdrop-blur">
+              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Ganancia</p>
+              <div className="rounded-[1.5rem] border border-emerald-400/20 bg-zinc-950/50 px-4 py-3 shadow-xl backdrop-blur">
                 <p className="text-3xl font-black leading-none tracking-tighter text-emerald-400">{formatMoney(res.desglose.moCliente)}</p>
               </div>
             </div>
           </div>
 
-          <div className="mt-4 flex items-center justify-between border-t border-slate-700/50 pt-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{estadoPaso}</p>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{bike?.marca || ""} {bike?.modelo || ""}</p>
+          <div className="mt-4 flex items-center justify-between border-t border-zinc-700/50 pt-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{estadoPaso}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{bike?.marca || ""} {bike?.modelo || ""}</p>
           </div>
         </div>
       </div>
@@ -448,10 +448,10 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 title={idx === currentStepIndex || idx === currentStepIndex + 1 ? accionPrincipal?.label : step.label}
                 className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-[1.25rem] border transition-all shadow-lg ${
                   isCurrent
-                    ? "scale-105 border-blue-400 bg-blue-600 text-white shadow-blue-500/40"
+                    ? "scale-105 border-orange-400 bg-orange-600 text-white shadow-orange-500/40"
                     : isDone
                       ? "border-emerald-400 bg-emerald-500 text-white"
-                      : "border-slate-800 bg-slate-900 text-slate-500"
+                      : "border-zinc-800 bg-zinc-900 text-zinc-500"
                 }`}
               >
                 {isDone ? <CheckCircle2 size={18} /> : <Icon size={16} />}
@@ -463,9 +463,9 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
         <div className="h-6" />
 
         {isLocked && (
-          <div className="flex items-center gap-3 rounded-[2rem] border border-blue-500/20 bg-blue-500/10 p-4 shadow-lg backdrop-blur">
-            <div className="rounded-xl bg-blue-500 p-2 text-white"><ShieldCheck size={20} /></div>
-            <p className="text-[10px] font-black uppercase leading-tight text-blue-200">Trabajo cerrado: ya se emitiÃ³ comprobante.</p>
+          <div className="flex items-center gap-3 rounded-[2rem] border border-orange-500/20 bg-orange-500/10 p-4 shadow-lg backdrop-blur">
+            <div className="rounded-xl bg-orange-500 p-2 text-white"><ShieldCheck size={20} /></div>
+            <p className="text-[10px] font-black uppercase leading-tight text-orange-200">Trabajo cerrado: ya se emitió comprobante.</p>
           </div>
         )}
 
@@ -481,7 +481,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
         {!isLocked && order.estado !== "cerrado_emitido" && (
           <button
             onClick={() => setView("gestionarTareas")}
-            className="w-full rounded-[1.75rem] border border-slate-700 bg-slate-900 py-4 text-[11px] font-black uppercase tracking-widest text-slate-300 shadow-lg transition-all active:scale-95"
+            className="w-full rounded-[1.75rem] border border-zinc-700 bg-zinc-900 py-4 text-[11px] font-black uppercase tracking-widest text-zinc-300 shadow-lg transition-all active:scale-95"
           >
             Gestionar tareas / repuestos
           </button>
@@ -491,19 +491,19 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       {showPresupuestoSheet && (
         <div className="fixed inset-0 z-50 flex items-end">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowPresupuestoSheet(false)} />
-          <div className="relative w-full max-h-[92vh] overflow-y-auto rounded-t-[2rem] bg-slate-900 border-t border-slate-700 shadow-2xl animate-in slide-in-from-bottom duration-300">
+          <div className="relative w-full max-h-[92vh] overflow-y-auto rounded-t-[2rem] bg-zinc-900 border-t border-zinc-700 shadow-2xl animate-in slide-in-from-bottom duration-300">
             <div className="mx-auto max-w-[440px] p-6 space-y-5">
 
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Enviar Presupuesto</h3>
-                <button onClick={() => setShowPresupuestoSheet(false)} className="rounded-xl bg-slate-800 p-2 text-slate-400 hover:text-white active:scale-90 transition-all">
+                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">Enviar Presupuesto</h3>
+                <button onClick={() => setShowPresupuestoSheet(false)} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 hover:text-white active:scale-90 transition-all">
                   <X size={18} />
                 </button>
               </div>
 
-              <div className="rounded-2xl bg-slate-800/50 border border-slate-700 p-4">
+              <div className="rounded-2xl bg-zinc-800/50 border border-zinc-700 p-4">
                 <p className="text-sm font-black text-white">{client.nombre || "Cliente"}</p>
-                <p className="text-xs text-slate-400">{bike.marca || ""} {bike.modelo || ""} {bike.patente ? `â€” ${bike.patente}` : ""}</p>
+                <p className="text-xs text-zinc-400">{bike.marca || ""} {bike.modelo || ""} {bike.patente ? `— ${bike.patente}` : ""}</p>
               </div>
 
               <div className="flex gap-2">
@@ -516,8 +516,8 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                     }}
                     className={`flex-1 rounded-xl py-2.5 text-xs font-black transition-all active:scale-95 ${
                       sheetTipoFijo === val
-                        ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
-                        : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                        ? "bg-orange-600 text-white shadow-lg shadow-orange-500/30"
+                        : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
                     }`}
                   >
                     {label}
@@ -527,45 +527,45 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
               {sheetTipoFijo ? (
                 <div>
-                  <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500">Monto total</p>
+                  <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">Monto total</p>
                   <input
                     type="number"
                     inputMode="numeric"
                     value={sheetMin}
                     onChange={(e) => { setSheetMin(e.target.value); setSheetMax(e.target.value); }}
                     placeholder="0"
-                    className="w-full text-center text-4xl font-black bg-transparent text-white border-b-2 border-slate-600 focus:border-blue-500 outline-none py-2"
+                    className="w-full text-center text-4xl font-black bg-transparent text-white border-b-2 border-zinc-600 focus:border-orange-500 outline-none py-2"
                   />
                 </div>
               ) : (
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">MÃ­nimo</p>
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-center">Mínimo</p>
                     <input
                       type="number"
                       inputMode="numeric"
                       value={sheetMin}
                       onChange={(e) => setSheetMin(e.target.value)}
                       placeholder="0"
-                      className="w-full text-center text-2xl font-black bg-transparent text-white border-b-2 border-slate-600 focus:border-blue-500 outline-none py-2"
+                      className="w-full text-center text-2xl font-black bg-transparent text-white border-b-2 border-zinc-600 focus:border-orange-500 outline-none py-2"
                     />
                   </div>
                   <div className="flex-1">
-                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">MÃ¡ximo</p>
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-center">Máximo</p>
                     <input
                       type="number"
                       inputMode="numeric"
                       value={sheetMax}
                       onChange={(e) => setSheetMax(e.target.value)}
                       placeholder="0"
-                      className="w-full text-center text-2xl font-black bg-transparent text-white border-b-2 border-slate-600 focus:border-blue-500 outline-none py-2"
+                      className="w-full text-center text-2xl font-black bg-transparent text-white border-b-2 border-zinc-600 focus:border-orange-500 outline-none py-2"
                     />
                   </div>
                 </div>
               )}
 
               <div>
-                <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">Adelanto</p>
+                <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Adelanto</p>
                 <div className="flex gap-2">
                   {[0, 25, 30, 50, 70].map((pct) => (
                     <button
@@ -573,8 +573,8 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                       onClick={() => setSheetAdelantoPct(pct)}
                       className={`flex-1 rounded-xl py-2.5 text-xs font-black transition-all active:scale-95 ${
                         sheetAdelantoPct === pct
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
-                          : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                          ? "bg-orange-600 text-white shadow-lg shadow-orange-500/30"
+                          : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
                       }`}
                     >
                       {pct}%
@@ -582,7 +582,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   ))}
                 </div>
                 {sheetAdelantoPct > 0 && (
-                  <p className="mt-2 text-center text-sm font-black text-blue-400">
+                  <p className="mt-2 text-center text-sm font-black text-orange-400">
                     Monto: {formatMoney(Math.round(sheetTotalBase * (sheetAdelantoPct / 100)))}
                   </p>
                 )}
@@ -590,21 +590,21 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
               <button
                 onClick={() => setSheetIncluirDatos((v) => !v)}
-                className="flex w-full items-center justify-between rounded-2xl bg-slate-800/50 border border-slate-700 p-4 active:scale-95 transition-all"
+                className="flex w-full items-center justify-between rounded-2xl bg-zinc-800/50 border border-zinc-700 p-4 active:scale-95 transition-all"
               >
-                <span className="text-sm font-black text-slate-300">Incluir datos de transferencia</span>
-                <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center transition-all ${sheetIncluirDatos ? "border-blue-500 bg-blue-600" : "border-slate-600 bg-transparent"}`}>
+                <span className="text-sm font-black text-zinc-300">Incluir datos de transferencia</span>
+                <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center transition-all ${sheetIncluirDatos ? "border-orange-500 bg-orange-600" : "border-zinc-600 bg-transparent"}`}>
                   {sheetIncluirDatos && <CheckCircle2 size={12} className="text-white" />}
                 </div>
               </button>
 
-              <div className="rounded-2xl bg-slate-800/50 border border-slate-700 overflow-hidden">
+              <div className="rounded-2xl bg-zinc-800/50 border border-zinc-700 overflow-hidden">
                 <button
                   onClick={() => setSheetPreview((v) => !v)}
                   className="flex w-full items-center justify-between p-4"
                 >
-                  <span className="text-xs font-black uppercase tracking-widest text-slate-400">Vista previa</span>
-                  <ChevronDown size={16} className={`text-slate-500 transition-transform duration-200 ${sheetPreview ? "rotate-180" : ""}`} />
+                  <span className="text-xs font-black uppercase tracking-widest text-zinc-400">Vista previa</span>
+                  <ChevronDown size={16} className={`text-zinc-500 transition-transform duration-200 ${sheetPreview ? "rotate-180" : ""}`} />
                 </button>
                 {sheetPreview && (
                   sheetEditando ? (
@@ -613,12 +613,12 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                         value={sheetMensaje}
                         onChange={(e) => setSheetMensaje(e.target.value)}
                         rows={10}
-                        className="w-full bg-slate-900 text-slate-200 text-xs rounded-xl p-3 border border-slate-600 focus:border-blue-500 outline-none resize-none font-mono leading-relaxed"
+                        className="w-full bg-zinc-900 text-zinc-200 text-xs rounded-xl p-3 border border-zinc-600 focus:border-orange-500 outline-none resize-none font-mono leading-relaxed"
                       />
                     </div>
                   ) : (
                     <div className="px-4 pb-4">
-                      <pre className="whitespace-pre-wrap text-xs text-slate-300 leading-relaxed font-mono">{mensajeAutoSheet}</pre>
+                      <pre className="whitespace-pre-wrap text-xs text-zinc-300 leading-relaxed font-mono">{mensajeAutoSheet}</pre>
                     </div>
                   )
                 )}
@@ -633,7 +633,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                     }
                     setSheetEditando((v) => !v);
                   }}
-                  className="flex-1 rounded-[1.5rem] border border-slate-600 bg-slate-800 py-4 text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-700 active:scale-95 transition-all"
+                  className="flex-1 rounded-[1.5rem] border border-zinc-600 bg-zinc-800 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:bg-zinc-700 active:scale-95 transition-all"
                 >
                   {sheetEditando ? "Auto" : "Editar"}
                 </button>
@@ -652,4 +652,5 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     </div>
   );
 }
+
 

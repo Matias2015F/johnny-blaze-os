@@ -39,17 +39,17 @@ function Stepper({ value, onChange, step = 1, min = 0, max = Infinity, format = 
     <div className="flex items-center gap-3">
       <button
         onClick={() => onChange(Math.max(min, value - step))}
-        className="w-11 h-11 rounded-2xl bg-slate-100 flex items-center justify-center active:scale-90 transition-all"
+        className="w-11 h-11 rounded-2xl bg-zinc-100 flex items-center justify-center active:scale-90 transition-all"
       >
-        <Minus size={16} className="text-slate-600" />
+        <Minus size={16} className="text-zinc-600" />
       </button>
       <div className="flex-1 text-center">
-        <span className="text-2xl font-black text-slate-800 tracking-tight">{format(value)}</span>
-        {suffix && <span className="text-sm font-bold text-slate-400 ml-1">{suffix}</span>}
+        <span className="text-2xl font-black text-zinc-800 tracking-tight">{format(value)}</span>
+        {suffix && <span className="text-sm font-bold text-zinc-400 ml-1">{suffix}</span>}
       </div>
       <button
         onClick={() => onChange(Math.min(max, value + step))}
-        className="w-11 h-11 rounded-2xl bg-slate-900 flex items-center justify-center active:scale-90 transition-all"
+        className="w-11 h-11 rounded-2xl bg-zinc-900 flex items-center justify-center active:scale-90 transition-all"
       >
         <Plus size={16} className="text-white" />
       </button>
@@ -60,14 +60,14 @@ function Stepper({ value, onChange, step = 1, min = 0, max = Infinity, format = 
 // Section card
 function Card({ children, className = "" }) {
   return (
-    <div className={`bg-white rounded-3xl shadow-sm border border-slate-100 p-6 ${className}`}>
+    <div className={`bg-white rounded-3xl shadow-sm border border-zinc-100 p-6 ${className}`}>
       {children}
     </div>
   );
 }
 
 function SectionTitle({ children }) {
-  return <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{children}</p>;
+  return <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">{children}</p>;
 }
 
 function normalizeDateValue(value) {
@@ -126,10 +126,10 @@ const ADMIN_TABS = [
   { id: "consultas",  label: "Consultas" },
 ];
 
-function StatBox({ label, value, color = "text-slate-800" }) {
+function StatBox({ label, value, color = "text-zinc-800" }) {
   return (
-    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+    <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
+      <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{label}</p>
       <p className={`mt-1 text-2xl font-black ${color}`}>{value}</p>
     </div>
   );
@@ -347,11 +347,11 @@ function PantallaAdmin({ showToast }) {
   };
 
   if (loading) {
-    return <Card><p className="text-sm font-black text-slate-500 text-center py-4">Cargando panel admin...</p></Card>;
+    return <Card><p className="text-sm font-black text-zinc-500 text-center py-4">Cargando panel admin...</p></Card>;
   }
 
   if (!(isPlatformAdmin || account?.isPlatformAdmin)) {
-    return <Card><p className="text-sm font-black text-slate-700">Este panel es solo para el administrador.</p></Card>;
+    return <Card><p className="text-sm font-black text-zinc-700">Este panel es solo para el administrador.</p></Card>;
   }
 
   const cuentasConPedidos = accounts.filter(a => a.requestedAction || a.cancelAtPeriodEnd);
@@ -368,7 +368,7 @@ function PantallaAdmin({ showToast }) {
         {ADMIN_TABS.map(t => (
           <button key={t.id} onClick={() => setAdminTab(t.id)}
             className={`shrink-0 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-              adminTab === t.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500 active:scale-95"
+              adminTab === t.id ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-500 active:scale-95"
             }`}
           >
             {t.label}
@@ -392,7 +392,7 @@ function PantallaAdmin({ showToast }) {
                 <p className="mt-1 text-3xl font-black text-emerald-700">{formatMoney(stats.cobradoMes)}</p>
                 <p className="text-[10px] font-bold text-emerald-500 mt-1">{stats.pagosEsteMes} {stats.pagosEsteMes === 1 ? "pago" : "pagos"} recibidos</p>
               </div>
-              <StatBox label="Total cobrado" value={formatMoney(stats.totalCobrado)} color="text-slate-800" />
+              <StatBox label="Total cobrado" value={formatMoney(stats.totalCobrado)} color="text-zinc-800" />
               <StatBox label="Tiempo promedio a pagar" value={stats.promDias !== null ? `${stats.promDias} dias` : "—"} />
             </div>
           </Card>
@@ -429,7 +429,7 @@ function PantallaAdmin({ showToast }) {
                 </div>
               )}
               {stats.trialsPorVencer === 0 && stats.pedidosPendientes === 0 && stats.reclamosPendientes === 0 && (
-                <p className="text-sm font-black text-slate-500 text-center py-2">Todo en orden. No hay alertas.</p>
+                <p className="text-sm font-black text-zinc-500 text-center py-2">Todo en orden. No hay alertas.</p>
               )}
             </div>
           </Card>
@@ -449,25 +449,25 @@ function PantallaAdmin({ showToast }) {
         <div className="space-y-4">
           <Card>
             <SectionTitle>Precios y duracion</SectionTitle>
-            <p className="text-[11px] font-bold text-slate-500 mb-4">Estos valores se usan al momento del pago. Cambiarlo no afecta suscripciones ya activas.</p>
+            <p className="text-[11px] font-bold text-zinc-500 mb-4">Estos valores se usan al momento del pago. Cambiarlo no afecta suscripciones ya activas.</p>
             <div className="space-y-3">
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio Plan Base (ARS)</p>
+              <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
+                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Precio Plan Base (ARS)</p>
                 <input
                   type="text" inputMode="numeric"
                   value={String(settings.precios?.base || 0)}
                   onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), base: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
-                  className="mt-2 w-full bg-transparent text-3xl font-black text-slate-800 outline-none"
+                  className="mt-2 w-full bg-transparent text-3xl font-black text-zinc-800 outline-none"
                   placeholder="5000"
                 />
               </div>
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio Plan Pro (ARS)</p>
+              <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
+                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Precio Plan Pro (ARS)</p>
                 <input
                   type="text" inputMode="numeric"
                   value={String(settings.precios?.pro || 0)}
                   onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), pro: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
-                  className="mt-2 w-full bg-transparent text-3xl font-black text-slate-800 outline-none"
+                  className="mt-2 w-full bg-transparent text-3xl font-black text-zinc-800 outline-none"
                   placeholder="12000"
                 />
               </div>
@@ -477,24 +477,24 @@ function PantallaAdmin({ showToast }) {
           <Card>
             <SectionTitle>Periodos</SectionTitle>
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Dias de prueba (trial)</p>
-                <p className="text-[10px] font-bold text-slate-500 mt-1">Acceso gratis al registrarse.</p>
+              <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
+                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Dias de prueba (trial)</p>
+                <p className="text-[10px] font-bold text-zinc-500 mt-1">Acceso gratis al registrarse.</p>
                 <input
                   type="text" inputMode="numeric"
                   value={String(settings.duracionTrialDias || 14)}
                   onChange={e => setSettings(p => ({ ...p, duracionTrialDias: Number(e.target.value.replace(/\D/g,"") || 14) }))}
-                  className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none"
+                  className="mt-3 w-full bg-transparent text-2xl font-black text-zinc-800 outline-none"
                 />
               </div>
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Dias de gracia</p>
-                <p className="text-[10px] font-bold text-slate-500 mt-1">Extra tras vencimiento antes de bloquear.</p>
+              <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
+                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Dias de gracia</p>
+                <p className="text-[10px] font-bold text-zinc-500 mt-1">Extra tras vencimiento antes de bloquear.</p>
                 <input
                   type="text" inputMode="numeric"
                   value={String(settings.graceDaysDefault || 3)}
                   onChange={e => setSettings(p => ({ ...p, graceDaysDefault: Number(e.target.value.replace(/\D/g,"") || 3) }))}
-                  className="mt-3 w-full bg-transparent text-2xl font-black text-slate-800 outline-none"
+                  className="mt-3 w-full bg-transparent text-2xl font-black text-zinc-800 outline-none"
                 />
               </div>
             </div>
@@ -507,7 +507,7 @@ function PantallaAdmin({ showToast }) {
                 <button
                   key={key}
                   onClick={() => setSettings(p => ({ ...p, features: { ...(p.features || {}), [key]: !value }}))}
-                  className={`rounded-2xl border px-3 py-3 text-left transition-all ${value ? "border-orange-200 bg-orange-50 text-orange-700" : "border-slate-200 bg-slate-50 text-slate-500"}`}
+                  className={`rounded-2xl border px-3 py-3 text-left transition-all ${value ? "border-orange-200 bg-orange-50 text-orange-700" : "border-zinc-200 bg-zinc-50 text-zinc-500"}`}
                 >
                   <p className="text-[10px] font-black uppercase tracking-widest">{FEATURE_LABELS[key] || key}</p>
                   <p className="mt-1 text-[10px] font-bold">{value ? "Activa" : "Desactivada"}</p>
@@ -520,12 +520,12 @@ function PantallaAdmin({ showToast }) {
             <SectionTitle>Aplicacion de precios</SectionTitle>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-black text-slate-800">Solo cuentas nuevas</p>
-                <p className="text-[10px] font-bold text-slate-400 mt-0.5">Si esta apagado, afecta a todos al renovar.</p>
+                <p className="text-sm font-black text-zinc-800">Solo cuentas nuevas</p>
+                <p className="text-[10px] font-bold text-zinc-400 mt-0.5">Si esta apagado, afecta a todos al renovar.</p>
               </div>
               <button
                 onClick={() => setSettings(p => ({ ...p, applyPricingToNewAccountsOnly: !p.applyPricingToNewAccountsOnly }))}
-                className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest ${settings.applyPricingToNewAccountsOnly !== false ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700"}`}
+                className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest ${settings.applyPricingToNewAccountsOnly !== false ? "bg-emerald-600 text-white" : "bg-zinc-200 text-zinc-700"}`}
               >
                 {settings.applyPricingToNewAccountsOnly !== false ? "Si" : "No"}
               </button>
@@ -552,7 +552,7 @@ function PantallaAdmin({ showToast }) {
               <button
                 key={f.id}
                 onClick={() => setFilterEstado(f.id)}
-                className={`shrink-0 px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest ${filterEstado === f.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500"}`}
+                className={`shrink-0 px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest ${filterEstado === f.id ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-500"}`}
               >
                 {f.label}
               </button>
@@ -561,7 +561,7 @@ function PantallaAdmin({ showToast }) {
 
           <div className="space-y-2">
             {usuariosFiltrados.length === 0 && (
-              <Card><p className="text-sm font-black text-slate-500">No hay usuarios en este filtro.</p></Card>
+              <Card><p className="text-sm font-black text-zinc-500">No hay usuarios en este filtro.</p></Card>
             )}
             {usuariosFiltrados.map(item => {
               const isExpanded = expandedUid === item.uid;
@@ -574,14 +574,14 @@ function PantallaAdmin({ showToast }) {
                 : "Sin fecha";
 
               return (
-                <div key={item.uid || item.id} className="rounded-2xl border border-slate-100 bg-white overflow-hidden">
+                <div key={item.uid || item.id} className="rounded-2xl border border-zinc-100 bg-white overflow-hidden">
                   <button
                     onClick={() => setExpandedUid(isExpanded ? null : (item.uid || item.id))}
                     className="w-full flex items-center gap-3 p-4 text-left"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black text-slate-800 truncate">{item.email || item.uid}</p>
-                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                      <p className="text-sm font-black text-zinc-800 truncate">{item.email || item.uid}</p>
+                      <p className="text-[10px] font-bold text-zinc-400 mt-0.5">
                         {item.currentPlanKey || item.plan || "base"} · hasta {vigenciaStr}
                       </p>
                     </div>
@@ -591,15 +591,15 @@ function PantallaAdmin({ showToast }) {
                   </button>
 
                   {isExpanded && (
-                    <div className="border-t border-slate-100 p-4 bg-slate-50 space-y-3">
-                      <div className="grid grid-cols-2 gap-2 text-[10px] font-black text-slate-500">
-                        <div>UID: <span className="text-slate-700 font-bold text-[9px] break-all">{item.uid || item.id}</span></div>
-                        <div>Pago: <span className="text-slate-700">{item.pagoEstado || "pendiente"}</span></div>
+                    <div className="border-t border-zinc-100 p-4 bg-zinc-50 space-y-3">
+                      <div className="grid grid-cols-2 gap-2 text-[10px] font-black text-zinc-500">
+                        <div>UID: <span className="text-zinc-700 font-bold text-[9px] break-all">{item.uid || item.id}</span></div>
+                        <div>Pago: <span className="text-zinc-700">{item.pagoEstado || "pendiente"}</span></div>
                         {item.ultimoPago?.fecha && (
                           <>
-                            <div>Ultimo pago: <span className="text-slate-700">{new Date(item.ultimoPago.fecha).toLocaleDateString("es-AR")}</span></div>
+                            <div>Ultimo pago: <span className="text-zinc-700">{new Date(item.ultimoPago.fecha).toLocaleDateString("es-AR")}</span></div>
                             <div>Monto: <span className="text-emerald-700">{formatMoney(item.ultimoPago.monto || 0)}</span></div>
-                            <div className="col-span-2">ID MP: <span className="text-slate-700 font-bold text-[9px]">{item.ultimoPago.paymentId || "—"}</span></div>
+                            <div className="col-span-2">ID MP: <span className="text-zinc-700 font-bold text-[9px]">{item.ultimoPago.paymentId || "—"}</span></div>
                           </>
                         )}
                       </div>
@@ -621,7 +621,7 @@ function PantallaAdmin({ showToast }) {
                         <button
                           disabled={accionando === item.uid}
                           onClick={() => extenderUsuario(item, 30)}
-                          className="rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white col-span-2 disabled:opacity-50"
+                          className="rounded-2xl bg-zinc-900 py-3 text-[10px] font-black uppercase tracking-widest text-white col-span-2 disabled:opacity-50"
                         >
                           Extender +30 dias
                         </button>
@@ -655,22 +655,22 @@ function PantallaAdmin({ showToast }) {
           <Card>
             <SectionTitle>Historial de pagos</SectionTitle>
             {stats.todosPagos.length === 0 && (
-              <p className="text-sm font-black text-slate-500">No hay pagos registrados todavia.</p>
+              <p className="text-sm font-black text-zinc-500">No hay pagos registrados todavia.</p>
             )}
             <div className="space-y-2">
               {stats.todosPagos.map(pago => (
-                <div key={pago.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <div key={pago.id} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black text-slate-800 truncate">{pago.email || pago.uid}</p>
-                      <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                      <p className="text-sm font-black text-zinc-800 truncate">{pago.email || pago.uid}</p>
+                      <p className="text-[10px] font-bold text-zinc-400 mt-0.5">
                         {pago.fecha ? new Date(pago.fecha).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" }) : "Sin fecha"}
                         {" · "}Plan {pago.plan || "base"}
                       </p>
                       {pago.paymentId && (
-                        <p className="text-[9px] font-bold text-slate-400 mt-0.5 break-all">MP: {pago.paymentId}</p>
+                        <p className="text-[9px] font-bold text-zinc-400 mt-0.5 break-all">MP: {pago.paymentId}</p>
                       )}
-                      <p className="text-[9px] font-bold text-slate-400 mt-0.5 break-all">UID: {pago.uid}</p>
+                      <p className="text-[9px] font-bold text-zinc-400 mt-0.5 break-all">UID: {pago.uid}</p>
                     </div>
                     <p className="text-base font-black text-emerald-600 shrink-0">{formatMoney(pago.monto)}</p>
                   </div>
@@ -687,15 +687,15 @@ function PantallaAdmin({ showToast }) {
           <Card>
             <SectionTitle>Pedidos de usuarios</SectionTitle>
             {cuentasConPedidos.length === 0 && (
-              <p className="text-sm font-black text-slate-500">No hay pedidos pendientes.</p>
+              <p className="text-sm font-black text-zinc-500">No hay pedidos pendientes.</p>
             )}
             <div className="space-y-3">
               {cuentasConPedidos.map(item => (
-                <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+                <div key={item.id} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-black text-slate-800">{item.email || item.uid}</p>
-                      <p className="text-[10px] font-bold text-slate-500 mt-0.5">UID: {item.uid}</p>
+                      <p className="text-sm font-black text-zinc-800">{item.email || item.uid}</p>
+                      <p className="text-[10px] font-bold text-zinc-500 mt-0.5">UID: {item.uid}</p>
                     </div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-orange-600 shrink-0">{formatRequestedAction(item)}</p>
                   </div>
@@ -708,7 +708,7 @@ function PantallaAdmin({ showToast }) {
                     </button>
                     <button
                       onClick={() => resolverPedidoCuenta(item, {}, "Pedido limpiado")}
-                      className="rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white"
+                      className="rounded-2xl bg-zinc-900 py-3 text-[10px] font-black uppercase tracking-widest text-white"
                     >
                       Rechazar
                     </button>
@@ -720,21 +720,21 @@ function PantallaAdmin({ showToast }) {
 
           <Card>
             <SectionTitle>Reclamos ({tickets.filter(t => t.estado !== "resuelto").length} pendientes)</SectionTitle>
-            {tickets.length === 0 && <p className="text-sm font-black text-slate-500">No hay reclamos.</p>}
+            {tickets.length === 0 && <p className="text-sm font-black text-zinc-500">No hay reclamos.</p>}
             <div className="space-y-3">
               {tickets.map(ticket => (
-                <div key={ticket.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2">
+                <div key={ticket.id} className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 space-y-2">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black text-slate-800 truncate">{ticket.email || ticket.uid}</p>
-                      <p className="text-[10px] font-bold text-slate-500 mt-0.5">UID: {ticket.uid}</p>
+                      <p className="text-sm font-black text-zinc-800 truncate">{ticket.email || ticket.uid}</p>
+                      <p className="text-[10px] font-bold text-zinc-500 mt-0.5">UID: {ticket.uid}</p>
                     </div>
                     <span className={`text-[9px] font-black uppercase tracking-widest border rounded-xl px-2 py-1 shrink-0 ${ticket.estado === "resuelto" ? "bg-emerald-50 border-emerald-100 text-emerald-600" : "bg-red-50 border-red-100 text-red-600"}`}>
                       {ticket.estado || "nuevo"}
                     </span>
                   </div>
-                  <p className="text-xs font-bold leading-relaxed text-slate-700">{ticket.mensaje || "Sin mensaje"}</p>
-                  <p className="text-[9px] font-bold text-slate-400">{formatAdminDate(ticket.createdAt, "Fecha desconocida")}</p>
+                  <p className="text-xs font-bold leading-relaxed text-zinc-700">{ticket.mensaje || "Sin mensaje"}</p>
+                  <p className="text-[9px] font-bold text-zinc-400">{formatAdminDate(ticket.createdAt, "Fecha desconocida")}</p>
                   <button
                     onClick={() => resolverTicket(ticket.id)}
                     disabled={ticket.estado === "resuelto"}
@@ -750,7 +750,7 @@ function PantallaAdmin({ showToast }) {
       )}
 
       {/* Botón actualizar */}
-      <button onClick={cargar} className="w-full mt-2 rounded-2xl bg-slate-100 py-3 text-[10px] font-black uppercase tracking-widest text-slate-500 active:scale-95">
+      <button onClick={cargar} className="w-full mt-2 rounded-2xl bg-zinc-100 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-500 active:scale-95">
         Actualizar datos
       </button>
     </div>
@@ -777,26 +777,26 @@ function PantallaResumen({ orders, caja }) {
         <p className={`text-5xl font-black tracking-tighter ${balance >= 0 ? "text-green-500" : "text-red-500"}`}>
           {formatMoney(balance)}
         </p>
-        <p className="text-xs text-slate-400 font-bold mt-1 capitalize">{mes}</p>
+        <p className="text-xs text-zinc-400 font-bold mt-1 capitalize">{mes}</p>
       </Card>
 
       {/* Stats del mes */}
       <Card>
         <SectionTitle>Este mes</SectionTitle>
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+          <div className="bg-zinc-50 rounded-2xl p-4 text-center border border-zinc-100">
             <p className="text-3xl font-black text-orange-500">{ordenesMes.length}</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase mt-1">Trabajos</p>
+            <p className="text-[9px] font-black text-zinc-400 uppercase mt-1">Trabajos</p>
           </div>
-          <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
-            <p className="text-xl font-black text-slate-800">{formatMoney(totalMes)}</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase mt-1">Cobrado</p>
+          <div className="bg-zinc-50 rounded-2xl p-4 text-center border border-zinc-100">
+            <p className="text-xl font-black text-zinc-800">{formatMoney(totalMes)}</p>
+            <p className="text-[9px] font-black text-zinc-400 uppercase mt-1">Cobrado</p>
           </div>
-          <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+          <div className="bg-zinc-50 rounded-2xl p-4 text-center border border-zinc-100">
             <p className={`text-xl font-black ${gananciaMes >= 0 ? "text-green-500" : "text-red-500"}`}>
               {formatMoney(gananciaMes)}
             </p>
-            <p className="text-[9px] font-black text-slate-400 uppercase mt-1">Ganancia</p>
+            <p className="text-[9px] font-black text-zinc-400 uppercase mt-1">Ganancia</p>
           </div>
         </div>
       </Card>
@@ -848,27 +848,27 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
             ["emailNotificacion",   "Mail del taller",   "email"],
           ].map(([field, label, type]) => (
             <div key={field}>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">{label}</label>
+              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1">{label}</label>
               <input
                 type={type}
                 value={cfg[field] ?? ""}
                 onChange={e => setCfg({ ...cfg, [field]: e.target.value })}
-                className="w-full border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-orange-500 transition-colors bg-slate-50"
+                className="w-full border-2 border-zinc-100 rounded-2xl px-4 py-3 font-bold text-zinc-800 outline-none focus:border-orange-500 transition-colors bg-zinc-50"
               />
             </div>
           ))}
 
           {/* Email de notificaciones — sincronizado al doc de suscripción */}
           <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Email para notificaciones</label>
+            <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Email para notificaciones</label>
             <input
               type="email"
               value={cfg.emailNotificacion ?? ""}
               onChange={e => setCfg({ ...cfg, emailNotificacion: e.target.value })}
               placeholder={auth.currentUser?.email || "tu@email.com"}
-              className="w-full border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-orange-500 transition-colors bg-slate-50"
+              className="w-full border-2 border-zinc-100 rounded-2xl px-4 py-3 font-bold text-zinc-800 outline-none focus:border-orange-500 transition-colors bg-zinc-50"
             />
-            <p className="text-[10px] text-slate-400 font-bold mt-1 ml-1">
+            <p className="text-[10px] text-zinc-400 font-bold mt-1 ml-1">
               Recibís recibos de pago, alertas de vencimiento y cambios de plan.
               {auth.currentUser?.email && cfg.emailNotificacion === auth.currentUser.email && (
                 <span className="text-green-600"> - Mismo mail de login</span>
@@ -881,7 +881,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
       {/* Costo hora */}
       <Card>
         <SectionTitle>Costo por Hora</SectionTitle>
-        <p className="text-[10px] text-slate-400 font-bold mb-4">Gastos fijos / horas trabajadas al mes</p>
+        <p className="text-[10px] text-zinc-400 font-bold mb-4">Gastos fijos / horas trabajadas al mes</p>
         <Stepper
           value={cfg.valorHoraInterno}
           onChange={v => setCfg({ ...cfg, valorHoraInterno: v })}
@@ -895,7 +895,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
       <Card>
         <SectionTitle>Margen por Defecto</SectionTitle>
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[10px] text-slate-400 font-bold">Ganancia sobre el costo</span>
+          <span className="text-[10px] text-zinc-400 font-bold">Ganancia sobre el costo</span>
           <span className="text-2xl font-black text-orange-600">{margen}%</span>
         </div>
         <input
@@ -904,13 +904,13 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
           onChange={e => setCfg({ ...cfg, margenPolitica: Number(e.target.value) })}
           className="w-full accent-orange-600 mb-2"
         />
-        <div className="flex justify-between text-[9px] text-slate-400 font-bold">
+        <div className="flex justify-between text-[9px] text-zinc-400 font-bold">
           <span>5%</span><span>60%</span><span>120%</span>
         </div>
-        <div className="mt-4 bg-slate-900 rounded-2xl p-4 flex items-center justify-between">
+        <div className="mt-4 bg-zinc-900 rounded-2xl p-4 flex items-center justify-between">
           <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio hora al cliente</p>
-            <p className="text-[10px] text-slate-500 mt-0.5">{formatMoney(cfg.valorHoraInterno)} x {(1 + margen / 100).toFixed(2)}</p>
+            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Precio hora al cliente</p>
+            <p className="text-[10px] text-zinc-500 mt-0.5">{formatMoney(cfg.valorHoraInterno)} x {(1 + margen / 100).toFixed(2)}</p>
           </div>
           <p className="text-2xl font-black text-orange-400">{formatMoney(horaCliente)}</p>
         </div>
@@ -926,7 +926,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
               <div key={key} className={`${bg} border ${border} rounded-2xl p-4`}>
                 <div className="flex items-center justify-between mb-3">
                   <span className={`text-sm font-black ${color}`}>{label}</span>
-                  <span className="text-[10px] text-slate-500 font-bold">
+                  <span className="text-[10px] text-zinc-500 font-bold">
                     = {formatMoney(Math.round(horaCliente * factor))}/h
                   </span>
                 </div>
@@ -947,21 +947,21 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
       {/* Plantilla WhatsApp */}
       <Card>
         <SectionTitle>Plantilla WhatsApp - Proximo control</SectionTitle>
-        <p className="text-[10px] text-slate-400 font-bold mb-3 leading-relaxed">
+        <p className="text-[10px] text-zinc-400 font-bold mb-3 leading-relaxed">
           Variables: {"{nombreCliente}"} {"{nombreTaller}"} {"{marca}"} {"{modelo}"} {"{patente}"} {"{tipoControl}"}
         </p>
         <textarea
           rows="5"
           value={cfg.whatsappPlantillas?.recordatorioService ?? "Hola {nombreCliente}, te escribimos de {nombreTaller}.\n\nTu moto {marca} {modelo} patente {patente} puede estar cerca del proximo control recomendado: {tipoControl}.\n\nSi queres, podes pasar por el taller y la revisamos para verificarlo."}
           onChange={e => setCfg({ ...cfg, whatsappPlantillas: { ...(cfg.whatsappPlantillas || {}), recordatorioService: e.target.value } })}
-          className="w-full border-2 border-slate-100 rounded-2xl p-4 font-bold text-xs outline-none focus:border-orange-500 resize-none"
+          className="w-full border-2 border-zinc-100 rounded-2xl p-4 font-bold text-xs outline-none focus:border-orange-500 resize-none"
         />
       </Card>
 
       {/* Datos de Cobro */}
       <Card>
         <SectionTitle>Datos de Cobro</SectionTitle>
-        <p className="text-[10px] text-slate-400 font-bold mb-4">Se usan para generar mensajes de presupuesto automaticamente</p>
+        <p className="text-[10px] text-zinc-400 font-bold mb-4">Se usan para generar mensajes de presupuesto automaticamente</p>
         <div className="space-y-3">
           {[
             ["datosCobro.titular",    "Titular de cuenta", "text"],
@@ -975,12 +975,12 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
             const val = cfg[parent]?.[child] ?? "";
             return (
               <div key={field}>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">{label}</label>
+                <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1">{label}</label>
                 <input
                   type={type}
                   value={val}
                   onChange={e => setCfg({ ...cfg, [parent]: { ...(cfg[parent] || {}), [child]: e.target.value } })}
-                  className="w-full border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-orange-500 transition-colors bg-slate-50"
+                  className="w-full border-2 border-zinc-100 rounded-2xl px-4 py-3 font-bold text-zinc-800 outline-none focus:border-orange-500 transition-colors bg-zinc-50"
                 />
               </div>
             );
@@ -990,7 +990,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
               {cfg.datosCobro?.alias && (
                 <button
                   onClick={() => { navigator.clipboard?.writeText(cfg.datosCobro.alias); }}
-                  className="flex-1 py-2.5 rounded-2xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase active:scale-95"
+                  className="flex-1 py-2.5 rounded-2xl bg-zinc-100 text-zinc-600 text-[10px] font-black uppercase active:scale-95"
                 >
                   Copiar alias
                 </button>
@@ -998,7 +998,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
               {cfg.datosCobro?.cbu && (
                 <button
                   onClick={() => { navigator.clipboard?.writeText(cfg.datosCobro.cbu); }}
-                  className="flex-1 py-2.5 rounded-2xl bg-slate-100 text-slate-600 text-[10px] font-black uppercase active:scale-95"
+                  className="flex-1 py-2.5 rounded-2xl bg-zinc-100 text-zinc-600 text-[10px] font-black uppercase active:scale-95"
                 >
                   Copiar CBU
                 </button>
@@ -1013,7 +1013,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
         <SectionTitle>Configuracion de Presupuestos</SectionTitle>
         <div className="space-y-5">
           <div>
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-3">Adelanto predeterminado</label>
+            <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-3">Adelanto predeterminado</label>
             <div className="grid grid-cols-4 gap-2">
               {[0, 25, 30, 50, 70].map(pct => (
                 <button
@@ -1022,7 +1022,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
                   className={`py-3 rounded-2xl text-sm font-black uppercase transition-all active:scale-95 ${
                     (cfg.presupuestoConfig?.adelantoPct ?? 30) === pct
                       ? "bg-orange-600 text-white"
-                      : "bg-slate-100 text-slate-600"
+                      : "bg-zinc-100 text-zinc-600"
                   }`}
                 >
                   {pct}%
@@ -1036,10 +1036,10 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
             ["advertenciaAbierto", "Mostrar advertencia de presupuesto abierto"],
           ].map(([key, label]) => (
             <div key={key} className="flex items-center justify-between">
-              <span className="text-sm font-bold text-slate-700">{label}</span>
+              <span className="text-sm font-bold text-zinc-700">{label}</span>
               <button
                 onClick={() => setCfg({ ...cfg, presupuestoConfig: { ...(cfg.presupuestoConfig || {}), [key]: !(cfg.presupuestoConfig?.[key] ?? true) } })}
-                className={`w-12 h-6 rounded-full transition-all ${(cfg.presupuestoConfig?.[key] ?? true) ? "bg-orange-600" : "bg-slate-300"}`}
+                className={`w-12 h-6 rounded-full transition-all ${(cfg.presupuestoConfig?.[key] ?? true) ? "bg-orange-600" : "bg-zinc-300"}`}
               >
                 <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform mx-0.5 ${(cfg.presupuestoConfig?.[key] ?? true) ? "translate-x-6" : "translate-x-0"}`} />
               </button>
@@ -1125,7 +1125,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
           <FileSpreadsheet size={22} />
         </button>
 
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">CSV separados</p>
+        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">CSV separados</p>
         <div className="space-y-2">
           {[
             { label: "Clientes",             sub: `${clients.length} registros`,   fn: () => { exportarClientes(clients, orders); showToast("Exportando clientes..."); } },
@@ -1133,10 +1133,10 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
             { label: "Repuestos utilizados", sub: "Ranking por uso",               fn: () => { exportarRepuestos(orders);         showToast("Exportando repuestos..."); } },
           ].map(({ label, sub, fn }) => (
             <button key={label} onClick={fn}
-              className="w-full flex items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl p-4 active:scale-[0.98] transition-all">
+              className="w-full flex items-center justify-between bg-zinc-50 border border-zinc-100 rounded-2xl p-4 active:scale-[0.98] transition-all">
               <div className="text-left">
-                <p className="text-sm font-black text-slate-800">{label}</p>
-                <p className="text-[10px] text-slate-400 font-bold">{sub}</p>
+                <p className="text-sm font-black text-zinc-800">{label}</p>
+                <p className="text-[10px] text-zinc-400 font-bold">{sub}</p>
               </div>
               <Download size={16} className="text-orange-500" />
             </button>
@@ -1148,13 +1148,13 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
       <Card>
         <SectionTitle>Copia de Seguridad</SectionTitle>
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Ultima manual</p>
-            <p className="text-xs font-black text-slate-700">{tiempoDesde(bkpEstado.ultimoManual) || "Nunca"}</p>
+          <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
+            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Ultima manual</p>
+            <p className="text-xs font-black text-zinc-700">{tiempoDesde(bkpEstado.ultimoManual) || "Nunca"}</p>
           </div>
-          <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Auto-guardado</p>
-            <p className="text-xs font-black text-slate-700">{tiempoDesde(bkpEstado.ultimoAuto) || "Nunca"}</p>
+          <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
+            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Auto-guardado</p>
+            <p className="text-xs font-black text-zinc-700">{tiempoDesde(bkpEstado.ultimoAuto) || "Nunca"}</p>
           </div>
         </div>
 
@@ -1172,11 +1172,11 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="w-full flex items-center justify-between bg-slate-900 text-white rounded-2xl p-5 active:scale-[0.98] transition-all"
+            className="w-full flex items-center justify-between bg-zinc-900 text-white rounded-2xl p-5 active:scale-[0.98] transition-all"
           >
             <div className="text-left">
               <p className="text-sm font-black uppercase">Restaurar desde archivo</p>
-              <p className="text-[10px] font-bold text-slate-400 mt-0.5">Elegi el .json descargado</p>
+              <p className="text-[10px] font-bold text-zinc-400 mt-0.5">Elegi el .json descargado</p>
             </div>
             <RotateCcw size={20} />
           </button>
@@ -1185,13 +1185,13 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
           {bkpEstado.tieneAuto && (
             <button
               onClick={handleRestaurarAuto}
-              className="w-full flex items-center justify-between bg-slate-50 border border-slate-200 text-slate-700 rounded-2xl p-4 active:scale-[0.98] transition-all"
+              className="w-full flex items-center justify-between bg-zinc-50 border border-zinc-200 text-zinc-700 rounded-2xl p-4 active:scale-[0.98] transition-all"
             >
               <div className="text-left">
                 <p className="text-sm font-black">Restaurar auto-guardado</p>
-                <p className="text-[10px] text-slate-400 font-bold mt-0.5">Guardado {tiempoDesde(bkpEstado.ultimoAuto)}</p>
+                <p className="text-[10px] text-zinc-400 font-bold mt-0.5">Guardado {tiempoDesde(bkpEstado.ultimoAuto)}</p>
               </div>
-              <RotateCcw size={16} className="text-slate-500" />
+              <RotateCcw size={16} className="text-zinc-500" />
             </button>
           )}
         </div>
@@ -1200,7 +1200,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
       {/* Backup en la nube */}
       <Card>
         <SectionTitle>Copias en la Nube</SectionTitle>
-        <p className="text-[10px] text-slate-400 font-bold mb-3 leading-relaxed">
+        <p className="text-[10px] text-zinc-400 font-bold mb-3 leading-relaxed">
           Se guarda automaticamente 1 vez por dia. Podes guardar ahora o restaurar una copia anterior desde cualquier dispositivo.
         </p>
         <button
@@ -1216,22 +1216,22 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
         </button>
 
         {loadingBackups ? (
-          <p className="text-center text-[10px] text-slate-400 font-bold py-4">Cargando copias...</p>
+          <p className="text-center text-[10px] text-zinc-400 font-bold py-4">Cargando copias...</p>
         ) : backups.length === 0 ? (
-          <p className="text-center text-[10px] text-slate-400 font-bold py-4">No hay copias guardadas en la nube todavia</p>
+          <p className="text-center text-[10px] text-zinc-400 font-bold py-4">No hay copias guardadas en la nube todavia</p>
         ) : (
           <div className="space-y-2">
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Copias disponibles (ultimas {backups.length})</p>
+            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2">Copias disponibles (ultimas {backups.length})</p>
             {backups.map((b) => (
-              <div key={b.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-2xl p-4">
+              <div key={b.id} className="flex items-center justify-between bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
                 <div>
-                  <p className="text-xs font-black text-slate-800">{new Date(b.fecha).toLocaleString("es-AR", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}</p>
-                  <p className="text-[9px] font-bold text-slate-400">{b.total} registros</p>
+                  <p className="text-xs font-black text-zinc-800">{new Date(b.fecha).toLocaleString("es-AR", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}</p>
+                  <p className="text-[9px] font-bold text-zinc-400">{b.total} registros</p>
                 </div>
                 <button
                   onClick={() => handleRestaurarNube(b.id, b.fecha)}
                   disabled={restaurando === b.id}
-                  className="bg-slate-800 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase active:scale-95 transition-all disabled:opacity-50"
+                  className="bg-zinc-800 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase active:scale-95 transition-all disabled:opacity-50"
                 >
                   {restaurando === b.id ? "..." : "Restaurar"}
                 </button>
@@ -1477,7 +1477,7 @@ function PantallaSuscripcion({ showToast }) {
     return (
       <Card>
         <SectionTitle>Suscripción</SectionTitle>
-        <p className="text-sm font-black text-slate-500">Cargando estado actual...</p>
+        <p className="text-sm font-black text-zinc-500">Cargando estado actual...</p>
       </Card>
     );
   }
@@ -1512,7 +1512,7 @@ function PantallaSuscripcion({ showToast }) {
             <button
               onClick={diagnosticarPago}
               disabled={sending || (!activeAttempt?.invoiceId && !activeAttempt?.preferenceId)}
-              className="mt-3 w-full rounded-2xl bg-slate-900 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
+              className="mt-3 w-full rounded-2xl bg-zinc-900 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
             >
               {sending ? "Consultando..." : "Diagnosticar pago"}
             </button>
@@ -1537,26 +1537,26 @@ function PantallaSuscripcion({ showToast }) {
           </div>
         )}
 
-        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+        <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Estado actual</p>
-              <p className="mt-1 text-lg font-black text-slate-800">{estadoLabel}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Estado actual</p>
+              <p className="mt-1 text-lg font-black text-zinc-800">{estadoLabel}</p>
             </div>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Plan actual</p>
-              <p className="mt-1 text-lg font-black text-slate-800">{planLabel}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Plan actual</p>
+              <p className="mt-1 text-lg font-black text-zinc-800">{planLabel}</p>
             </div>
             <div className="col-span-2">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Vigente hasta</p>
-              <p className="mt-1 text-sm font-black text-slate-700">
+              <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Vigente hasta</p>
+              <p className="mt-1 text-sm font-black text-zinc-700">
                 {activoHasta ? new Date(activoHasta).toLocaleString("es-AR") : "Sin fecha"}
               </p>
             </div>
             <div className="col-span-2">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Tu UID de Firebase</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Tu UID de Firebase</p>
               <div className="mt-2 flex items-center gap-2">
-                <p className="flex-1 rounded-2xl bg-white px-3 py-3 text-[11px] font-black text-slate-700 break-all">{uid || "Sin UID"}</p>
+                <p className="flex-1 rounded-2xl bg-white px-3 py-3 text-[11px] font-black text-zinc-700 break-all">{uid || "Sin UID"}</p>
                 <button
                   onClick={async () => {
                     try {
@@ -1567,7 +1567,7 @@ function PantallaSuscripcion({ showToast }) {
                       showToast("No se pudo copiar el UID");
                     }
                   }}
-                  className="rounded-2xl bg-slate-900 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white"
+                  className="rounded-2xl bg-zinc-900 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white"
                 >
                   Copiar
                 </button>
@@ -1587,7 +1587,7 @@ function PantallaSuscripcion({ showToast }) {
           <button
             onClick={() => irAPagar("pro")}
             disabled={sending}
-            className="rounded-2xl bg-slate-900 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
+            className="rounded-2xl bg-zinc-900 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
           >
             {sending ? "Procesando..." : `Cambiar a pro ${formatMoney(settings.precios?.pro || 0)}`}
           </button>
@@ -1604,20 +1604,20 @@ function PantallaSuscripcion({ showToast }) {
           <button
             onClick={() => guardarPedido({ requestedAction: "change_plan", requestedPlanKey: previousPlanKey || "base" }, "Pedido enviado para volver al plan anterior")}
             disabled={sending || !previousPlanKey}
-            className="rounded-2xl bg-slate-50 border border-slate-200 py-4 text-[10px] font-black uppercase tracking-widest text-slate-700 active:scale-95 disabled:opacity-50"
+            className="rounded-2xl bg-zinc-50 border border-zinc-200 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-700 active:scale-95 disabled:opacity-50"
           >
             Volver al plan anterior
           </button>
         </div>
 
-        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Reclamo o consulta</p>
+        <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
+          <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Reclamo o consulta</p>
           <textarea
             rows="4"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Explicá tu problema con el cobro, el plan o la suscripción."
-            className="mt-3 w-full rounded-2xl border border-slate-200 p-4 text-xs font-bold text-slate-700 outline-none resize-none"
+            className="mt-3 w-full rounded-2xl border border-zinc-200 p-4 text-xs font-bold text-zinc-700 outline-none resize-none"
           />
           <button
             onClick={enviarReclamo}
@@ -1628,18 +1628,18 @@ function PantallaSuscripcion({ showToast }) {
           </button>
         </div>
 
-        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Últimos cobros</p>
+        <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
+          <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Últimos cobros</p>
           <div className="mt-3 space-y-2">
-            {invoices.length === 0 && <p className="text-[11px] font-bold text-slate-500">Todavía no hay cobros registrados.</p>}
+            {invoices.length === 0 && <p className="text-[11px] font-bold text-zinc-500">Todavía no hay cobros registrados.</p>}
             {invoices.map((item) => (
-              <div key={item.id} className="rounded-2xl border border-slate-100 bg-white p-3">
+              <div key={item.id} className="rounded-2xl border border-zinc-100 bg-white p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-black text-slate-800">{item.planLabel || item.plan || "Plan"}</p>
-                    <p className="text-[10px] font-bold text-slate-500">{item.status || "pendiente"}</p>
+                    <p className="text-[11px] font-black text-zinc-800">{item.planLabel || item.plan || "Plan"}</p>
+                    <p className="text-[10px] font-bold text-zinc-500">{item.status || "pendiente"}</p>
                   </div>
-                  <p className="text-sm font-black text-slate-800">{formatMoney(item.amountPaid || item.amount || 0)}</p>
+                  <p className="text-sm font-black text-zinc-800">{formatMoney(item.amountPaid || item.amount || 0)}</p>
                 </div>
               </div>
             ))}
@@ -1808,14 +1808,14 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         <SectionTitle>Analitica del producto</SectionTitle>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-black text-slate-800">Medicion de uso</p>
-            <p className="text-[10px] text-slate-400 font-bold mt-0.5">
+            <p className="text-sm font-black text-zinc-800">Medicion de uso</p>
+            <p className="text-[10px] text-zinc-400 font-bold mt-0.5">
               Registra pantallas, acciones clave y friccion para mejorar la app.
             </p>
           </div>
           <button
             onClick={toggleAnalytics}
-            className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${(cfg.analyticsEnabled ?? true) ? "bg-emerald-500" : "bg-slate-200"}`}
+            className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${(cfg.analyticsEnabled ?? true) ? "bg-emerald-500" : "bg-zinc-200"}`}
           >
             <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-200 ${(cfg.analyticsEnabled ?? true) ? "left-8" : "left-1"}`} />
           </button>
@@ -1831,12 +1831,12 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         <SectionTitle>Alertas del navegador</SectionTitle>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-black text-slate-800">Avisos de proximo service</p>
-            <p className="text-[10px] text-slate-400 font-bold mt-0.5">La app te avisa antes de un control o service para que no se te pase.</p>
+            <p className="text-sm font-black text-zinc-800">Avisos de proximo service</p>
+            <p className="text-[10px] text-zinc-400 font-bold mt-0.5">La app te avisa antes de un control o service para que no se te pase.</p>
           </div>
           <button
             onClick={toggleAlertasNavegador}
-            className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${alertasActivas ? "bg-orange-500" : "bg-slate-200"}`}
+            className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${alertasActivas ? "bg-orange-500" : "bg-zinc-200"}`}
           >
             <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-200 ${alertasActivas ? "left-8" : "left-1"}`} />
           </button>
@@ -1856,13 +1856,13 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         <div className="mt-3 grid grid-cols-1 gap-3">
           <button
             onClick={toggleAlertasNavegador}
-            className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all ${alertasActivas ? "bg-slate-100 border border-slate-200 text-slate-700" : "bg-orange-600 text-white"}`}
+            className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all ${alertasActivas ? "bg-zinc-100 border border-zinc-200 text-zinc-700" : "bg-orange-600 text-white"}`}
           >
             {alertasActivas ? "Desactivar avisos" : "Activar avisos"}
           </button>
           <button
             onClick={probarNotificacion}
-            className="w-full bg-slate-900 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+            className="w-full bg-zinc-900 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
           >
             Probar aviso ahora
           </button>
@@ -1883,12 +1883,12 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         <SectionTitle>Modo prueba de recordatorios</SectionTitle>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-black text-slate-800">Modo prueba</p>
-            <p className="text-[10px] text-slate-400 font-bold mt-0.5">Permite crear alertas rapidas para probar recordatorios y WhatsApp</p>
+            <p className="text-sm font-black text-zinc-800">Modo prueba</p>
+            <p className="text-[10px] text-zinc-400 font-bold mt-0.5">Permite crear alertas rapidas para probar recordatorios y WhatsApp</p>
           </div>
           <button
             onClick={toggleTestMode}
-            className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${cfg.testModeRecordatorios ? "bg-purple-500" : "bg-slate-200"}`}
+            className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${cfg.testModeRecordatorios ? "bg-purple-500" : "bg-zinc-200"}`}
           >
             <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-200 ${cfg.testModeRecordatorios ? "left-8" : "left-1"}`} />
           </button>
@@ -1905,34 +1905,34 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
       <Card>
         <SectionTitle>Version de la app</SectionTitle>
         <div className="flex justify-between items-center mb-3">
-          <span className="text-sm font-black text-slate-800">Johnny Blaze OS</span>
+          <span className="text-sm font-black text-zinc-800">Johnny Blaze OS</span>
           <span className="bg-orange-50 text-orange-600 text-[10px] font-black px-3 py-1 rounded-full border border-orange-100">{APP_BUILD.version}</span>
         </div>
         <div className="space-y-3 mb-4">
-          <p className="text-[10px] text-slate-400 font-bold">
+          <p className="text-[10px] text-zinc-400 font-bold">
             Si la app instalada se queda vieja, busca la ultima version e instalala desde aca.
           </p>
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Modo de uso</p>
-            <p className="text-xs font-black text-slate-700 mt-1">{displayMode.label}</p>
+          <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-3">
+            <p className="text-[9px] font-black text-zinc-500 uppercase tracking-wider">Modo de uso</p>
+            <p className="text-xs font-black text-zinc-700 mt-1">{displayMode.label}</p>
           </div>
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Instalador PWA</p>
-            <p className="text-xs font-black text-slate-700 mt-1">
+          <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-3">
+            <p className="text-[9px] font-black text-zinc-500 uppercase tracking-wider">Instalador PWA</p>
+            <p className="text-xs font-black text-zinc-700 mt-1">
               {installAvailable ? "Disponible para instalar en este navegador" : "No disponible ahora"}
             </p>
           </div>
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3">
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Ultima compilacion local</p>
-            <p className="text-xs font-black text-slate-700 mt-1">{new Date(APP_BUILD.buildTime).toLocaleString("es-AR")}</p>
+          <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-3">
+            <p className="text-[9px] font-black text-zinc-500 uppercase tracking-wider">Ultima compilacion local</p>
+            <p className="text-xs font-black text-zinc-700 mt-1">{new Date(APP_BUILD.buildTime).toLocaleString("es-AR")}</p>
           </div>
-          <div className={`rounded-2xl border p-3 ${hasRemoteUpdate ? "bg-amber-50 border-amber-200" : "bg-slate-50 border-slate-200"}`}>
-            <p className={`text-[9px] font-black uppercase tracking-wider ${hasRemoteUpdate ? "text-amber-700" : "text-slate-500"}`}>Ultimo deploy detectado</p>
-            <p className={`text-xs font-black mt-1 ${hasRemoteUpdate ? "text-amber-900" : "text-slate-700"}`}>
+          <div className={`rounded-2xl border p-3 ${hasRemoteUpdate ? "bg-amber-50 border-amber-200" : "bg-zinc-50 border-zinc-200"}`}>
+            <p className={`text-[9px] font-black uppercase tracking-wider ${hasRemoteUpdate ? "text-amber-700" : "text-zinc-500"}`}>Ultimo deploy detectado</p>
+            <p className={`text-xs font-black mt-1 ${hasRemoteUpdate ? "text-amber-900" : "text-zinc-700"}`}>
               {remoteBuild?.version || "Sin dato"}
             </p>
             {remoteBuild?.buildTime && (
-              <p className="text-[10px] font-bold text-slate-500 mt-1">
+              <p className="text-[10px] font-bold text-zinc-500 mt-1">
                 {new Date(remoteBuild.buildTime).toLocaleString("es-AR")}
               </p>
             )}
@@ -1945,14 +1945,14 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
           <button
             onClick={buscarActualizacion}
             disabled={checkingUpdate || updatingApp}
-            className="w-full bg-slate-50 border border-slate-200 text-slate-600 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
+            className="w-full bg-zinc-50 border border-zinc-200 text-zinc-600 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
           >
             {checkingUpdate ? "Buscando..." : "Buscar actualizacion"}
           </button>
           <button
             onClick={hasRemoteUpdate ? instalarActualizacion : () => window.location.reload()}
             disabled={checkingUpdate || updatingApp}
-            className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 ${hasRemoteUpdate ? "bg-orange-600 text-white" : "bg-slate-900 text-white"}`}
+            className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 ${hasRemoteUpdate ? "bg-orange-600 text-white" : "bg-zinc-900 text-white"}`}
           >
             {updatingApp ? "Actualizando..." : hasRemoteUpdate ? "Instalar version nueva" : "Recargar app"}
           </button>
@@ -1961,7 +1961,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
           <button
             onClick={instalarApp}
             disabled={!installAvailable}
-            className={`mt-3 w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 ${installAvailable ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-500"}`}
+            className={`mt-3 w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 ${installAvailable ? "bg-emerald-600 text-white" : "bg-zinc-200 text-zinc-500"}`}
           >
             Instalar app
           </button>
@@ -1974,7 +1974,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
           {loadDemoData && (
             <button
               onClick={() => { loadDemoData(); showToast("Demo cargado"); }}
-              className="w-full bg-slate-50 border border-slate-200 text-slate-700 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+              className="w-full bg-zinc-50 border border-zinc-200 text-zinc-700 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
             >
               Cargar datos de prueba
             </button>
@@ -1991,7 +1991,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
           <button
             onClick={handleMigrarRaiz}
             disabled={migrando}
-            className="w-full flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 text-slate-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 bg-zinc-50 border border-zinc-200 text-zinc-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
           >
             <Database size={14} /> {migrando ? "Migrando..." : "Migrar datos legado"}
           </button>
@@ -2010,7 +2010,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
       {handleLogout && (
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white py-5 rounded-3xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg"
+          className="w-full flex items-center justify-center gap-2 bg-zinc-900 text-white py-5 rounded-3xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg"
         >
           <LogOut size={16} /> Cerrar sesion
         </button>
@@ -2075,13 +2075,13 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
   return (
     <div className="flex flex-col h-full animate-in slide-in-from-right duration-300">
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 bg-slate-950">
+      <div className="px-6 pt-6 pb-4 bg-zinc-950">
         <h1 className="text-3xl font-black text-white tracking-tighter uppercase">Cuenta</h1>
       </div>
 
       {/* Tab bar */}
-      <div className="px-4 pb-3 bg-slate-950">
-        <div className="flex gap-1 bg-slate-800 p-1 rounded-2xl">
+      <div className="px-4 pb-3 bg-zinc-950">
+        <div className="flex gap-1 bg-zinc-800 p-1 rounded-2xl">
           {visibleTabs.map(({ id, label, Icon }) => (
             <button
               key={id}
@@ -2089,11 +2089,11 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
               className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all ${
                 activeTab === id
                   ? "bg-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-200"
+                  : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
-              <Icon size={15} className={activeTab === id ? "text-slate-800" : ""} />
-              <span className={`text-[9px] font-black uppercase tracking-wide ${activeTab === id ? "text-slate-800" : ""}`}>
+              <Icon size={15} className={activeTab === id ? "text-zinc-800" : ""} />
+              <span className={`text-[9px] font-black uppercase tracking-wide ${activeTab === id ? "text-zinc-800" : ""}`}>
                 {label}
               </span>
             </button>
