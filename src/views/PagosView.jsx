@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ArrowRight, CheckCircle, CreditCard, ReceiptText } from "lucide-react";
+import { ArrowDownUp, ArrowRight, CheckCircle, CreditCard, ReceiptText } from "lucide-react";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { formatMoney } from "../utils/format.js";
 
@@ -23,6 +23,7 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
   const [filtro, setFiltro] = useState("hoy");
   const [desde, setDesde] = useState(hoy);
   const [hasta, setHasta] = useState(hoy);
+  const [ordenDesc, setOrdenDesc] = useState(true);
 
   const pendientes = useMemo(() => {
     return (orders || [])
@@ -56,7 +57,7 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
       .sort((a, b) => {
         const fechaA = `${a.fechaNormalizada || ""} ${a.hora || ""}`;
         const fechaB = `${b.fechaNormalizada || ""} ${b.hora || ""}`;
-        return fechaB.localeCompare(fechaA);
+        return ordenDesc ? fechaB.localeCompare(fechaA) : fechaA.localeCompare(fechaB);
       });
 
     return pagos.filter((pago) => {
@@ -68,7 +69,7 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
       }
       return true;
     });
-  }, [orders, bikes, clients, filtro, hoy, desde, hasta]);
+  }, [orders, bikes, clients, filtro, hoy, desde, hasta, ordenDesc]);
 
   const cobradoHoy = useMemo(() => {
     return historialPagos
@@ -189,9 +190,18 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Historial de pagos</p>
             <p className="mt-1 text-[11px] font-bold text-slate-400">Todos los pagos recibidos y registrados</p>
           </div>
-          <div className="text-right">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Total filtrado</p>
-            <p className="mt-1 text-lg font-black text-white">{formatMoney(totalHistorialFiltrado)}</p>
+          <div className="flex flex-col items-end gap-2">
+            <div className="text-right">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Total filtrado</p>
+              <p className="mt-1 text-lg font-black text-white">{formatMoney(totalHistorialFiltrado)}</p>
+            </div>
+            <button
+              onClick={() => setOrdenDesc((v) => !v)}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-300 active:scale-95 transition-all"
+            >
+              <ArrowDownUp size={12} />
+              {ordenDesc ? "Más reciente" : "Más antiguo"}
+            </button>
           </div>
         </div>
 
