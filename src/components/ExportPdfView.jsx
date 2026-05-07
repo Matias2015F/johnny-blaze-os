@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+﻿import React, { useEffect } from "react";
 import { Printer } from "lucide-react";
 import { LS } from "../lib/storage.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
@@ -58,8 +58,8 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         <div className="border-b-2 border-slate-900 px-8 py-6" style={bloqueCompletoStyle}>
           <div className="flex items-start justify-between gap-8">
             <div className="flex-1">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-600">
-                Constancia de servicio técnico
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-600">
+                Constancia de servicio tÃ©cnico
               </p>
               <h1 className="mt-3 max-w-xs text-2xl font-black uppercase leading-tight tracking-tight">
                 {config.nombreTaller}
@@ -68,15 +68,16 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                 Documento de entrega y detalle del trabajo realizado
               </p>
               <div className="mt-4 space-y-1 text-[10px] leading-relaxed text-slate-700">
-                <p><span className="font-black">Técnico:</span> {config.mecanicoResponsable}</p>
-                <p>Sara Romero e/ Eva Perón y Belgrano • Diamante, ER</p>
+                <p><span className="font-black">TÃ©cnico:</span> {config.mecanicoResponsable}</p>
+                <p>Sara Romero e/ Eva PerÃ³n y Belgrano â€¢ Diamante, ER</p>
                 <p><span className="font-black">WhatsApp:</span> {config.telefonoTaller}</p>
+                <p><span className="font-black">Mail:</span> {config.emailNotificacion || "---"}</p>
               </div>
             </div>
 
             <div className="flex flex-col items-center gap-4" style={bloqueCompletoStyle}>
               <div className="text-center">
-                <p className="text-[9px] font-black uppercase text-blue-600 tracking-wide">Comprobante N°</p>
+                <p className="text-[9px] font-black uppercase text-orange-600 tracking-wide">Comprobante NÂ°</p>
                 <p className="mt-1 text-lg font-black tracking-tight">{numeroComprobante}</p>
                 <p className="mt-2 text-[9px] font-bold text-slate-600">
                   Trabajo {order.numeroTrabajo || `#${order.id.slice(-4).toUpperCase()}`}
@@ -121,7 +122,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                 {bike?.marca} {bike?.modelo}
               </p>
               <p className="mt-1 text-xs font-bold text-slate-700">
-                {bike?.patente || "---"} {kilometraje ? `• ${kilometraje} km` : ""}
+                {bike?.patente || "---"} {kilometraje ? `â€¢ ${kilometraje} km` : ""}
               </p>
             </div>
           </div>
@@ -130,7 +131,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
             <h3 className="mb-2 text-[10px] font-black uppercase text-slate-700 tracking-wide">Trabajos realizados</h3>
             <div className="border border-slate-300">
               <div className="bg-slate-900 px-4 py-2">
-                <p className="text-[9px] font-black uppercase tracking-wide text-white">Descripción • Monto</p>
+                <p className="text-[9px] font-black uppercase tracking-wide text-white">DescripciÃ³n â€¢ Monto</p>
               </div>
               {tareas.length > 0 ? (
                 tareas.map((t, i) => (
@@ -153,13 +154,13 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               <h3 className="mb-2 text-[10px] font-black uppercase text-slate-700 tracking-wide">Repuestos utilizados</h3>
               <div className="border border-slate-300">
                 <div className="border-b border-slate-300 bg-slate-100 px-4 py-2">
-                  <p className="text-[9px] font-black uppercase tracking-wide text-slate-700">Descripción • Monto</p>
+                  <p className="text-[9px] font-black uppercase tracking-wide text-slate-700">DescripciÃ³n â€¢ Monto</p>
                 </div>
                 {repuestos.map((r, i) => (
                   <div key={`rep-${i}`} className={`flex justify-between px-4 py-3 text-sm ${i < repuestos.length - 1 ? "border-b border-slate-200" : ""}`}>
                     <div>
                       <p className="font-black text-slate-900">{r.cantidad > 1 ? `${r.cantidad}x ` : ""}{r.nombre}</p>
-                      <p className="text-[10px] font-bold text-slate-500">{r.cantidad || 1} × {formatMoney(r.monto || 0)}</p>
+                      <p className="text-[10px] font-bold text-slate-500">{r.cantidad || 1} Ã— {formatMoney(r.monto || 0)}</p>
                     </div>
                     <p className="font-black text-slate-900">{formatMoney((r.monto || 0) * (r.cantidad || 1))}</p>
                   </div>
@@ -176,7 +177,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                   <tr className="border-b border-slate-300 bg-slate-100">
                     <th className="px-4 py-2 text-left text-[9px] font-black text-slate-700">Fecha</th>
                     <th className="px-4 py-2 text-left text-[9px] font-black text-slate-700">Medio</th>
-                    <th className="px-4 py-2 text-left text-[9px] font-black text-slate-700">N° pago</th>
+                    <th className="px-4 py-2 text-left text-[9px] font-black text-slate-700">NÂ° pago</th>
                     <th className="px-4 py-2 text-right text-[9px] font-black text-slate-700">Monto</th>
                   </tr>
                 </thead>
@@ -196,24 +197,24 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
           <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
             <div className="border border-slate-300 p-4">
-              <p className="text-[9px] font-black uppercase text-slate-600 tracking-wide">Garantía</p>
+              <p className="text-[9px] font-black uppercase text-slate-600 tracking-wide">GarantÃ­a</p>
               {vencimientoLabel && (
                 <div className="mt-2 inline-block rounded bg-slate-900 px-2 py-1">
                   <p className="text-[9px] font-black uppercase tracking-wide text-white">
-                    Válido hasta: {vencimientoLabel}
+                    VÃ¡lido hasta: {vencimientoLabel}
                   </p>
                 </div>
               )}
               <p className="mt-2 text-[10px] leading-relaxed text-slate-700">
-                {extraData?.garantia || order.garantiaFinal || "Sin texto de garantía cargado."}
+                {extraData?.garantia || order.garantiaFinal || "Sin texto de garantÃ­a cargado."}
               </p>
               {proximoControl?.activo && (
                 <div className="mt-3 border-t border-slate-300 pt-3">
-                  <p className="text-[9px] font-black uppercase text-blue-700">Próximo control</p>
+                  <p className="text-[9px] font-black uppercase text-orange-700">PrÃ³ximo control</p>
                   <p className="mt-1 text-[10px] font-bold text-slate-700">
                     {proximoControl.unidad === "km"
                       ? `A los ${Number(proximoControl.kmObjetivo || 0).toLocaleString("es-AR")} km`
-                      : `En ${proximoControl.valorObjetivo} días`}
+                      : `En ${proximoControl.valorObjetivo} dÃ­as`}
                   </p>
                 </div>
               )}
@@ -238,19 +239,19 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           </div>
 
           <div className="space-y-2 border-2 border-yellow-300 bg-yellow-50 p-4" style={bloqueCompletoStyle}>
-            <p className="text-[10px] font-black uppercase tracking-wide text-yellow-800">⚠️ Términos de garantía y validez</p>
+            <p className="text-[10px] font-black uppercase tracking-wide text-yellow-800">âš ï¸ TÃ©rminos de garantÃ­a y validez</p>
             <ul className="space-y-1">
-              <li className="text-[9px] text-slate-700">✓ Sin comprobante NO se pueden realizar reclamos de garantía</li>
-              <li className="text-[9px] text-slate-700">✓ Garantía mano de obra: 30 días • Repuestos: según fabricante</li>
-              <li className="text-[9px] text-slate-700">✓ Documento NO modificable, generado automáticamente</li>
-              <li className="text-[9px] text-slate-700">✓ Número único verificable • Escanea QR para validar</li>
+              <li className="text-[9px] text-slate-700">âœ“ Sin comprobante NO se pueden realizar reclamos de garantÃ­a</li>
+              <li className="text-[9px] text-slate-700">âœ“ GarantÃ­a mano de obra: 30 dÃ­as â€¢ Repuestos: segÃºn fabricante</li>
+              <li className="text-[9px] text-slate-700">âœ“ Documento NO modificable, generado automÃ¡ticamente</li>
+              <li className="text-[9px] text-slate-700">âœ“ NÃºmero Ãºnico verificable â€¢ Escanea QR para validar</li>
             </ul>
           </div>
 
           <div className="space-y-2 border-t-2 border-slate-300 pt-4" style={bloqueCompletoStyle}>
             <p className="text-[10px] font-black uppercase text-slate-700 tracking-wide">Conformidad</p>
             <p className="text-[10px] leading-relaxed text-slate-600">
-              La recepción de este documento implica conformidad con el trabajo detallado, los pagos registrados y la garantía informada.
+              La recepciÃ³n de este documento implica conformidad con el trabajo detallado, los pagos registrados y la garantÃ­a informada.
             </p>
           </div>
 
@@ -259,7 +260,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               <span className="font-black">Hash:</span> <span className="font-mono">{snapshot.hash}</span>
             </p>
             <p className="text-[8px] text-slate-500">
-              {order.fechaComprobante?.slice(0, 10) || order.fechaIngreso} • Johnny Blaze OS
+              {order.fechaComprobante?.slice(0, 10) || order.fechaIngreso} â€¢ Johnny Blaze OS
             </p>
           </div>
         </div>
@@ -282,3 +283,4 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
     </div>
   );
 }
+

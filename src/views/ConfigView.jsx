@@ -19,7 +19,7 @@ import { collection, collectionGroup, doc, getDoc, getDocs, query, limit, orderB
 
 const DIFICULTADES = [
   { key: "facil",      label: "Facil",      color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
-  { key: "normal",     label: "Normal",     color: "text-blue-500",   bg: "bg-blue-50",   border: "border-blue-200" },
+  { key: "normal",     label: "Normal",     color: "text-orange-500",   bg: "bg-orange-50",   border: "border-orange-200" },
   { key: "dificil",    label: "Dificil",    color: "text-orange-500", bg: "bg-orange-50", border: "border-orange-200" },
   { key: "complicado", label: "Complicado", color: "text-red-500",    bg: "bg-red-50",    border: "border-red-200" },
 ];
@@ -248,7 +248,7 @@ function PantallaAdmin({ showToast }) {
     const cobradoMes = todosPagos.filter(p => p.fecha >= mesInicioMs).reduce((s, p) => s + p.monto, 0);
     const pagosEsteMes = todosPagos.filter(p => p.fecha >= mesInicioMs).length;
 
-    // Tiempo promedio trial → pago (en días)
+    // Tiempo promedio trial ? pago (en días)
     const tiemposConversion = accounts
       .filter(a => a.ultimoPago?.fecha && a.createdAt)
       .map(a => (Number(a.ultimoPago.fecha) - Number(a.createdAt)) / (1000 * 60 * 60 * 24));
@@ -381,7 +381,7 @@ function PantallaAdmin({ showToast }) {
         ))}
       </div>
 
-      {/* ── DASHBOARD ── */}
+      {/* -- DASHBOARD -- */}
       {adminTab === "dashboard" && (
         <div className="space-y-4">
           <Card>
@@ -417,9 +417,9 @@ function PantallaAdmin({ showToast }) {
                 </div>
               )}
               {stats.pedidosPendientes > 0 && (
-                <div className="flex items-center justify-between rounded-2xl bg-blue-50 border border-blue-100 px-4 py-3">
-                  <p className="text-sm font-black text-blue-700">Pedidos pendientes</p>
-                  <p className="text-lg font-black text-blue-700">{stats.pedidosPendientes}</p>
+                <div className="flex items-center justify-between rounded-2xl bg-orange-50 border border-orange-100 px-4 py-3">
+                  <p className="text-sm font-black text-orange-700">Pedidos pendientes</p>
+                  <p className="text-lg font-black text-orange-700">{stats.pedidosPendientes}</p>
                 </div>
               )}
               {stats.reclamosPendientes > 0 && (
@@ -438,13 +438,13 @@ function PantallaAdmin({ showToast }) {
             <SectionTitle>Distribucion de planes</SectionTitle>
             <div className="grid grid-cols-2 gap-3">
               <StatBox label="Plan base activos" value={stats.planBase} />
-              <StatBox label="Plan pro activos" value={stats.planPro} color="text-blue-600" />
+              <StatBox label="Plan pro activos" value={stats.planPro} color="text-orange-600" />
             </div>
           </Card>
         </div>
       )}
 
-      {/* ── PLANES ── */}
+      {/* -- PLANES -- */}
       {adminTab === "planes" && (
         <div className="space-y-4">
           <Card>
@@ -507,7 +507,7 @@ function PantallaAdmin({ showToast }) {
                 <button
                   key={key}
                   onClick={() => setSettings(p => ({ ...p, features: { ...(p.features || {}), [key]: !value }}))}
-                  className={`rounded-2xl border px-3 py-3 text-left transition-all ${value ? "border-blue-200 bg-blue-50 text-blue-700" : "border-slate-200 bg-slate-50 text-slate-500"}`}
+                  className={`rounded-2xl border px-3 py-3 text-left transition-all ${value ? "border-orange-200 bg-orange-50 text-orange-700" : "border-slate-200 bg-slate-50 text-slate-500"}`}
                 >
                   <p className="text-[10px] font-black uppercase tracking-widest">{FEATURE_LABELS[key] || key}</p>
                   <p className="mt-1 text-[10px] font-bold">{value ? "Activa" : "Desactivada"}</p>
@@ -532,13 +532,13 @@ function PantallaAdmin({ showToast }) {
             </div>
           </Card>
 
-          <button onClick={guardarSettings} className="w-full rounded-2xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
+          <button onClick={guardarSettings} className="w-full rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
             Guardar todos los cambios
           </button>
         </div>
       )}
 
-      {/* ── USUARIOS ── */}
+      {/* -- USUARIOS -- */}
       {adminTab === "usuarios" && (
         <div className="space-y-4">
           {/* Filtros */}
@@ -614,7 +614,7 @@ function PantallaAdmin({ showToast }) {
                         <button
                           disabled={accionando === item.uid}
                           onClick={() => activarUsuario(item, "pro", 30)}
-                          className="rounded-2xl bg-blue-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+                          className="rounded-2xl bg-orange-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
                         >
                           Activar Pro
                         </button>
@@ -635,7 +635,7 @@ function PantallaAdmin({ showToast }) {
         </div>
       )}
 
-      {/* ── COBROS ── */}
+      {/* -- COBROS -- */}
       {adminTab === "cobros" && (
         <div className="space-y-4">
           <Card>
@@ -681,7 +681,7 @@ function PantallaAdmin({ showToast }) {
         </div>
       )}
 
-      {/* ── CONSULTAS ── */}
+      {/* -- CONSULTAS -- */}
       {adminTab === "consultas" && (
         <div className="space-y-4">
           <Card>
@@ -697,7 +697,7 @@ function PantallaAdmin({ showToast }) {
                       <p className="text-sm font-black text-slate-800">{item.email || item.uid}</p>
                       <p className="text-[10px] font-bold text-slate-500 mt-0.5">UID: {item.uid}</p>
                     </div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 shrink-0">{formatRequestedAction(item)}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-orange-600 shrink-0">{formatRequestedAction(item)}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -738,7 +738,7 @@ function PantallaAdmin({ showToast }) {
                   <button
                     onClick={() => resolverTicket(ticket.id)}
                     disabled={ticket.estado === "resuelto"}
-                    className="w-full rounded-2xl bg-blue-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-40"
+                    className="w-full rounded-2xl bg-orange-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-40"
                   >
                     {ticket.estado === "resuelto" ? "Ya resuelto" : "Marcar como resuelto"}
                   </button>
@@ -785,7 +785,7 @@ function PantallaResumen({ orders, caja }) {
         <SectionTitle>Este mes</SectionTitle>
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
-            <p className="text-3xl font-black text-blue-500">{ordenesMes.length}</p>
+            <p className="text-3xl font-black text-orange-500">{ordenesMes.length}</p>
             <p className="text-[9px] font-black text-slate-400 uppercase mt-1">Trabajos</p>
           </div>
           <div className="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
@@ -809,8 +809,22 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
   const margen = cfg.margenPolitica ?? 25;
   const horaCliente = Math.round(cfg.valorHoraInterno * (1 + margen / 100));
 
+  // Auto-relleno: si el campo email está vacío, usar el mail de login
+  React.useEffect(() => {
+    const loginEmail = auth.currentUser?.email;
+    if (!cfg.emailNotificacion && loginEmail) {
+      setCfg(prev => ({ ...prev, emailNotificacion: loginEmail }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const guardar = () => {
     LS.setDoc("config", "global", { ...cfg, margenPolitica: margen, valorHoraCliente: horaCliente });
+    // Sincronizar emailNotificacion al doc de suscripción para que el webhook pueda leerlo
+    const uid = auth.currentUser?.uid;
+    if (uid && cfg.emailNotificacion) {
+      setDoc(doc(db, "usuarios", uid), { emailNotificacion: cfg.emailNotificacion }, { merge: true }).catch(console.error);
+    }
     showToast("Guardado OK");
   };
 
@@ -831,6 +845,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
             ["mecanicoResponsable", "Responsable",       "text"],
             ["dniMecanico",         "DNI",               "text"],
             ["telefonoTaller",      "Telefono",          "tel"],
+            ["emailNotificacion",   "Mail del taller",   "email"],
           ].map(([field, label, type]) => (
             <div key={field}>
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">{label}</label>
@@ -838,10 +853,28 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
                 type={type}
                 value={cfg[field] ?? ""}
                 onChange={e => setCfg({ ...cfg, [field]: e.target.value })}
-                className="w-full border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-colors bg-slate-50"
+                className="w-full border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-orange-500 transition-colors bg-slate-50"
               />
             </div>
           ))}
+
+          {/* Email de notificaciones — sincronizado al doc de suscripción */}
+          <div>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Email para notificaciones</label>
+            <input
+              type="email"
+              value={cfg.emailNotificacion ?? ""}
+              onChange={e => setCfg({ ...cfg, emailNotificacion: e.target.value })}
+              placeholder={auth.currentUser?.email || "tu@email.com"}
+              className="w-full border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-orange-500 transition-colors bg-slate-50"
+            />
+            <p className="text-[10px] text-slate-400 font-bold mt-1 ml-1">
+              Recibís recibos de pago, alertas de vencimiento y cambios de plan.
+              {auth.currentUser?.email && cfg.emailNotificacion === auth.currentUser.email && (
+                <span className="text-green-600"> - Mismo mail de login</span>
+              )}
+            </p>
+          </div>
         </div>
       </Card>
 
@@ -863,13 +896,13 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
         <SectionTitle>Margen por Defecto</SectionTitle>
         <div className="flex items-center justify-between mb-3">
           <span className="text-[10px] text-slate-400 font-bold">Ganancia sobre el costo</span>
-          <span className="text-2xl font-black text-blue-600">{margen}%</span>
+          <span className="text-2xl font-black text-orange-600">{margen}%</span>
         </div>
         <input
           type="range" min="5" max="120" step="5"
           value={margen}
           onChange={e => setCfg({ ...cfg, margenPolitica: Number(e.target.value) })}
-          className="w-full accent-blue-600 mb-2"
+          className="w-full accent-orange-600 mb-2"
         />
         <div className="flex justify-between text-[9px] text-slate-400 font-bold">
           <span>5%</span><span>60%</span><span>120%</span>
@@ -879,7 +912,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Precio hora al cliente</p>
             <p className="text-[10px] text-slate-500 mt-0.5">{formatMoney(cfg.valorHoraInterno)} x {(1 + margen / 100).toFixed(2)}</p>
           </div>
-          <p className="text-2xl font-black text-blue-400">{formatMoney(horaCliente)}</p>
+          <p className="text-2xl font-black text-orange-400">{formatMoney(horaCliente)}</p>
         </div>
       </Card>
 
@@ -921,7 +954,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
           rows="5"
           value={cfg.whatsappPlantillas?.recordatorioService ?? "Hola {nombreCliente}, te escribimos de {nombreTaller}.\n\nTu moto {marca} {modelo} patente {patente} puede estar cerca del proximo control recomendado: {tipoControl}.\n\nSi queres, podes pasar por el taller y la revisamos para verificarlo."}
           onChange={e => setCfg({ ...cfg, whatsappPlantillas: { ...(cfg.whatsappPlantillas || {}), recordatorioService: e.target.value } })}
-          className="w-full border-2 border-slate-100 rounded-2xl p-4 font-bold text-xs outline-none focus:border-blue-500 resize-none"
+          className="w-full border-2 border-slate-100 rounded-2xl p-4 font-bold text-xs outline-none focus:border-orange-500 resize-none"
         />
       </Card>
 
@@ -947,7 +980,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
                   type={type}
                   value={val}
                   onChange={e => setCfg({ ...cfg, [parent]: { ...(cfg[parent] || {}), [child]: e.target.value } })}
-                  className="w-full border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-blue-500 transition-colors bg-slate-50"
+                  className="w-full border-2 border-slate-100 rounded-2xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-orange-500 transition-colors bg-slate-50"
                 />
               </div>
             );
@@ -988,7 +1021,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
                   onClick={() => setCfg({ ...cfg, presupuestoConfig: { ...(cfg.presupuestoConfig || {}), adelantoPct: pct } })}
                   className={`py-3 rounded-2xl text-sm font-black uppercase transition-all active:scale-95 ${
                     (cfg.presupuestoConfig?.adelantoPct ?? 30) === pct
-                      ? "bg-blue-600 text-white"
+                      ? "bg-orange-600 text-white"
                       : "bg-slate-100 text-slate-600"
                   }`}
                 >
@@ -1006,7 +1039,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
               <span className="text-sm font-bold text-slate-700">{label}</span>
               <button
                 onClick={() => setCfg({ ...cfg, presupuestoConfig: { ...(cfg.presupuestoConfig || {}), [key]: !(cfg.presupuestoConfig?.[key] ?? true) } })}
-                className={`w-12 h-6 rounded-full transition-all ${(cfg.presupuestoConfig?.[key] ?? true) ? "bg-blue-600" : "bg-slate-300"}`}
+                className={`w-12 h-6 rounded-full transition-all ${(cfg.presupuestoConfig?.[key] ?? true) ? "bg-orange-600" : "bg-slate-300"}`}
               >
                 <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform mx-0.5 ${(cfg.presupuestoConfig?.[key] ?? true) ? "translate-x-6" : "translate-x-0"}`} />
               </button>
@@ -1017,7 +1050,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
 
       <button
         onClick={guardar}
-        className="w-full bg-blue-600 text-white py-4 rounded-3xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+        className="w-full bg-orange-600 text-white py-4 rounded-3xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
       >
         Guardar cambios
       </button>
@@ -1105,7 +1138,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
                 <p className="text-sm font-black text-slate-800">{label}</p>
                 <p className="text-[10px] text-slate-400 font-bold">{sub}</p>
               </div>
-              <Download size={16} className="text-blue-500" />
+              <Download size={16} className="text-orange-500" />
             </button>
           ))}
         </div>
@@ -1128,11 +1161,11 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
         <div className="space-y-2">
           <button
             onClick={() => { descargarBackup(); setBkpEstado(estadoBackup()); showToast("Copia descargada OK"); }}
-            className="w-full flex items-center justify-between bg-blue-600 text-white rounded-2xl p-5 active:scale-[0.98] transition-all shadow-md"
+            className="w-full flex items-center justify-between bg-orange-600 text-white rounded-2xl p-5 active:scale-[0.98] transition-all shadow-md"
           >
             <div className="text-left">
               <p className="text-sm font-black uppercase">Descargar copia</p>
-              <p className="text-[10px] font-bold text-blue-100 mt-0.5">Archivo .json en tu dispositivo</p>
+              <p className="text-[10px] font-bold text-orange-100 mt-0.5">Archivo .json en tu dispositivo</p>
             </div>
             <Download size={20} />
           </button>
@@ -1173,11 +1206,11 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
         <button
           onClick={handleGuardarEnNube}
           disabled={guardandoBkp}
-          className="w-full flex items-center justify-between bg-blue-600 text-white rounded-2xl p-5 active:scale-[0.98] transition-all shadow-md mb-3 disabled:opacity-50"
+          className="w-full flex items-center justify-between bg-orange-600 text-white rounded-2xl p-5 active:scale-[0.98] transition-all shadow-md mb-3 disabled:opacity-50"
         >
           <div className="text-left">
             <p className="text-sm font-black uppercase">{guardandoBkp ? "Guardando..." : "Guardar copia ahora"}</p>
-            <p className="text-[10px] font-bold text-blue-100 mt-0.5">Guarda todos los datos en la nube</p>
+            <p className="text-[10px] font-bold text-orange-100 mt-0.5">Guarda todos los datos en la nube</p>
           </div>
           <HardDrive size={20} />
         </button>
@@ -1547,7 +1580,7 @@ function PantallaSuscripcion({ showToast }) {
           <button
             onClick={() => irAPagar("base")}
             disabled={sending}
-            className="rounded-2xl bg-blue-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
+            className="rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
           >
             {sending ? "Procesando..." : `Pagar base ${formatMoney(settings.precios?.base || 0)}`}
           </button>
@@ -1803,7 +1836,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
           </div>
           <button
             onClick={toggleAlertasNavegador}
-            className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${alertasActivas ? "bg-blue-500" : "bg-slate-200"}`}
+            className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${alertasActivas ? "bg-orange-500" : "bg-slate-200"}`}
           >
             <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-200 ${alertasActivas ? "left-8" : "left-1"}`} />
           </button>
@@ -1823,7 +1856,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         <div className="mt-3 grid grid-cols-1 gap-3">
           <button
             onClick={toggleAlertasNavegador}
-            className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all ${alertasActivas ? "bg-slate-100 border border-slate-200 text-slate-700" : "bg-blue-600 text-white"}`}
+            className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all ${alertasActivas ? "bg-slate-100 border border-slate-200 text-slate-700" : "bg-orange-600 text-white"}`}
           >
             {alertasActivas ? "Desactivar avisos" : "Activar avisos"}
           </button>
@@ -1834,11 +1867,11 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
             Probar aviso ahora
           </button>
         </div>
-        <div className="mt-3 bg-blue-50 border border-blue-200 rounded-2xl p-4">
-          <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider">
+        <div className="mt-3 bg-orange-50 border border-orange-200 rounded-2xl p-4">
+          <p className="text-[9px] font-black text-orange-600 uppercase tracking-wider">
             Como usarlo
           </p>
-          <div className="mt-2 space-y-1 text-[11px] font-bold leading-relaxed text-blue-800">
+          <div className="mt-2 space-y-1 text-[11px] font-bold leading-relaxed text-orange-800">
             <p>1. Activá los avisos y aceptá el permiso.</p>
             <p>2. Tocá "Probar aviso ahora".</p>
             <p>3. Si no aparece nada, revisá que el navegador no las tenga bloqueadas.</p>
@@ -1873,7 +1906,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         <SectionTitle>Version de la app</SectionTitle>
         <div className="flex justify-between items-center mb-3">
           <span className="text-sm font-black text-slate-800">Johnny Blaze OS</span>
-          <span className="bg-blue-50 text-blue-600 text-[10px] font-black px-3 py-1 rounded-full border border-blue-100">{APP_BUILD.version}</span>
+          <span className="bg-orange-50 text-orange-600 text-[10px] font-black px-3 py-1 rounded-full border border-orange-100">{APP_BUILD.version}</span>
         </div>
         <div className="space-y-3 mb-4">
           <p className="text-[10px] text-slate-400 font-bold">
@@ -1919,7 +1952,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
           <button
             onClick={hasRemoteUpdate ? instalarActualizacion : () => window.location.reload()}
             disabled={checkingUpdate || updatingApp}
-            className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 ${hasRemoteUpdate ? "bg-blue-600 text-white" : "bg-slate-900 text-white"}`}
+            className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 ${hasRemoteUpdate ? "bg-orange-600 text-white" : "bg-slate-900 text-white"}`}
           >
             {updatingApp ? "Actualizando..." : hasRemoteUpdate ? "Instalar version nueva" : "Recargar app"}
           </button>
@@ -1950,7 +1983,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
           <button
             onClick={handleForzarSync}
             disabled={migrando}
-            className="w-full flex items-center justify-center gap-2 bg-blue-50 border border-blue-100 text-blue-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 bg-orange-50 border border-orange-100 text-orange-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
           >
             <Database size={14} /> {migrando ? "Sincronizando..." : "Forzar sincronizacion a la nube"}
           </button>
@@ -2075,5 +2108,6 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
     </div>
   );
 }
+
 
 
