@@ -7,7 +7,7 @@ export const SAAS_COLLECTIONS = {
   soporteTickets: "soporteTickets",
 };
 
-export const PLATFORM_ADMIN_EMAILS = ["fefe@gmail.com"];
+export const PLATFORM_ADMIN_EMAILS = ["matias4604@gmail.com"];
 export const PLATFORM_ADMIN_UIDS = ["123456789"];
 
 export const DEFAULT_SAAS_FEATURES = {
