@@ -272,8 +272,30 @@ function templateCambioPlan({ planAnterior, planNuevo, activoHasta }) {
   return { subject, html };
 }
 
+function buildResetEmail({ email, link }) {
+  return wrapTemplate(`
+    <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">Restablecer contraseña</h2>
+    <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">Recibimos una solicitud para restablecer la contraseña de tu cuenta.</p>
+
+    ${alertBox("blue", "ℹ️ Si no solicitaste este cambio, ignorá este correo. Tu contraseña no se modificará.")}
+
+    <p style="margin:0 0 20px;font-size:14px;color:#374151;">
+      Hacé clic en el botón para crear una contraseña nueva. El link es válido por <strong>1 hora</strong>.
+    </p>
+
+    <p style="margin:0 0 24px;text-align:center;">${btnPrimario("Restablecer mi contraseña →", link)}</p>
+
+    <p style="margin:0;font-size:11px;color:#9ca3af;">
+      Si el botón no funciona, copiá este link en tu navegador:<br>
+      <span style="word-break:break-all;color:#6b7280;">${link}</span>
+    </p>
+    <p style="margin:8px 0 0;font-size:11px;color:#9ca3af;">Cuenta: ${email}</p>
+  `);
+}
+
 module.exports = {
   sendEmail,
+  buildResetEmail,
   templateBienvenida,
   templatePagoAprobado,
   templatePagoFallido,

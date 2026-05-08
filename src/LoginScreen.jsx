@@ -3,7 +3,6 @@ import { auth } from "./firebase.js";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
 } from "firebase/auth";
 import { Eye, EyeOff, ArrowLeft, Wrench } from "lucide-react";
 
@@ -45,11 +44,16 @@ export default function LoginScreen() {
     setLoading(true);
     setMsg({ text: "", ok: false });
     try {
-      await sendPasswordResetEmail(auth, email);
+      const res = await fetch("/api/send-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Error");
       ok("Correo enviado — revisá tu bandeja de entrada");
     } catch (e) {
-      if (e.code === "auth/user-not-found") err("No existe cuenta con ese email");
-      else err("Error al enviar el correo");
+      err("No se pudo enviar el correo. Verificá que el email sea correcto.");
     }
     setLoading(false);
   };
