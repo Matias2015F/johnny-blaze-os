@@ -7,10 +7,39 @@ try {
 
 const PLANES_FALLBACK = {
   base: { label: "Plan Base", monto: 5000 },
-  pro:  { label: "Plan Pro",  monto: 12000 },
+  pro: { label: "Plan Pro", monto: 12000 },
+  full: { label: "Plan Full", monto: 45000 },
 };
 
 const BASE_URL = "https://johnny-blaze-os.vercel.app";
+
+function normalizeCurrency(value) {
+  const currency = String(value || "ARS").trim().toUpperCase();
+  return currency || "ARS";
+}
+
+function buildPlanesConfig(adminData = {}) {
+  const precios = adminData.precios || {};
+  const currency = normalizeCurrency(adminData.subscriptionCurrency || precios.currency || "ARS");
+
+  return {
+    base: {
+      label: adminData?.plans?.base?.label || PLANES_FALLBACK.base.label,
+      monto: Number(precios.base ?? adminData?.plans?.base?.price ?? PLANES_FALLBACK.base.monto),
+      currency,
+    },
+    pro: {
+      label: adminData?.plans?.pro?.label || PLANES_FALLBACK.pro.label,
+      monto: Number(precios.pro ?? adminData?.plans?.pro?.price ?? PLANES_FALLBACK.pro.monto),
+      currency,
+    },
+    full: {
+      label: adminData?.plans?.full?.label || PLANES_FALLBACK.full.label,
+      monto: Number(precios.full ?? adminData?.plans?.full?.price ?? PLANES_FALLBACK.full.monto),
+      currency,
+    },
+  };
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
@@ -19,31 +48,26 @@ module.exports = async function handler(req, res) {
   const { uid, plan } = req.body || {};
   if (!uid || !PLANES_FALLBACK[plan]) return res.status(400).json({ error: "uid y plan requeridos" });
 
-  const token = process.env.MP_ACCESS_TOKEN;
+  const token = String(process.env.MP_ACCESS_TOKEN || "").trim();
   if (!token) return res.status(500).json({ error: "MP_ACCESS_TOKEN no configurado" });
 
-  // Leer precios desde Firestore, con fallback a los valores hardcodeados
   let planesConfig = { ...PLANES_FALLBACK };
   try {
     const adminSnap = await db.collection("admin_settings").doc("global").get();
     if (adminSnap.exists) {
-      const adminData = adminSnap.data();
-      if (adminData?.planes && typeof adminData.planes === "object") {
-        planesConfig = { ...PLANES_FALLBACK, ...adminData.planes };
-      }
+      planesConfig = { ...planesConfig, ...buildPlanesConfig(adminSnap.data() || {}) };
     }
   } catch (e) {
     console.warn("No se pudo leer precios de Firestore, usando fallback:", e.message);
   }
 
-  const p = planesConfig[plan];
+  const p = planesConfig[plan] || PLANES_FALLBACK[plan];
   const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
     method: "POST",
-    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      items: [{ title: `Johnny Blaze OS — ${p.label}`, quantity: 1, unit_price: p.monto, currency_id: "ARS" }],
+      items: [{ title: `Johnny Blaze OS - ${p.label}`, quantity: 1, unit_price: p.monto, currency_id: p.currency || "ARS" }],
       external_reference: uid,
-      // plan incluido en metadata para que el webhook lo lea
       metadata: { uid, plan },
       back_urls: {
         success: `${BASE_URL}/?pago=ok`,

@@ -1322,6 +1322,7 @@ function PantallaSuscripcion({ showToast }) {
   const [lastAttempt, setLastAttempt] = React.useState(null); // { invoiceId, preferenceId, mode, planKey, at }
   const [note, setNote] = React.useState("");
   const [sending, setSending] = React.useState(false);
+  const [checkoutPlanKey, setCheckoutPlanKey] = React.useState(null);
   const uid = auth.currentUser?.uid;
 
   const cargar = async () => {
@@ -1396,6 +1397,8 @@ function PantallaSuscripcion({ showToast }) {
     const invoiceAt = Number(latestInvoiceAttempt.at || 0);
     return invoiceAt >= localAt ? latestInvoiceAttempt : lastAttempt;
   }, [lastAttempt, latestInvoiceAttempt]);
+  const checkoutPlan = checkoutPlanKey ? settings.plans?.[checkoutPlanKey] : null;
+  const checkoutPrice = checkoutPlan?.price ?? settings.precios?.[checkoutPlanKey] ?? 0;
 
   const persistPaymentAttempt = (attempt) => {
     if (!attempt?.invoiceId && !attempt?.preferenceId) return;
@@ -1418,13 +1421,27 @@ function PantallaSuscripcion({ showToast }) {
     setLastAttempt(normalized);
   };
 
+  const abrirConfirmacionPago = (planKey) => {
+    setCheckoutPlanKey(planKey);
+  };
+
+  const cerrarConfirmacionPago = () => {
+    setCheckoutPlanKey(null);
+  };
+
   const irAPagar = async (planKey) => {
     try {
       setSending(true);
+      setCheckoutPlanKey(null);
       const res = await fetch("/api/mp-create-preference", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid, plan: planKey }),
+        body: JSON.stringify({
+          uid,
+          plan: planKey,
+          planLabel: settings.plans?.[planKey]?.label || planKey,
+          planPrice: settings.precios?.[planKey] ?? 0,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.url) {
@@ -1646,14 +1663,14 @@ function PantallaSuscripcion({ showToast }) {
 
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => irAPagar("base")}
+            onClick={() => abrirConfirmacionPago("base")}
             disabled={sending}
             className="rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
           >
             {sending ? "Procesando..." : `Pagar base ${formatMoney(settings.precios?.base || 0)}`}
           </button>
           <button
-            onClick={() => irAPagar("pro")}
+            onClick={() => abrirConfirmacionPago("pro")}
             disabled={sending}
             className="rounded-2xl bg-zinc-900 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
           >
@@ -1713,6 +1730,65 @@ function PantallaSuscripcion({ showToast }) {
             ))}
           </div>
         </div>
+
+        {checkoutPlanKey && checkoutPlan && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/70 p-4 backdrop-blur-sm sm:items-center">
+            <div className="w-full max-w-lg rounded-3xl border border-orange-200 bg-white p-4 shadow-2xl">
+              <p className="text-[9px] font-black uppercase tracking-widest text-orange-500">Bases y condiciones</p>
+              <h3 className="mt-1 text-xl font-black text-zinc-900">
+                {checkoutPlan.label || (checkoutPlanKey === "pro" ? "Plan Pro" : "Plan Base")}
+              </h3>
+              <p className="mt-1 text-sm font-bold text-zinc-600">
+                Antes de ir a Mercado Pago, revisá el plan elegido y el monto a contratar.
+              </p>
+
+              <div className="mt-4 rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Monto</p>
+                    <p className="mt-1 text-base font-black text-zinc-900">{formatMoney(checkoutPrice)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Duración</p>
+                    <p className="mt-1 text-base font-black text-zinc-900">
+                      {checkoutPlan.billingDays || 0} días
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Detalle</p>
+                    <p className="mt-1 text-[11px] font-bold leading-relaxed text-zinc-700">
+                      La suscripción se actualiza cuando Mercado Pago confirme el cobro. Si el pago no se aprueba, el estado actual se mantiene.
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Importante</p>
+                    <ul className="mt-1 space-y-1 text-[11px] font-bold leading-relaxed text-zinc-700">
+                      <li>• Verificá que el monto coincida con el plan elegido.</li>
+                      <li>• Al aprobarse, la app se actualiza automáticamente al volver.</li>
+                      <li>• Si cancelás o el pago falla, conservás el estado actual.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <button
+                  onClick={cerrarConfirmacionPago}
+                  className="rounded-2xl border border-zinc-200 bg-zinc-50 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-700"
+                >
+                  Volver
+                </button>
+                <button
+                  onClick={() => irAPagar(checkoutPlanKey)}
+                  disabled={sending}
+                  className="rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
+                >
+                  {sending ? "Procesando..." : "Ir a Mercado Pago"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Card>
   );
