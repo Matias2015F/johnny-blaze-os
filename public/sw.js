@@ -48,6 +48,7 @@ self.addEventListener("push", (event) => {
       badge: "/brand/motogestion-icon.png",
       tag: data.tag || "jbos-recordatorio",
       renotify: true,
+      vibrate: [300, 100, 300],
       data: { url: data.url || "/" },
     })
   );

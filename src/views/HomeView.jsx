@@ -79,18 +79,43 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
     if (!alertasService.length) return;
     const NotificationApi = window.Notification;
 
+    const playBeep = () => {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        [[880, 0], [660, 0.22], [880, 0.44]].forEach(([freq, start]) => {
+          const osc  = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.value = freq;
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          const t = ctx.currentTime + start;
+          gain.gain.setValueAtTime(0.001, t);
+          gain.gain.exponentialRampToValueAtTime(0.15, t + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+          osc.start(t);
+          osc.stop(t + 0.2);
+        });
+        setTimeout(() => ctx.close().catch(() => {}), 1200);
+      } catch { /* ignorar */ }
+    };
+
     const lanzar = () => {
       const yaNotificadas = leerAlertasNotificadas();
+      let hayNuevas = false;
       alertasService.forEach((recordatorio) => {
         const claveEstado = `${recordatorio.estado}-${recordatorio.enviado ? "avisado" : "pendiente"}`;
         if (yaNotificadas[recordatorio.id] === claveEstado) return;
-
+        hayNuevas = true;
         const titulo = recordatorio.estado === "service_vencido" ? "Service vencido" : "Próximo service";
         const cuerpo = `${recordatorio.moto?.patente || "---"} · ${recordatorio.descripcion}`;
         const notification = new NotificationApi(titulo, { body: cuerpo, silent: false });
         notification.onclick = () => window.focus();
         guardarAlertaNotificada(recordatorio.id, claveEstado);
       });
+      if (hayNuevas) playBeep();
     };
 
     if (NotificationApi.permission === "granted") {
