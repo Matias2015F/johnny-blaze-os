@@ -1,7 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
 import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
-import { Wrench, Clock, History, Settings, DollarSign, HelpCircle, RefreshCw } from "lucide-react";
+import { Wrench, Clock, History, Settings, DollarSign, HelpCircle, RefreshCw, WifiOff } from "lucide-react";
 
 import { LS, useCollection, generateId, migrateFromLocalStorage, migrateRenamedCollections, clearFirestoreData, useSyncStatus } from "./lib/storage.js";
 import { autoCloudBackup } from "./lib/cloudBackup.js";
@@ -10,7 +10,7 @@ import { APP_BUILD } from "./generated/appVersion.js";
 import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, promptInstallApp } from "./lib/appUpdate.js";
 import { ensureAccountProfile, trackEvent } from "./lib/telemetry.js";
 
-// HomeView se carga de forma eager ó es la pantalla inicial
+// HomeView se carga de forma eager ÔøΩ es la pantalla inicial
 import HomeView from "./views/HomeView.jsx";
 
 // El resto se carga bajo demanda (code splitting) y reduce el bundle inicial
@@ -41,12 +41,40 @@ const Cargando = () => (
 );
 
 class ChunkErrorBoundary extends React.Component {
+  state = { error: null };
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
   componentDidCatch(error) {
     if (error?.name === "ChunkLoadError" || error?.message?.includes("dynamically imported module")) {
       window.location.reload();
     }
   }
+
   render() {
+    if (this.state.error) {
+      return (
+        <div className="min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center p-8 text-center gap-5">
+          <p className="text-4xl select-none">‚ö†Ô∏è</p>
+          <p className="text-white font-black text-sm uppercase tracking-tight">Algo sali√≥ mal en esta pantalla</p>
+          <p className="text-zinc-500 text-xs">Tus datos est√°n guardados.</p>
+          <button
+            onClick={() => this.setState({ error: null })}
+            className="rounded-2xl bg-orange-600 px-8 py-4 text-[11px] font-black uppercase tracking-widest text-white active:scale-95"
+          >
+            Reintentar
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-2xl bg-zinc-900 border border-zinc-700 px-8 py-4 text-[11px] font-black uppercase tracking-widest text-zinc-400 active:scale-95"
+          >
+            Recargar app
+          </button>
+        </div>
+      );
+    }
     return this.props.children;
   }
 }
@@ -145,6 +173,7 @@ export default function TallerPanel() {
   const [selectedBikeId, setSelectedBikeId] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [confirm, setConfirm] = useState(null); // { mensaje, onOk }
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
 
   const showConfirm = (mensaje, onOk) => setConfirm({ mensaje, onOk });
   const [prefillData, setPrefillData] = useState(null);
@@ -182,6 +211,17 @@ export default function TallerPanel() {
     const openConfig = () => setView("config");
     window.addEventListener("jbos-open-config", openConfig);
     return () => window.removeEventListener("jbos-open-config", openConfig);
+  }, []);
+
+  useEffect(() => {
+    const goOnline  = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener("online",  goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online",  goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
   }, []);
 
   useEffect(() => {
@@ -287,7 +327,7 @@ export default function TallerPanel() {
       }).id;
     }
 
-    // Titularidad: relaciÛn histÛrica cliente ? moto
+    // Titularidad: relaciÔøΩn histÔøΩrica cliente ? moto
     const titActual = titularidades.find(t => t.motoId === bikeId && t.titularActual === true);
     if (!titActual || titActual.clienteId !== clientId) {
       if (titActual) {
@@ -354,8 +394,8 @@ export default function TallerPanel() {
   const loadDemoData = () => {
     const hoy = hoyEstable();
 
-    // Moto 1 ó Juan GarcÌa / Honda Wave 110
-    const c1 = LS.addDoc("clientes", { nombre: "Juan GarcÌa", tel: "3434123456", telefono: "3434123456", whatsapp: "3434123456", etiquetas: [], activo: true, createdAt: Date.now() });
+    // Moto 1 ÔøΩ Juan GarcÔøΩa / Honda Wave 110
+    const c1 = LS.addDoc("clientes", { nombre: "Juan GarcÔøΩa", tel: "3434123456", telefono: "3434123456", whatsapp: "3434123456", etiquetas: [], activo: true, createdAt: Date.now() });
     const b1 = LS.addDoc("motos", { patente: "ABC123", patenteNormalizada: "ABC123", marca: "Honda", modelo: "Wave 110", cilindrada: 110, km: 15400, kilometrajeActual: 15400, estado: "activa", clienteId: c1.id, ultimaVisita: hoy, proximoService: 17500, createdAt: Date.now() });
     LS.addDoc("titularidades", { clienteId: c1.id, motoId: b1.id, fechaDesde: hoy, fechaHasta: null, titularActual: true, createdAt: Date.now() });
     LS.addDoc("trabajos", {
@@ -366,14 +406,14 @@ export default function TallerPanel() {
       tareas: [{ nombre: "Cambio de aceite y filtro", monto: 18000, horasBase: 0.5 }],
       repuestos: [{ nombre: "Aceite 10W40", monto: 12000, cantidad: 1 }, { nombre: "Filtro de aceite", monto: 8000, cantidad: 1 }],
       insumos: [], fletes: [], km: 15400, kmIngreso: 15400, kmEntrega: null,
-      motivoIngreso: "Service periÛdico y revisiÛn general.",
-      diagnostico: "Service periÛdico y revisiÛn general.",
-      observacionesProxima: "PrÛximo service a los 17500 km.",
+      motivoIngreso: "Service periÔøΩdico y revisiÔøΩn general.",
+      diagnostico: "Service periÔøΩdico y revisiÔøΩn general.",
+      observacionesProxima: "PrÔøΩximo service a los 17500 km.",
       pdfEntregado: false, createdAt: Date.now(),
     });
 
-    // Moto 2 ó MarÌa LÛpez / Yamaha FZ 16
-    const c2 = LS.addDoc("clientes", { nombre: "MarÌa LÛpez", tel: "3434654321", telefono: "3434654321", whatsapp: "3434654321", etiquetas: [], activo: true, createdAt: Date.now() });
+    // Moto 2 ÔøΩ MarÔøΩa LÔøΩpez / Yamaha FZ 16
+    const c2 = LS.addDoc("clientes", { nombre: "MarÔøΩa LÔøΩpez", tel: "3434654321", telefono: "3434654321", whatsapp: "3434654321", etiquetas: [], activo: true, createdAt: Date.now() });
     const b2 = LS.addDoc("motos", { patente: "XYZ789", patenteNormalizada: "XYZ789", marca: "Yamaha", modelo: "FZ 16", cilindrada: 160, km: 8920, kilometrajeActual: 8920, estado: "activa", clienteId: c2.id, ultimaVisita: hoy, proximoService: 11000, createdAt: Date.now() });
     LS.addDoc("titularidades", { clienteId: c2.id, motoId: b2.id, fechaDesde: hoy, fechaHasta: null, titularActual: true, createdAt: Date.now() });
     LS.addDoc("trabajos", {
@@ -392,7 +432,7 @@ export default function TallerPanel() {
   };
 
   const clearAllData = () => {
-    showConfirm("øBorrar todos los datos? Esta accion no se puede deshacer.", async () => {
+    showConfirm("ÔøΩBorrar todos los datos? Esta accion no se puede deshacer.", async () => {
       const uid = auth.currentUser?.uid;
       if (uid) await clearFirestoreData(uid);
       localStorage.removeItem("jbos_fs_migrated_v1");
@@ -501,6 +541,15 @@ export default function TallerPanel() {
   // -- Render -----------------------------------------------------------------
   return (
     <div className="max-w-md mx-auto min-h-screen bg-[#0A0A0A] relative text-left selection:bg-orange-500 overflow-x-hidden font-bold">
+
+      {!isOnline && (
+        <div className="fixed top-0 left-0 right-0 z-[300] flex items-center justify-center gap-2 bg-zinc-900/95 border-b border-zinc-700 py-2.5 px-4 backdrop-blur">
+          <WifiOff size={12} className="text-zinc-400 shrink-0" />
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+            Sin conexi√≥n ‚Äî los cambios se guardan en este dispositivo
+          </p>
+        </div>
+      )}
 
       <ChunkErrorBoundary>
       <Suspense fallback={<Cargando />}>
@@ -688,7 +737,7 @@ export default function TallerPanel() {
         </div>
       )}
 
-      {/* Modal de confirmaciÛn ó reemplaza window.confirm */}
+      {/* Modal de confirmaciÔøΩn ÔøΩ reemplaza window.confirm */}
       {confirm && (
         <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-6">
           <div className="bg-[#151515] border border-zinc-800 rounded-[2rem] p-8 w-full max-w-sm space-y-5">
@@ -709,7 +758,7 @@ export default function TallerPanel() {
 
       {NAV_VIEWS.includes(view) && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-gradient-to-t from-black/95 via-zinc-950/90 to-zinc-900/50 backdrop-blur-3xl border-t border-white/10 px-2 py-3 flex justify-around items-center z-50 rounded-t-[3rem] shadow-2xl">
-          {/* Indicador de sincronizaciÛn */}
+          {/* Indicador de sincronizaciÔøΩn */}
           <div className={`absolute top-2 right-4 flex items-center gap-1 text-[8px] font-black uppercase tracking-widest ${syncStatus === "synced" ? "text-green-500" : syncStatus === "syncing" ? "text-yellow-400" : "text-red-400"}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${syncStatus === "synced" ? "bg-green-500" : syncStatus === "syncing" ? "bg-yellow-400 animate-pulse" : "bg-red-400"}`} />
             {syncStatus === "synced" ? "Guardado" : syncStatus === "syncing" ? "Guardando..." : "Error al guardar"}
@@ -727,7 +776,7 @@ export default function TallerPanel() {
             <DollarSign size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Pagos</span>
           </button>
           <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "config" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-zinc-500 hover:text-zinc-300"}`}>
-            <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">M·s</span>
+            <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">MÔøΩs</span>
           </button>
         </nav>
       )}
