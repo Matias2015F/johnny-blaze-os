@@ -4,7 +4,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
-import { Eye, EyeOff, ArrowLeft, Wrench } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 
 export default function LoginScreen() {
   const [email, setEmail]       = useState("");
@@ -156,13 +156,20 @@ export default function LoginScreen() {
 function Logo() {
   return (
     <div className="text-center py-2">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-gradient-to-br from-orange-500 to-orange-700 mb-5 shadow-xl shadow-orange-600/30">
-        <Wrench size={30} className="text-white" strokeWidth={2.5} />
+      <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl border border-orange-500/30 bg-black shadow-xl shadow-orange-600/20">
+        <img
+          src="/brand/motogestion-icon.png"
+          alt="Moto Gestión"
+          className="h-full w-full object-cover"
+        />
       </div>
-      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-500 mb-1">Mecánica de Motos</p>
-      <h1 className="text-[2.6rem] font-black tracking-tighter text-white leading-none">JOHNNY BLAZE</h1>
-      <div className="w-14 h-[2px] bg-gradient-to-r from-transparent via-orange-600 to-transparent mx-auto my-3 rounded-full" />
-      <p className="text-zinc-500 text-[10px] font-bold tracking-[0.3em] uppercase">Sistema de Gestión</p>
+      <div className="overflow-hidden rounded-3xl border border-orange-500/20 bg-black/70 px-3 py-4 shadow-inner">
+        <img
+          src="/brand/motogestion-banner.png"
+          alt="Moto Gestión - Sistema de gestión para talleres de motos"
+          className="h-auto max-h-36 w-full object-contain"
+        />
+      </div>
     </div>
   );
 }

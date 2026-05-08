@@ -64,7 +64,7 @@ export function generarMensajePresupuestoConDatos({ client, bike, total, min, ma
     }
   }
 
-  msg += `\n\n${nombreTaller || "Johnny Blaze - Servicio Tecnico de Motocicletas"}`;
+  msg += `\n\n${nombreTaller || "Moto Gestión - Servicio Técnico de Motocicletas"}`;
   return msg;
 }
 

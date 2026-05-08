@@ -524,8 +524,8 @@ export default function TallerPanel() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "Johnny Blaze OS",
-          text: "Abri esta app y agregala a tu pantalla de inicio.",
+          title: "Moto Gestión",
+          text: "Abrí esta app y agregala a tu pantalla de inicio.",
           url: window.location.origin,
         });
         showToast("Se abrio compartir");
@@ -789,5 +789,4 @@ export default function TallerPanel() {
     </div>
   );
 }
-
 

@@ -132,7 +132,7 @@ function PantallaBloqueo({ account, settings }) {
         <div className="bg-red-950/40 border-b border-red-900/30 p-8 text-center">
           <div className="text-5xl mb-3">🔒</div>
           <h2 className="text-2xl font-black text-red-400 uppercase tracking-tighter">Tu acceso esta suspendido</h2>
-          <p className="text-red-400/60 text-[10px] font-bold uppercase tracking-widest mt-1">Johnny Blaze OS</p>
+          <p className="text-red-400/60 text-[10px] font-bold uppercase tracking-widest mt-1">Moto Gestión</p>
         </div>
 
         <div className="p-6 space-y-4">

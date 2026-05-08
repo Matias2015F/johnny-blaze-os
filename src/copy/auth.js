@@ -1,6 +1,6 @@
 export const authCopy = {
-  titulo:               "JOHNNY BLAZE",
-  subtitulo:            "Sistema de Gestión para Talleres",
+  titulo:               "MOTO GESTIÓN",
+  subtitulo:            "Sistema de Gestión para Talleres de Motos",
   ingresar:             "Ingresar al taller",
   crearCuenta:          "Crear mi cuenta gratis",
   probarGratis:         "Probar gratis",

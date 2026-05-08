@@ -8,7 +8,7 @@ export const PLANTILLAS_GARANTIA = [
 
 export const CONFIG_DEFAULT = {
   id: "global",
-  nombreTaller: "JOHNNY BLAZE OS",
+  nombreTaller: "Moto Gestión",
   mecanicoResponsable: "Matías Fleischmann",
   dniMecanico: "---",
   telefonoTaller: "3434XXXXXX",

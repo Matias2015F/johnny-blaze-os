@@ -48,7 +48,7 @@ function analyticsEnabled() {
 export async function ensureAccountProfile() {
   const user = auth.currentUser;
   if (!user) return;
-  const nombreTaller = (LS.getDoc("config", "global") || {}).nombreTaller || "Johnny Blaze OS";
+  const nombreTaller = (LS.getDoc("config", "global") || {}).nombreTaller || "Moto Gestión";
   return ensureSaasUserProfile(user, { nombreTaller, appVersion: APP_BUILD.version });
 }
 

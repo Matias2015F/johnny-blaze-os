@@ -145,7 +145,7 @@ export function normalizeSaasUser(raw = {}, fallback = {}) {
       ...DEFAULT_SAAS_FEATURES,
       ...(raw.featureFlags || raw.features || {}),
     },
-    nombreTaller: raw.nombreTaller || fallback.nombreTaller || "Johnny Blaze OS",
+    nombreTaller: raw.nombreTaller || fallback.nombreTaller || "Moto Gestión",
     lastSeenAt: raw.lastSeenAt || null,
     createdAt: raw.createdAt || null,
     updatedAt: raw.updatedAt || null,
@@ -220,7 +220,7 @@ export async function ensureSaasUserProfile(authUser, extras = {}) {
   const trialDays = Number(settings.duracionTrialDias || DEFAULT_SAAS_ADMIN_SETTINGS.duracionTrialDias);
   const defaultPrecio = Number(settings.precios?.base || DEFAULT_SAAS_ADMIN_SETTINGS.precios.base);
   const currency = settings.precios?.currency || DEFAULT_SAAS_ADMIN_SETTINGS.precios.currency;
-  const baseNombreTaller = extras.nombreTaller || existing?.nombreTaller || "Johnny Blaze OS";
+  const baseNombreTaller = extras.nombreTaller || existing?.nombreTaller || "Moto Gestión";
 
   const canonical = existing || {
     uid: authUser.uid,

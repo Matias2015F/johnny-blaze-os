@@ -135,8 +135,13 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-500/60 to-transparent" />
         <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-orange-600/10 blur-3xl" />
         <div className="font-bold">
-          <p className="mb-1 text-[10px] font-black uppercase tracking-[0.4em] text-orange-500">Mecánica de Motos</p>
-          <h1 className="mb-1 text-4xl font-black leading-none tracking-tighter text-white">JOHNNY BLAZE</h1>
+          <div className="mb-5 overflow-hidden rounded-[1.75rem] border border-orange-500/20 bg-black/80 px-3 py-4 shadow-inner shadow-orange-950/30">
+            <img
+              src="/brand/motogestion-banner.png"
+              alt="Moto Gestión - Sistema de gestión para talleres de motos"
+              className="h-auto max-h-44 w-full object-contain"
+            />
+          </div>
           <div className="mb-5 flex items-center justify-between gap-3">
             <p className="max-w-[75%] truncate text-[10px] font-normal text-zinc-400">{userLabel}</p>
             <button
@@ -367,4 +372,3 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
     </div>
   );
 }
-

@@ -2062,7 +2062,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
       <Card>
         <SectionTitle>Version de la app</SectionTitle>
         <div className="flex justify-between items-center mb-3">
-          <span className="text-sm font-black text-zinc-800">Johnny Blaze OS</span>
+          <span className="text-sm font-black text-zinc-800">Moto Gestión</span>
           <span className="bg-orange-50 text-orange-600 text-[10px] font-black px-3 py-1 rounded-full border border-orange-100">{APP_BUILD.version}</span>
         </div>
         <div className="space-y-3 mb-4">

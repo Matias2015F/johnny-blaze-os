@@ -260,7 +260,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               <span className="font-black">Hash:</span> <span className="font-mono">{snapshot.hash}</span>
             </p>
             <p className="text-[8px] text-zinc-500">
-              {order.fechaComprobante?.slice(0, 10) || order.fechaIngreso} â€¢ Johnny Blaze OS
+              {order.fechaComprobante?.slice(0, 10) || order.fechaIngreso} • Moto Gestión
             </p>
           </div>
         </div>
@@ -283,4 +283,3 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
     </div>
   );
 }
-

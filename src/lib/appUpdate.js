@@ -136,7 +136,7 @@ export async function sendTestNotification() {
   }
 
   const NotificationApi = window.Notification;
-  const notification = new NotificationApi("Johnny Blaze OS", {
+  const notification = new NotificationApi("Moto Gestión", {
     body: "Notificacion de prueba. Si ves esto, las alertas del taller estan funcionando.",
     silent: false,
     tag: "jbos-test-notification",
