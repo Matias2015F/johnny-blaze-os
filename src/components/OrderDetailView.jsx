@@ -23,7 +23,7 @@ const RANGO_FACTOR = { bajo: 1.0, medio: 1.3, alto: 1.5 };
 
 const CRON_MSG = {
   NORMAL: { texto: "Vas dentro del presupuesto", color: "text-green-400", bg: "bg-green-500/10 border-green-500/30" },
-  ALERTA: { texto: "Estás cerca del límite", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/30" },
+  ALERTA: { texto: "EstÃ¡s cerca del lÃ­mite", color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/30" },
   BLOQUEADO: { texto: "Te pasaste del presupuesto", color: "text-red-400", bg: "bg-red-500/10 border-red-500/30" },
 };
 
@@ -167,13 +167,13 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const presupuestoEditable = Number(maxInput) > 0 ? Number(maxInput) : presBase;
   const estadoPaso = {
     diagnostico: "Siguiente paso: armar presupuesto",
-    presupuesto: "Siguiente paso: esperar aprobación",
-    aprobacion: "Siguiente paso: iniciar reparación",
+    presupuesto: "Siguiente paso: esperar aprobaciÃ³n",
+    aprobacion: "Siguiente paso: iniciar reparaciÃ³n",
     reparacion: "Siguiente paso: dejar listo para cobrar",
     finalizada: "Siguiente paso: registrar pago",
     listo_para_emitir: "Siguiente paso: emitir comprobante",
     cerrado_emitido: "Trabajo cerrado con comprobante emitido",
-  }[order.estado] || "Revisá este trabajo";
+  }[order.estado] || "RevisÃ¡ este trabajo";
 
   const presupuestoMinSheet = nivelRiesgo === "bajo"
     ? presupuestoEditable
@@ -230,7 +230,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
   const cambiarEstado = (nuevo) => {
     if (isLocked) {
-      showToast("No se puede modificar: ya se generó el comprobante");
+      showToast("No se puede modificar: ya se generÃ³ el comprobante");
       return;
     }
     LS.updateDoc("trabajos", order.id, { estado: nuevo });
@@ -243,12 +243,12 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       ? { label: "Pasar a presupuesto", action: () => cambiarEstado("presupuesto"), className: "bg-violet-600 text-white" }
       : order.estado === "presupuesto"
         ? presupuestoSent
-          ? { label: "? Presupuesto enviado", action: abrirSheet, className: "bg-emerald-600 text-white" }
+          ? { label: "Presupuesto enviado", action: abrirSheet, className: "bg-emerald-600 text-white" }
           : { label: "Enviar presupuesto", action: abrirSheet, className: "bg-amber-400 text-zinc-950" }
         : order.estado === "aprobacion"
-          ? { label: "Iniciar reparación", action: () => setView("ejecucion"), className: "bg-orange-600 text-white" }
+          ? { label: "Iniciar reparaciÃ³n", action: () => setView("ejecucion"), className: "bg-orange-600 text-white" }
           : order.estado === "reparacion"
-            ? { label: "Continuar ejecución", action: () => setView("ejecucion"), className: "bg-orange-600 text-white" }
+            ? { label: "Continuar ejecuciÃ³n", action: () => setView("ejecucion"), className: "bg-orange-600 text-white" }
             : order.estado === "finalizada"
               ? { label: "Finalizar trabajo", action: () => setView("finalizacion"), className: "bg-orange-600 text-white" }
               : order.estado === "listo_para_emitir"
@@ -259,7 +259,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
   const eliminarItem = (lista, index) => {
     if (isLocked) {
-      showToast("No se puede modificar: ya se generó el comprobante");
+      showToast("No se puede modificar: ya se generÃ³ el comprobante");
       return;
     }
     const nuevaLista = [...(order[lista] || [])];
@@ -327,7 +327,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       accionPrincipal.action();
       return;
     }
-    showToast("Ese paso todavía no corresponde");
+    showToast("Ese paso todavÃ­a no corresponde");
   };
 
   const tiempoMax = order.maxAutorizado > 0 ? order.maxAutorizado / valorHora : 0;
@@ -340,19 +340,24 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       {res.total > 0 && (
         <div className="fixed bottom-[64px] left-0 right-0 z-40 px-4 pb-2 pointer-events-none">
           <div className="mx-auto max-w-[440px]">
-            <div className="flex items-center justify-between rounded-[1.5rem] border border-zinc-700/80 bg-zinc-900/95 px-5 py-3 shadow-2xl backdrop-blur">
-              <div className="flex items-center gap-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Total</p>
-                <p className="text-lg font-black text-white">{formatMoney(res.total)}</p>
+            <div className="rounded-2xl border border-orange-500/25 bg-zinc-950/95 px-4 py-3 shadow-2xl backdrop-blur">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Total del presupuesto</p>
+                  <p className="mt-1 text-xl font-black leading-tight text-white">{formatMoney(res.total)}</p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Estado</p>
+                  {saldoPendiente > 0 && (
+                    <p className="mt-1 text-xs font-black leading-tight text-red-300">
+                      Saldo {formatMoney(saldoPendiente)}
+                    </p>
+                  )}
+                  {saldoPendiente <= 0 && totalPagado > 0 && (
+                    <p className="mt-1 text-xs font-black leading-tight text-emerald-300">Pagado</p>
+                  )}
+                </div>
               </div>
-              {saldoPendiente > 0 && (
-                <p className="text-[10px] font-black text-red-400">
-                  Saldo: {formatMoney(saldoPendiente)}
-                </p>
-              )}
-              {saldoPendiente <= 0 && totalPagado > 0 && (
-                <p className="text-[10px] font-black text-emerald-400">Pagado ?</p>
-              )}
             </div>
           </div>
         </div>
@@ -389,7 +394,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                     type="tel"
                     value={clientTel}
                     onChange={e => setClientTel(e.target.value)}
-                    placeholder="Teléfono"
+                    placeholder="TelÃ©fono"
                     className="w-full bg-black/60 text-white text-sm px-3 py-2 rounded-lg border border-white/10 focus:border-orange-500 outline-none"
                   />
                   <div className="flex gap-2">
@@ -413,7 +418,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   className="mt-2 text-left w-full group"
                 >
                   <p className="text-sm font-black uppercase tracking-tight text-zinc-300 group-hover:text-orange-400 transition-colors">{clientNombre || "Cliente desconocido"}</p>
-                  <p className="text-[9px] text-zinc-500 group-hover:text-zinc-400 transition-colors">{clientTel || "Sin teléfono"}</p>
+                  <p className="text-[9px] text-zinc-500 group-hover:text-zinc-400 transition-colors">{clientTel || "Sin telÃ©fono"}</p>
                 </button>
               )}
             </div>
@@ -465,8 +470,17 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
         {isLocked && (
           <div className="flex items-center gap-3 rounded-[2rem] border border-orange-500/20 bg-orange-500/10 p-4 shadow-lg backdrop-blur">
             <div className="rounded-xl bg-orange-500 p-2 text-white"><ShieldCheck size={20} /></div>
-            <p className="text-[10px] font-black uppercase leading-tight text-orange-200">Trabajo cerrado: ya se emitió comprobante.</p>
+            <p className="text-[10px] font-black uppercase leading-tight text-orange-200">Trabajo cerrado: ya se emitiÃ³ comprobante.</p>
           </div>
+        )}
+
+        {!isLocked && order.estado !== "cerrado_emitido" && (
+          <button
+            onClick={() => setView("gestionarTareas")}
+            className="w-full rounded-[1.75rem] border border-orange-500/50 bg-zinc-900 py-4 text-[11px] font-black uppercase tracking-widest text-orange-100 shadow-lg transition-all active:scale-95"
+          >
+            Gestionar tareas / repuestos
+          </button>
         )}
 
         {accionPrincipal && (
@@ -475,15 +489,6 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             className={`w-full rounded-[1.75rem] py-4 text-[11px] font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 ${accionPrincipal.className}`}
           >
             {accionPrincipal.label}
-          </button>
-        )}
-
-        {!isLocked && order.estado !== "cerrado_emitido" && (
-          <button
-            onClick={() => setView("gestionarTareas")}
-            className="w-full rounded-[1.75rem] border border-zinc-700 bg-zinc-900 py-4 text-[11px] font-black uppercase tracking-widest text-zinc-300 shadow-lg transition-all active:scale-95"
-          >
-            Gestionar tareas / repuestos
           </button>
         )}
       </div>
@@ -503,7 +508,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
               <div className="rounded-2xl bg-zinc-800/50 border border-zinc-700 p-4">
                 <p className="text-sm font-black text-white">{client.nombre || "Cliente"}</p>
-                <p className="text-xs text-zinc-400">{bike.marca || ""} {bike.modelo || ""} {bike.patente ? `— ${bike.patente}` : ""}</p>
+                <p className="text-xs text-zinc-400">{bike.marca || ""} {bike.modelo || ""} {bike.patente ? `â€” ${bike.patente}` : ""}</p>
               </div>
 
               <div className="flex gap-2">
@@ -540,7 +545,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               ) : (
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-center">Mínimo</p>
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-center">MÃ­nimo</p>
                     <input
                       type="number"
                       inputMode="numeric"
@@ -551,7 +556,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                     />
                   </div>
                   <div className="flex-1">
-                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-center">Máximo</p>
+                    <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-center">MÃ¡ximo</p>
                     <input
                       type="number"
                       inputMode="numeric"
@@ -652,5 +657,4 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     </div>
   );
 }
-
 
