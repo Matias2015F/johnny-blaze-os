@@ -188,7 +188,7 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
         </div>
         <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-4 text-center">
           <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Cobrado</p>
-          <p className="mt-2 text-xl font-black text-yellow-400">{cobradoHoy > 0 ? formatMoney(cobradoHoy) : "$0"}</p>
+          <p className="mt-2 text-xl font-black text-yellow-400">{formatMoney(cobradoHoy)}</p>
           <p className="mt-1 text-[9px] font-bold text-zinc-600">Hoy</p>
         </div>
       </div>

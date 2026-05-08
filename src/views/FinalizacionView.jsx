@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ArrowLeft, Share2 } from "lucide-react";
 import { LS, obtenerOrden, actualizarOrden } from "../lib/storage.js";
 import { abrirEnlaceExterno, generarEnlaceMontoFinal } from "../lib/whatsappService.js";
-import { formatMoney } from "../utils/format.js";
+import { formatMoney, formatMoneyParts } from "../utils/format.js";
 
 export default function FinalizacionView({ ordenId, setView }) {
   const [orden, setOrden] = useState(null);
@@ -131,7 +131,13 @@ export default function FinalizacionView({ ordenId, setView }) {
 
         <div className="rounded-[2rem] border border-orange-500/20 bg-orange-600/10 p-6 text-center">
           <p className="text-[10px] font-black uppercase tracking-widest text-orange-400 mb-2">Total a cobrar</p>
-          <p className="text-5xl font-black text-orange-400">{formatMoney(costoFinal)}</p>
+          {(() => { const { pesos, centavos } = formatMoneyParts(costoFinal); return (
+            <p className="leading-none">
+              <span className="text-xs font-bold text-orange-400/50">ARS </span>
+              <span className="text-5xl font-black text-orange-400">{pesos}</span>
+              <span className="text-2xl font-black text-orange-400/60">,{centavos}</span>
+            </p>
+          ); })()}
         </div>
 
         <button

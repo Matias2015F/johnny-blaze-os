@@ -1,5 +1,8 @@
 import { normalizarTelWA } from "./messages.js";
 
+const fmt = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtARS = (n) => "ARS " + fmt.format(Number(n || 0));
+
 function isMobileDevice() {
   if (typeof navigator === "undefined") return false;
   return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
@@ -25,7 +28,7 @@ export function generarEnlacePresupuesto(orden, monto, cliente, moto) {
     `*Presupuesto - ${patente}*\n\n` +
     `Hola ${nombreCliente},\n\n` +
     `Tu ${marcaMoto} ${modeloMoto} está lista para revisión.\n\n` +
-    `*Total: $${Number(monto).toLocaleString("es-AR")}*\n\n` +
+    `*Total: ${fmtARS(monto)}*\n\n` +
     `Por favor confirmá para que podamos continuar.\n\n` +
     `${new Date().toLocaleString("es-AR")}`;
 
@@ -40,7 +43,7 @@ export function generarEnlaceMontoFinal(orden, monto, cliente, moto) {
 
   const mensaje =
     `Hola ${nombreCliente}, ¡tu moto está lista!\n\n` +
-    `*Costo final: $${Number(monto).toLocaleString("es-AR")}*\n` +
+    `*Costo final: ${fmtARS(monto)}*\n` +
     `Patente: ${patente}\n\n` +
     `¿Cuándo pasás a retirar? Avisame.`;
 

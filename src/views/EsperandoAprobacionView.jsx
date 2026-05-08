@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, Clock } from "lucide-react";
 import { LS, obtenerOrden, actualizarOrden } from "../lib/storage.js";
-import { formatMoney } from "../utils/format.js";
+import { formatMoney, formatMoneyParts } from "../utils/format.js";
 
 export default function EsperandoAprobacionView({ ordenId, setView }) {
   const [orden, setOrden] = useState(null);
@@ -98,7 +98,13 @@ export default function EsperandoAprobacionView({ ordenId, setView }) {
           )}
           <div className="border-t border-zinc-700 pt-3 flex justify-between items-center">
             <span className="text-sm font-black text-white">Total</span>
-            <span className="text-xl font-black text-orange-400">{formatMoney(totalPresupuesto)}</span>
+            {(() => { const { pesos, centavos } = formatMoneyParts(totalPresupuesto); return (
+              <p className="leading-none text-right">
+                <span className="text-[10px] font-bold text-orange-400/50">ARS </span>
+                <span className="text-xl font-black text-orange-400">{pesos}</span>
+                <span className="text-sm font-black text-orange-400/60">,{centavos}</span>
+              </p>
+            ); })()}
           </div>
         </div>
 

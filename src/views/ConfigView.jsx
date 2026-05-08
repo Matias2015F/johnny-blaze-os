@@ -893,23 +893,11 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
     if (uid && cfg.emailNotificacion) {
       setDoc(doc(db, "usuarios", uid), { emailNotificacion: cfg.emailNotificacion }, { merge: true }).catch(console.error);
     }
-    guardarAdminSettings(
-      {
-        ...DEFAULT_ADMIN_SETTINGS,
-        notificationEmail: cfg.emailNotificacion || auth.currentUser?.email || DEFAULT_ADMIN_SETTINGS.notificationEmail,
-        precios: {
-          ...(settings.precios || DEFAULT_ADMIN_SETTINGS.precios),
-          base: Number(settings.precios?.base || DEFAULT_ADMIN_SETTINGS.precios.base),
-          pro: Number(settings.precios?.pro || DEFAULT_ADMIN_SETTINGS.precios.pro),
-          full: Number(settings.precios?.full || DEFAULT_ADMIN_SETTINGS.precios.full),
-          currency: settings.precios?.currency || DEFAULT_ADMIN_SETTINGS.precios.currency,
-        },
-        duracionTrialDias: Number(settings.duracionTrialDias || DEFAULT_ADMIN_SETTINGS.duracionTrialDias),
-        graceDaysDefault: Number(settings.graceDaysDefault || DEFAULT_ADMIN_SETTINGS.graceDaysDefault),
-        applyPricingToNewAccountsOnly: settings.applyPricingToNewAccountsOnly !== false,
-        features: settings.features || DEFAULT_ADMIN_SETTINGS.features,
-      },
-      { uid: auth.currentUser?.uid || "", email: auth.currentUser?.email || "" }
+    // Solo actualiza notificationEmail en admin_settings; no toca precios ni features
+    setDoc(
+      doc(db, "admin_settings", "global"),
+      { notificationEmail: cfg.emailNotificacion || auth.currentUser?.email || DEFAULT_ADMIN_SETTINGS.notificationEmail },
+      { merge: true }
     ).catch(console.error);
     showToast("Guardado OK");
   };
@@ -1347,23 +1335,27 @@ function PantallaSuscripcion({ showToast }) {
     if (!uid) return;
     setLoading(true);
     try {
-      const [usuario, global, invoicesSnap] = await Promise.all([
+      // Cargar settings y usuario de forma independiente a las facturas
+      const [usuario, global] = await Promise.all([
         leerUsuarioSaas(uid),
         leerAdminSettings(),
-        getDocs(collection(db, "billingInvoices")),
       ]);
       setAccount(usuario);
       setSettings(global);
-      const mine = invoicesSnap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((item) => item.uid === uid)
-        .sort((a, b) => Number(normalizeDateMs(b.updatedAt) || normalizeDateMs(b.createdAt) || 0) - Number(normalizeDateMs(a.updatedAt) || normalizeDateMs(a.createdAt) || 0));
-      setInvoices(mine.slice(0, 5));
     } catch (error) {
       console.error(error);
       showToast("No se pudo cargar la suscripción");
     } finally {
       setLoading(false);
+    }
+    // Facturas en subcollection del usuario — falla silencioso para no bloquear settings
+    try {
+      const invoicesSnap = await getDocs(
+        query(collection(db, "usuarios", uid, "billingInvoices"), orderBy("fecha", "desc"), limit(5))
+      );
+      setInvoices(invoicesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    } catch (e) {
+      console.warn("No se pudieron cargar facturas:", e.message);
     }
   };
 

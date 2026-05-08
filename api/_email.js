@@ -80,7 +80,7 @@ function planLabel(plan = "") {
 }
 
 function formatARS(monto = 0) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(monto);
+  return "ARS " + new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(monto);
 }
 
 function formatFecha(ms) {

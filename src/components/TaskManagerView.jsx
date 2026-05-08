@@ -120,7 +120,7 @@ function RepuestoConAutocomplete({ repuesto, cilindrada, onUpdate, onSelect, onD
                 className="w-full text-left px-3 py-2 hover:bg-orange-600/20 transition-colors border-b border-white/5 last:border-b-0"
               >
                 <p className="text-xs font-black text-white">{rep.nombre}</p>
-                <p className="text-[9px] text-orange-400">$ {rep.precio.toLocaleString("es-AR")} · Usos: {rep.usos}</p>
+                <p className="text-[9px] text-orange-400">{formatMoney(rep.precio)} · Usos: {rep.usos}</p>
               </button>
             ))}
           </div>
@@ -160,7 +160,7 @@ function RepuestoConAutocomplete({ repuesto, cilindrada, onUpdate, onSelect, onD
       </div>
       <div className="flex justify-between items-center border-t border-white/10 pt-2">
         <p className="text-[9px] font-black text-zinc-400 uppercase">Total repuesto</p>
-        <p className="text-sm font-black text-orange-400">${((repuesto.cantidad || 1) * (repuesto.monto || 0)).toLocaleString("es-AR")}</p>
+        <p className="text-sm font-black text-orange-400">{formatMoney((repuesto.cantidad || 1) * (repuesto.monto || 0))}</p>
       </div>
     </div>
   );

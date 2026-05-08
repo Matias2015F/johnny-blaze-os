@@ -12,11 +12,10 @@ import { abrirEnlaceExterno } from "./lib/whatsappService.js";
 import TallerPanel from "./TallerPanel.jsx";
 import LoginScreen from "./LoginScreen.jsx";
 
-function formatMoney(value, currency = "ARS") {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
+function formatMoney(value) {
+  return "ARS " + new Intl.NumberFormat("es-AR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Number(value || 0));
 }
 
@@ -25,7 +24,7 @@ function buildPlansForUi(settings = DEFAULT_ADMIN_SETTINGS) {
   return Object.entries(plans).map(([key, plan]) => ({
     key,
     label: plan.label || key,
-    precio: formatMoney(plan.price || 0, plan.currency || settings.subscriptionCurrency || "ARS"),
+    precio: formatMoney(plan.price || 0),
     detalle: `${Number(plan.billingDays || 30)} dias`,
   }));
 }

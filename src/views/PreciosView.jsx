@@ -1,19 +1,20 @@
 import React, { useState, useMemo } from 'react';
 import { LS, useCollection } from '../lib/storage.js';
+import { formatMoney } from '../utils/format.js';
 
 const MOCK_INICIAL = [
-  { tarea: "AJUSTE DE VÁLVULAS", precio: 7000, cilindrada: 110 },
-  { tarea: "AJUSTE DE VÁLVULAS", precio: 8500, cilindrada: 150 },
-  { tarea: "AJUSTE DE VÁLVULAS", precio: 9000, cilindrada: 150 },
-  { tarea: "AJUSTE DE VÁLVULAS", precio: 12000, cilindrada: 250 },
-  { tarea: "AJUSTE DE VÁLVULAS", precio: 25000, cilindrada: 600 },
+  { tarea: "AJUSTE DE Vï¿½LVULAS", precio: 7000, cilindrada: 110 },
+  { tarea: "AJUSTE DE Vï¿½LVULAS", precio: 8500, cilindrada: 150 },
+  { tarea: "AJUSTE DE Vï¿½LVULAS", precio: 9000, cilindrada: 150 },
+  { tarea: "AJUSTE DE Vï¿½LVULAS", precio: 12000, cilindrada: 250 },
+  { tarea: "AJUSTE DE Vï¿½LVULAS", precio: 25000, cilindrada: 600 },
   { tarea: "CAMBIO DE PASTILLAS", precio: 5000, cilindrada: 125 },
   { tarea: "CAMBIO DE PASTILLAS", precio: 5500, cilindrada: 150 },
   { tarea: "CAMBIO DE PASTILLAS", precio: 12000, cilindrada: 600 },
   { tarea: "LIMPIEZA DE CARBURADOR", precio: 10000, cilindrada: 110 },
   { tarea: "LIMPIEZA DE CARBURADOR", precio: 14000, cilindrada: 150 },
-  { tarea: "CAMBIO DE TRANSMISIÓN", precio: 8000, cilindrada: 150 },
-  { tarea: "CAMBIO DE TRANSMISIÓN", precio: 15000, cilindrada: 300 },
+  { tarea: "CAMBIO DE TRANSMISIï¿½N", precio: 8000, cilindrada: 150 },
+  { tarea: "CAMBIO DE TRANSMISIï¿½N", precio: 15000, cilindrada: 300 },
   { tarea: "SERVICE GENERAL", precio: 15000, cilindrada: 150 },
   { tarea: "SERVICE GENERAL", precio: 18000, cilindrada: 250 },
   { tarea: "SERVICE GENERAL", precio: 35000, cilindrada: 600 },
@@ -79,7 +80,7 @@ export default function PreciosView({ setView }) {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-black italic tracking-tighter uppercase leading-none">Precios</h1>
-          <p className="text-orange-500 text-[10px] font-bold tracking-[0.3em] uppercase">Memoria Técnica</p>
+          <p className="text-orange-500 text-[10px] font-bold tracking-[0.3em] uppercase">Memoria Tï¿½cnica</p>
         </div>
         <button
           onClick={() => { setForm({ id: null, tarea: busqueda, precio: "", cilindrada: ccFiltro }); setMostrandoForm(true); }}
@@ -91,12 +92,12 @@ export default function PreciosView({ setView }) {
         </button>
       </div>
 
-      {/* BÚSQUEDA */}
+      {/* Bï¿½SQUEDA */}
       <div className="space-y-4 mb-6">
         <div className="relative">
           <input
             type="text"
-            placeholder="ESCRIBÍ LA TAREA..."
+            placeholder="ESCRIBï¿½ LA TAREA..."
             className="w-full bg-gray-800 border-2 border-gray-700 rounded-2xl p-5 text-lg font-black uppercase focus:border-orange-500 outline-none transition-all placeholder:text-gray-700"
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
@@ -144,19 +145,19 @@ export default function PreciosView({ setView }) {
           <div className="bg-orange-500 rounded-3xl p-6 shadow-2xl shadow-orange-900/40">
             <p className="text-[10px] font-black text-orange-200 uppercase tracking-[0.2em] mb-1">Sugerencia para {ccFiltro}cc</p>
             <h2 className="text-5xl font-black tracking-tighter italic">
-              {stats.avgCC ? `$${stats.avgCC.toLocaleString()}` : "---"}
+              {stats.avgCC ? formatMoney(stats.avgCC) : "---"}
             </h2>
             <p className="text-[10px] font-bold text-orange-100 mt-2 opacity-80 uppercase italic">Memoria del taller activa</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
-              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Mínimo Cobrado</p>
-              <p className="text-xl font-black text-green-500">${stats.min.toLocaleString()}</p>
+              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Mï¿½nimo Cobrado</p>
+              <p className="text-xl font-black text-green-500">{formatMoney(stats.min)}</p>
             </div>
             <div className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
-              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Máximo Cobrado</p>
-              <p className="text-xl font-black text-red-500">${stats.max.toLocaleString()}</p>
+              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Mï¿½ximo Cobrado</p>
+              <p className="text-xl font-black text-red-500">{formatMoney(stats.max)}</p>
             </div>
           </div>
 
@@ -175,7 +176,7 @@ export default function PreciosView({ setView }) {
                     <span className="text-xs font-bold text-white uppercase mt-1">{f.tarea}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-sm font-black">${f.precio.toLocaleString()}</span>
+                    <span className="text-sm font-black">{formatMoney(f.precio)}</span>
                     <button onClick={() => { setForm(f); setMostrandoForm(true); }} className="text-gray-700 hover:text-orange-500">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -191,7 +192,7 @@ export default function PreciosView({ setView }) {
       ) : (
         <div className="bg-gray-800/30 border-2 border-dashed border-gray-800 rounded-3xl p-16 text-center">
           <p className="text-gray-700 text-[10px] font-black uppercase italic tracking-widest leading-relaxed">
-            {busqueda ? "Sin registros para este trabajo" : "Consultá el historial técnico"}
+            {busqueda ? "Sin registros para este trabajo" : "Consultï¿½ el historial tï¿½cnico"}
           </p>
         </div>
       )}
@@ -202,7 +203,7 @@ export default function PreciosView({ setView }) {
           <form onSubmit={handleGuardar} className="bg-gray-800 w-full max-w-sm rounded-3xl p-6 border border-gray-700 shadow-2xl space-y-5">
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-xl font-black italic uppercase tracking-tighter">Cargar Trabajo</h3>
-              <button type="button" onClick={() => setMostrandoForm(false)} className="bg-gray-700 text-white w-8 h-8 rounded-full flex items-center justify-center">×</button>
+              <button type="button" onClick={() => setMostrandoForm(false)} className="bg-gray-700 text-white w-8 h-8 rounded-full flex items-center justify-center">ï¿½</button>
             </div>
             <div className="space-y-4">
               <input type="text" placeholder="TRABAJO" required

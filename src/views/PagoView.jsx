@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
 import { LS, generateId, obtenerOrden, actualizarOrden } from "../lib/storage.js";
 import { hoyEstable } from "../lib/constants.js";
-import { formatMoney } from "../utils/format.js";
+import { formatMoney, formatMoneyParts } from "../utils/format.js";
 
 const METODOS = [
   { value: "efectivo", label: "Efectivo" },
@@ -95,7 +95,13 @@ export default function PagoView({ ordenId, setView }) {
 
         <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900/50 p-5">
           <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Monto a cobrar</p>
-          <p className="text-4xl font-black text-white">{formatMoney(costoFinal)}</p>
+          {(() => { const { pesos, centavos } = formatMoneyParts(costoFinal); return (
+            <p className="leading-none">
+              <span className="text-[11px] font-bold text-zinc-500">ARS </span>
+              <span className="text-4xl font-black text-white">{pesos}</span>
+              <span className="text-2xl font-black text-zinc-400">,{centavos}</span>
+            </p>
+          ); })()}
         </div>
 
         <div className="space-y-2">
@@ -155,7 +161,13 @@ export default function PagoView({ ordenId, setView }) {
 
         <div className="rounded-[2rem] border border-emerald-500/20 bg-emerald-500/10 p-5 text-center">
           <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-1">Tu ganancia neta</p>
-          <p className="text-4xl font-black text-emerald-400">{formatMoney(gananciaNeta)}</p>
+          {(() => { const { pesos, centavos } = formatMoneyParts(gananciaNeta); return (
+            <p className="leading-none">
+              <span className="text-[11px] font-bold text-emerald-500/60">ARS </span>
+              <span className="text-4xl font-black text-emerald-400">{pesos}</span>
+              <span className="text-2xl font-black text-emerald-400/60">,{centavos}</span>
+            </p>
+          ); })()}
           <p className="text-[10px] text-zinc-500 mt-1">(mano de obra)</p>
         </div>
 
