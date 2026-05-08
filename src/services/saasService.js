@@ -8,7 +8,7 @@ export const SAAS_COLLECTIONS = {
 };
 
 export const PLATFORM_ADMIN_EMAILS = ["matias4604@gmail.com"];
-export const PLATFORM_ADMIN_UIDS = ["123456789"];
+export const PLATFORM_ADMIN_UIDS = ["TNwwuKJsIXN29zJg8HWfORawdFm1"];
 
 export const DEFAULT_SAAS_FEATURES = {
   pdf: true,
