@@ -17,7 +17,9 @@ module.exports = async function handler(req, res) {
     const adminAuth = getAuth();
 
     // Genera el link de reset de Firebase (sin que Firebase envíe el email)
-    const link = await adminAuth.generatePasswordResetLink(email.trim().toLowerCase());
+    const link = await adminAuth.generatePasswordResetLink(email.trim().toLowerCase(), {
+      url: "https://app.motogestion.ar",  // redirige a la app después de resetear
+    });
 
     // Envía el email via Resend desde noreply@motogestion.ar
     const html = require("./_email.js").buildResetEmail({ email, link });
