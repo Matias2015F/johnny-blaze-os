@@ -1742,48 +1742,48 @@ function PantallaSuscripcion({ showToast }) {
         </div>
 
         {checkoutPlanKey && checkoutPlan && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/70 px-3 pb-3 pt-10 backdrop-blur-sm sm:items-center sm:p-4">
-            <div className="flex max-h-[88svh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-orange-200 bg-white shadow-2xl sm:max-h-[86vh] sm:rounded-3xl">
-              <div className="flex-1 overflow-y-auto p-4">
-              <p className="text-[9px] font-black uppercase tracking-widest text-orange-500">Bases y condiciones</p>
-              <h3 className="mt-1 text-xl font-black text-zinc-900">
-                {checkoutPlan.label || (checkoutPlanKey === "pro" ? "Plan Pro" : "Plan Base")}
-              </h3>
-              <p className="mt-1 text-xs font-bold leading-relaxed text-zinc-600">
-                Antes de ir a Mercado Pago, revisá el plan elegido y el monto a contratar.
-              </p>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/75 p-4 backdrop-blur-sm">
+            <div className="flex max-h-[82svh] w-full max-w-[420px] flex-col overflow-hidden rounded-3xl border border-orange-200 bg-white shadow-2xl">
+              <div className="flex-1 overflow-y-auto px-4 pb-3 pt-4">
+                <p className="text-[9px] font-black uppercase tracking-widest text-orange-500">Bases y condiciones</p>
+                <h3 className="mt-1 text-xl font-black text-zinc-900">
+                  {checkoutPlan.label || (checkoutPlanKey === "pro" ? "Plan Pro" : "Plan Base")}
+                </h3>
+                <p className="mt-1 text-xs font-bold leading-relaxed text-zinc-600">
+                  Antes de ir a Mercado Pago, revisá el plan elegido y el monto a contratar.
+                </p>
 
-              <div className="mt-4 rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
-                <div className="grid grid-cols-1 gap-3 text-sm min-[360px]:grid-cols-2">
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Monto</p>
-                    <p className="mt-1 text-base font-black text-zinc-900">{formatMoney(checkoutPrice)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Duración</p>
-                    <p className="mt-1 text-base font-black text-zinc-900">
-                      {checkoutPlan.billingDays || 0} días
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Detalle</p>
-                    <p className="mt-1 text-[11px] font-bold leading-relaxed text-zinc-700">
-                      La suscripción se actualiza cuando Mercado Pago confirme el cobro. Si el pago no se aprueba, el estado actual se mantiene.
-                    </p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Importante</p>
-                    <ul className="mt-1 space-y-1 text-[11px] font-bold leading-relaxed text-zinc-700">
-                      <li>• Verificá que el monto coincida con el plan elegido.</li>
-                      <li>• Al aprobarse, la app se actualiza automáticamente al volver.</li>
-                      <li>• Si cancelás o el pago falla, conservás el estado actual.</li>
-                    </ul>
+                <div className="mt-4 rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
+                  <div className="grid grid-cols-1 gap-3 text-sm min-[360px]:grid-cols-2">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Monto</p>
+                      <p className="mt-1 text-base font-black text-zinc-900">{formatMoney(checkoutPrice)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Duración</p>
+                      <p className="mt-1 text-base font-black text-zinc-900">
+                        {checkoutPlan.billingDays || 0} días
+                      </p>
+                    </div>
+                    <div className="col-span-full">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Detalle</p>
+                      <p className="mt-1 text-[11px] font-bold leading-relaxed text-zinc-700">
+                        La suscripción se actualiza cuando Mercado Pago confirme el cobro. Si el pago no se aprueba, el estado actual se mantiene.
+                      </p>
+                    </div>
+                    <div className="col-span-full">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Importante</p>
+                      <ul className="mt-1 space-y-1 text-[11px] font-bold leading-relaxed text-zinc-700">
+                        <li>Verificá que el monto coincida con el plan elegido.</li>
+                        <li>Al aprobarse, la app se actualiza automáticamente al volver.</li>
+                        <li>Si cancelás o el pago falla, conservás el estado actual.</li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-3 border-t border-zinc-100 bg-white p-3">
+              <div className="grid shrink-0 grid-cols-2 gap-3 border-t border-zinc-100 bg-white p-3 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
                 <button
                   onClick={cerrarConfirmacionPago}
                   className="rounded-2xl border border-zinc-200 bg-zinc-50 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-700"
