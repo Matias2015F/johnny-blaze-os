@@ -377,7 +377,7 @@ function PantallaAdmin({ showToast }) {
   return (
     <div>
       {/* Sub-navegación */}
-      <div className="flex gap-2 overflow-x-auto pb-3 mb-4 -mx-1">
+      <div className="flex flex-wrap gap-2 pb-3 mb-4 -mx-1">
         {ADMIN_TABS.map(t => (
           <button key={t.id} onClick={() => setAdminTab(t.id)}
             className={`shrink-0 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
@@ -399,7 +399,7 @@ function PantallaAdmin({ showToast }) {
         <div className="space-y-4">
           <Card>
             <SectionTitle>Este mes</SectionTitle>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 col-span-2">
                 <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Cobrado este mes</p>
                 <MoneyValue amount={stats.cobradoMes} />
@@ -412,7 +412,7 @@ function PantallaAdmin({ showToast }) {
 
           <Card>
             <SectionTitle>Usuarios ahora</SectionTitle>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <StatBox label="Total" value={stats.total} />
               <StatBox label="Activos" value={stats.activos} color="text-emerald-600" />
               <StatBox label="En prueba" value={stats.trial} color="text-amber-600" />
@@ -488,16 +488,16 @@ function PantallaAdmin({ showToast }) {
                   <span className="text-[9px] font-black bg-zinc-200 text-zinc-600 px-2 py-1 rounded-full">30 días · mensual</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-black text-zinc-400">$</span>
+                  <span className="text-xs font-black uppercase tracking-widest text-zinc-400">ARS</span>
                   <input
                     type="text" inputMode="numeric"
                     value={String(settings.precios?.base || 0)}
                     onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), base: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
-                    className="flex-1 bg-transparent text-3xl font-black text-zinc-800 outline-none"
+                    className="flex-1 min-w-0 bg-transparent text-3xl font-black text-zinc-800 outline-none"
                     placeholder="5000"
                   />
-                  <span className="text-sm font-bold text-zinc-400">ARS</span>
                 </div>
+                <MoneyValue amount={settings.precios?.base || 0} className="mt-3" />
               </div>
 
               {/* Plan Pro */}
@@ -507,16 +507,16 @@ function PantallaAdmin({ showToast }) {
                   <span className="text-[9px] font-black bg-orange-200 text-orange-700 px-2 py-1 rounded-full">90 días · trimestral</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-black text-orange-300">$</span>
+                  <span className="text-xs font-black uppercase tracking-widest text-orange-400">ARS</span>
                   <input
                     type="text" inputMode="numeric"
                     value={String(settings.precios?.pro || 0)}
                     onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), pro: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
-                    className="flex-1 bg-transparent text-3xl font-black text-zinc-800 outline-none"
+                    className="flex-1 min-w-0 bg-transparent text-3xl font-black text-zinc-800 outline-none"
                     placeholder="12000"
                   />
-                  <span className="text-sm font-bold text-orange-400">ARS</span>
                 </div>
+                <MoneyValue amount={settings.precios?.pro || 0} className="mt-3" />
               </div>
 
               {/* Plan Full */}
@@ -526,16 +526,16 @@ function PantallaAdmin({ showToast }) {
                   <span className="text-[9px] font-black bg-zinc-700 text-zinc-300 px-2 py-1 rounded-full">365 días · anual</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-lg font-black text-zinc-500">$</span>
+                  <span className="text-xs font-black uppercase tracking-widest text-zinc-500">ARS</span>
                   <input
                     type="text" inputMode="numeric"
                     value={String(settings.precios?.full || 0)}
                     onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), full: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
-                    className="flex-1 bg-transparent text-3xl font-black text-white outline-none"
+                    className="flex-1 min-w-0 bg-transparent text-3xl font-black text-white outline-none"
                     placeholder="45000"
                   />
-                  <span className="text-sm font-bold text-zinc-500">ARS</span>
                 </div>
+                <MoneyValue amount={settings.precios?.full || 0} className="mt-3" />
                 <p className="mt-2 text-[9px] font-bold text-zinc-500">Preparado — activalo cuando quieras habilitarlo para usuarios</p>
               </div>
 
@@ -544,7 +544,7 @@ function PantallaAdmin({ showToast }) {
 
           <Card>
             <SectionTitle>Periodos</SectionTitle>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
                 <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Dias de prueba (trial)</p>
                 <p className="text-[10px] font-bold text-zinc-500 mt-1">Acceso gratis al registrarse.</p>
@@ -708,7 +708,7 @@ function PantallaAdmin({ showToast }) {
         <div className="space-y-4">
           <Card>
             <SectionTitle>Resumen de ingresos</SectionTitle>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 col-span-2">
                 <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Total cobrado</p>
                 <MoneyValue amount={stats.totalCobrado} />
@@ -2176,5 +2176,3 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
     </div>
   );
 }
-
-
