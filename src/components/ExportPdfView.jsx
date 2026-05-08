@@ -69,7 +69,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               </p>
               <div className="mt-4 space-y-1 text-[10px] leading-relaxed text-zinc-700">
                 <p><span className="font-black">TÃ©cnico:</span> {config.mecanicoResponsable}</p>
-                <p>Sara Romero e/ Eva PerÃ³n y Belgrano â€¢ Diamante, ER</p>
+                {config.direccionTaller && <p>{config.direccionTaller}</p>}
                 <p><span className="font-black">WhatsApp:</span> {config.telefonoTaller}</p>
                 <p><span className="font-black">Mail:</span> {config.emailNotificacion || "---"}</p>
               </div>

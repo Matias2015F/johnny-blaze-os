@@ -13,6 +13,7 @@ export const CONFIG_DEFAULT = {
   dniMecanico: "---",
   telefonoTaller: "3434XXXXXX",
   emailNotificacion: "",
+  direccionTaller: "",
   garantiaDias: 7,
   garantiaKm: 500,
   garantiaDefault: PLANTILLAS_GARANTIA[0].texto,

@@ -918,6 +918,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
             ["nombreTaller",        "Nombre del Taller", "text"],
             ["mecanicoResponsable", "Responsable",       "text"],
             ["dniMecanico",         "DNI",               "text"],
+            ["direccionTaller",     "Dirección",         "text"],
             ["telefonoTaller",      "Telefono",          "tel"],
             ["emailNotificacion",   "Mail del taller",   "email"],
           ].map(([field, label, type]) => (
