@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Bell, Calendar, Clock, History, LogOut, MessageCircle, PlusCircle, ReceiptText, Wrench } from "lucide-react";
+import { Bell, Calendar, Clock, ChevronRight, History, LogOut, MessageCircle, PlusCircle, ReceiptText, Wrench } from "lucide-react";
 import { auth } from "../firebase.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { evaluarEstado } from "../lib/calc.js";
@@ -258,12 +258,38 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
         </button>
       </div>
 
+      <button
+        onClick={() => setView("recordatorios")}
+        className="w-full rounded-[2rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-95 flex items-center justify-between"
+      >
+        <div className="flex items-center gap-4">
+          <div className="rounded-2xl bg-yellow-500/15 p-3">
+            <Bell className="text-yellow-400" size={24} />
+          </div>
+          <div>
+            <p className="text-sm font-black uppercase tracking-widest text-white">Recordatorios</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+              {alertasService.length > 0
+                ? `${alertasService.length} pendiente${alertasService.length !== 1 ? "s" : ""}`
+                : "Próximos controles"}
+            </p>
+          </div>
+        </div>
+        <ChevronRight size={18} className="text-zinc-600 shrink-0" />
+      </button>
+
       {alertasService.length > 0 && (
         <div className="rounded-[2.5rem] border border-yellow-500/30 bg-gradient-to-br from-yellow-500/15 to-orange-500/10 p-5 shadow-xl backdrop-blur space-y-4">
           <div className="flex items-center justify-between">
             <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-yellow-300">
               <Bell size={16} /> {alertasService.length} Notificación{alertasService.length !== 1 ? 'es' : ''} pendiente{alertasService.length !== 1 ? 's' : ''}
             </p>
+            <button
+              onClick={() => setView("recordatorios")}
+              className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-zinc-400 active:text-orange-400 transition-colors"
+            >
+              Ver todos <ChevronRight size={13} />
+            </button>
           </div>
 
           <div className="space-y-3">

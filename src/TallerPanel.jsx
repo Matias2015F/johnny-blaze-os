@@ -33,6 +33,7 @@ const FinalizacionView        = lazy(() => import("./views/FinalizacionView.jsx"
 const PagoView                = lazy(() => import("./views/PagoView.jsx"));
 const RetiroView              = lazy(() => import("./views/RetiroView.jsx"));
 const AgendaView              = lazy(() => import("./views/AgendaView.jsx"));
+const RecordatoriosView       = lazy(() => import("./views/RecordatoriosView.jsx"));
 
 const Cargando = () => (
   <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">
@@ -574,6 +575,7 @@ export default function TallerPanel() {
       {view === "precios" && <PreciosView setView={setView} />}
       {view === "config" && <ConfigView setView={setView} showToast={showToast} orders={orders} bikes={bikes} clients={clients} handleLogout={handleLogout} loadDemoData={loadDemoData} clearAllData={clearAllData} />}
       {view === "agenda" && <AgendaView setView={setView} />}
+      {view === "recordatorios" && <RecordatoriosView setView={setView} showToast={showToast} bikes={bikes} clients={clients} />}
       {view === "esperandoAprobacion" && selectedOrderId && <EsperandoAprobacionView ordenId={selectedOrderId} setView={setView} />}
       {view === "ejecucion" && selectedOrderId && <EjecucionView ordenId={selectedOrderId} setView={setView} />}
       {view === "finalizacion" && selectedOrderId && <FinalizacionView ordenId={selectedOrderId} setView={setView} />}
