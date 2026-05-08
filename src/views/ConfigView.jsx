@@ -11,6 +11,7 @@ import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { APP_BUILD } from "../generated/appVersion.js";
 import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, ensureNotificationPermission, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, promptInstallApp, sendTestNotification } from "../lib/appUpdate.js";
+import { subscribeToPush, unsubscribeFromPush, getPushStatus, isPushSupported } from "../lib/pushService.js";
 import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS, actualizarSuscripcionUsuario, crearTicketSoporte, guardarAdminSettings, leerAdminSettings, leerUsuarioSaas, normalizeDateMs, normalizeSaasUser } from "../services/saasService.js";
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
@@ -1813,6 +1814,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
   const [checkingUpdate, setCheckingUpdate] = React.useState(false);
   const [updatingApp, setUpdatingApp] = React.useState(false);
   const [installAvailable, setInstallAvailable] = React.useState(false);
+  const [pushStatus, setPushStatus] = React.useState("inactive");
   const displayMode = getDisplayModeInfo();
   const permissionLabel =
     typeof window !== "undefined" && "Notification" in window ? window.Notification.permission : "no soportado";
@@ -1842,6 +1844,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
     };
 
     checkRemoteBuild();
+    getPushStatus().then(setPushStatus).catch(() => {});
     return () => {
       unbind();
       window.removeEventListener("jbos-install-available", syncInstallState);
@@ -1885,11 +1888,20 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
 
   const toggleAlertasNavegador = async () => {
     const activar = !(cfg.alertasNavegadorActivas ?? true);
+    const uid = auth.currentUser?.uid;
     if (activar) {
       const permiso = await ensureNotificationPermission();
       if (permiso !== "granted") {
         showToast("El navegador no dio permiso para notificar");
+      } else if (uid && isPushSupported()) {
+        subscribeToPush(uid)
+          .then(() => getPushStatus().then(setPushStatus))
+          .catch(console.error);
       }
+    } else if (uid) {
+      unsubscribeFromPush(uid)
+        .then(() => setPushStatus("inactive"))
+        .catch(console.error);
     }
     const nuevo = { ...cfg, alertasNavegadorActivas: activar };
     setCfg(nuevo);
@@ -2034,6 +2046,19 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
             <p>3. Si no aparece nada, revisá que el navegador no las tenga bloqueadas.</p>
           </div>
         </div>
+
+        {isPushSupported() && (
+          <div className={`mt-3 rounded-2xl border p-4 ${pushStatus === "active" ? "border-emerald-200 bg-emerald-50" : "border-zinc-200 bg-zinc-50"}`}>
+            <p className={`text-[9px] font-black uppercase tracking-wider ${pushStatus === "active" ? "text-emerald-700" : "text-zinc-500"}`}>
+              Push en segundo plano
+            </p>
+            <p className={`mt-1 text-[11px] font-bold leading-relaxed ${pushStatus === "active" ? "text-emerald-800" : "text-zinc-600"}`}>
+              {pushStatus === "active"
+                ? "Activo — recibís avisos aunque la app esté cerrada."
+                : "Inactivo — activá los avisos arriba para habilitarlo."}
+            </p>
+          </div>
+        )}
       </Card>
 
       <Card>

@@ -31,3 +31,36 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/"))),
   );
 });
+
+// ── Push notifications ────────────────────────────────────────────────────────
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data?.json() || {}; } catch { /* ignorar */ }
+
+  const titulo = data.titulo || "Moto Gestión";
+  const cuerpo = data.cuerpo || "Tenés recordatorios pendientes";
+
+  event.waitUntil(
+    self.registration.showNotification(titulo, {
+      body: cuerpo,
+      icon: "/brand/motogestion-icon.png",
+      badge: "/brand/motogestion-icon.png",
+      tag: data.tag || "jbos-recordatorio",
+      renotify: true,
+      data: { url: data.url || "/" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      const existing = clientList.find((c) => "focus" in c);
+      if (existing) return existing.focus();
+      return clients.openWindow(url);
+    })
+  );
+});

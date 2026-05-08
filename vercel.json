@@ -3,6 +3,10 @@
     {
       "path": "/api/check-expirations",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/push-send-recordatorios",
+      "schedule": "0 9 * * *"
     }
   ],
   "headers": [
