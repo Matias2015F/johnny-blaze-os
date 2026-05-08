@@ -1,5 +1,19 @@
-export const formatMoney = (monto) =>
-  `$${Math.round(monto || 0).toLocaleString("es-AR")}`;
+export const formatMoneyParts = (monto) => {
+  const value = Number(monto || 0);
+  const abs = Math.abs(value).toFixed(2);
+  const [pesosRaw, centavosRaw] = abs.split(".");
+  return {
+    sign: value < 0 ? "-" : "",
+    pesos: Number(pesosRaw).toLocaleString("es-AR"),
+    centavos: centavosRaw || "00",
+    formatted: `ARS ${new Intl.NumberFormat("es-AR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value)}`,
+  };
+};
+
+export const formatMoney = (monto) => formatMoneyParts(monto).formatted;
 
 export const formatMoneyInput = (val) => {
   if (val === "" || val === 0 || val === "0") return "";

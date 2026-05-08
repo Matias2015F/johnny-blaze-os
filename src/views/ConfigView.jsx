@@ -126,6 +126,18 @@ const ADMIN_TABS = [
   { id: "consultas",  label: "Consultas" },
 ];
 
+function MoneyValue({ amount, className = "" }) {
+  const value = Number(amount || 0);
+  const parts = formatMoney(value).replace(/^ARS\s*/, "");
+  const [pesos, centavos = "00"] = parts.split(",");
+  return (
+    <div className={`space-y-1 ${className}`}>
+      <p className="text-xs font-black uppercase tracking-widest text-zinc-500">ARS {parts}</p>
+      <p className="text-[10px] font-bold text-zinc-500">Pesos: {pesos} | Centavos: {centavos}</p>
+    </div>
+  );
+  }
+
 function StatBox({ label, value, color = "text-zinc-800" }) {
   return (
     <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
@@ -390,10 +402,10 @@ function PantallaAdmin({ showToast }) {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 col-span-2">
                 <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Cobrado este mes</p>
-                <p className="mt-1 text-3xl font-black text-emerald-700">{formatMoney(stats.cobradoMes)}</p>
+                <MoneyValue amount={stats.cobradoMes} />
                 <p className="text-[10px] font-bold text-emerald-500 mt-1">{stats.pagosEsteMes} {stats.pagosEsteMes === 1 ? "pago" : "pagos"} recibidos</p>
               </div>
-              <StatBox label="Total cobrado" value={formatMoney(stats.totalCobrado)} color="text-zinc-800" />
+              <StatBox label="Total cobrado" value={<MoneyValue amount={stats.totalCobrado} />} color="text-zinc-800" />
               <StatBox label="Tiempo promedio a pagar" value={stats.promDias !== null ? `${stats.promDias} dias` : "—"} />
             </div>
           </Card>
@@ -699,9 +711,9 @@ function PantallaAdmin({ showToast }) {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 col-span-2">
                 <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Total cobrado</p>
-                <p className="mt-1 text-3xl font-black text-emerald-700">{formatMoney(stats.totalCobrado)}</p>
+                <MoneyValue amount={stats.totalCobrado} />
               </div>
-              <StatBox label="Cobrado este mes" value={formatMoney(stats.cobradoMes)} color="text-emerald-600" />
+              <StatBox label="Cobrado este mes" value={<MoneyValue amount={stats.cobradoMes} />} color="text-emerald-600" />
               <StatBox label="Pagos este mes" value={stats.pagosEsteMes} />
               <StatBox label="Total de pagos" value={stats.todosPagos.length} />
               <StatBox label="Tiempo prom. a pagar" value={stats.promDias !== null ? `${stats.promDias}d` : "—"} />
@@ -2164,6 +2176,5 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
     </div>
   );
 }
-
 
 
