@@ -7,7 +7,7 @@ export const calcularNuevoTotal = (tareas = [], repuestos = [], fletes = [], ins
   const t = tareas.reduce((s, x) => s + (x.monto || 0), 0);
   const r = repuestos.reduce((s, x) => s + ((x.monto || 0) * (x.cantidad || 1)), 0);
   const f = fletes.reduce((s, x) => s + (x.monto || 0), 0);
-  const i = insumos.reduce((s, x) => s + (x.monto || 0), 0);
+  const i = insumos.reduce((s, x) => s + ((x.monto || 0) * (x.cantidad || 1)), 0);
   return t + r + f + i;
 };
 
@@ -45,7 +45,7 @@ export const calcularResultadosOrden = (order) => {
   const moCliente        = (order.tareas    || []).reduce((s, t) => s + (t.monto || 0), 0);
   const repuestosCliente = (order.repuestos || []).reduce((s, r) => s + ((r.monto || 0) * (r.cantidad || 1)), 0);
   const fletesCliente    = (order.fletes    || []).reduce((s, f) => s + (f.monto || 0), 0);
-  const insumosCliente   = (order.insumos   || []).reduce((s, i) => s + (i.monto || 0), 0);
+  const insumosCliente   = (order.insumos   || []).reduce((s, i) => s + ((i.monto || 0) * (i.cantidad || 1)), 0);
   const totalCobrado     = moCliente + repuestosCliente + fletesCliente + insumosCliente;
 
   // ── Costo interno (lo que sale de caja) ──────────────────────

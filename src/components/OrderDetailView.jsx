@@ -125,6 +125,49 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const saldoPendiente = res.total - totalPagado;
   const isLocked = !!order.pdfEntregado;
   const trabajoLabel = order.numeroTrabajo || `#${order.id.slice(-4).toUpperCase()}`;
+  const detallePresupuesto = [
+    {
+      label: "Trabajos / mano de obra",
+      note: "Ganancia del taller",
+      total: res.desglose.moCliente,
+      items: (order.tareas || []).map((item) => ({
+        nombre: item.nombre || "Trabajo",
+        detalle: item.horasBase ? `${item.horasBase} h` : "",
+        total: item.monto || 0,
+      })),
+    },
+    {
+      label: "Repuestos",
+      note: "Se cobran al cliente al costo",
+      total: res.desglose.repuestosCliente,
+      items: (order.repuestos || []).map((item) => ({
+        nombre: item.nombre || "Repuesto",
+        detalle: `Cant. ${item.cantidad || 1}`,
+        total: (item.monto || 0) * (item.cantidad || 1),
+      })),
+    },
+    {
+      label: "Flete / cadetería",
+      note: "Traslados y búsqueda de repuestos",
+      total: res.desglose.fletesCliente,
+      items: (order.fletes || []).map((item) => ({
+        nombre: item.nombre || item.descripcion || "Flete / cadetería",
+        detalle: "",
+        total: item.monto || 0,
+      })),
+    },
+    {
+      label: "Insumos / terceros",
+      note: "Gastos cobrados sin ganancia adicional",
+      total: res.desglose.insumosCliente,
+      items: (order.insumos || []).map((item) => ({
+        nombre: item.nombre || "Insumo / tercero",
+        detalle: `Cant. ${item.cantidad || 1}`,
+        total: (item.monto || 0) * (item.cantidad || 1),
+      })),
+    },
+  ];
+  const totalDetallePresupuesto = detallePresupuesto.reduce((sum, item) => sum + item.total, 0);
 
   // Sincronizar datos del cliente cuando cambia
   useEffect(() => {
@@ -423,9 +466,9 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               )}
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Ganancia</p>
-              <div className="rounded-[1.5rem] border border-emerald-400/20 bg-zinc-950/50 px-4 py-3 shadow-xl backdrop-blur">
-                <p className="text-3xl font-black leading-none tracking-tighter text-emerald-400">{formatMoney(res.desglose.moCliente)}</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Total presupuesto</p>
+              <div className="rounded-[1.5rem] border border-orange-400/25 bg-zinc-950/50 px-4 py-3 shadow-xl backdrop-blur">
+                <p className="text-3xl font-black leading-none tracking-tighter text-orange-300">{formatMoney(res.total)}</p>
               </div>
             </div>
           </div>
@@ -490,6 +533,61 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           >
             {accionPrincipal.label}
           </button>
+        )}
+
+        {res.total > 0 && (
+          <section className="rounded-[2rem] border border-orange-500/25 bg-zinc-900/95 p-4 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-orange-400">Detalle del presupuesto</p>
+                <p className="mt-1 text-[10px] font-bold text-zinc-500">Todo lo cargado debe coincidir con el total.</p>
+              </div>
+              <p className="shrink-0 text-lg font-black text-white">{formatMoney(res.total)}</p>
+            </div>
+
+            <div className="space-y-3">
+              {detallePresupuesto.map((grupo) => (
+                <div key={grupo.label} className="rounded-2xl border border-white/10 bg-black/25 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-zinc-100">{grupo.label}</p>
+                      <p className="mt-0.5 text-[9px] font-bold text-zinc-500">{grupo.note}</p>
+                    </div>
+                    <p className="shrink-0 text-sm font-black text-orange-300">{formatMoney(grupo.total)}</p>
+                  </div>
+
+                  {grupo.items.length > 0 && (
+                    <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+                      {grupo.items.map((item, idx) => (
+                        <div key={`${grupo.label}-${idx}`} className="flex items-start justify-between gap-3 text-[10px]">
+                          <div className="min-w-0">
+                            <p className="truncate font-black uppercase text-zinc-300">{item.nombre}</p>
+                            {item.detalle && <p className="font-bold text-zinc-600">{item.detalle}</p>}
+                          </div>
+                          <p className="shrink-0 font-black text-zinc-200">{formatMoney(item.total)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-orange-500/25 bg-orange-500/10 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-orange-200">Total calculado</p>
+                <p className="text-lg font-black text-orange-200">{formatMoney(totalDetallePresupuesto)}</p>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-3 border-t border-orange-500/20 pt-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
+                  {saldoPendiente > 0 ? "Falta cobrar" : "Cobrado"}
+                </p>
+                <p className={`text-sm font-black ${saldoPendiente > 0 ? "text-red-300" : "text-emerald-300"}`}>
+                  {saldoPendiente > 0 ? formatMoney(saldoPendiente) : formatMoney(totalPagado)}
+                </p>
+              </div>
+            </div>
+          </section>
         )}
       </div>
 
@@ -657,4 +755,3 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     </div>
   );
 }
-
