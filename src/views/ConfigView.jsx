@@ -893,6 +893,24 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
     if (uid && cfg.emailNotificacion) {
       setDoc(doc(db, "usuarios", uid), { emailNotificacion: cfg.emailNotificacion }, { merge: true }).catch(console.error);
     }
+    guardarAdminSettings(
+      {
+        ...DEFAULT_ADMIN_SETTINGS,
+        notificationEmail: cfg.emailNotificacion || auth.currentUser?.email || DEFAULT_ADMIN_SETTINGS.notificationEmail,
+        precios: {
+          ...(settings.precios || DEFAULT_ADMIN_SETTINGS.precios),
+          base: Number(settings.precios?.base || DEFAULT_ADMIN_SETTINGS.precios.base),
+          pro: Number(settings.precios?.pro || DEFAULT_ADMIN_SETTINGS.precios.pro),
+          full: Number(settings.precios?.full || DEFAULT_ADMIN_SETTINGS.precios.full),
+          currency: settings.precios?.currency || DEFAULT_ADMIN_SETTINGS.precios.currency,
+        },
+        duracionTrialDias: Number(settings.duracionTrialDias || DEFAULT_ADMIN_SETTINGS.duracionTrialDias),
+        graceDaysDefault: Number(settings.graceDaysDefault || DEFAULT_ADMIN_SETTINGS.graceDaysDefault),
+        applyPricingToNewAccountsOnly: settings.applyPricingToNewAccountsOnly !== false,
+        features: settings.features || DEFAULT_ADMIN_SETTINGS.features,
+      },
+      { uid: auth.currentUser?.uid || "", email: auth.currentUser?.email || "" }
+    ).catch(console.error);
     showToast("Guardado OK");
   };
 
