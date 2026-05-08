@@ -17,15 +17,23 @@ export const DEFAULT_SAAS_FEATURES = {
   multiusuario: false,
 };
 
+export const PLAN_BILLING_DAYS = {
+  base: 30,
+  pro:  90,
+  full: 365,
+};
+
 export const DEFAULT_SAAS_ADMIN_SETTINGS = {
   precios: {
     base: 5000,
-    pro: 12000,
+    pro:  12000,
+    full: 45000,
     currency: "ARS",
   },
   duracionTrialDias: 14,
   graceDaysDefault: 3,
   applyPricingToNewAccountsOnly: true,
+  notificationEmail: "matias4604@gmail.com",
   features: {
     ...DEFAULT_SAAS_FEATURES,
   },
@@ -53,47 +61,47 @@ export function isPlatformAdminUser(userLike = {}) {
 export function normalizeAdminSettings(raw = {}) {
   const precios = raw.precios || {};
   const basePrice = Number(precios.base ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.base);
-  const proPrice = Number(precios.pro ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.pro);
-  const currency = precios.currency || DEFAULT_SAAS_ADMIN_SETTINGS.precios.currency;
+  const proPrice  = Number(precios.pro  ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.pro);
+  const fullPrice = Number(precios.full ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.full);
+  const currency  = precios.currency || DEFAULT_SAAS_ADMIN_SETTINGS.precios.currency;
   const duracionTrialDias = Number(raw.duracionTrialDias ?? DEFAULT_SAAS_ADMIN_SETTINGS.duracionTrialDias);
-  const features = {
-    ...DEFAULT_SAAS_FEATURES,
-    ...(raw.features || {}),
-  };
+  const features = { ...DEFAULT_SAAS_FEATURES, ...(raw.features || {}) };
 
   return {
-    precios: {
-      base: basePrice,
-      pro: proPrice,
-      currency,
-    },
+    precios: { base: basePrice, pro: proPrice, full: fullPrice, currency },
     duracionTrialDias,
     graceDaysDefault: Number(raw.graceDaysDefault ?? DEFAULT_SAAS_ADMIN_SETTINGS.graceDaysDefault),
     applyPricingToNewAccountsOnly: raw.applyPricingToNewAccountsOnly !== false,
+    notificationEmail: raw.notificationEmail || DEFAULT_SAAS_ADMIN_SETTINGS.notificationEmail,
+    subscriptionCurrency: currency,
     features,
     plans: {
       base: {
         label: "Plan Base",
+        description: "Suscripción mensual · se renueva cada 30 días",
         price: basePrice,
         currency,
-        billingDays: 30,
-        features: {
-          pdf: true,
-          recordatorios: true,
-          analytics: false,
-          multiusuario: false,
-          ...features,
-        },
+        billingDays: PLAN_BILLING_DAYS.base,
+        active: true,
+        features: { pdf: true, recordatorios: true, analytics: false, multiusuario: false, ...features },
       },
       pro: {
         label: "Plan Pro",
+        description: "Suscripción trimestral · se renueva cada 90 días",
         price: proPrice,
         currency,
-        billingDays: 30,
-        features: {
-          ...features,
-          multiusuario: true,
-        },
+        billingDays: PLAN_BILLING_DAYS.pro,
+        active: true,
+        features: { ...features, multiusuario: true },
+      },
+      full: {
+        label: "Plan Full",
+        description: "Suscripción anual · se renueva cada 365 días",
+        price: fullPrice,
+        currency,
+        billingDays: PLAN_BILLING_DAYS.full,
+        active: false,
+        features: { ...features, multiusuario: true },
       },
     },
   };

@@ -72,8 +72,9 @@ function wrapTemplate(body, { accentColor = "#E85A1A" } = {}) {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function planLabel(plan = "") {
-  if (plan === "pro") return "Plan Pro";
-  if (plan === "base") return "Plan Base";
+  if (plan === "base")  return "Plan Base";
+  if (plan === "pro")   return "Plan Pro";
+  if (plan === "full")  return "Plan Full";
   if (plan === "trial") return "Período de prueba";
   return plan || "Plan activo";
 }

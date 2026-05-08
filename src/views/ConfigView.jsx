@@ -211,7 +211,8 @@ function PantallaAdmin({ showToast }) {
     const vencidos = accounts.filter(a => ["vencido","suspendido"].includes(a.estado)).length;
     const admins = accounts.filter(a => a.rol === "admin" || a.isPlatformAdmin).length;
     const planBase = accounts.filter(a => (a.currentPlanKey || a.plan || "base") === "base" && a.estado === "activo").length;
-    const planPro = accounts.filter(a => (a.currentPlanKey || a.plan) === "pro" && a.estado === "activo").length;
+    const planPro  = accounts.filter(a => (a.currentPlanKey || a.plan) === "pro"  && a.estado === "activo").length;
+    const planFull = accounts.filter(a => (a.currentPlanKey || a.plan) === "full" && a.estado === "activo").length;
 
     // Pagos: combinar invoices + ultimoPago de accounts
     const pagosDesdeAccounts = accounts
@@ -265,7 +266,7 @@ function PantallaAdmin({ showToast }) {
     const reclamosPendientes = tickets.filter(t => t.estado !== "resuelto").length;
 
     return {
-      total, trial, activos, vencidos, admins, planBase, planPro,
+      total, trial, activos, vencidos, admins, planBase, planPro, planFull,
       todosPagos, totalCobrado, cobradoMes, pagosEsteMes,
       promDias, trialsPorVencer, pedidosPendientes, reclamosPendientes,
     };
@@ -436,9 +437,10 @@ function PantallaAdmin({ showToast }) {
 
           <Card>
             <SectionTitle>Distribucion de planes</SectionTitle>
-            <div className="grid grid-cols-2 gap-3">
-              <StatBox label="Plan base activos" value={stats.planBase} />
-              <StatBox label="Plan pro activos" value={stats.planPro} color="text-orange-600" />
+            <div className="grid grid-cols-3 gap-3">
+              <StatBox label="Base" value={stats.planBase} />
+              <StatBox label="Pro" value={stats.planPro} color="text-orange-600" />
+              <StatBox label="Full" value={stats.planFull} color="text-zinc-800" />
             </div>
           </Card>
         </div>
@@ -447,30 +449,84 @@ function PantallaAdmin({ showToast }) {
       {/* -- PLANES -- */}
       {adminTab === "planes" && (
         <div className="space-y-4">
+
+          {/* Email de notificaciones */}
+          <Card>
+            <SectionTitle>Correo de notificaciones</SectionTitle>
+            <p className="text-[11px] font-bold text-zinc-500 mb-3">Correo donde llegan los avisos del sistema (nuevos usuarios, pagos, alertas).</p>
+            <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Email del administrador</label>
+            <input
+              type="email"
+              value={settings.notificationEmail || ""}
+              onChange={e => setSettings(p => ({ ...p, notificationEmail: e.target.value }))}
+              className="w-full border-2 border-zinc-100 rounded-2xl px-4 py-3 font-bold text-sm text-zinc-800 bg-zinc-50 outline-none focus:border-orange-500 transition-colors"
+              placeholder="matias4604@gmail.com"
+            />
+          </Card>
+
           <Card>
             <SectionTitle>Precios y duracion</SectionTitle>
-            <p className="text-[11px] font-bold text-zinc-500 mb-4">Estos valores se usan al momento del pago. Cambiarlo no afecta suscripciones ya activas.</p>
+            <p className="text-[11px] font-bold text-zinc-500 mb-4">Cambiarlo no afecta suscripciones ya activas.</p>
             <div className="space-y-3">
+
+              {/* Plan Base */}
               <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
-                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Precio Plan Base (ARS)</p>
-                <input
-                  type="text" inputMode="numeric"
-                  value={String(settings.precios?.base || 0)}
-                  onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), base: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
-                  className="mt-2 w-full bg-transparent text-3xl font-black text-zinc-800 outline-none"
-                  placeholder="5000"
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Plan Base</p>
+                  <span className="text-[9px] font-black bg-zinc-200 text-zinc-600 px-2 py-1 rounded-full">30 días · mensual</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-black text-zinc-400">$</span>
+                  <input
+                    type="text" inputMode="numeric"
+                    value={String(settings.precios?.base || 0)}
+                    onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), base: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
+                    className="flex-1 bg-transparent text-3xl font-black text-zinc-800 outline-none"
+                    placeholder="5000"
+                  />
+                  <span className="text-sm font-bold text-zinc-400">ARS</span>
+                </div>
               </div>
-              <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
-                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Precio Plan Pro (ARS)</p>
-                <input
-                  type="text" inputMode="numeric"
-                  value={String(settings.precios?.pro || 0)}
-                  onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), pro: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
-                  className="mt-2 w-full bg-transparent text-3xl font-black text-zinc-800 outline-none"
-                  placeholder="12000"
-                />
+
+              {/* Plan Pro */}
+              <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[9px] font-black text-orange-500 uppercase tracking-widest">Plan Pro</p>
+                  <span className="text-[9px] font-black bg-orange-200 text-orange-700 px-2 py-1 rounded-full">90 días · trimestral</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-black text-orange-300">$</span>
+                  <input
+                    type="text" inputMode="numeric"
+                    value={String(settings.precios?.pro || 0)}
+                    onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), pro: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
+                    className="flex-1 bg-transparent text-3xl font-black text-zinc-800 outline-none"
+                    placeholder="12000"
+                  />
+                  <span className="text-sm font-bold text-orange-400">ARS</span>
+                </div>
               </div>
+
+              {/* Plan Full */}
+              <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[9px] font-black text-zinc-300 uppercase tracking-widest">Plan Full</p>
+                  <span className="text-[9px] font-black bg-zinc-700 text-zinc-300 px-2 py-1 rounded-full">365 días · anual</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-black text-zinc-500">$</span>
+                  <input
+                    type="text" inputMode="numeric"
+                    value={String(settings.precios?.full || 0)}
+                    onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), full: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
+                    className="flex-1 bg-transparent text-3xl font-black text-white outline-none"
+                    placeholder="45000"
+                  />
+                  <span className="text-sm font-bold text-zinc-500">ARS</span>
+                </div>
+                <p className="mt-2 text-[9px] font-bold text-zinc-500">Preparado — activalo cuando quieras habilitarlo para usuarios</p>
+              </div>
+
             </div>
           </Card>
 
@@ -954,7 +1010,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
           rows="5"
           value={cfg.whatsappPlantillas?.recordatorioService ?? "Hola {nombreCliente}, te escribimos de {nombreTaller}.\n\nTu moto {marca} {modelo} patente {patente} puede estar cerca del proximo control recomendado: {tipoControl}.\n\nSi queres, podes pasar por el taller y la revisamos para verificarlo."}
           onChange={e => setCfg({ ...cfg, whatsappPlantillas: { ...(cfg.whatsappPlantillas || {}), recordatorioService: e.target.value } })}
-          className="w-full border-2 border-zinc-100 rounded-2xl p-4 font-bold text-xs outline-none focus:border-orange-500 resize-none"
+          className="w-full border-2 border-zinc-100 rounded-2xl p-4 font-bold text-xs text-zinc-800 bg-zinc-50 outline-none focus:border-orange-500 resize-none"
         />
       </Card>
 

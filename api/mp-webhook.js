@@ -8,7 +8,8 @@ const {
   templateReactivado,
 } = require("./_email.js");
 
-const BILLING_DAYS = 30;
+const PLAN_BILLING_DAYS = { base: 30, pro: 90, full: 365 };
+const getBillingDays = (plan) => PLAN_BILLING_DAYS[plan] || 30;
 const ESTADOS_BLOQUEADOS = ["suspendido", "vencido", "trial_vencido"];
 
 module.exports = async function handler(req, res) {
@@ -75,7 +76,7 @@ module.exports = async function handler(req, res) {
       userData?.activoHasta && userData.activoHasta > Date.now()
         ? userData.activoHasta
         : Date.now();
-    const nuevoActivoHasta = baseTime + BILLING_DAYS * 24 * 60 * 60 * 1000;
+    const nuevoActivoHasta = baseTime + getBillingDays(nuevoPlan) * 24 * 60 * 60 * 1000;
 
     const updateData = {
       estado: "activo",
