@@ -1742,18 +1742,19 @@ function PantallaSuscripcion({ showToast }) {
         </div>
 
         {checkoutPlanKey && checkoutPlan && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/70 p-4 backdrop-blur-sm sm:items-center">
-            <div className="w-full max-w-lg rounded-3xl border border-orange-200 bg-white p-4 shadow-2xl">
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/70 px-3 pb-3 pt-10 backdrop-blur-sm sm:items-center sm:p-4">
+            <div className="flex max-h-[88svh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-orange-200 bg-white shadow-2xl sm:max-h-[86vh] sm:rounded-3xl">
+              <div className="flex-1 overflow-y-auto p-4">
               <p className="text-[9px] font-black uppercase tracking-widest text-orange-500">Bases y condiciones</p>
               <h3 className="mt-1 text-xl font-black text-zinc-900">
                 {checkoutPlan.label || (checkoutPlanKey === "pro" ? "Plan Pro" : "Plan Base")}
               </h3>
-              <p className="mt-1 text-sm font-bold text-zinc-600">
+              <p className="mt-1 text-xs font-bold leading-relaxed text-zinc-600">
                 Antes de ir a Mercado Pago, revisá el plan elegido y el monto a contratar.
               </p>
 
               <div className="mt-4 rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 gap-3 text-sm min-[360px]:grid-cols-2">
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Monto</p>
                     <p className="mt-1 text-base font-black text-zinc-900">{formatMoney(checkoutPrice)}</p>
@@ -1780,8 +1781,9 @@ function PantallaSuscripcion({ showToast }) {
                   </div>
                 </div>
               </div>
+              </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 border-t border-zinc-100 bg-white p-3">
                 <button
                   onClick={cerrarConfirmacionPago}
                   className="rounded-2xl border border-zinc-200 bg-zinc-50 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-700"
