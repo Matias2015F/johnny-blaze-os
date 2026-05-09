@@ -62,6 +62,13 @@ async function fsWrite(op) {
   notifySync();
 }
 
+// ── Notificadores locales: avisan a useCollection cuando _cache cambia ───────
+const _cacheNotifiers = {}; // col → Set<setData fn>
+
+function notifyCollection(col) {
+  (_cacheNotifiers[col] || new Set()).forEach((fn) => fn([...(_cache[col] ?? [])]));
+}
+
 // ── LS API ───────────────────────────────────────────────────────────────────
 export const LS = {
   getAll: (col) => _cache[col] ?? [],
@@ -71,6 +78,7 @@ export const LS = {
   setDoc: (col, id, data) => {
     const entry = { id, ...data };
     _cache[col] = [...(_cache[col] ?? []).filter((d) => d.id !== id), entry];
+    notifyCollection(col);
     fsWrite(() => fsSetDoc(userDoc(col, id), entry));
     return { id };
   },
@@ -79,17 +87,20 @@ export const LS = {
     const id = generateId();
     const entry = { id, ...data };
     _cache[col] = [...(_cache[col] ?? []), entry];
+    notifyCollection(col);
     fsWrite(() => fsSetDoc(userDoc(col, id), entry));
     return { id };
   },
 
   updateDoc: (col, id, patch) => {
     _cache[col] = (_cache[col] ?? []).map((d) => (d.id === id ? { ...d, ...patch } : d));
+    notifyCollection(col);
     fsWrite(() => fsSetDoc(userDoc(col, id), patch, { merge: true }));
   },
 
   deleteDoc: (col, id) => {
     _cache[col] = (_cache[col] ?? []).filter((d) => d.id !== id);
+    notifyCollection(col);
     fsWrite(() => fsDeleteDoc(userDoc(col, id)));
   },
 };
@@ -99,6 +110,10 @@ export function useCollection(col) {
   const [data, setData] = useState(() => _cache[col] ?? []);
 
   useEffect(() => {
+    // Suscribirse a actualizaciones locales (LS.*) para re-render inmediato
+    if (!_cacheNotifiers[col]) _cacheNotifiers[col] = new Set();
+    _cacheNotifiers[col].add(setData);
+
     let unsub = null;
     let retryTimer = null;
     let retries = 0;
@@ -139,6 +154,7 @@ export function useCollection(col) {
 
     return () => {
       cancelled = true;
+      _cacheNotifiers[col]?.delete(setData);
       if (unsub) unsub();
       if (retryTimer) clearTimeout(retryTimer);
       unsubAuth();
