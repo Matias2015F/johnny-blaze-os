@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, ChevronDown, ClipboardList, DollarSign, Edit2, FileText, Play, Send, ShieldCheck, ThumbsUp, Trash2, Truck, Wrench, X } from "lucide-react";
-import { LS } from "../lib/storage.js";
+import React, { useEffect, useRef, useState } from "react";
+import { ArrowLeft, CheckCircle2, ChevronDown, ClipboardList, DollarSign, Edit2, FileText, Play, Search, Send, ShieldCheck, ThumbsUp, Trash2, Truck, Wrench, X } from "lucide-react";
+import { LS, buscarRepuestosAutocomplete, guardarRepuestoHistorial } from "../lib/storage.js";
 import { CONFIG_DEFAULT, ESTADO_CSS, ESTADO_LABEL } from "../lib/constants.js";
 import { calcularNuevoRango, calcularNuevoTotal, calcularResultadosOrden } from "../lib/calc.js";
 import { obtenerAprendizaje } from "../lib/priceLearning.js";
@@ -37,6 +37,142 @@ const STEP_UI = [
   { id: "cerrado_emitido", label: "Cerrado", icon: FileText },
 ];
 
+// ── Editor parcial: repuesto / flete / insumo ───────────────────────────────
+function EditarItemSheet({ tipo, datos, cilindrada, onSave, onCancel }) {
+  const esFlete = tipo === "fletes";
+  const tipoHistorial = tipo === "repuestos" ? "repuesto" : tipo === "insumos" ? "insumo" : "flete";
+
+  const [form, setForm] = useState({ ...datos });
+  const [busqueda, setBusqueda] = useState(datos.nombre || "");
+  const [sugerencias, setSugerencias] = useState([]);
+  const [mostrarSug, setMostrarSug] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 120); }, []);
+
+  const handleBusqueda = (valor) => {
+    setBusqueda(valor);
+    setForm(f => ({ ...f, nombre: valor }));
+    if (!valor.trim()) { setSugerencias([]); setMostrarSug(false); return; }
+    const r = buscarRepuestosAutocomplete(valor, esFlete ? null : cilindrada, tipoHistorial);
+    setSugerencias(r);
+    setMostrarSug(r.length > 0);
+  };
+
+  const seleccionar = (s) => {
+    setBusqueda(s.nombre);
+    setForm(f => ({ ...f, nombre: s.nombre, monto: s.precio }));
+    setMostrarSug(false);
+  };
+
+  const handleGuardar = () => {
+    const nombre = (form.nombre || "").trim();
+    if (!nombre || !(form.monto > 0)) return;
+    guardarRepuestoHistorial(nombre, form.monto, esFlete ? null : cilindrada, tipoHistorial);
+    onSave({ ...form, nombre });
+  };
+
+  const totalPreview = (form.monto || 0) * (esFlete ? 1 : form.cantidad || 1);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative w-full max-h-[85vh] overflow-y-auto rounded-t-[2rem] bg-zinc-900 border-t border-zinc-700 shadow-2xl animate-in slide-in-from-bottom duration-300">
+        <div className="mx-auto max-w-[440px] p-6 space-y-5">
+
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">
+              Editar {esFlete ? "flete" : tipo === "repuestos" ? "repuesto" : "insumo"}
+            </h3>
+            <button onClick={onCancel} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-90 transition-all">
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Nombre con autocomplete */}
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block mb-2">Concepto</label>
+            <div className="relative">
+              <div className="flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 focus-within:border-orange-500 transition-colors">
+                <Search size={14} className="text-zinc-500 flex-shrink-0" />
+                <input
+                  ref={inputRef}
+                  className="w-full bg-transparent font-black text-white outline-none placeholder:text-zinc-600"
+                  placeholder="Nombre..."
+                  value={busqueda}
+                  onChange={e => handleBusqueda(e.target.value)}
+                  onBlur={() => setTimeout(() => setMostrarSug(false), 150)}
+                  autoComplete="off"
+                />
+              </div>
+              {mostrarSug && sugerencias.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-2xl shadow-xl z-10 max-h-40 overflow-y-auto">
+                  {sugerencias.map((s, i) => (
+                    <button key={i} onMouseDown={() => seleccionar(s)}
+                      className="w-full text-left px-4 py-3 hover:bg-zinc-700 border-b border-zinc-700/40 last:border-0 active:bg-zinc-600">
+                      <p className="text-sm font-black text-white">{s.nombre}</p>
+                      <p className="text-[10px] text-zinc-400">{formatMoney(s.precio)} · {s.usos || 0} usos</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Cantidad (repuestos / insumos) */}
+          {!esFlete && (
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block mb-2">Cantidad</label>
+              <input
+                type="text" inputMode="numeric"
+                className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 font-black text-white outline-none focus:border-orange-500 transition-colors"
+                value={form.cantidad || 1}
+                onChange={e => setForm(f => ({ ...f, cantidad: Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 1) }))}
+              />
+            </div>
+          )}
+
+          {/* Precio / Monto */}
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block mb-2">
+              {esFlete ? "Monto" : "Precio unitario"}
+            </label>
+            <div className="flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 focus-within:border-orange-500 transition-colors">
+              <span className="font-black text-zinc-400">$</span>
+              <input
+                type="text" inputMode="numeric"
+                className="w-full bg-transparent font-black text-orange-400 outline-none text-right"
+                value={form.monto > 0 ? form.monto.toLocaleString("es-AR") : ""}
+                onChange={e => {
+                  const v = Number(e.target.value.replace(/\D/g, "")) || 0;
+                  setForm(f => ({ ...f, monto: v }));
+                }}
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          {/* Total preview */}
+          {totalPreview > 0 && (
+            <div className="flex justify-between items-center rounded-2xl bg-orange-500/10 border border-orange-500/20 px-4 py-3">
+              <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">Total</p>
+              <p className="font-black text-orange-300">{formatMoney(totalPreview)}</p>
+            </div>
+          )}
+
+          <button
+            onClick={handleGuardar}
+            disabled={!(form.nombre || "").trim() || !(form.monto > 0)}
+            className="w-full rounded-2xl bg-orange-600 py-4 font-black uppercase text-white disabled:opacity-40 active:scale-95 transition-all"
+          >
+            Guardar cambio
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function OrderDetailView({ order, clients, bikes, setView, showToast, setServiceToEdit }) {
   const [tiempoActual, setTiempoActual] = useState(0);
   const [motivoBloqueo, setMotivoBloqueo] = useState(MOTIVOS_BLOQUEO[0]);
@@ -56,6 +192,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const [sheetTipoFijo, setSheetTipoFijo] = useState(false);
   const [sheetMin, setSheetMin] = useState("");
   const [sheetMax, setSheetMax] = useState("");
+  const [editandoItem, setEditandoItem] = useState(null); // { type, index, data }
 
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
 
@@ -183,9 +320,25 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const puedeEditarPresupuesto = !isLocked && ["diagnostico", "presupuesto"].includes(order.estado);
 
   const editarDetallePresupuesto = (item = null) => {
-    if (item?.type === "tareas") setServiceToEdit?.(item.raw);
-    else setServiceToEdit?.(null);
-    setView("gestionarTareas");
+    if (!item) { setServiceToEdit?.(null); setView("gestionarTareas"); return; }
+    if (item.type === "tareas") { setServiceToEdit?.(item.raw); setView("gestionarTareas"); return; }
+    // Edición parcial inline para repuesto / flete / insumo
+    setEditandoItem({ type: item.type, index: item.index, data: { ...item.raw } });
+  };
+
+  const guardarItemEditado = (itemData) => {
+    if (!editandoItem) return;
+    const { type, index } = editandoItem;
+    const lista = [...(order[type] || [])];
+    lista[index] = { ...lista[index], ...itemData };
+    const tareas    = order.tareas    || [];
+    const repuestos = type === "repuestos" ? lista : order.repuestos || [];
+    const fletes    = type === "fletes"    ? lista : order.fletes    || [];
+    const insumos   = type === "insumos"   ? lista : order.insumos   || [];
+    const nTotal = calcularNuevoTotal(tareas, repuestos, fletes, insumos);
+    LS.updateDoc("trabajos", order.id, { [type]: lista, total: nTotal });
+    setEditandoItem(null);
+    showToast("Guardado ✓");
   };
 
   const eliminarDetallePresupuesto = (item) => {
@@ -645,6 +798,16 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           </section>
         )}
       </div>
+
+      {editandoItem && (
+        <EditarItemSheet
+          tipo={editandoItem.type}
+          datos={editandoItem.data}
+          cilindrada={bike.cilindrada}
+          onSave={guardarItemEditado}
+          onCancel={() => setEditandoItem(null)}
+        />
+      )}
 
       {showPresupuestoSheet && (
         <div className="fixed inset-0 z-50 flex items-end">
