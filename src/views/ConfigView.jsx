@@ -876,7 +876,7 @@ function PantallaResumen({ orders, caja }) {
 // PANTALLA: Taller
 function PantallaTaller({ cfg, setCfg, showToast }) {
   const margen = cfg.margenPolitica ?? 25;
-  const horaCliente = Math.round(cfg.valorHoraInterno * (1 + margen / 100));
+  const horaCliente = Math.round((cfg.valorHoraInterno || 0) * (1 + margen / 100));
 
   // Auto-relleno: si el campo email está vacío, usar el mail de login
   React.useEffect(() => {
@@ -887,14 +887,22 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Persiste precio al cache/Firestore inmediatamente — sin necesitar Guardar
+  const setPrecioConfig = (newCfg) => {
+    const m  = newCfg.margenPolitica ?? 25;
+    const hc = Math.round((newCfg.valorHoraInterno || 0) * (1 + m / 100));
+    const toSave = { ...newCfg, valorHoraCliente: hc };
+    setCfg(toSave);
+    LS.setDoc("config", "global", toSave);
+  };
+
   const guardar = () => {
-    LS.setDoc("config", "global", { ...cfg, margenPolitica: margen, valorHoraCliente: horaCliente });
-    // Sincronizar emailNotificacion al doc de suscripción para que el webhook pueda leerlo
+    const toSave = { ...cfg, margenPolitica: margen, valorHoraCliente: horaCliente };
+    LS.setDoc("config", "global", toSave);
     const uid = auth.currentUser?.uid;
     if (uid && cfg.emailNotificacion) {
       setDoc(doc(db, "usuarios", uid), { emailNotificacion: cfg.emailNotificacion }, { merge: true }).catch(console.error);
     }
-    // Solo actualiza notificationEmail en admin_settings; no toca precios ni features
     setDoc(
       doc(db, "admin_settings", "global"),
       { notificationEmail: cfg.emailNotificacion || auth.currentUser?.email || DEFAULT_ADMIN_SETTINGS.notificationEmail },
@@ -906,7 +914,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
   const setFactor = (key, val) => {
     const f = Math.round(val * 10) / 10;
     if (f <= 0) return;
-    setCfg({ ...cfg, factorDificultad: { ...(cfg.factorDificultad || CONFIG_DEFAULT.factorDificultad), [key]: f } });
+    setPrecioConfig({ ...cfg, factorDificultad: { ...(cfg.factorDificultad || CONFIG_DEFAULT.factorDificultad), [key]: f } });
   };
 
   return (
@@ -954,56 +962,72 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
         </div>
       </Card>
 
-      {/* Costo hora */}
+      {/* Mano de obra — card unificada con cadena de cálculo */}
       <Card>
-        <SectionTitle>Costo por Hora</SectionTitle>
-        <p className="text-[10px] text-zinc-400 font-bold mb-4">Gastos fijos / horas trabajadas al mes</p>
-        <Stepper
-          value={cfg.valorHoraInterno}
-          onChange={v => setCfg({ ...cfg, valorHoraInterno: v })}
-          step={500}
-          min={0}
-          format={formatMoney}
-        />
-      </Card>
+        <SectionTitle>Mano de Obra</SectionTitle>
 
-      {/* Margen */}
-      <Card>
-        <SectionTitle>Margen por Defecto</SectionTitle>
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[10px] text-zinc-400 font-bold">Ganancia sobre el costo</span>
-          <span className="text-2xl font-black text-orange-600">{margen}%</span>
+        {/* 1. Costo base */}
+        <div>
+          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Costo por hora</p>
+          <p className="text-[9px] text-zinc-400 font-bold mb-3">Gastos fijos ÷ horas trabajadas al mes</p>
+          <Stepper
+            value={cfg.valorHoraInterno}
+            onChange={v => setPrecioConfig({ ...cfg, valorHoraInterno: v })}
+            step={500}
+            min={0}
+            format={formatMoney}
+          />
         </div>
-        <input
-          type="range" min="5" max="120" step="5"
-          value={margen}
-          onChange={e => setCfg({ ...cfg, margenPolitica: Number(e.target.value) })}
-          className="w-full accent-orange-600 mb-2"
-        />
-        <div className="flex justify-between text-[9px] text-zinc-400 font-bold">
-          <span>5%</span><span>60%</span><span>120%</span>
-        </div>
-        <div className="mt-4 bg-zinc-900 rounded-2xl p-4 flex items-center justify-between">
-          <div>
-            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Precio hora al cliente</p>
-            <p className="text-[10px] text-zinc-500 mt-0.5">{formatMoney(cfg.valorHoraInterno)} x {(1 + margen / 100).toFixed(2)}</p>
+
+        <div className="h-px bg-zinc-100 my-5" />
+
+        {/* 2. Margen */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Margen de ganancia</p>
+            <span className="text-2xl font-black text-orange-600">{margen}%</span>
           </div>
-          <p className="text-2xl font-black text-orange-400">{formatMoney(horaCliente)}</p>
+          <input
+            type="range" min="5" max="120" step="5"
+            value={margen}
+            onChange={e => setPrecioConfig({ ...cfg, margenPolitica: Number(e.target.value) })}
+            className="w-full accent-orange-600"
+          />
+          <div className="flex justify-between text-[9px] text-zinc-400 font-bold mt-1">
+            <span>5%</span><span>60%</span><span>120%</span>
+          </div>
         </div>
-      </Card>
 
-      {/* Multiplicadores */}
-      <Card>
-        <SectionTitle>Multiplicadores por Dificultad</SectionTitle>
+        {/* 3. Resultado: precio hora al cliente */}
+        <div className="mt-4 bg-zinc-900 rounded-2xl p-4">
+          <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-2">Precio hora al cliente</p>
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-zinc-400 font-bold">
+              {formatMoney(cfg.valorHoraInterno)} × {(1 + margen / 100).toFixed(2)}
+            </p>
+            <p className="text-2xl font-black text-orange-400">{formatMoney(horaCliente)}</p>
+          </div>
+        </div>
+
+        <div className="h-px bg-zinc-100 my-5" />
+
+        {/* 4. Multiplicadores por dificultad */}
+        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Multiplicadores por Dificultad</p>
         <div className="space-y-3">
           {DIFICULTADES.map(({ key, label, color, bg, border }) => {
             const factor = cfg.factorDificultad?.[key] ?? CONFIG_DEFAULT.factorDificultad[key];
+            const precioFinal = Math.round(horaCliente * factor);
             return (
               <div key={key} className={`${bg} border ${border} rounded-2xl p-4`}>
                 <div className="flex items-center justify-between mb-3">
-                  <span className={`text-sm font-black ${color}`}>{label}</span>
-                  <span className="text-[10px] text-zinc-500 font-bold">
-                    = {formatMoney(Math.round(horaCliente * factor))}/h
+                  <div>
+                    <span className={`text-sm font-black ${color}`}>{label}</span>
+                    <p className="text-[10px] text-zinc-500 font-bold mt-0.5">
+                      {formatMoney(horaCliente)} × {factor.toFixed(1)}
+                    </p>
+                  </div>
+                  <span className={`text-lg font-black ${color}`}>
+                    {formatMoney(precioFinal)}/h
                   </span>
                 </div>
                 <Stepper
