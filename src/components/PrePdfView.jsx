@@ -1,14 +1,15 @@
 import React, { useState } from "react";
-import { ArrowLeft, FileText, AlertCircle } from "lucide-react";
-import { LS, generarNumeroComprobante, crearSnapshotVerificable } from "../lib/storage.js";
-import { PLANTILLAS_GARANTIA, CONFIG_DEFAULT } from "../lib/constants.js";
+import { AlertCircle, ArrowLeft, FileText } from "lucide-react";
+import { LS, crearSnapshotVerificable, generarNumeroComprobante } from "../lib/storage.js";
+import { CONFIG_DEFAULT, PLANTILLAS_GARANTIA } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { trackEvent } from "../lib/telemetry.js";
 import { formatMoney } from "../utils/format.js";
 
 function calcularVencimiento(dias) {
+  if (Number(dias) <= 0) return "";
   const d = new Date();
-  d.setDate(d.getDate() + (Number(dias) || 7));
+  d.setDate(d.getDate() + Number(dias));
   return d.toLocaleDateString("sv-SE");
 }
 
@@ -18,6 +19,8 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
   const [vencimientoGarantia, setVencimientoGarantia] = useState(
     order.vencimientoGarantia || calcularVencimiento(config.garantiaDias)
   );
+  const [diasPersonalizados, setDiasPersonalizados] = useState("");
+
   const totalOrden = calcularResultadosOrden(order).total;
   const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
   const saldo = totalOrden - totalPagado;
@@ -25,20 +28,10 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
   const irAlPdf = () => {
     if (saldo > 0) return;
 
-    // Generar número comprobante seguro con checksum
     const numeroComprobante = generarNumeroComprobante(order.id);
-
-    // Obtener datos de cliente y moto
     const cliente = LS.getDoc("clientes", order.clientId);
     const moto = LS.getDoc("motos", order.bikeId);
-
-    // Crear snapshot verificable e inmutable
-    const snapshotFinal = crearSnapshotVerificable(
-      order,
-      numeroComprobante,
-      cliente,
-      moto
-    );
+    const snapshotFinal = crearSnapshotVerificable(order, numeroComprobante, cliente, moto);
 
     trackEvent("emitir_comprobante", {
       screen: "prePdf",
@@ -57,9 +50,9 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
       snapshotFinal,
       aprobacionCliente: {
         fecha: new Date().toISOString(),
-        metodo: order.aprobadoPor || 'manual',
-        comprobante: numeroComprobante
-      }
+        metodo: order.aprobadoPor || "manual",
+        comprobante: numeroComprobante,
+      },
     });
 
     setFinalPdfData({
@@ -70,27 +63,30 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
         numeroComprobante,
         orderId: order.id,
         hash: snapshotFinal.hash,
-        fecha: snapshotFinal.fechaComprobante
-      }
+        fecha: snapshotFinal.fechaComprobante,
+      },
     });
     setView("imprimirOrden");
   };
 
   return (
     <div className="p-6 text-left animate-in fade-in pb-32">
-      <button onClick={() => setView("detalleOrden")} className="mb-8 text-orange-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
+      <button onClick={() => setView("detalleOrden")} className="mb-8 flex items-center gap-2 text-xs font-black uppercase text-orange-500 transition-all active:scale-90">
         <ArrowLeft size={16} /> Volver al trabajo
       </button>
-      <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-6">Antes de emitir: garantía</h2>
-      <div className="bg-white p-8 rounded-[2.5rem] space-y-6 shadow-2xl">
-        <div className="bg-orange-50 border-2 border-orange-200 p-4 rounded-3xl flex items-center gap-3">
-          <div className="bg-orange-500 p-2 rounded-xl text-white"><AlertCircle size={20} /></div>
-          <p className="text-[10px] font-black text-orange-700 uppercase leading-tight">Al emitir el comprobante, este trabajo se cierra y ya no se puede editar desde la app.</p>
+      <h2 className="mb-6 text-3xl font-black uppercase tracking-tighter text-white">Antes de emitir: garantía</h2>
+
+      <div className="space-y-6 rounded-[2.5rem] bg-white p-6 shadow-2xl sm:p-8">
+        <div className="flex items-center gap-3 rounded-3xl border-2 border-orange-200 bg-orange-50 p-4">
+          <div className="rounded-xl bg-orange-500 p-2 text-white"><AlertCircle size={20} /></div>
+          <p className="text-[10px] font-black uppercase leading-tight text-orange-700">
+            Al emitir el comprobante, este trabajo se cierra y ya no se puede editar desde la app.
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-zinc-50 rounded-2xl p-4">
-            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Total del trabajo</p>
+          <div className="rounded-2xl bg-zinc-50 p-4">
+            <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Total del trabajo</p>
             <p className="text-xl font-black text-zinc-900">{formatMoney(totalOrden)}</p>
           </div>
           <div className={`rounded-2xl p-4 ${saldo <= 0 ? "bg-green-50" : "bg-red-50"}`}>
@@ -99,36 +95,35 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
           </div>
         </div>
 
-        <div className="bg-zinc-50 rounded-3xl p-5 space-y-4">
+        <div className="space-y-5 rounded-3xl bg-zinc-50 p-5">
           <div>
-            <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Trabajos realizados</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Trabajos realizados</p>
             <div className="mt-2 space-y-2">
               {(order.tareas || []).length > 0 ? order.tareas.map((t, i) => (
-                <div key={i} className="flex justify-between gap-3 text-sm">
-                  <span className="font-black text-zinc-800 uppercase">{t.nombre}</span>
-                  <span className="font-black text-zinc-500">{formatMoney(t.monto || 0)}</span>
+                <div key={i} className="rounded-2xl border border-zinc-100 bg-white px-4 py-3 text-sm">
+                  <span className="font-black uppercase text-zinc-800">{t.nombre}</span>
                 </div>
-              )) : <p className="text-[10px] font-bold text-zinc-400 uppercase">Sin mano de obra cargada</p>}
+              )) : <p className="text-[10px] font-bold uppercase text-zinc-400">Sin mano de obra cargada</p>}
             </div>
           </div>
+
           <div>
-            <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Repuestos cambiados</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Repuestos cambiados</p>
             <div className="mt-2 space-y-2">
               {(order.repuestos || []).length > 0 ? order.repuestos.map((r, i) => (
-                <div key={i} className="flex justify-between gap-3 text-sm">
-                  <span className="font-black text-zinc-800 uppercase">{r.cantidad > 1 ? `${r.cantidad}x ` : ""}{r.nombre}</span>
-                  <span className="font-black text-zinc-500">{formatMoney((r.monto || 0) * (r.cantidad || 1))}</span>
+                <div key={i} className="rounded-2xl border border-zinc-100 bg-white px-4 py-3 text-sm">
+                  <span className="font-black uppercase text-zinc-800">{r.cantidad > 1 ? `${r.cantidad}x ` : ""}{r.nombre}</span>
                 </div>
-              )) : <p className="text-[10px] font-bold text-zinc-400 uppercase">Sin repuestos cargados</p>}
+              )) : <p className="text-[10px] font-bold uppercase text-zinc-400">Sin repuestos cargados</p>}
             </div>
           </div>
         </div>
 
         <div>
-          <label className="text-[10px] font-black uppercase text-zinc-400 ml-2 tracking-widest">Elegir texto de garantía</label>
-          <div className="flex gap-2 mt-2 overflow-x-auto pb-2">
+          <label className="ml-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">Elegir texto de garantía</label>
+          <div className="mt-2 flex flex-wrap gap-2">
             {PLANTILLAS_GARANTIA.map((p) => (
-              <button key={p.id} onClick={() => setGarantia(p.texto)} className="bg-zinc-100 px-4 py-2 rounded-xl text-[10px] font-black uppercase whitespace-nowrap active:bg-orange-500 active:text-white transition-colors">
+              <button key={p.id} onClick={() => setGarantia(p.texto)} className="rounded-xl bg-zinc-100 px-4 py-2 text-[10px] font-black uppercase transition-colors active:bg-orange-500 active:text-white">
                 {p.nombre}
               </button>
             ))}
@@ -136,21 +131,30 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
         </div>
 
         <div>
-          <label className="text-[10px] font-black uppercase text-zinc-400 ml-2 tracking-widest">Texto de garantía (podés editarlo)</label>
-          <textarea value={garantia} onChange={(e) => setGarantia(e.target.value)} rows="5" className="w-full border-2 border-zinc-100 rounded-2xl p-4 font-bold text-sm text-zinc-700 outline-none focus:border-orange-500 mt-2" />
+          <label className="ml-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">Texto de garantía (podés editarlo)</label>
+          <textarea
+            value={garantia}
+            onChange={(e) => setGarantia(e.target.value)}
+            rows="5"
+            className="mt-2 w-full rounded-2xl border-2 border-zinc-100 p-4 text-sm font-bold text-zinc-700 outline-none focus:border-orange-500"
+          />
         </div>
 
-        <div>
-          <label className="text-[10px] font-black uppercase text-zinc-400 ml-2 tracking-widest">Válido hasta (término de garantía)</label>
-          <div className="flex items-center gap-3 mt-2">
+        <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
+          <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Término de garantía</label>
+          <p className="mt-1 text-[10px] font-bold text-zinc-500">
+            Podés dejarla en cero, elegir un período rápido o cargar una fecha manual.
+          </p>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <input
               type="date"
               value={vencimientoGarantia}
               onChange={(e) => setVencimientoGarantia(e.target.value)}
-              className="flex-1 border-2 border-zinc-100 rounded-2xl px-4 py-3 font-black text-sm text-zinc-700 outline-none focus:border-orange-500 bg-white"
+              className="rounded-2xl border-2 border-zinc-100 bg-white px-4 py-3 text-sm font-black text-zinc-700 outline-none focus:border-orange-500"
             />
-            <div className="flex gap-2">
+            <div className="grid grid-cols-5 gap-2">
               {[
+                { label: "0d", dias: 0 },
                 { label: "7d", dias: 7 },
                 { label: "30d", dias: 30 },
                 { label: "90d", dias: 90 },
@@ -159,29 +163,48 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
                 <button
                   key={dias}
                   onClick={() => setVencimientoGarantia(calcularVencimiento(dias))}
-                  className="rounded-xl bg-zinc-100 px-3 py-2 text-[10px] font-black uppercase text-zinc-600 active:bg-orange-500 active:text-white transition-colors"
+                  className="rounded-xl bg-white px-2 py-2 text-[10px] font-black uppercase text-zinc-600 transition-colors active:bg-orange-500 active:text-white"
                 >
                   {label}
                 </button>
               ))}
             </div>
           </div>
-          <p className="mt-1 ml-2 text-[10px] font-bold text-zinc-400">
-            Esta fecha aparece en el comprobante entregado al cliente.
+          <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+            <input
+              type="number"
+              inputMode="numeric"
+              min="0"
+              value={diasPersonalizados}
+              onChange={(e) => setDiasPersonalizados(e.target.value)}
+              placeholder="Días personalizados"
+              className="rounded-2xl border-2 border-zinc-100 bg-white px-4 py-3 text-sm font-black text-zinc-700 outline-none focus:border-orange-500"
+            />
+            <button
+              type="button"
+              onClick={() => setVencimientoGarantia(calcularVencimiento(diasPersonalizados))}
+              className="rounded-2xl bg-zinc-900 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-95"
+            >
+              Aplicar
+            </button>
+          </div>
+          <p className="mt-2 text-[10px] font-bold text-zinc-400">
+            {vencimientoGarantia ? "Esta fecha aparece en el comprobante entregado al cliente." : "Sin fecha de vencimiento de garantía."}
           </p>
         </div>
 
         {saldo > 0 && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-3xl p-4">
-            <p className="text-[10px] font-black text-red-600 uppercase leading-tight">Para emitir el comprobante primero tenés que dejar el pago completo registrado.</p>
+          <div className="rounded-3xl border-2 border-red-200 bg-red-50 p-4">
+            <p className="text-[10px] font-black uppercase leading-tight text-red-600">
+              Para emitir el comprobante primero tenés que dejar el pago completo registrado.
+            </p>
           </div>
         )}
 
-        <button disabled={saldo > 0} onClick={irAlPdf} className={`w-full py-6 rounded-3xl font-black uppercase shadow-xl flex items-center justify-center gap-3 transition-all ${saldo > 0 ? "bg-zinc-200 text-zinc-400" : "bg-orange-600 text-white active:scale-95"}`}>
+        <button disabled={saldo > 0} onClick={irAlPdf} className={`flex w-full items-center justify-center gap-3 rounded-3xl py-6 font-black uppercase shadow-xl transition-all ${saldo > 0 ? "bg-zinc-200 text-zinc-400" : "bg-orange-600 text-white active:scale-95"}`}>
           <FileText size={20} /> Generar comprobante para el cliente
         </button>
       </div>
     </div>
   );
 }
-

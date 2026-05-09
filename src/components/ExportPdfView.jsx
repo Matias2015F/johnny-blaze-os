@@ -1,18 +1,18 @@
-﻿import React, { useEffect } from "react";
+import React, { useEffect } from "react";
 import { Printer } from "lucide-react";
+import { QRCodeCanvas } from "qrcode.react";
 import { LS } from "../lib/storage.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
-import { formatMoney } from "../utils/format.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
-import { QRCodeCanvas } from "qrcode.react";
+import { formatMoney } from "../utils/format.js";
 
 function labelMetodo(metodo = "") {
   const limpio = String(metodo).trim().toLowerCase();
   if (limpio === "mercadopago") return "Mercado Pago";
   if (limpio === "transferencia") return "Transferencia";
   if (limpio === "efectivo") return "Efectivo";
-  if (limpio === "debito") return "Debito";
-  if (limpio === "credito") return "Credito";
+  if (limpio === "debito") return "Débito";
+  if (limpio === "credito") return "Crédito";
   return metodo || "---";
 }
 
@@ -47,19 +47,20 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
   }, [numeroComprobante]);
 
   return (
-    <div className="min-h-screen bg-zinc-100 p-4 font-sans text-left text-zinc-900 animate-in fade-in print:bg-white print:p-0">
+    <div className="min-h-screen bg-zinc-100 p-4 text-left font-sans text-zinc-900 animate-in fade-in print:bg-white print:p-0">
       <style>{`
         @media print {
           @page { size: A4 portrait; margin: 14mm 14mm 14mm 14mm; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
       `}</style>
+
       <div className="mx-auto max-w-[740px] bg-white print:max-w-none">
         <div className="border-b-2 border-zinc-900 px-8 py-6" style={bloqueCompletoStyle}>
           <div className="flex items-start justify-between gap-8">
             <div className="flex-1">
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-600">
-                Constancia de servicio tÃ©cnico
+                Constancia de servicio técnico
               </p>
               <h1 className="mt-3 max-w-xs text-2xl font-black uppercase leading-tight tracking-tight">
                 {config.nombreTaller}
@@ -68,7 +69,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                 Documento de entrega y detalle del trabajo realizado
               </p>
               <div className="mt-4 space-y-1 text-[10px] leading-relaxed text-zinc-700">
-                <p><span className="font-black">TÃ©cnico:</span> {config.mecanicoResponsable}</p>
+                <p><span className="font-black">Técnico:</span> {config.mecanicoResponsable}</p>
                 {config.direccionTaller && <p>{config.direccionTaller}</p>}
                 <p><span className="font-black">WhatsApp:</span> {config.telefonoTaller}</p>
                 <p><span className="font-black">Mail:</span> {config.emailNotificacion || "---"}</p>
@@ -77,7 +78,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
             <div className="flex flex-col items-center gap-4" style={bloqueCompletoStyle}>
               <div className="text-center">
-                <p className="text-[9px] font-black uppercase text-orange-600 tracking-wide">Comprobante NÂ°</p>
+                <p className="text-[9px] font-black uppercase tracking-wide text-orange-600">Comprobante N°</p>
                 <p className="mt-1 text-lg font-black tracking-tight">{numeroComprobante}</p>
                 <p className="mt-2 text-[9px] font-bold text-zinc-600">
                   Trabajo {order.numeroTrabajo || `#${order.id.slice(-4).toUpperCase()}`}
@@ -94,7 +95,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                       numeroComprobante,
                       orderId: order.id,
                       fecha: order.fechaComprobante,
-                      hash: snapshot.hash
+                      hash: snapshot.hash,
                     })}
                     size={110}
                     level="H"
@@ -102,7 +103,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                     fgColor="#000000"
                     bgColor="#FFFFFF"
                   />
-                  <p className="mt-2 text-center text-[8px] font-bold text-zinc-700">ESCANEA PARA VALIDAR</p>
+                  <p className="mt-2 text-center text-[8px] font-bold text-zinc-700">ESCANEÁ PARA VALIDAR</p>
                 </div>
               )}
             </div>
@@ -112,35 +113,32 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         <div className="space-y-5 px-8 py-5">
           <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
             <div className="border border-zinc-300 bg-zinc-50 p-4">
-              <p className="text-[9px] font-black uppercase text-zinc-600 tracking-wide">Cliente</p>
+              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">Cliente</p>
               <p className="mt-2 text-sm font-black text-zinc-900">{client?.nombre || "---"}</p>
               <p className="mt-1 text-xs text-zinc-600">{client?.tel || client?.telefono || "---"}</p>
             </div>
             <div className="border border-zinc-300 bg-zinc-50 p-4">
-              <p className="text-[9px] font-black uppercase text-zinc-600 tracking-wide">Motocicleta</p>
+              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">Motocicleta</p>
               <p className="mt-2 text-sm font-black text-zinc-900">
                 {bike?.marca} {bike?.modelo}
               </p>
               <p className="mt-1 text-xs font-bold text-zinc-700">
-                {bike?.patente || "---"} {kilometraje ? `â€¢ ${kilometraje} km` : ""}
+                {bike?.patente || "---"} {kilometraje ? `• ${kilometraje} km` : ""}
               </p>
             </div>
           </div>
 
           <div style={bloqueCompletoStyle}>
-            <h3 className="mb-2 text-[10px] font-black uppercase text-zinc-700 tracking-wide">Trabajos realizados</h3>
+            <h3 className="mb-2 text-[10px] font-black uppercase tracking-wide text-zinc-700">Trabajos realizados</h3>
             <div className="border border-zinc-300">
               <div className="bg-zinc-900 px-4 py-2">
-                <p className="text-[9px] font-black uppercase tracking-wide text-white">DescripciÃ³n â€¢ Monto</p>
+                <p className="text-[9px] font-black uppercase tracking-wide text-white">Descripción</p>
               </div>
               {tareas.length > 0 ? (
                 tareas.map((t, i) => (
-                  <div key={i} className={`flex justify-between px-4 py-3 text-sm ${i < tareas.length - 1 ? "border-b border-zinc-200" : ""}`}>
-                    <div>
-                      <p className="font-black text-zinc-900">{t.nombre}</p>
-                      <p className="text-[10px] font-bold text-zinc-500">Mano de obra</p>
-                    </div>
-                    <p className="font-black text-zinc-900">{formatMoney(t.monto || 0)}</p>
+                  <div key={i} className={`px-4 py-3 text-sm ${i < tareas.length - 1 ? "border-b border-zinc-200" : ""}`}>
+                    <p className="font-black uppercase text-zinc-900">{t.nombre}</p>
+                    <p className="text-[10px] font-bold text-zinc-500">Mano de obra realizada</p>
                   </div>
                 ))
               ) : (
@@ -151,18 +149,14 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
           {repuestos.length > 0 && (
             <div style={bloqueCompletoStyle}>
-              <h3 className="mb-2 text-[10px] font-black uppercase text-zinc-700 tracking-wide">Repuestos utilizados</h3>
+              <h3 className="mb-2 text-[10px] font-black uppercase tracking-wide text-zinc-700">Repuestos utilizados</h3>
               <div className="border border-zinc-300">
                 <div className="border-b border-zinc-300 bg-zinc-100 px-4 py-2">
-                  <p className="text-[9px] font-black uppercase tracking-wide text-zinc-700">DescripciÃ³n â€¢ Monto</p>
+                  <p className="text-[9px] font-black uppercase tracking-wide text-zinc-700">Descripción</p>
                 </div>
                 {repuestos.map((r, i) => (
-                  <div key={`rep-${i}`} className={`flex justify-between px-4 py-3 text-sm ${i < repuestos.length - 1 ? "border-b border-zinc-200" : ""}`}>
-                    <div>
-                      <p className="font-black text-zinc-900">{r.cantidad > 1 ? `${r.cantidad}x ` : ""}{r.nombre}</p>
-                      <p className="text-[10px] font-bold text-zinc-500">{r.cantidad || 1} Ã— {formatMoney(r.monto || 0)}</p>
-                    </div>
-                    <p className="font-black text-zinc-900">{formatMoney((r.monto || 0) * (r.cantidad || 1))}</p>
+                  <div key={`rep-${i}`} className={`px-4 py-3 text-sm ${i < repuestos.length - 1 ? "border-b border-zinc-200" : ""}`}>
+                    <p className="font-black uppercase text-zinc-900">{r.cantidad > 1 ? `${r.cantidad}x ` : ""}{r.nombre}</p>
                   </div>
                 ))}
               </div>
@@ -171,13 +165,13 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
           {pagos.length > 0 && (
             <div style={bloqueCompletoStyle}>
-              <h3 className="mb-2 text-[10px] font-black uppercase text-zinc-700 tracking-wide">Pagos registrados</h3>
+              <h3 className="mb-2 text-[10px] font-black uppercase tracking-wide text-zinc-700">Pagos registrados</h3>
               <table className="w-full border border-zinc-300">
                 <thead>
                   <tr className="border-b border-zinc-300 bg-zinc-100">
                     <th className="px-4 py-2 text-left text-[9px] font-black text-zinc-700">Fecha</th>
                     <th className="px-4 py-2 text-left text-[9px] font-black text-zinc-700">Medio</th>
-                    <th className="px-4 py-2 text-left text-[9px] font-black text-zinc-700">NÂ° pago</th>
+                    <th className="px-4 py-2 text-left text-[9px] font-black text-zinc-700">N° pago</th>
                     <th className="px-4 py-2 text-right text-[9px] font-black text-zinc-700">Monto</th>
                   </tr>
                 </thead>
@@ -197,24 +191,24 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
           <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
             <div className="border border-zinc-300 p-4">
-              <p className="text-[9px] font-black uppercase text-zinc-600 tracking-wide">GarantÃ­a</p>
+              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">Garantía</p>
               {vencimientoLabel && (
                 <div className="mt-2 inline-block rounded bg-zinc-900 px-2 py-1">
                   <p className="text-[9px] font-black uppercase tracking-wide text-white">
-                    VÃ¡lido hasta: {vencimientoLabel}
+                    Válido hasta: {vencimientoLabel}
                   </p>
                 </div>
               )}
               <p className="mt-2 text-[10px] leading-relaxed text-zinc-700">
-                {extraData?.garantia || order.garantiaFinal || "Sin texto de garantÃ­a cargado."}
+                {extraData?.garantia || order.garantiaFinal || "Sin texto de garantía cargado."}
               </p>
               {proximoControl?.activo && (
                 <div className="mt-3 border-t border-zinc-300 pt-3">
-                  <p className="text-[9px] font-black uppercase text-orange-700">PrÃ³ximo control</p>
+                  <p className="text-[9px] font-black uppercase text-orange-700">Próximo control</p>
                   <p className="mt-1 text-[10px] font-bold text-zinc-700">
                     {proximoControl.unidad === "km"
                       ? `A los ${Number(proximoControl.kmObjetivo || 0).toLocaleString("es-AR")} km`
-                      : `En ${proximoControl.valorObjetivo} dÃ­as`}
+                      : `En ${proximoControl.valorObjetivo} días`}
                   </p>
                 </div>
               )}
@@ -239,19 +233,20 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           </div>
 
           <div className="space-y-2 border-2 border-yellow-300 bg-yellow-50 p-4" style={bloqueCompletoStyle}>
-            <p className="text-[10px] font-black uppercase tracking-wide text-yellow-800">âš ï¸ TÃ©rminos de garantÃ­a y validez</p>
+            <p className="text-[10px] font-black uppercase tracking-wide text-yellow-800">Términos de garantía y validez</p>
             <ul className="space-y-1">
-              <li className="text-[9px] text-zinc-700">âœ“ Sin comprobante NO se pueden realizar reclamos de garantÃ­a</li>
-              <li className="text-[9px] text-zinc-700">âœ“ GarantÃ­a mano de obra: 30 dÃ­as â€¢ Repuestos: segÃºn fabricante</li>
-              <li className="text-[9px] text-zinc-700">âœ“ Documento NO modificable, generado automÃ¡ticamente</li>
-              <li className="text-[9px] text-zinc-700">âœ“ NÃºmero Ãºnico verificable â€¢ Escanea QR para validar</li>
+              <li className="text-[9px] text-zinc-700">Sin comprobante no se pueden realizar reclamos de garantía.</li>
+              <li className="text-[9px] text-zinc-700">La garantía de mano de obra se informa en este comprobante.</li>
+              <li className="text-[9px] text-zinc-700">Los repuestos quedan sujetos a la garantía del fabricante.</li>
+              <li className="text-[9px] text-zinc-700">Documento no modificable, generado automáticamente.</li>
+              <li className="text-[9px] text-zinc-700">Número único verificable. Escaneá el QR para validar.</li>
             </ul>
           </div>
 
           <div className="space-y-2 border-t-2 border-zinc-300 pt-4" style={bloqueCompletoStyle}>
-            <p className="text-[10px] font-black uppercase text-zinc-700 tracking-wide">Conformidad</p>
+            <p className="text-[10px] font-black uppercase tracking-wide text-zinc-700">Conformidad</p>
             <p className="text-[10px] leading-relaxed text-zinc-600">
-              La recepciÃ³n de este documento implica conformidad con el trabajo detallado, los pagos registrados y la garantÃ­a informada.
+              La recepción de este documento implica conformidad con el trabajo detallado, los pagos registrados y la garantía informada.
             </p>
           </div>
 

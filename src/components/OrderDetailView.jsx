@@ -130,7 +130,10 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       label: "Trabajos / mano de obra",
       note: "Ganancia del taller",
       total: res.desglose.moCliente,
-      items: (order.tareas || []).map((item) => ({
+      items: (order.tareas || []).map((item, index) => ({
+        type: "tareas",
+        index,
+        raw: item,
         nombre: item.nombre || "Trabajo",
         detalle: item.horasBase ? `${item.horasBase} h` : "",
         total: item.monto || 0,
@@ -140,7 +143,10 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       label: "Repuestos",
       note: "Se cobran al cliente al costo",
       total: res.desglose.repuestosCliente,
-      items: (order.repuestos || []).map((item) => ({
+      items: (order.repuestos || []).map((item, index) => ({
+        type: "repuestos",
+        index,
+        raw: item,
         nombre: item.nombre || "Repuesto",
         detalle: `Cant. ${item.cantidad || 1}`,
         total: (item.monto || 0) * (item.cantidad || 1),
@@ -150,7 +156,10 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       label: "Flete / cadetería",
       note: "Traslados y búsqueda de repuestos",
       total: res.desglose.fletesCliente,
-      items: (order.fletes || []).map((item) => ({
+      items: (order.fletes || []).map((item, index) => ({
+        type: "fletes",
+        index,
+        raw: item,
         nombre: item.nombre || item.descripcion || "Flete / cadetería",
         detalle: "",
         total: item.monto || 0,
@@ -160,7 +169,10 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       label: "Insumos / terceros",
       note: "Gastos cobrados sin ganancia adicional",
       total: res.desglose.insumosCliente,
-      items: (order.insumos || []).map((item) => ({
+      items: (order.insumos || []).map((item, index) => ({
+        type: "insumos",
+        index,
+        raw: item,
         nombre: item.nombre || "Insumo / tercero",
         detalle: `Cant. ${item.cantidad || 1}`,
         total: (item.monto || 0) * (item.cantidad || 1),
@@ -168,6 +180,19 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     },
   ];
   const totalDetallePresupuesto = detallePresupuesto.reduce((sum, item) => sum + item.total, 0);
+  const puedeEditarPresupuesto = !isLocked && ["diagnostico", "presupuesto"].includes(order.estado);
+
+  const editarDetallePresupuesto = (item = null) => {
+    if (item?.type === "tareas") setServiceToEdit?.(item.raw);
+    else setServiceToEdit?.(null);
+    setView("gestionarTareas");
+  };
+
+  const eliminarDetallePresupuesto = (item) => {
+    if (!item?.type || typeof item.index !== "number") return;
+    if (!window.confirm("¿Eliminar este ítem del presupuesto?")) return;
+    eliminarItem(item.type, item.index);
+  };
 
   // Sincronizar datos del cliente cuando cambia
   useEffect(() => {
@@ -233,6 +258,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const mensajeAutoSheet = generarMensajePresupuestoConDatos({
     client,
     bike,
+    tareas: order.tareas || [],
     total: sheetTotalBase,
     min: sheetMinVal,
     max: sheetMaxVal,
@@ -542,7 +568,18 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 <p className="text-[9px] font-black uppercase tracking-widest text-orange-400">Detalle del presupuesto</p>
                 <p className="mt-1 text-[10px] font-bold text-zinc-500">Todo lo cargado debe coincidir con el total.</p>
               </div>
-              <p className="shrink-0 text-lg font-black text-white">{formatMoney(res.total)}</p>
+              <div className="shrink-0 text-right">
+                <p className="text-lg font-black text-white">{formatMoney(res.total)}</p>
+                {puedeEditarPresupuesto && (
+                  <button
+                    type="button"
+                    onClick={() => editarDetallePresupuesto()}
+                    className="mt-2 rounded-full border border-orange-500/30 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-orange-300 active:scale-95"
+                  >
+                    Editar
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -563,6 +600,24 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                           <div className="min-w-0">
                             <p className="truncate font-black uppercase text-zinc-300">{item.nombre}</p>
                             {item.detalle && <p className="font-bold text-zinc-600">{item.detalle}</p>}
+                            {puedeEditarPresupuesto && (
+                              <div className="mt-2 flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => editarDetallePresupuesto(item)}
+                                  className="rounded-full bg-orange-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-orange-300"
+                                >
+                                  Cambiar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => eliminarDetallePresupuesto(item)}
+                                  className="rounded-full bg-red-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-red-300"
+                                >
+                                  Eliminar
+                                </button>
+                              </div>
+                            )}
                           </div>
                           <p className="shrink-0 font-black text-zinc-200">{formatMoney(item.total)}</p>
                         </div>
