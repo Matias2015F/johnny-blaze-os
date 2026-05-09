@@ -583,7 +583,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             </div>
 
             <div className="space-y-3">
-              {detallePresupuesto.map((grupo) => (
+              {detallePresupuesto.filter((grupo) => grupo.total > 0 || grupo.items.length > 0).map((grupo) => (
                 <div key={grupo.label} className="rounded-2xl border border-white/10 bg-black/25 p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
