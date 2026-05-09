@@ -254,6 +254,89 @@ function InsumoConAutocomplete({ insumo, cilindrada, onUpdate, onSelect, onDelet
   );
 }
 
+function FleteConAutocomplete({ flete, onUpdate, onDelete }) {
+  const [busqueda, setBusqueda] = useState(flete.nombre || "");
+  const [sugerencias, setSugerencias] = useState([]);
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+
+  useEffect(() => { setBusqueda(flete.nombre || ""); }, [flete.nombre]);
+
+  const handleBusqueda = (valor) => {
+    setBusqueda(valor);
+    onUpdate("nombre", valor);
+    if (!valor.trim()) { setSugerencias([]); setMostrarSugerencias(false); return; }
+    const r = buscarRepuestosAutocomplete(valor, null, "flete");
+    setSugerencias(r);
+    setMostrarSugerencias(r.length > 0);
+  };
+
+  return (
+    <div className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-3">
+      <div className="relative">
+        <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2">
+          <Search size={14} className="text-zinc-500 flex-shrink-0" />
+          <input
+            className="w-full min-w-0 bg-transparent text-xs font-black uppercase text-white outline-none placeholder:text-zinc-600"
+            placeholder="Ej: Cadetería zona norte..."
+            value={busqueda}
+            onChange={(e) => handleBusqueda(e.target.value)}
+            onBlur={() => setTimeout(() => setMostrarSugerencias(false), 150)}
+            autoComplete="off"
+          />
+        </div>
+        {mostrarSugerencias && sugerencias.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-900 border border-white/10 rounded-xl shadow-xl z-10 max-h-48 overflow-y-auto">
+            {sugerencias.map((item, i) => (
+              <button
+                key={i}
+                onMouseDown={() => {
+                  onUpdate("nombre", item.nombre);
+                  onUpdate("monto", item.precio);
+                  setBusqueda(item.nombre);
+                  setMostrarSugerencias(false);
+                }}
+                className="w-full text-left px-3 py-2 hover:bg-zinc-800 border-b border-white/5 text-[10px] last:border-b-0 active:bg-zinc-700"
+              >
+                <p className="font-black text-white">{item.nombre}</p>
+                <p className="text-zinc-400">{formatMoney(item.precio)} · {item.usos || 0} usos</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 items-end">
+        <div>
+          <p className="text-[9px] font-black text-zinc-300 uppercase mb-1">Monto</p>
+          <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2">
+            <span className="text-[10px] font-black text-zinc-300">$</span>
+            <input
+              type="text" inputMode="numeric"
+              className="w-full min-w-0 bg-transparent text-right text-xs font-black text-purple-400 outline-none"
+              value={flete.monto > 0 ? flete.monto.toLocaleString("es-AR") : ""}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, "");
+                const monto = digits ? Number(digits) : 0;
+                onUpdate("monto", monto);
+                if (monto && flete.nombre) guardarRepuestoHistorial(flete.nombre, monto, null, "flete");
+              }}
+              placeholder="0"
+            />
+          </div>
+        </div>
+        <button onClick={onDelete} className="self-center p-1 text-zinc-500 active:text-red-400">
+          <X size={16} />
+        </button>
+      </div>
+      {flete.monto > 0 && (
+        <div className="flex justify-between items-center border-t border-white/10 pt-2">
+          <p className="text-[9px] font-black text-zinc-300 uppercase">Total flete</p>
+          <p className="text-[11px] font-black text-purple-400">{formatMoney(flete.monto)}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TaskManagerView({ order, setView, showToast, serviceToEdit, setServiceToEdit }) {
   const catalogData = useCollection("catalogoTareas");
   const bikes       = useCollection("motos");
@@ -873,45 +956,15 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
               <p className="text-[10px] text-zinc-400 font-bold text-center py-4 bg-zinc-800/30 rounded-2xl">Sin fletes cargados</p>
             )}
             {editForm.fletes.map((item, idx) => (
-              <div key={idx} className="space-y-3 rounded-[1.5rem] border border-white/10 bg-black/20 p-3">
-                <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2">
-                  <input
-                    type="text"
-                    className="w-full bg-transparent text-xs font-black uppercase text-white outline-none placeholder:text-zinc-600"
-                    placeholder="Concepto (ej: Cadetería zona norte)"
-                    value={item.nombre}
-                    onChange={(e) => {
-                      const updated = editForm.fletes.map((f, i) => i === idx ? { ...f, nombre: e.target.value } : f);
-                      setEditForm({ ...editForm, fletes: updated });
-                    }}
-                  />
-                </div>
-                <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
-                  <div>
-                    <p className="text-[9px] font-black text-zinc-300 uppercase mb-1">Monto total</p>
-                    <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-zinc-950/80 px-3 py-2">
-                      <span className="text-[10px] font-black text-zinc-300">$</span>
-                      <input
-                        type="text" inputMode="numeric"
-                        className="w-full min-w-0 bg-transparent text-right text-xs font-black text-purple-400 outline-none"
-                        placeholder="0"
-                        value={item.monto > 0 ? item.monto.toLocaleString("es-AR") : ""}
-                        onChange={(e) => {
-                          const digits = e.target.value.replace(/\D/g, "");
-                          const monto = digits ? Number(digits) : 0;
-                          const updated = editForm.fletes.map((f, i) => i === idx ? { ...f, monto } : f);
-                          setEditForm({ ...editForm, fletes: updated });
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setEditForm({ ...editForm, fletes: editForm.fletes.filter((_, i) => i !== idx) })}
-                    className="self-center p-1 text-zinc-500 hover:text-red-400 transition-colors">
-                    <X size={16} />
-                  </button>
-                </div>
-              </div>
+              <FleteConAutocomplete
+                key={idx}
+                flete={item}
+                onUpdate={(field, value) => {
+                  const updated = editForm.fletes.map((f, i) => i === idx ? { ...f, [field]: value } : f);
+                  setEditForm({ ...editForm, fletes: updated });
+                }}
+                onDelete={() => setEditForm({ ...editForm, fletes: editForm.fletes.filter((_, i) => i !== idx) })}
+              />
             ))}
             {editForm.fletes.length > 0 && stats.flePrecio > 0 && (
               <div className="flex justify-between border-t border-white/10 px-1 pt-2 text-[10px] font-black">
