@@ -45,6 +45,34 @@ function clonarLista(items = []) {
   return items.map((item) => ({ ...item }));
 }
 
+const SECCION_POR_TIPO = {
+  tareas: "servicio",
+  repuestos: "repuestos",
+  insumos: "insumos",
+  fletes: "fletes",
+};
+
+function limpiarMateriales(items = []) {
+  return (items || [])
+    .map((item) => ({
+      ...item,
+      nombre: String(item.nombre || item.descripcion || "").trim(),
+      cantidad: Math.max(1, Number(item.cantidad || 1)),
+      monto: Number(item.monto || 0),
+    }))
+    .filter((item) => item.nombre && item.monto > 0);
+}
+
+function limpiarFletes(items = []) {
+  return (items || [])
+    .map((item) => ({
+      ...item,
+      nombre: String(item.nombre || item.descripcion || "").trim(),
+      monto: Number(item.monto || 0),
+    }))
+    .filter((item) => item.nombre && item.monto > 0);
+}
+
 function AccordionSection({ titulo, numero, completo, activo, onClick, children }) {
   return (
     <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900/50 overflow-hidden">
@@ -355,6 +383,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   const [sugerencia, setSugerencia] = useState(null);
   const [margenPct, setMargenPct] = useState(defaultMargen);
   const [customMode, setCustomMode] = useState(false);
+  const modoEdicion = serviceToEdit?._editType || null;
 
   // Próximo control
   const [proximoTipo, setProximoTipo] = useState(order.proximoControl?.tipo || null);
@@ -380,20 +409,37 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   // Cargar datos de tarea existente al editar — FIX: incluye repuestos e insumos guardados
   useEffect(() => {
     if (serviceToEdit) {
+      const tipoEdicion = serviceToEdit._editType || "tareas";
+      setSeccionActiva(SECCION_POR_TIPO[tipoEdicion] || "servicio");
+
+      if (tipoEdicion !== "tareas") {
+        setSugerencia(null);
+        setEditForm({
+          nombre: "",
+          horasBase: 1,
+          dificultad: "normal",
+          repuestos: tipoEdicion === "repuestos" ? clonarLista(order.repuestos || []) : [],
+          insumos: tipoEdicion === "insumos" ? clonarLista(order.insumos || []) : [],
+          fletes: clonarLista(order.fletes || []),
+          observacionesProxima: order.observacionesProxima || "",
+        });
+        return;
+      }
+
       const apr = obtenerAprendizaje(serviceToEdit.nombre, bike.cilindrada);
       setSugerencia(apr ? { apr, confianza: evaluarConfianza(apr) } : null);
       setEditForm({
         nombre: serviceToEdit.nombre,
         horasBase: serviceToEdit.horasBase || 1,
         dificultad: serviceToEdit.dificultad || "normal",
-        repuestos: serviceToEdit.repuestos || [],
-        insumos: serviceToEdit.insumos || [],
-        fletes: order.fletes || [],
+        repuestos: clonarLista(serviceToEdit.repuestos || []),
+        insumos: clonarLista(serviceToEdit.insumos || []),
+        fletes: clonarLista(order.fletes || []),
         observacionesProxima: serviceToEdit.observacionesProxima || order.observacionesProxima || "",
       });
       setMargenPct(serviceToEdit.margenPct ?? defaultMargen);
     }
-  }, [serviceToEdit]);
+  }, [serviceToEdit, order.fletes, order.insumos, order.observacionesProxima, order.repuestos, bike.cilindrada, defaultMargen]);
 
   // Auto-detectar próximo control desde observaciones
   useEffect(() => {
@@ -548,6 +594,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   };
 
   const completoServicio = () => editForm.nombre.trim().length > 0;
+  const toggleSeccion = (seccion) => setSeccionActiva(actual => actual === seccion ? null : seccion);
 
   const abrirSiguiente = (seccionActual) => {
     if (seccionActual === "servicio" && completoServicio()) setSeccionActiva("repuestos");
@@ -657,39 +704,89 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
   const aplicar = () => {
     const nombreTarea = editForm.nombre.trim();
-    if (!nombreTarea) { showToast("¡Falta el nombre!"); return; }
-
-    const tareaId = nombreTarea.toLowerCase();
-    const repuestosGuardados = editForm.repuestos.map(r => ({ ...r, _tareaId: tareaId }));
-    const insumosGuardados = editForm.insumos.map(i => ({ ...i, _tareaId: tareaId }));
-
-    const datosTarea = {
-      nombre: nombreTarea,
-      monto: stats.moPrecio,
-      horasBase: editForm.horasBase,
-      dificultad: editForm.dificultad,
-      horasReal: editForm.horasBase,
-      repuestos: editForm.repuestos,
-      insumos: editForm.insumos,
-      margenPct,
-    };
-
-    const idx = (order.tareas || []).findIndex(t => t.nombre.trim().toLowerCase() === tareaId);
     let nuevasTareas = [...(order.tareas || [])];
-    if (idx !== -1) { nuevasTareas[idx] = datosTarea; showToast("Actualizado ✓"); }
-    else            { nuevasTareas.push(datosTarea);  showToast("Agregado ✓"); }
+    let nuevosRepuestos = [...(order.repuestos || [])];
+    let nuevosInsumos = [...(order.insumos || [])];
+    const repuestosLimpios = limpiarMateriales(editForm.repuestos);
+    const insumosLimpios = limpiarMateriales(editForm.insumos);
+    const fletesLimpios = limpiarFletes(editForm.fletes);
+    const hayServicio = nombreTarea.length > 0;
+    const hayParcial = repuestosLimpios.length > 0 || insumosLimpios.length > 0 || fletesLimpios.length > 0 || !!editForm.observacionesProxima?.trim() || !!proximoTipo;
+    let mensajeGuardado = "Presupuesto actualizado ✓";
 
-    const prevRepuestos = (order.repuestos || []).filter(r => r._tareaId !== tareaId);
-    const prevInsumos   = (order.insumos   || []).filter(i => i._tareaId !== tareaId);
-    const nuevosRepuestos = [...prevRepuestos, ...repuestosGuardados];
-    const nuevosInsumos   = [...prevInsumos,   ...insumosGuardados];
+    if (!hayServicio && !hayParcial) {
+      showToast("No hay cambios para guardar");
+      return;
+    }
 
-    const nTotal = calcularNuevoTotal(nuevasTareas, nuevosRepuestos, editForm.fletes, nuevosInsumos);
+    if (hayServicio) {
+      const tareaId = nombreTarea.toLowerCase();
+      const tareaOriginalId = (serviceToEdit?.nombre || nombreTarea).trim().toLowerCase();
+      const repuestosGuardados = repuestosLimpios.map(r => ({ ...r, _tareaId: tareaId }));
+      const insumosGuardados = insumosLimpios.map(i => ({ ...i, _tareaId: tareaId }));
+
+      const datosTarea = {
+        nombre: nombreTarea,
+        monto: stats.moPrecio,
+        horasBase: editForm.horasBase,
+        dificultad: editForm.dificultad,
+        horasReal: editForm.horasBase,
+        repuestos: repuestosLimpios,
+        insumos: insumosLimpios,
+        margenPct,
+      };
+
+      const idxPorMeta = typeof serviceToEdit?._editIndex === "number" ? serviceToEdit._editIndex : -1;
+      const idx = idxPorMeta >= 0
+        ? idxPorMeta
+        : nuevasTareas.findIndex(t => t.nombre.trim().toLowerCase() === tareaOriginalId || t.nombre.trim().toLowerCase() === tareaId);
+
+      if (idx !== -1) { nuevasTareas[idx] = datosTarea; mensajeGuardado = "Trabajo actualizado ✓"; }
+      else            { nuevasTareas.push(datosTarea);  mensajeGuardado = "Trabajo agregado ✓"; }
+
+      nuevosRepuestos = nuevosRepuestos.filter(r => ![tareaOriginalId, tareaId].includes((r._tareaId || "").trim().toLowerCase()));
+      nuevosInsumos = nuevosInsumos.filter(i => ![tareaOriginalId, tareaId].includes((i._tareaId || "").trim().toLowerCase()));
+      nuevosRepuestos = [...nuevosRepuestos, ...repuestosGuardados];
+      nuevosInsumos = [...nuevosInsumos, ...insumosGuardados];
+
+      // Catálogo: solo datos del servicio
+      const existente = catalogData.find(s => s.nombre.trim().toLowerCase() === tareaId);
+      const idCat = existente?.id || generateId();
+      LS.setDoc("catalogoTareas", idCat, {
+        id: idCat,
+        nombre: nombreTarea,
+        marca: bike.marca || "",
+        modelo: bike.modelo || "",
+        cilindrada: bike.cilindrada || "",
+        horasBase: editForm.horasBase,
+        dificultad: editForm.dificultad,
+        margenPct,
+        repuestos: repuestosLimpios,
+        insumos: insumosLimpios,
+        observacionesProxima: editForm.observacionesProxima || "",
+        proximoControl: proximoTipo && proximoValor
+          ? {
+              tipo: proximoTipo,
+              unidad: proximoUnidad,
+              valorObjetivo: proximoValor,
+              descripcion: proximoTipo === "otro" ? proximoDesc : (TIPOS_SERVICIO[proximoTipo] || proximoTipo),
+            }
+          : null,
+      });
+    } else {
+      if (modoEdicion === "repuestos") nuevosRepuestos = repuestosLimpios;
+      else if (repuestosLimpios.length) nuevosRepuestos = [...nuevosRepuestos, ...repuestosLimpios.map(r => ({ ...r, _tareaId: "" }))];
+
+      if (modoEdicion === "insumos") nuevosInsumos = insumosLimpios;
+      else if (insumosLimpios.length) nuevosInsumos = [...nuevosInsumos, ...insumosLimpios.map(i => ({ ...i, _tareaId: "" }))];
+    }
+
+    const nTotal = calcularNuevoTotal(nuevasTareas, nuevosRepuestos, fletesLimpios, nuevosInsumos);
     LS.updateDoc("trabajos", order.id, {
       tareas: nuevasTareas,
       repuestos: nuevosRepuestos,
       insumos: nuevosInsumos,
-      fletes: editForm.fletes,
+      fletes: fletesLimpios,
       total: nTotal,
       observacionesProxima: editForm.observacionesProxima || order.observacionesProxima,
     });
@@ -698,31 +795,6 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     if (proximoTipo && proximoValor) {
       guardarProximoControl();
     }
-
-    // Catálogo: solo datos del servicio
-    const existente = catalogData.find(s => s.nombre.trim().toLowerCase() === tareaId);
-    const idCat = existente?.id || generateId();
-    LS.setDoc("catalogoTareas", idCat, {
-      id: idCat,
-      nombre: nombreTarea,
-      marca: bike.marca || "",
-      modelo: bike.modelo || "",
-      cilindrada: bike.cilindrada || "",
-      horasBase: editForm.horasBase,
-      dificultad: editForm.dificultad,
-      margenPct,
-      repuestos: editForm.repuestos,
-      insumos: editForm.insumos,
-      observacionesProxima: editForm.observacionesProxima || "",
-      proximoControl: proximoTipo && proximoValor
-        ? {
-            tipo: proximoTipo,
-            unidad: proximoUnidad,
-            valorObjetivo: proximoValor,
-            descripcion: proximoTipo === "otro" ? proximoDesc : (TIPOS_SERVICIO[proximoTipo] || proximoTipo),
-          }
-        : null,
-    });
 
     trackEvent("guardar_trabajo", {
       screen: "gestionarTareas",
@@ -736,6 +808,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
       },
     }).catch(console.error);
 
+    showToast(mensajeGuardado);
     setServiceToEdit(null);
     setView("detalleOrden");
   };
@@ -760,7 +833,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           titulo="Servicio"
           completo={completoServicio()}
           activo={seccionActiva === "servicio"}
-          onClick={() => setSeccionActiva("servicio")}
+          onClick={() => toggleSeccion("servicio")}
         >
           <div className="space-y-3">
             <div className="space-y-1">
@@ -826,10 +899,16 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
             </div>
 
             {completoServicio() && (
-              <button onClick={() => abrirSiguiente("servicio")}
-                className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
-                Siguiente → Repuestos
-              </button>
+              <div className="grid grid-cols-1 gap-2">
+                <button onClick={() => abrirSiguiente("servicio")}
+                  className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
+                  Siguiente → Repuestos
+                </button>
+                <button onClick={aplicar}
+                  className="w-full rounded-2xl border border-green-500/40 bg-green-500/10 py-4 text-[10px] font-black uppercase tracking-widest text-green-300 active:scale-95 transition-all">
+                  ✓ Guardar y volver
+                </button>
+              </div>
             )}
           </div>
         </AccordionSection>
@@ -840,7 +919,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           titulo="Repuestos"
           completo={editForm.repuestos.length > 0}
           activo={seccionActiva === "repuestos"}
-          onClick={() => setSeccionActiva("repuestos")}
+          onClick={() => toggleSeccion("repuestos")}
         >
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -876,10 +955,16 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 <span className="text-orange-400">{formatMoney(stats.repPrecio)}</span>
               </div>
             )}
-            <button onClick={() => abrirSiguiente("repuestos")}
-              className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
-              Siguiente → Insumos
-            </button>
+            <div className="grid grid-cols-1 gap-2">
+              <button onClick={() => abrirSiguiente("repuestos")}
+                className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
+                Siguiente → Insumos
+              </button>
+              <button onClick={aplicar}
+                className="w-full rounded-2xl border border-green-500/40 bg-green-500/10 py-4 text-[10px] font-black uppercase tracking-widest text-green-300 active:scale-95 transition-all">
+                ✓ Guardar y volver
+              </button>
+            </div>
           </div>
         </AccordionSection>
 
@@ -889,7 +974,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           titulo="Insumos / Servicios Externos"
           completo={editForm.insumos.length > 0}
           activo={seccionActiva === "insumos"}
-          onClick={() => setSeccionActiva("insumos")}
+          onClick={() => toggleSeccion("insumos")}
         >
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -925,10 +1010,16 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 <span className="text-orange-400">{formatMoney(stats.insPrecio)}</span>
               </div>
             )}
-            <button onClick={() => abrirSiguiente("insumos")}
-              className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
-              Siguiente → Flete
-            </button>
+            <div className="grid grid-cols-1 gap-2">
+              <button onClick={() => abrirSiguiente("insumos")}
+                className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
+                Siguiente → Flete
+              </button>
+              <button onClick={aplicar}
+                className="w-full rounded-2xl border border-green-500/40 bg-green-500/10 py-4 text-[10px] font-black uppercase tracking-widest text-green-300 active:scale-95 transition-all">
+                ✓ Guardar y volver
+              </button>
+            </div>
           </div>
         </AccordionSection>
 
@@ -938,7 +1029,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           titulo="Flete / Cadetería"
           completo={editForm.fletes.length > 0}
           activo={seccionActiva === "fletes"}
-          onClick={() => setSeccionActiva("fletes")}
+          onClick={() => toggleSeccion("fletes")}
         >
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -972,10 +1063,16 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
                 <span className="text-purple-400">{formatMoney(stats.flePrecio)}</span>
               </div>
             )}
-            <button onClick={() => abrirSiguiente("fletes")}
-              className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
-              Siguiente → Observaciones
-            </button>
+            <div className="grid grid-cols-1 gap-2">
+              <button onClick={() => abrirSiguiente("fletes")}
+                className="w-full bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-sm active:scale-95 transition-all">
+                Siguiente → Observaciones
+              </button>
+              <button onClick={aplicar}
+                className="w-full rounded-2xl border border-green-500/40 bg-green-500/10 py-4 text-[10px] font-black uppercase tracking-widest text-green-300 active:scale-95 transition-all">
+                ✓ Guardar y volver
+              </button>
+            </div>
           </div>
         </AccordionSection>
 
@@ -985,7 +1082,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
           titulo="Observaciones y Próximo Control"
           completo={editForm.observacionesProxima.trim().length > 0 || !!proximoTipo}
           activo={seccionActiva === "observaciones"}
-          onClick={() => setSeccionActiva("observaciones")}
+          onClick={() => toggleSeccion("observaciones")}
         >
           <div className="space-y-4">
             <div className="space-y-1">
@@ -1121,7 +1218,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
             <button onClick={aplicar}
               className="w-full rounded-[2rem] bg-green-600 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-white shadow-xl transition-all active:scale-95">
-              ✓ Guardar y Cerrar
+              ✓ Guardar y volver
             </button>
           </div>
         </AccordionSection>
@@ -1130,4 +1227,3 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     </div>
   );
 }
-

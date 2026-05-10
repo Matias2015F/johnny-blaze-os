@@ -321,7 +321,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
   const editarDetallePresupuesto = (item = null) => {
     if (!item) { setServiceToEdit?.(null); setView("gestionarTareas"); return; }
-    if (item.type === "tareas") { setServiceToEdit?.(item.raw); setView("gestionarTareas"); return; }
+    if (item.type === "tareas") { setServiceToEdit?.({ ...item.raw, _editType: "tareas", _editIndex: item.index }); setView("gestionarTareas"); return; }
     // Edición parcial inline para repuesto / flete / insumo
     setEditandoItem({ type: item.type, index: item.index, data: { ...item.raw } });
   };
