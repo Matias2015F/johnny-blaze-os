@@ -270,10 +270,10 @@ export default function TallerPanel() {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
     migrateRenamedCollections(uid)
-      .then((n) => { if (n > 0) showToast(`Estructura actualizada (${n} registros migrados) ?`); })
+      .then((n) => { if (n > 0) showToast(`Estructura actualizada (${n} registros migrados)`); })
       .catch(console.error);
     migrateFromLocalStorage(uid)
-      .then((n) => { if (n > 0) showToast(`Datos sincronizados (${n} registros) ?`); })
+      .then((n) => { if (n > 0) showToast(`Datos sincronizados (${n} registros)`); })
       .catch(console.error);
     autoCloudBackup(uid).catch(console.error);
   }, []);
@@ -395,8 +395,8 @@ export default function TallerPanel() {
   const loadDemoData = () => {
     const hoy = hoyEstable();
 
-    // Moto 1 � Juan Garc�a / Honda Wave 110
-    const c1 = LS.addDoc("clientes", { nombre: "Juan Garc�a", tel: "3434123456", telefono: "3434123456", whatsapp: "3434123456", etiquetas: [], activo: true, createdAt: Date.now() });
+    // Moto 1 — Juan García / Honda Wave 110
+    const c1 = LS.addDoc("clientes", { nombre: "Juan García", tel: "3434123456", telefono: "3434123456", whatsapp: "3434123456", etiquetas: [], activo: true, createdAt: Date.now() });
     const b1 = LS.addDoc("motos", { patente: "ABC123", patenteNormalizada: "ABC123", marca: "Honda", modelo: "Wave 110", cilindrada: 110, km: 15400, kilometrajeActual: 15400, estado: "activa", clienteId: c1.id, ultimaVisita: hoy, proximoService: 17500, createdAt: Date.now() });
     LS.addDoc("titularidades", { clienteId: c1.id, motoId: b1.id, fechaDesde: hoy, fechaHasta: null, titularActual: true, createdAt: Date.now() });
     LS.addDoc("trabajos", {
@@ -407,14 +407,14 @@ export default function TallerPanel() {
       tareas: [{ nombre: "Cambio de aceite y filtro", monto: 18000, horasBase: 0.5 }],
       repuestos: [{ nombre: "Aceite 10W40", monto: 12000, cantidad: 1 }, { nombre: "Filtro de aceite", monto: 8000, cantidad: 1 }],
       insumos: [], fletes: [], km: 15400, kmIngreso: 15400, kmEntrega: null,
-      motivoIngreso: "Service peri�dico y revisi�n general.",
-      diagnostico: "Service peri�dico y revisi�n general.",
-      observacionesProxima: "Pr�ximo service a los 17500 km.",
+      motivoIngreso: "Service periódico y revisión general.",
+      diagnostico: "Service periódico y revisión general.",
+      observacionesProxima: "Próximo service a los 17500 km.",
       pdfEntregado: false, createdAt: Date.now(),
     });
 
-    // Moto 2 � Mar�a L�pez / Yamaha FZ 16
-    const c2 = LS.addDoc("clientes", { nombre: "Mar�a L�pez", tel: "3434654321", telefono: "3434654321", whatsapp: "3434654321", etiquetas: [], activo: true, createdAt: Date.now() });
+    // Moto 2 — María López / Yamaha FZ 16
+    const c2 = LS.addDoc("clientes", { nombre: "María López", tel: "3434654321", telefono: "3434654321", whatsapp: "3434654321", etiquetas: [], activo: true, createdAt: Date.now() });
     const b2 = LS.addDoc("motos", { patente: "XYZ789", patenteNormalizada: "XYZ789", marca: "Yamaha", modelo: "FZ 16", cilindrada: 160, km: 8920, kilometrajeActual: 8920, estado: "activa", clienteId: c2.id, ultimaVisita: hoy, proximoService: 11000, createdAt: Date.now() });
     LS.addDoc("titularidades", { clienteId: c2.id, motoId: b2.id, fechaDesde: hoy, fechaHasta: null, titularActual: true, createdAt: Date.now() });
     LS.addDoc("trabajos", {
@@ -429,11 +429,11 @@ export default function TallerPanel() {
       pdfEntregado: false, createdAt: Date.now(),
     });
 
-    showToast("Demo cargado ?");
+    showToast("Demo cargado OK");
   };
 
   const clearAllData = () => {
-    showConfirm("�Borrar todos los datos? Esta accion no se puede deshacer.", async () => {
+    showConfirm("¿Borrar todos los datos? Esta acción no se puede deshacer.", async () => {
       const uid = auth.currentUser?.uid;
       if (uid) await clearFirestoreData(uid);
       localStorage.removeItem("jbos_fs_migrated_v1");
@@ -778,7 +778,7 @@ export default function TallerPanel() {
             <DollarSign size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Pagos</span>
           </button>
           <button onClick={() => setView("config")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "config" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-zinc-500 hover:text-zinc-300"}`}>
-            <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">M�s</span>
+            <Settings size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Más</span>
           </button>
         </nav>
       )}

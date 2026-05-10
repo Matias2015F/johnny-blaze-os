@@ -1164,6 +1164,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
   const [loadingBackups, setLoadingBackups] = React.useState(false);
   const [guardandoBkp, setGuardandoBkp] = React.useState(false);
   const [restaurando, setRestaurando] = React.useState(null);
+  const [confirmDatos, setConfirmDatos] = React.useState(null);
 
   const cargarBackups = async () => {
     setLoadingBackups(true);
@@ -1192,19 +1193,23 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
     }
   };
 
-  const handleRestaurarNube = async (backupId, fecha) => {
-    if (!window.confirm(`¿Restaurar la copia del ${new Date(fecha).toLocaleString("es-AR")}?\n\nEsto reemplaza todos los datos actuales.`)) return;
-    setRestaurando(backupId);
-    try {
-      const uid = auth.currentUser?.uid;
-      const n = await restoreCloudBackup(uid, backupId);
-      showToast(`Restaurado: ${n} registros recuperados OK`);
-      setTimeout(() => window.location.reload(), 1500);
-    } catch (e) {
-      showToast("Error al restaurar: " + e.message);
-    } finally {
-      setRestaurando(null);
-    }
+  const handleRestaurarNube = (backupId, fecha) => {
+    setConfirmDatos({
+      mensaje: `¿Restaurar la copia del ${new Date(fecha).toLocaleString("es-AR")}? Esto reemplaza todos los datos actuales.`,
+      onOk: async () => {
+        setRestaurando(backupId);
+        try {
+          const uid = auth.currentUser?.uid;
+          const n = await restoreCloudBackup(uid, backupId);
+          showToast(`Restaurado: ${n} registros recuperados OK`);
+          setTimeout(() => window.location.reload(), 1500);
+        } catch (e) {
+          showToast("Error al restaurar: " + e.message);
+        } finally {
+          setRestaurando(null);
+        }
+      },
+    });
   };
 
   React.useEffect(() => { cargarBackups(); }, []);
@@ -1340,6 +1345,28 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
           </div>
         )}
       </Card>
+
+      {confirmDatos && (
+        <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-6">
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm space-y-4 shadow-2xl">
+            <p className="text-zinc-900 font-black text-sm text-center leading-relaxed">{confirmDatos.mensaje}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setConfirmDatos(null)}
+                className="bg-zinc-100 text-zinc-700 py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { confirmDatos.onOk(); setConfirmDatos(null); }}
+                className="bg-orange-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95"
+              >
+                Restaurar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

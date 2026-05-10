@@ -193,6 +193,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const [sheetMin, setSheetMin] = useState("");
   const [sheetMax, setSheetMax] = useState("");
   const [editandoItem, setEditandoItem] = useState(null); // { type, index, data }
+  const [localConfirm, setLocalConfirm] = useState(null); // { mensaje, onOk }
 
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
 
@@ -343,8 +344,10 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
   const eliminarDetallePresupuesto = (item) => {
     if (!item?.type || typeof item.index !== "number") return;
-    if (!window.confirm("¿Eliminar este ítem del presupuesto?")) return;
-    eliminarItem(item.type, item.index);
+    setLocalConfirm({
+      mensaje: `¿Eliminar "${item.nombre}" del presupuesto?`,
+      onOk: () => eliminarItem(item.type, item.index),
+    });
   };
 
   // Sincronizar datos del cliente cuando cambia
@@ -786,6 +789,12 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 <p className="text-[10px] font-black uppercase tracking-widest text-orange-200">Total calculado</p>
                 <p className="text-lg font-black text-orange-200">{formatMoney(totalDetallePresupuesto)}</p>
               </div>
+              {res.margen > 0 && (
+                <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-500/20 pt-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Ganancia estimada</p>
+                  <p className="text-sm font-black text-emerald-300">{formatMoney(res.margen)}</p>
+                </div>
+              )}
               <div className="mt-2 flex items-center justify-between gap-3 border-t border-orange-500/20 pt-2">
                 <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">
                   {saldoPendiente > 0 ? "Falta cobrar" : "Cobrado"}
@@ -966,6 +975,28 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 </button>
               </div>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {localConfirm && (
+        <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-6">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-[2rem] p-6 w-full max-w-sm space-y-4">
+            <p className="text-white font-black text-sm text-center leading-relaxed">{localConfirm.mensaje}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setLocalConfirm(null)}
+                className="bg-zinc-800 text-zinc-300 py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { localConfirm.onOk(); setLocalConfirm(null); }}
+                className="bg-red-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all"
+              >
+                Eliminar
+              </button>
             </div>
           </div>
         </div>
