@@ -148,7 +148,7 @@ function StatBox({ label, value, color = "text-zinc-800" }) {
   );
 }
 
-function PantallaAdmin({ showToast }) {
+function PantallaAdmin({ showToast, scrollRef }) {
   const [loading, setLoading] = React.useState(true);
   const [adminTab, setAdminTab] = React.useState("dashboard");
   const [account, setAccount] = React.useState(null);
@@ -179,7 +179,7 @@ function PantallaAdmin({ showToast }) {
 
       const results = await Promise.allSettled([
         getDocs(collection(db, "usuarios")),
-        getDocs(collection(db, "billingInvoices")),
+        getDocs(collectionGroup(db, "billingInvoices")),
         getDocs(collection(db, "soporteTickets")),
       ]);
 
@@ -240,18 +240,16 @@ function PantallaAdmin({ showToast }) {
         plan: a.currentPlanKey || a.plan || "base",
         status: "approved",
       }));
-    const pagosDesdeInvoices = invoices
-      .filter(inv => inv.status === "approved")
-      .map(inv => ({
-        id: inv.id,
-        uid: inv.uid || "",
-        email: inv.email || "",
-        monto: Number(inv.amountPaid || inv.amount || 0),
-        fecha: Number(inv.paidAt || inv.createdAt || 0),
-        paymentId: inv.mpPaymentId || inv.id,
-        plan: inv.planKey || "base",
-        status: "approved",
-      }));
+    const pagosDesdeInvoices = invoices.map(inv => ({
+      id: inv.id,
+      uid: inv.uid || "",
+      email: inv.email || "",
+      monto: Number(inv.monto || inv.amountPaid || inv.amount || 0),
+      fecha: Number(inv.fecha || inv.paidAt || inv.createdAt || 0),
+      paymentId: inv.paymentId || inv.mpPaymentId || inv.id,
+      plan: inv.plan || inv.planKey || "base",
+      status: "approved",
+    }));
     // Deduplicar por paymentId
     const seen = new Set();
     const todosPagos = [...pagosDesdeAccounts, ...pagosDesdeInvoices]
@@ -375,24 +373,31 @@ function PantallaAdmin({ showToast }) {
     : filterEstado === "vencidos" ? accounts.filter(a => ["vencido","suspendido"].includes(a.estado))
     : accounts;
 
+  const switchAdminTab = (id) => {
+    setAdminTab(id);
+    scrollRef?.current?.scrollTo({ top: 0 });
+  };
+
   return (
     <div>
-      {/* Sub-navegación */}
-      <div className="flex flex-wrap gap-2 pb-3 mb-4 -mx-1">
-        {ADMIN_TABS.map(t => (
-          <button key={t.id} onClick={() => setAdminTab(t.id)}
-            className={`shrink-0 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-              adminTab === t.id ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-500 active:scale-95"
-            }`}
-          >
-            {t.label}
-            {t.id === "consultas" && (stats.pedidosPendientes + stats.reclamosPendientes) > 0 && (
-              <span className="ml-1.5 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[8px]">
-                {stats.pedidosPendientes + stats.reclamosPendientes}
-              </span>
-            )}
-          </button>
-        ))}
+      {/* Sub-navegación — sticky */}
+      <div className="sticky top-0 z-10 -mx-4 px-4 py-3 mb-4 bg-zinc-950/95 backdrop-blur-sm border-b border-white/5">
+        <div className="flex gap-2 overflow-x-auto">
+          {ADMIN_TABS.map(t => (
+            <button key={t.id} onClick={() => switchAdminTab(t.id)}
+              className={`shrink-0 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                adminTab === t.id ? "bg-white text-zinc-900" : "bg-zinc-800 text-zinc-400 active:scale-95"
+              }`}
+            >
+              {t.label}
+              {t.id === "consultas" && (stats.pedidosPendientes + stats.reclamosPendientes) > 0 && (
+                <span className="ml-1.5 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[8px]">
+                  {stats.pedidosPendientes + stats.reclamosPendientes}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* -- DASHBOARD -- */}
@@ -610,8 +615,8 @@ function PantallaAdmin({ showToast }) {
       {/* -- USUARIOS -- */}
       {adminTab === "usuarios" && (
         <div className="space-y-4">
-          {/* Filtros */}
-          <div className="flex gap-2 overflow-x-auto -mx-1">
+          {/* Filtros — sticky debajo de la sub-nav */}
+          <div className="sticky top-[53px] z-[9] -mx-4 px-4 py-2 bg-zinc-950/95 backdrop-blur-sm border-b border-white/5 flex gap-2 overflow-x-auto">
             {[
               { id: "todos", label: `Todos (${stats.total})` },
               { id: "activos", label: `Activos (${stats.activos})` },
@@ -621,7 +626,7 @@ function PantallaAdmin({ showToast }) {
               <button
                 key={f.id}
                 onClick={() => setFilterEstado(f.id)}
-                className={`shrink-0 px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest ${filterEstado === f.id ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-500"}`}
+                className={`shrink-0 px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest ${filterEstado === f.id ? "bg-white text-zinc-900" : "bg-zinc-800 text-zinc-400"}`}
               >
                 {f.label}
               </button>
@@ -2257,6 +2262,7 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
   const [cfg, setCfg] = useState(() => LS.getDoc("config", "global") || CONFIG_DEFAULT);
   const [bkpEstado, setBkpEstado] = useState(() => estadoBackup());
   const fileInputRef = useRef(null);
+  const scrollRef = useRef(null);
   const caja = useCollection("caja");
   const canSeeAdminTab =
     PLATFORM_ADMIN_EMAILS.includes((auth.currentUser?.email || "").toLowerCase()) ||
@@ -2265,6 +2271,7 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
 
   useEffect(() => {
     window.localStorage.setItem("jbos_config_tab", activeTab);
+    scrollRef.current?.scrollTo({ top: 0 });
   }, [activeTab]);
 
   const handleRestaurarArchivo = (e) => {
@@ -2300,7 +2307,7 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
       case "taller":  return <PantallaTaller cfg={cfg} setCfg={setCfg} showToast={showToast} />;
       case "datos":   return <PantallaDatos orders={orders} bikes={bikes} clients={clients} cfg={cfg} showToast={showToast} bkpEstado={bkpEstado} setBkpEstado={setBkpEstado} fileInputRef={fileInputRef} handleRestaurarArchivo={handleRestaurarArchivo} handleRestaurarAuto={handleRestaurarAuto} />;
       case "sistema": return <PantallaSistema loadDemoData={loadDemoData} clearAllData={clearAllData} handleLogout={handleLogout} showToast={showToast} cfg={cfg} setCfg={setCfg} />;
-      case "admin":   return <PantallaAdmin showToast={showToast} />;
+      case "admin":   return <PantallaAdmin showToast={showToast} scrollRef={scrollRef} />;
       default: return null;
     }
   };
@@ -2335,7 +2342,7 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-28 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 pb-28 space-y-4">
         {renderContent()}
       </div>
     </div>

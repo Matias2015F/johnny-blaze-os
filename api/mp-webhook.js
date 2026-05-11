@@ -100,6 +100,7 @@ module.exports = async function handler(req, res) {
 
     // Registrar en historial de facturas
     await userRef.collection("billingInvoices").add({
+      uid,
       paymentId: String(paymentId),
       plan: nuevoPlan,
       monto: Number(payment.transaction_amount || 0),

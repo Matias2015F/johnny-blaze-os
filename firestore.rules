@@ -12,8 +12,8 @@ service cloud.firestore {
     function isPlatformAdmin() {
       return signedIn() &&
         (
-          request.auth.uid == "123456789" ||
-          request.auth.token.email == "fefe@gmail.com"
+          request.auth.uid == "TNwwuKJsIXN29zJg8HWfORawdFm1" ||
+          request.auth.token.email == "matias4604@gmail.com"
         );
     }
 
@@ -77,6 +77,11 @@ service cloud.firestore {
 
     match /usuarios/{uid} {
       allow read, write: if isOwner(uid) || isPlatformAdmin();
+    }
+
+    match /usuarios/{uid}/billingInvoices/{invoiceId} {
+      allow read: if isPlatformAdmin() || isOwner(uid);
+      allow create, update, delete: if isPlatformAdmin();
     }
 
     // Lectura temporal para migración legacy
