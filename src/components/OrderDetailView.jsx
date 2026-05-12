@@ -540,6 +540,31 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     showToast(`Aprobado: ${formatMoney(max)} OK`);
   };
 
+  const canApprove = !isLocked && ["aprobacion", "reparacion", "finalizada"].includes(order.estado);
+
+  const toggleAprobacion = (tipo, index, nuevo) => {
+    const lista = [...(order[tipo] || [])];
+    const actual = lista[index]?.aprobacion;
+    lista[index] = { ...lista[index], aprobacion: actual === nuevo ? "pendiente" : nuevo };
+    const tareas    = tipo === "tareas"    ? lista : order.tareas    || [];
+    const repuestos = tipo === "repuestos" ? lista : order.repuestos || [];
+    const fletes    = tipo === "fletes"    ? lista : order.fletes    || [];
+    const insumos   = tipo === "insumos"   ? lista : order.insumos   || [];
+    const nTotal = calcularNuevoTotal(tareas, repuestos, fletes, insumos);
+    LS.updateDoc("trabajos", order.id, { [tipo]: lista, total: nTotal });
+  };
+
+  const aprobarTodo = () => {
+    const apAll = lista => (lista || []).map(x => ({ ...x, aprobacion: "aprobado" }));
+    const tareas    = apAll(order.tareas);
+    const repuestos = apAll(order.repuestos);
+    const fletes    = apAll(order.fletes);
+    const insumos   = apAll(order.insumos);
+    const nTotal = calcularNuevoTotal(tareas, repuestos, fletes, insumos);
+    LS.updateDoc("trabajos", order.id, { tareas, repuestos, fletes, insumos, total: nTotal });
+    showToast("Todo aprobado ✓");
+  };
+
   const handleDiagStart = () => LS.updateDoc("trabajos", order.id, iniciarDiag(order));
   const handleDiagPause = () => LS.updateDoc("trabajos", order.id, pausarDiag(order));
   const handleDiagCargar = () => {
@@ -795,15 +820,18 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 <p className="text-[9px] font-black uppercase tracking-widest text-orange-400">Detalle del presupuesto</p>
                 <p className="mt-1 text-[10px] font-bold text-zinc-500">Todo lo cargado debe coincidir con el total.</p>
               </div>
-              <div className="shrink-0 text-right">
+              <div className="shrink-0 text-right space-y-1">
                 <p className="text-lg font-black text-white">{formatMoney(res.total)}</p>
                 {puedeEditarPresupuesto && (
-                  <button
-                    type="button"
-                    onClick={() => editarDetallePresupuesto()}
-                    className="mt-2 rounded-full border border-orange-500/30 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-orange-300 active:scale-95"
-                  >
+                  <button type="button" onClick={() => editarDetallePresupuesto()}
+                    className="rounded-full border border-orange-500/30 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-orange-300 active:scale-95 block">
                     Editar
+                  </button>
+                )}
+                {canApprove && (
+                  <button type="button" onClick={aprobarTodo}
+                    className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-emerald-300 active:scale-95 block">
+                    Aprobar todo
                   </button>
                 )}
               </div>
@@ -822,33 +850,58 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
                   {grupo.items.length > 0 && (
                     <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
-                      {grupo.items.map((item, idx) => (
-                        <div key={`${grupo.label}-${idx}`} className="flex items-start justify-between gap-3 text-[10px]">
-                          <div className="min-w-0">
-                            <p className="truncate font-black uppercase text-zinc-300">{item.nombre}</p>
-                            {item.detalle && <p className="font-bold text-zinc-600">{item.detalle}</p>}
-                            {puedeEditarPresupuesto && (
-                              <div className="mt-2 flex gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => editarDetallePresupuesto(item)}
-                                  className="rounded-full bg-orange-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-orange-300"
-                                >
-                                  Cambiar
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => eliminarDetallePresupuesto(item)}
-                                  className="rounded-full bg-red-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-red-300"
-                                >
-                                  Eliminar
-                                </button>
+                      {grupo.items.map((item, idx) => {
+                        const aprobacion = item.raw?.aprobacion || "pendiente";
+                        const rechazado = aprobacion === "rechazado";
+                        const aprobado  = aprobacion === "aprobado";
+                        return (
+                          <div key={`${grupo.label}-${idx}`} className={`text-[10px] py-2 border-b border-white/5 last:border-0 transition-opacity ${rechazado ? "opacity-40" : ""}`}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className={`truncate font-black uppercase leading-tight ${rechazado ? "line-through text-red-400" : aprobado ? "text-emerald-300" : "text-zinc-300"}`}>
+                                    {item.nombre}
+                                  </p>
+                                  {aprobado  && <span className="shrink-0 rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[8px] font-black uppercase text-emerald-400">OK</span>}
+                                  {rechazado && <span className="shrink-0 rounded-full bg-red-500/20 px-1.5 py-0.5 text-[8px] font-black uppercase text-red-400">NO</span>}
+                                </div>
+                                {item.detalle && <p className="font-bold text-zinc-600 mt-0.5">{item.detalle}</p>}
                               </div>
-                            )}
+                              <p className={`shrink-0 font-black ${rechazado ? "line-through text-zinc-600" : "text-zinc-200"}`}>{formatMoney(item.total)}</p>
+                            </div>
+
+                            {/* Botones de acción */}
+                            <div className="mt-2 flex gap-2 flex-wrap">
+                              {canApprove && (
+                                <>
+                                  <button type="button"
+                                    onClick={() => toggleAprobacion(item.type, item.index, "aprobado")}
+                                    className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${aprobado ? "bg-emerald-600 text-white" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"}`}>
+                                    ✓ Aprobado
+                                  </button>
+                                  <button type="button"
+                                    onClick={() => toggleAprobacion(item.type, item.index, "rechazado")}
+                                    className={`rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${rechazado ? "bg-red-600 text-white" : "bg-red-500/10 text-red-400 border border-red-500/30"}`}>
+                                    ✗ Rechazado
+                                  </button>
+                                </>
+                              )}
+                              {puedeEditarPresupuesto && (
+                                <>
+                                  <button type="button" onClick={() => editarDetallePresupuesto(item)}
+                                    className="rounded-full bg-orange-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-orange-300 active:scale-95">
+                                    Cambiar
+                                  </button>
+                                  <button type="button" onClick={() => eliminarDetallePresupuesto(item)}
+                                    className="rounded-full bg-red-500/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-red-300 active:scale-95">
+                                    Eliminar
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
-                          <p className="shrink-0 font-black text-zinc-200">{formatMoney(item.total)}</p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

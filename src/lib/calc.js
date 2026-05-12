@@ -2,11 +2,13 @@ import { LS } from "./storage.js";
 import { CONFIG_DEFAULT } from "./constants.js";
 import { formatMoney } from "../utils/format.js";
 
+const noRechazado = x => x.aprobacion !== "rechazado";
+
 export const calcularNuevoTotal = (tareas = [], repuestos = [], fletes = [], insumos = []) => {
-  const t = tareas.reduce((s, x) => s + (x.monto || 0), 0);
-  const r = repuestos.reduce((s, x) => s + ((x.monto || 0) * (x.cantidad || 1)), 0);
-  const f = fletes.reduce((s, x) => s + (x.monto || 0), 0);
-  const i = insumos.reduce((s, x) => s + ((x.monto || 0) * (x.cantidad || 1)), 0);
+  const t = tareas.filter(noRechazado).reduce((s, x) => s + (x.monto || 0), 0);
+  const r = repuestos.filter(noRechazado).reduce((s, x) => s + ((x.monto || 0) * (x.cantidad || 1)), 0);
+  const f = fletes.filter(noRechazado).reduce((s, x) => s + (x.monto || 0), 0);
+  const i = insumos.filter(noRechazado).reduce((s, x) => s + ((x.monto || 0) * (x.cantidad || 1)), 0);
   return t + r + f + i;
 };
 
@@ -14,17 +16,22 @@ export const calcularResultadosOrden = (order) => {
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const vHoraInt = config.valorHoraInterno || 12000;
 
+  const tareasOk    = (order.tareas    || []).filter(noRechazado);
+  const repuestosOk = (order.repuestos || []).filter(noRechazado);
+  const fletesOk    = (order.fletes    || []).filter(noRechazado);
+  const insumosOk   = (order.insumos   || []).filter(noRechazado);
+
   // ── Precio al cliente (lo que se cobra) ──────────────────────
-  const moCliente        = (order.tareas    || []).reduce((s, t) => s + (t.monto || 0), 0);
-  const repuestosCliente = (order.repuestos || []).reduce((s, r) => s + ((r.monto || 0) * (r.cantidad || 1)), 0);
-  const fletesCliente    = (order.fletes    || []).reduce((s, f) => s + (f.monto || 0), 0);
-  const insumosCliente   = (order.insumos   || []).reduce((s, i) => s + ((i.monto || 0) * (i.cantidad || 1)), 0);
+  const moCliente        = tareasOk.reduce((s, t) => s + (t.monto || 0), 0);
+  const repuestosCliente = repuestosOk.reduce((s, r) => s + ((r.monto || 0) * (r.cantidad || 1)), 0);
+  const fletesCliente    = fletesOk.reduce((s, f) => s + (f.monto || 0), 0);
+  const insumosCliente   = insumosOk.reduce((s, i) => s + ((i.monto || 0) * (i.cantidad || 1)), 0);
   const totalCobrado     = moCliente + repuestosCliente + fletesCliente + insumosCliente;
 
   // ── Costo interno (lo que sale de caja) ──────────────────────
-  const moCosto        = (order.tareas    || []).reduce((s, t) => s + ((t.horasReal || t.horasBase || 0) * vHoraInt), 0);
-  const repuestosCosto = (order.repuestos || []).reduce((s, r) => s + ((r.montoCosto || r.monto || 0) * (r.cantidad || 1)), 0);
-  const fletesCosto    = (order.fletes    || []).reduce((s, f) => s + ((f.montoCosto || f.monto || 0)), 0);
+  const moCosto        = tareasOk.reduce((s, t) => s + ((t.horasReal || t.horasBase || 0) * vHoraInt), 0);
+  const repuestosCosto = repuestosOk.reduce((s, r) => s + ((r.montoCosto || r.monto || 0) * (r.cantidad || 1)), 0);
+  const fletesCosto    = fletesOk.reduce((s, f) => s + ((f.montoCosto || f.monto || 0)), 0);
   const insumosCosto   = insumosCliente; // se cobran al cliente al mismo precio que cuestan
 
   const costoInternoTotal = moCosto + repuestosCosto + fletesCosto + insumosCosto;
@@ -33,7 +40,7 @@ export const calcularResultadosOrden = (order) => {
   const margen       = totalCobrado - costoInternoTotal;
   const rentabilidad = totalCobrado > 0 ? (margen / totalCobrado) * 100 : 0;
 
-  const tareasAnalizadas = (order.tareas || []).map((t) => {
+  const tareasAnalizadas = tareasOk.map((t) => {
     const costoT = (t.horasReal || t.horasBase || 1) * vHoraInt;
     return { ...t, perdida: t.monto < costoT };
   });

@@ -438,7 +438,8 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   // Guardar trabajo + actualizar catálogo
   const handleSaveTrabajo = (tarea, editIdx) => {
     const lista = [...tareas];
-    if (editIdx != null) lista[editIdx] = tarea; else lista.push(tarea);
+    const item = editIdx != null ? { ...lista[editIdx], ...tarea } : { ...tarea, aprobacion: "pendiente" };
+    if (editIdx != null) lista[editIdx] = item; else lista.push(item);
     saveAll("tareas", lista);
     const idCat = catalogData.find(s => norm(s.nombre) === norm(tarea.nombre))?.id || generateId();
     LS.setDoc("catalogoTareas", idCat, {
@@ -452,7 +453,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
   const handleSaveRepuesto = (rep, editIdx) => {
     const lista = [...repuestos];
-    if (editIdx != null) lista[editIdx] = rep; else lista.push({ ...rep, _tareaId: "" });
+    if (editIdx != null) lista[editIdx] = rep; else lista.push({ ...rep, _tareaId: "", aprobacion: "pendiente" });
     saveAll("repuestos", lista);
     showToast(editIdx != null ? "Repuesto actualizado ✓" : "Repuesto agregado ✓");
     closeSheet();
@@ -460,7 +461,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
   const handleSaveInsumo = (ins, editIdx) => {
     const lista = [...insumos];
-    if (editIdx != null) lista[editIdx] = ins; else lista.push({ ...ins, _tareaId: "" });
+    if (editIdx != null) lista[editIdx] = ins; else lista.push({ ...ins, _tareaId: "", aprobacion: "pendiente" });
     saveAll("insumos", lista);
     showToast(editIdx != null ? "Insumo actualizado ✓" : "Insumo agregado ✓");
     closeSheet();
@@ -468,7 +469,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
 
   const handleSaveFlete = (fle, editIdx) => {
     const lista = [...fletes];
-    if (editIdx != null) lista[editIdx] = fle; else lista.push(fle);
+    if (editIdx != null) lista[editIdx] = fle; else lista.push({ ...fle, aprobacion: "pendiente" });
     saveAll("fletes", lista);
     showToast(editIdx != null ? "Flete actualizado ✓" : "Flete agregado ✓");
     closeSheet();
