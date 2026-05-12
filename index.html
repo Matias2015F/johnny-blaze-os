@@ -3,11 +3,79 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Moto Gestión</title>
+
+    <!-- Primary SEO -->
+    <title>MotoGestión | Sistema de gestión para talleres mecánicos de motos</title>
+    <meta name="description" content="App para gestionar tu taller mecánico de motos. Órdenes de trabajo digitales, historial de clientes y motos, cobros, recordatorios de service por km y comprobantes PDF. Probá 14 días gratis." />
+    <meta name="keywords" content="gestión taller motos, software taller mecánico motos, app taller motos Argentina, órdenes de trabajo motos, sistema gestión taller mecánico, programa taller motos, administración taller mecánico, historial service motos, recordatorios service kilometraje, gestión clientes taller motos" />
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content="MotoGestión" />
+    <link rel="canonical" href="https://app.motogestion.ar/" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/brand/motogestion-icon.png" />
+    <link rel="apple-touch-icon" href="/brand/motogestion-icon.png" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://app.motogestion.ar/" />
+    <meta property="og:title" content="MotoGestión | Sistema de gestión para talleres mecánicos de motos" />
+    <meta property="og:description" content="App para gestionar tu taller mecánico de motos. Órdenes de trabajo, historial de clientes, cobros y recordatorios de service. 14 días gratis." />
+    <meta property="og:image" content="https://app.motogestion.ar/brand/motogestion-banner.png" />
+    <meta property="og:locale" content="es_AR" />
+    <meta property="og:site_name" content="MotoGestión" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="MotoGestión | Sistema de gestión para talleres mecánicos de motos" />
+    <meta name="twitter:description" content="App para gestionar tu taller mecánico de motos. Órdenes de trabajo, historial, cobros y recordatorios de service. 14 días gratis." />
+    <meta name="twitter:image" content="https://app.motogestion.ar/brand/motogestion-banner.png" />
+
+    <!-- PWA -->
+    <meta name="theme-color" content="#ea580c" />
     <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="MotoGestión" />
+
+    <!-- JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "MotoGestión",
+      "description": "Sistema de gestión para talleres mecánicos de motos. Órdenes de trabajo digitales, historial de clientes y motos, cobros, recordatorios de service por km y comprobantes PDF.",
+      "url": "https://app.motogestion.ar/",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web, Android, iOS",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "ARS",
+        "description": "14 días de prueba gratuita, sin tarjeta"
+      },
+      "featureList": [
+        "Órdenes de trabajo digitales",
+        "Historial de clientes y motos",
+        "Control de pagos y cobros",
+        "Recordatorios de service por kilometraje",
+        "Comprobantes en PDF",
+        "Gestión de repuestos e insumos",
+        "Catálogo de servicios",
+        "Perfil de moto con historial completo"
+      ],
+      "inLanguage": "es-AR",
+      "availableOnDevice": ["Desktop", "Mobile", "Tablet"],
+      "provider": {
+        "@type": "Organization",
+        "name": "MotoGestión",
+        "url": "https://motogestion.ar"
+      }
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
-   <script type="module" src="/src/main.jsx"></script>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
