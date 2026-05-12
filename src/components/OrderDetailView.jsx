@@ -9,8 +9,11 @@ import {
   formatTiempo,
   formatTiempoCorto,
   iniciarCronometro,
+  iniciarDiag,
   obtenerTiempoActual,
+  obtenerTiempoDiagActual,
   pausarCronometro,
+  pausarDiag,
   trabajarSinCronometro,
 } from "../lib/timer.js";
 import { abrirWhatsApp, generarMensajePresupuestoConDatos, mensajeBloqueo, mensajePresupuesto } from "../lib/messages.js";
@@ -175,6 +178,7 @@ function EditarItemSheet({ tipo, datos, cilindrada, onSave, onCancel }) {
 
 export default function OrderDetailView({ order, clients, bikes, setView, showToast, setServiceToEdit }) {
   const [tiempoActual, setTiempoActual] = useState(0);
+  const [tiempoDiag, setTiempoDiag] = useState(0);
   const [motivoBloqueo, setMotivoBloqueo] = useState(MOTIVOS_BLOQUEO[0]);
   const [motivoManual, setMotivoManual] = useState("");
   const [maxInput, setMaxInput] = useState("");
@@ -198,7 +202,10 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
 
   useEffect(() => {
-    const id = setInterval(() => setTiempoActual(obtenerTiempoActual(order)), 1000);
+    const id = setInterval(() => {
+      setTiempoActual(obtenerTiempoActual(order));
+      setTiempoDiag(obtenerTiempoDiagActual(order));
+    }, 1000);
     return () => clearInterval(id);
   }, [order]);
 
@@ -533,6 +540,30 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     showToast(`Aprobado: ${formatMoney(max)} OK`);
   };
 
+  const handleDiagStart = () => LS.updateDoc("trabajos", order.id, iniciarDiag(order));
+  const handleDiagPause = () => LS.updateDoc("trabajos", order.id, pausarDiag(order));
+  const handleDiagCargar = () => {
+    const pausado = pausarDiag(order);
+    const horas = obtenerTiempoDiagActual(order);
+    if (horas < 0.01) return;
+    const monto = Math.round(horas * valorHora);
+    const nuevaTarea = { nombre: "Diagnóstico / revisión", horasBase: Math.round(horas * 100) / 100, monto };
+    const tareas = [...(order.tareas || []), nuevaTarea];
+    const repuestos = order.repuestos || [];
+    const fletes = order.fletes || [];
+    const insumos = order.insumos || [];
+    const nTotal = calcularNuevoTotal(tareas, repuestos, fletes, insumos);
+    LS.updateDoc("trabajos", order.id, {
+      ...pausado,
+      tareas,
+      total: nTotal,
+      diagActivo: false,
+      diagInicio: null,
+      diagTiempoMs: 0,
+    });
+    showToast(`Diagnóstico ${formatTiempoCorto(horas)} → cargado a mano de obra ✓`);
+  };
+
   const handleStart = () => LS.updateDoc("trabajos", order.id, iniciarCronometro(order));
   const handlePause = () => LS.updateDoc("trabajos", order.id, pausarCronometro(order));
   const handleStop = () => LS.updateDoc("trabajos", order.id, detenerCronometro(order));
@@ -663,6 +694,46 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       </div>
 
       <div className="mx-auto max-w-[440px] px-4 py-6 space-y-6">
+        {/* Cronómetro de diagnóstico */}
+        {["diagnostico", "presupuesto"].includes(order.estado) && !isLocked && (
+          <div className="rounded-[2rem] border border-violet-500/30 bg-violet-950/40 p-5 shadow-xl">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-widest text-violet-300">Cronómetro de diagnóstico</p>
+                <p className="text-[9px] font-bold text-zinc-500 mt-0.5">Tiempo de revisión facturable</p>
+              </div>
+              {tiempoDiag > 0 && (
+                <p className="text-xs font-black text-violet-400">≈ {formatMoney(Math.round(tiempoDiag * valorHora))}</p>
+              )}
+            </div>
+
+            <p className="text-center text-5xl font-black tracking-tighter text-white tabular-nums mb-4">
+              {formatTiempo(tiempoDiag)}
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={order.diagActivo ? handleDiagPause : handleDiagStart}
+                className={`flex-1 rounded-2xl py-3.5 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg ${
+                  order.diagActivo
+                    ? "bg-amber-500/20 border border-amber-500/40 text-amber-300"
+                    : "bg-violet-600 text-white shadow-violet-500/30"
+                }`}
+              >
+                {order.diagActivo ? "Pausar" : tiempoDiag > 0 ? "Continuar" : "Iniciar"}
+              </button>
+              {tiempoDiag > 0.01 && !order.diagActivo && (
+                <button
+                  onClick={handleDiagCargar}
+                  className="flex-[2] rounded-2xl bg-orange-600 py-3.5 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/30 transition-all active:scale-95"
+                >
+                  Cargar a mano de obra
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Progreso visual */}
         <div className="relative z-10 -mt-4 mb-4 flex gap-2 overflow-x-auto px-1 pb-1">
           {STEP_UI.map((step, idx) => {

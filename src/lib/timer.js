@@ -37,3 +37,21 @@ export function formatTiempoCorto(horas) {
   const m = Math.floor((horas - h) * 60);
   return `${h}h ${m}m`;
 }
+
+// ── Cronómetro de diagnóstico ─────────────────────────────────────────────────
+export function iniciarDiag(orden) {
+  if (orden.diagActivo) return orden;
+  return { ...orden, diagActivo: true, diagInicio: Date.now() };
+}
+
+export function pausarDiag(orden) {
+  if (!orden.diagActivo || !orden.diagInicio) return orden;
+  const ms = (orden.diagTiempoMs || 0) + (Date.now() - orden.diagInicio);
+  return { ...orden, diagActivo: false, diagInicio: null, diagTiempoMs: ms };
+}
+
+export function obtenerTiempoDiagActual(orden) {
+  const base = orden.diagTiempoMs || 0;
+  if (!orden.diagActivo || !orden.diagInicio) return base / 3600000;
+  return (base + (Date.now() - orden.diagInicio)) / 3600000;
+}
