@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
-import { LS, generateId, obtenerOrden, actualizarOrden } from "../lib/storage.js";
+import { LS, generateId, obtenerOrden, actualizarOrden, crearEntradaHistorial } from "../lib/storage.js";
 import { hoyEstable } from "../lib/constants.js";
 import { formatMoney, formatMoneyParts } from "../utils/format.js";
 
@@ -58,11 +58,13 @@ export default function PagoView({ ordenId, setView }) {
       hora: new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
       tipo: "pago_final",
     };
+    const entrada = crearEntradaHistorial(orden.estado, "cerrado_emitido");
     actualizarOrden(ordenId, {
       estado: "cerrado_emitido",
       pagado_fecha: Date.now(),
       ganancia: gananciaNeta,
       pagos: [...pagosActuales, nuevoPago],
+      historial: [...(orden.historial || []), entrada],
     });
     LS.addDoc("caja", {
       fecha: hoyEstable(),

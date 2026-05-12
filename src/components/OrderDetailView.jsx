@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, ChevronDown, ClipboardList, DollarSign, Edit2, FileText, Play, Search, Send, ShieldCheck, ThumbsUp, Trash2, Truck, Wrench, X } from "lucide-react";
-import { LS, buscarRepuestosAutocomplete, guardarRepuestoHistorial } from "../lib/storage.js";
+import { LS, buscarRepuestosAutocomplete, crearEntradaHistorial, guardarRepuestoHistorial } from "../lib/storage.js";
 import { CONFIG_DEFAULT, ESTADO_CSS, ESTADO_LABEL } from "../lib/constants.js";
 import { calcularNuevoRango, calcularNuevoTotal, calcularResultadosOrden } from "../lib/calc.js";
 import { obtenerAprendizaje } from "../lib/priceLearning.js";
@@ -465,7 +465,11 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       showToast("No se puede modificar: ya se generó el comprobante");
       return;
     }
-    LS.updateDoc("trabajos", order.id, { estado: nuevo });
+    const entrada = crearEntradaHistorial(order.estado, nuevo);
+    LS.updateDoc("trabajos", order.id, {
+      estado: nuevo,
+      historial: [...(order.historial || []), entrada],
+    });
     showToast(`Estado: ${ESTADO_LABEL[nuevo]} OK`);
   };
 
@@ -536,7 +540,12 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       entityId: order.id,
       metadata: { monto: max },
     }).catch(console.error);
-    LS.updateDoc("trabajos", order.id, { maxAutorizado: max, estado: "aprobacion" });
+    const entrada = crearEntradaHistorial(order.estado, "aprobacion");
+    LS.updateDoc("trabajos", order.id, {
+      maxAutorizado: max,
+      estado: "aprobacion",
+      historial: [...(order.historial || []), entrada],
+    });
     showToast(`Aprobado: ${formatMoney(max)} OK`);
   };
 

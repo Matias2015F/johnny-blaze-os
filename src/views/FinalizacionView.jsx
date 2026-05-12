@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, Share2 } from "lucide-react";
-import { LS, obtenerOrden, actualizarOrden } from "../lib/storage.js";
+import { LS, obtenerOrden, actualizarOrden, crearEntradaHistorial } from "../lib/storage.js";
 import { abrirEnlaceExterno, generarEnlaceMontoFinal } from "../lib/whatsappService.js";
 import { formatMoney, formatMoneyParts } from "../utils/format.js";
 
@@ -52,11 +52,13 @@ export default function FinalizacionView({ ordenId, setView }) {
   };
 
   const handleIrAPago = () => {
+    const entrada = crearEntradaHistorial(orden.estado, "listo_para_emitir");
     actualizarOrden(ordenId, {
       costosAdicionales: Number(costosAdicionales || 0),
       motivoAdicional,
       costoFinal,
       estado: "listo_para_emitir",
+      historial: [...(orden.historial || []), entrada],
     });
     setView("pago");
   };

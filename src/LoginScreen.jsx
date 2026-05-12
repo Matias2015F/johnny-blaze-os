@@ -3,6 +3,7 @@ import { auth } from "./firebase.js";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
 } from "firebase/auth";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 
@@ -27,7 +28,9 @@ export default function LoginScreen() {
       if (modo === "login") {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        sendEmailVerification(cred.user).catch(() => {});
+        ok("¡Cuenta creada! Revisá tu correo para verificar tu dirección.");
       }
     } catch (e) {
       if (e.code === "auth/user-not-found")            err("No encontramos una cuenta con ese correo");

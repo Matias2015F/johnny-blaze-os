@@ -4,8 +4,9 @@ import {
   RotateCcw, FileSpreadsheet, ChevronRight, BarChart2,
   Settings, HardDrive, Wrench, Plus, Minus,
 } from "lucide-react";
-import { LS, useCollection, migrateFromRootCollections, forceSyncCacheToFirestore } from "../lib/storage.js";
+import { LS, useCollection, migrateFromRootCollections, forceSyncCacheToFirestore, clearFirestoreData } from "../lib/storage.js";
 import { auth, db } from "../firebase.js";
+import { deleteUser } from "firebase/auth";
 import { createCloudBackup, listCloudBackups, restoreCloudBackup } from "../lib/cloudBackup.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
@@ -1866,6 +1867,28 @@ function PantallaSuscripcion({ showToast }) {
 
 function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, cfg, setCfg }) {
   const [migrando, setMigrando] = React.useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = React.useState("");
+  const [deletingAccount, setDeletingAccount] = React.useState(false);
+
+  const handleEliminarCuenta = async () => {
+    if (deleteConfirmText !== "ELIMINAR") return;
+    setDeletingAccount(true);
+    try {
+      const uid = auth.currentUser?.uid;
+      if (uid) await clearFirestoreData(uid).catch(() => {});
+      await deleteUser(auth.currentUser);
+    } catch (e) {
+      if (e.code === "auth/requires-recent-login") {
+        showToast("Cerrá sesión, volvé a ingresar y repetí la operación");
+      } else {
+        showToast("No se pudo eliminar la cuenta. Intentá de nuevo.");
+      }
+      setDeletingAccount(false);
+      setShowDeleteConfirm(false);
+      setDeleteConfirmText("");
+    }
+  };
   const [remoteBuild, setRemoteBuild] = React.useState(null);
   const [checkingUpdate, setCheckingUpdate] = React.useState(false);
   const [updatingApp, setUpdatingApp] = React.useState(false);
@@ -2252,6 +2275,55 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         >
           <LogOut size={16} /> Cerrar sesion
         </button>
+      )}
+
+      <button
+        onClick={() => { setShowDeleteConfirm(true); setDeleteConfirmText(""); }}
+        className="w-full flex items-center justify-center gap-2 text-red-600/60 hover:text-red-500 transition-colors py-3 font-black text-[10px] uppercase tracking-widest"
+      >
+        <Trash2 size={13} /> Eliminar mi cuenta
+      </button>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-zinc-900 rounded-3xl border border-red-900/40 p-6 space-y-5">
+            <div className="text-center space-y-2">
+              <div className="text-4xl">⚠️</div>
+              <p className="text-white font-black text-base">Eliminar cuenta</p>
+              <p className="text-zinc-400 text-xs leading-relaxed">
+                Esta acción es <strong className="text-red-400">irreversible</strong>.
+                Se borrarán tu cuenta y todos tus datos del taller (clientes, motos, órdenes, historial).
+              </p>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                Escribí <span className="text-red-400">ELIMINAR</span> para confirmar
+              </p>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                placeholder="ELIMINAR"
+                className="w-full bg-black border border-zinc-700 rounded-2xl px-4 py-3 text-white text-sm font-black placeholder-zinc-700 outline-none focus:border-red-500 transition-colors"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(""); }}
+                className="flex-1 bg-zinc-800 text-zinc-300 py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEliminarCuenta}
+                disabled={deleteConfirmText !== "ELIMINAR" || deletingAccount}
+                className="flex-1 bg-red-700 hover:bg-red-600 disabled:opacity-30 text-white py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all"
+              >
+                {deletingAccount ? "Eliminando..." : "Eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

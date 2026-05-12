@@ -326,6 +326,16 @@ export function buscarRepuestosAutocomplete(query, cilindrada = null, tipo = "re
 
 // ========== HELPERS DE ÓRDENES PARA FLUJO PROFESIONAL ==========
 
+// Genera una entrada de auditoría para el historial de cambios de estado de una orden.
+export function crearEntradaHistorial(estadoAnterior, estadoNuevo) {
+  return {
+    fecha: Date.now(),
+    uid: auth.currentUser?.uid || "anon",
+    de: estadoAnterior,
+    a: estadoNuevo,
+  };
+}
+
 export function obtenerOrden(ordenId) {
   return LS.getDoc("trabajos", ordenId);
 }

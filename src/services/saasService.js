@@ -213,89 +213,71 @@ export async function leerUsuarioSaas(uid) {
 export async function ensureSaasUserProfile(authUser, extras = {}) {
   if (!authUser) return null;
 
-  const settings = await leerAdminSettings();
   const existing = await leerUsuarioSaas(authUser.uid);
-  const now = Date.now();
   const isAdmin = isPlatformAdminUser(authUser);
-  const trialDays = Number(settings.duracionTrialDias || DEFAULT_SAAS_ADMIN_SETTINGS.duracionTrialDias);
+
+  // Usuario existente: solo actualizamos campos no sensibles.
+  // Los campos de suscripción (estado, plan, activoHasta, etc.) los gestiona
+  // exclusivamente el webhook desde el servidor (Admin SDK).
+  if (existing) {
+    const safePayload = {
+      email: authUser.email || existing.email || "",
+      lastSeenAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+    if (extras.nombreTaller) safePayload.nombreTaller = extras.nombreTaller;
+    if (extras.appVersion)   safePayload.appVersion   = extras.appVersion;
+    // Solo para el admin de plataforma: sincronizar rol (sin riesgo de escalada)
+    if (isAdmin) {
+      safePayload.rol            = "admin";
+      safePayload.isPlatformAdmin = true;
+    }
+    await setDoc(doc(db, SAAS_COLLECTIONS.usuarios, authUser.uid), safePayload, { merge: true });
+    return normalizeSaasUser({ ...existing, ...safePayload }, { uid: authUser.uid });
+  }
+
+  // Usuario nuevo: crear perfil completo (estado trial = el más restrictivo)
+  const settings = await leerAdminSettings();
+  const now = Date.now();
+  const trialDays    = Number(settings.duracionTrialDias || DEFAULT_SAAS_ADMIN_SETTINGS.duracionTrialDias);
   const defaultPrecio = Number(settings.precios?.base || DEFAULT_SAAS_ADMIN_SETTINGS.precios.base);
-  const currency = settings.precios?.currency || DEFAULT_SAAS_ADMIN_SETTINGS.precios.currency;
-  const baseNombreTaller = extras.nombreTaller || existing?.nombreTaller || "Moto Gestión";
-
-  const canonical = existing || {
-    uid: authUser.uid,
-    email: authUser.email || "",
-    estado: isAdmin ? "activo" : "trial",
-    activoHasta: now + trialDays * 24 * 60 * 60 * 1000,
-    rol: isAdmin ? "admin" : "user",
-    plan: isAdmin ? "pro" : "trial",
-    pagoEstado: isAdmin ? "pagado" : "pendiente",
-    currentPlanKey: isAdmin ? "pro" : "base",
-    featureFlags: settings.features,
-    features: settings.features,
-    nombreTaller: baseNombreTaller,
-  };
-
-  const merged = normalizeSaasUser({
-    ...canonical,
-    uid: authUser.uid,
-    email: authUser.email || canonical.email || "",
-    rol: isAdmin ? "admin" : canonical.rol,
-    isPlatformAdmin: isAdmin || canonical.isPlatformAdmin,
-    nombreTaller: baseNombreTaller,
-    featureFlags: {
-      ...settings.features,
-      ...(canonical.featureFlags || {}),
-    },
-    features: {
-      ...settings.features,
-      ...(canonical.features || {}),
-    },
-  }, { uid: authUser.uid, email: authUser.email || "" });
+  const currency      = settings.precios?.currency || DEFAULT_SAAS_ADMIN_SETTINGS.precios.currency;
+  const baseNombreTaller = extras.nombreTaller || "Moto Gestión";
 
   const canonicalPayload = {
-    uid: merged.uid,
-    email: merged.email,
-    estado: merged.estado,
-    activoHasta: merged.activoHasta || now + trialDays * 24 * 60 * 60 * 1000,
-    rol: merged.rol,
-    plan: merged.plan,
-    pagoEstado: merged.pagoEstado,
-    currentPlanKey: merged.currentPlanKey,
-    isPlatformAdmin: merged.isPlatformAdmin,
-    graceEndsAt: merged.graceEndsAt || null,
-    trialEndsAt: merged.trialEndsAt || null,
-    nextBillingAt: merged.nextBillingAt || null,
-    featureFlags: merged.featureFlags,
-    features: merged.features,
-    nombreTaller: merged.nombreTaller,
-    lastSeenAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    uid:            authUser.uid,
+    email:          authUser.email || "",
+    estado:         isAdmin ? "activo" : "trial",
+    activoHasta:    now + (isAdmin ? 365 : trialDays) * 24 * 60 * 60 * 1000,
+    rol:            isAdmin ? "admin" : "user",
+    plan:           isAdmin ? "pro" : "trial",
+    pagoEstado:     isAdmin ? "pagado" : "pendiente",
+    currentPlanKey: isAdmin ? "pro" : "base",
+    isPlatformAdmin: isAdmin,
+    graceEndsAt:    null,
+    trialEndsAt:    isAdmin ? null : now + trialDays * 24 * 60 * 60 * 1000,
+    nextBillingAt:  null,
+    featureFlags:   settings.features,
+    features:       settings.features,
+    nombreTaller:   baseNombreTaller,
+    subscriptionPriceAtSignup:    defaultPrecio,
+    subscriptionCurrencyAtSignup: currency,
+    appVersion:     extras.appVersion || null,
+    lastSeenAt:     serverTimestamp(),
+    createdAt:      serverTimestamp(),
+    updatedAt:      serverTimestamp(),
   };
 
-  const esNuevo = !existing;
+  await setDoc(doc(db, SAAS_COLLECTIONS.usuarios, authUser.uid), canonicalPayload);
 
-  if (esNuevo) {
-    canonicalPayload.createdAt = serverTimestamp();
-  }
+  // Email de bienvenida (fire-and-forget)
+  fetch("/api/send-welcome", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uid: authUser.uid }),
+  }).catch(() => {});
 
-  await setDoc(doc(db, SAAS_COLLECTIONS.usuarios, authUser.uid), canonicalPayload, { merge: true });
-
-  // Disparar email de bienvenida en cuentas nuevas (fire-and-forget, sin bloquear)
-  if (esNuevo) {
-    fetch("/api/send-welcome", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid: authUser.uid }),
-    }).catch(() => {});
-  }
-
-  return normalizeSaasUser({
-    ...canonicalPayload,
-    subscriptionPriceAtSignup: existing?.subscriptionPriceAtSignup ?? defaultPrecio,
-    subscriptionCurrencyAtSignup: existing?.subscriptionCurrencyAtSignup ?? currency,
-    appVersion: extras.appVersion || existing?.appVersion || null,
-  }, { uid: authUser.uid });
+  return normalizeSaasUser(canonicalPayload, { uid: authUser.uid });
 }
 
 export async function actualizarSuscripcionUsuario(uid, patch = {}) {

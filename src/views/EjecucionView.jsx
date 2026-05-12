@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { ArrowLeft, Play, Pause, Square } from "lucide-react";
-import { LS, obtenerOrden, actualizarOrden } from "../lib/storage.js";
+import { LS, obtenerOrden, actualizarOrden, crearEntradaHistorial } from "../lib/storage.js";
 import { formatMoney } from "../utils/format.js";
 
 export default function EjecucionView({ ordenId, setView }) {
@@ -57,12 +57,14 @@ export default function EjecucionView({ ordenId, setView }) {
   };
 
   const handleFinalizar = () => {
+    const entrada = crearEntradaHistorial(orden?.estado, "finalizada");
     actualizarOrden(ordenId, {
       cronometroEjecucion: cronometro,
       notasEjecucion: notas,
       tareas: tareas,
       estado: "finalizada",
       finalizacion_fecha: Date.now(),
+      historial: [...(orden?.historial || []), entrada],
     });
     setView("finalizacion");
   };
