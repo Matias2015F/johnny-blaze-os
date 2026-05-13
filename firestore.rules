@@ -10,11 +10,7 @@ service cloud.firestore {
     }
 
     function isPlatformAdmin() {
-      return signedIn() &&
-        (
-          request.auth.uid == "TNwwuKJsIXN29zJg8HWfORawdFm1" ||
-          request.auth.token.email == "matias4604@gmail.com"
-        );
+      return signedIn() && request.auth.uid == "TNwwuKJsIXN29zJg8HWfORawdFm1";
     }
 
     // Campos de suscripción: solo el Admin SDK (webhook) puede modificarlos.
@@ -27,7 +23,9 @@ service cloud.firestore {
     }
 
     match /admin_settings/{docId} {
-      allow read: if signedIn();
+      // Cualquier usuario autenticado puede leer "global" (precios y config publica de planes).
+      // Cualquier otro documento admin_settings requiere ser admin de plataforma.
+      allow read: if isPlatformAdmin() || (signedIn() && docId == "global");
       allow write: if isPlatformAdmin();
     }
 

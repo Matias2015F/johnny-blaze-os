@@ -36,9 +36,8 @@ function endpointHash(endpoint) {
 }
 
 module.exports = async function handler(req, res) {
-  const auth   = req.headers.authorization;
-  const secret = process.env.CRON_SECRET;
-  if (secret && auth !== `Bearer ${secret}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || req.headers.authorization !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 

@@ -2,7 +2,7 @@
 // Llamado desde el cliente (saasService.js) cuando se detecta cuenta nueva.
 // Idempotente: si ya se envió (welcomeEmailSentAt existe) retorna 200 sin reenviar.
 
-const { db } = require("./_firebase-admin.js");
+const { db, verifyIdToken } = require("./_firebase-admin.js");
 const { sendEmail, templateBienvenida } = require("./_email.js");
 
 const MS_DAY = 24 * 60 * 60 * 1000;
@@ -10,14 +10,20 @@ const MS_DAY = 24 * 60 * 60 * 1000;
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { uid } = req.body || {};
-  if (!uid) return res.status(400).json({ error: "Falta uid" });
+  let decoded;
+  try {
+    decoded = await verifyIdToken(req);
+  } catch (err) {
+    return res.status(err.status || 401).json({ error: "No autorizado" });
+  }
+  const uid = decoded.uid;
 
   try {
     const userRef = db.collection("usuarios").doc(uid);
     const snap = await userRef.get();
 
-    if (!snap.exists) return res.status(404).json({ error: "Usuario no encontrado" });
+    // Respuesta uniforme para no exponer si el uid existe o no
+    if (!snap.exists) return res.status(200).json({ ok: true, skipped: true });
 
     const data = snap.data();
 

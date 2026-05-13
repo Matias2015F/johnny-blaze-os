@@ -1,5 +1,7 @@
 // Client-side Web Push subscription management
 
+import { auth } from "../firebase.js";
+
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
 
 function urlBase64ToUint8Array(base64) {
@@ -40,10 +42,11 @@ export async function subscribeToPush(uid) {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       });
     }
+    const idToken = await auth.currentUser?.getIdToken();
     await fetch("/api/push-subscribe", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid, subscription: sub.toJSON() }),
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ subscription: sub.toJSON() }),
     });
     return sub;
   } catch (e) {
@@ -58,10 +61,11 @@ export async function unsubscribeFromPush(uid) {
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
     if (!sub) return;
+    const idToken = await auth.currentUser?.getIdToken();
     await fetch("/api/push-subscribe", {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ uid, endpoint: sub.endpoint }),
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ endpoint: sub.endpoint }),
     });
     await sub.unsubscribe();
   } catch (e) {

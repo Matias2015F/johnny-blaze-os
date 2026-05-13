@@ -1,6 +1,6 @@
-let db;
+let db, verifyIdToken;
 try {
-  db = require("./_firebase-admin.js").db;
+  ({ db, verifyIdToken } = require("./_firebase-admin.js"));
 } catch (e) {
   console.error("Firebase Admin error:", e.message);
 }
@@ -45,8 +45,16 @@ module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
   if (!db) return res.status(500).json({ error: "Firebase no inicializado" });
 
-  const { uid, plan } = req.body || {};
-  if (!uid || !PLANES_FALLBACK[plan]) return res.status(400).json({ error: "uid y plan requeridos" });
+  let decoded;
+  try {
+    decoded = await verifyIdToken(req);
+  } catch (err) {
+    return res.status(err.status || 401).json({ error: "No autorizado" });
+  }
+  const uid = decoded.uid;
+
+  const { plan } = req.body || {};
+  if (!plan || !PLANES_FALLBACK[plan]) return res.status(400).json({ error: "plan requerido" });
 
   const token = String(process.env.MP_ACCESS_TOKEN || "").trim();
   if (!token) return res.status(500).json({ error: "MP_ACCESS_TOKEN no configurado" });

@@ -1,6 +1,6 @@
-let db;
+let db, verifyIdToken;
 try {
-  db = require("./_firebase-admin.js").db;
+  ({ db, verifyIdToken } = require("./_firebase-admin.js"));
 } catch (initError) {
   console.error("ERROR al inicializar Firebase Admin:", initError.message);
 }
@@ -9,23 +9,33 @@ module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
   if (!db) return res.status(500).json({ error: "Servidor sin base de datos" });
 
+  let decoded;
+  try {
+    decoded = await verifyIdToken(req);
+  } catch (err) {
+    return res.status(err.status || 401).json({ error: "No autorizado" });
+  }
+  const uid = decoded.uid;
+
   const accessToken = String(process.env.MP_ACCESS_TOKEN || "").trim();
   if (!accessToken) {
     return res.status(500).json({ error: "Falta MP_ACCESS_TOKEN en el servidor" });
   }
 
-  const { preferenceId, invoiceId, uid } = req.body || {};
-  // Si no hay ids pero hay uid, buscar el ultimo invoice del usuario
+  // uid ya no se acepta del body — viene del token verificado
+  const { preferenceId, invoiceId } = req.body || {};
+  const userRef = db.collection("usuarios").doc(uid);
+
+  // Si no hay ids, buscar el ultimo invoice en la subcolecci on correcta
   let resolvedInvoiceId = invoiceId || null;
-  if (!preferenceId && !resolvedInvoiceId && uid) {
+  if (!preferenceId && !resolvedInvoiceId) {
     try {
-      const snap = await db.collection("billingInvoices")
-        .where("uid", "==", String(uid))
-        .orderBy("createdAt", "desc")
+      const snap = await userRef.collection("billingInvoices")
+        .orderBy("fecha", "desc")
         .limit(1)
         .get();
       if (!snap.empty) resolvedInvoiceId = snap.docs[0].id;
-    } catch (e) { console.error("No se pudo buscar invoice por uid:", e); }
+    } catch (e) { console.error("No se pudo buscar invoice:", e); }
   }
   if (!preferenceId && !resolvedInvoiceId) {
     return res.status(400).json({ error: "Falta preferenceId o invoiceId" });
@@ -34,7 +44,7 @@ module.exports = async function handler(req, res) {
   let invoice = null;
   try {
     if (resolvedInvoiceId) {
-      const snap = await db.collection("billingInvoices").doc(String(resolvedInvoiceId)).get();
+      const snap = await userRef.collection("billingInvoices").doc(String(resolvedInvoiceId)).get();
       if (snap.exists) invoice = { id: snap.id, ...snap.data() };
     }
   } catch (e) {

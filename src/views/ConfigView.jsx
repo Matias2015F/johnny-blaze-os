@@ -1502,9 +1502,10 @@ function PantallaSuscripcion({ showToast }) {
     try {
       setSending(true);
       setCheckoutPlanKey(null);
+      const idToken = await auth.currentUser.getIdToken();
       const res = await fetch("/api/mp-create-preference", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           uid,
           plan: planKey,
@@ -1588,13 +1589,13 @@ function PantallaSuscripcion({ showToast }) {
   const diagnosticarPago = async () => {
     try {
       setSending(true);
+      const idToken = await auth.currentUser.getIdToken();
       const res = await fetch("/api/mp-diagnose", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({
           preferenceId: activeAttempt?.preferenceId || null,
           invoiceId: activeAttempt?.invoiceId || null,
-          uid: uid || null,
         }),
       });
       const data = await res.json();

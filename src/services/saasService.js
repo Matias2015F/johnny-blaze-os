@@ -271,10 +271,12 @@ export async function ensureSaasUserProfile(authUser, extras = {}) {
   await setDoc(doc(db, SAAS_COLLECTIONS.usuarios, authUser.uid), canonicalPayload);
 
   // Email de bienvenida (fire-and-forget)
-  fetch("/api/send-welcome", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uid: authUser.uid }),
+  authUser.getIdToken().then(idToken => {
+    fetch("/api/send-welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify({ uid: authUser.uid }),
+    }).catch(() => {});
   }).catch(() => {});
 
   return normalizeSaasUser(canonicalPayload, { uid: authUser.uid });

@@ -17,15 +17,26 @@
 
 const { initializeApp, getApps, cert } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
+const { getAuth } = require("firebase-admin/auth");
 
 if (!getApps().length) {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
   if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT_B64 no está definida");
 
   const serviceAccount = JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
-  console.log("Firebase init — project_id:", serviceAccount.project_id);
-
   initializeApp({ credential: cert(serviceAccount) });
 }
 
-module.exports = { db: getFirestore() };
+// Extrae y verifica el Firebase ID Token del header Authorization: Bearer <token>.
+// Lanza con err.status = 401 si el header falta o el token es invalido.
+async function verifyIdToken(req) {
+  const header = req.headers.authorization || "";
+  if (!header.startsWith("Bearer ")) {
+    const err = new Error("Token requerido");
+    err.status = 401;
+    throw err;
+  }
+  return getAuth().verifyIdToken(header.slice(7));
+}
+
+module.exports = { db: getFirestore(), verifyIdToken };

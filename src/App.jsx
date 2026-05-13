@@ -103,9 +103,10 @@ function PantallaBloqueo({ account, settings }) {
     setPagando(true);
     setError("");
     try {
+      const idToken = await auth.currentUser.getIdToken();
       const res = await fetch("/api/mp-create-preference", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
         body: JSON.stringify({ uid: auth.currentUser.uid, plan: planKey }),
       });
       const data = await res.json();
