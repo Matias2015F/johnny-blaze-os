@@ -89,8 +89,9 @@ module.exports = async function handler(req, res) {
           continue;
         }
 
-        const titulo = estado === "service_vencido" ? "⚠️ Service vencido" : "🔔 Próximo service";
-        const cuerpo = `${moto.patente || "---"} · ${rec.descripcion || "Control pendiente"}`;
+        const titulo = `${moto.patente || "---"} — ${estado === "service_vencido" ? "Service vencido" : "Proximo service"}`;
+        const descCorta = (rec.descripcion || "Control pendiente").slice(0, 48);
+        const cuerpo = descCorta;
         const payload = JSON.stringify({ titulo, cuerpo, url: "/", tag: `jbos-rec-${recDoc.id}` });
 
         let pushEnviado = false;

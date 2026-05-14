@@ -16,7 +16,7 @@ import {
   pausarDiag,
   trabajarSinCronometro,
 } from "../lib/timer.js";
-import { abrirWhatsApp, generarMensajePresupuestoConDatos, mensajeBloqueo, mensajePresupuesto } from "../lib/messages.js";
+import { abrirWhatsApp, generarMensajePresupuestoConDatos, mensajeBloqueo, mensajePresupuesto, mensajesImprevisto } from "../lib/messages.js";
 import { trackEvent } from "../lib/telemetry.js";
 import { MOTIVOS_BLOQUEO } from "../lib/theme.js";
 import { formatMoney } from "../utils/format.js";
@@ -198,6 +198,8 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const [sheetMax, setSheetMax] = useState("");
   const [editandoItem, setEditandoItem] = useState(null); // { type, index, data }
   const [localConfirm, setLocalConfirm] = useState(null); // { mensaje, onOk }
+  const [showImprevistoSheet, setShowImprevistoSheet] = useState(false);
+  const [imprevistoTexto, setImprevistoTexto] = useState("");
 
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
 
@@ -813,6 +815,19 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           </button>
         )}
 
+        {!isLocked && order.estado === "reparacion" && client?.tel && (
+          <button
+            onClick={() => {
+              const plantillas = mensajesImprevisto({ bike, client, totalOriginal: order.maxAutorizado || 0, totalNuevo: res.total });
+              setImprevistoTexto(plantillas[0].texto);
+              setShowImprevistoSheet(true);
+            }}
+            className="w-full rounded-[1.75rem] border border-amber-500/50 bg-amber-500/10 py-3.5 text-[11px] font-black uppercase tracking-widest text-amber-300 shadow-lg transition-all active:scale-95"
+          >
+            Avisar imprevisto al cliente
+          </button>
+        )}
+
         {accionPrincipal && (
           <button
             onClick={accionPrincipal.action}
@@ -951,6 +966,58 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           onSave={guardarItemEditado}
           onCancel={() => setEditandoItem(null)}
         />
+      )}
+
+      {showImprevistoSheet && (
+        <div className="fixed inset-0 z-50 flex items-end">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowImprevistoSheet(false)} />
+          <div className="relative w-full max-h-[90vh] overflow-y-auto rounded-t-[2rem] bg-zinc-900 border-t border-amber-700/40 shadow-2xl animate-in slide-in-from-bottom duration-300">
+            <div className="p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-amber-400">Imprevisto / Ampliacion</p>
+                  <p className="text-sm font-black text-white mt-0.5">Avisar al cliente</p>
+                </div>
+                <button onClick={() => setShowImprevistoSheet(false)} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-90 transition-all">
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Elegir plantilla</p>
+                {mensajesImprevisto({ bike, client, totalOriginal: order.maxAutorizado || 0, totalNuevo: res.total }).map((p) => (
+                  <button
+                    key={p.label}
+                    onClick={() => setImprevistoTexto(p.texto)}
+                    className={`w-full text-left rounded-2xl border px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 ${imprevistoTexto === p.texto ? "border-amber-500 bg-amber-500/20 text-amber-200" : "border-zinc-700 bg-zinc-800 text-zinc-300"}`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Mensaje (editable)</p>
+                <textarea
+                  value={imprevistoTexto}
+                  onChange={(e) => setImprevistoTexto(e.target.value)}
+                  rows={8}
+                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-xs text-zinc-200 leading-relaxed resize-none focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <button
+                onClick={() => {
+                  abrirWhatsApp(client.tel, imprevistoTexto);
+                  setShowImprevistoSheet(false);
+                }}
+                className="w-full rounded-[1.75rem] bg-green-600 py-4 text-[11px] font-black uppercase tracking-widest text-white shadow-xl transition-all active:scale-95"
+              >
+                Enviar por WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showPresupuestoSheet && (

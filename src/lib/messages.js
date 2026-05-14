@@ -73,6 +73,25 @@ export function generarMensajePresupuestoConDatos({ client, bike, tareas = [], t
   return msg;
 }
 
+export function mensajesImprevisto({ bike, client, totalOriginal, totalNuevo }) {
+  const nombre = client?.nombre || "cliente";
+  const moto = `${bike?.marca || ""} ${bike?.modelo || ""}`.trim() || "tu moto";
+  const patente = bike?.patente || "---";
+  const haySobrepaso = totalNuevo > 0 && totalOriginal > 0 && totalNuevo > totalOriginal;
+
+  const t1 = `Hola ${nombre}, te avisamos sobre tu ${moto} (${patente}).\n\nAl avanzar con la reparación encontramos que hace falta un trabajo adicional que no estaba en el presupuesto original.\n${haySobrepaso ? `\nPresupuesto original: ${fmtARS(totalOriginal)}\nNuevo total estimado: ${fmtARS(totalNuevo)}` : ""}\n\n¿Seguimos? Respondé SI para continuar o SUSPENDER si querés que paremos acá. Cualquier duda llamanos.`;
+
+  const t2 = `Hola ${nombre}, surgió un imprevisto con tu ${moto} (${patente}).\n\nEncontramos una condición adicional durante la reparación. Antes de seguir necesitamos tu ok.\n${haySobrepaso ? `\nEl presupuesto pasa de ${fmtARS(totalOriginal)} a ${fmtARS(totalNuevo)} aprox.` : ""}\n\n¿Autorizás que continuemos? Respondé SI o llamanos.`;
+
+  const t3 = `Hola ${nombre}, ¿podés llamar? Surgió algo con tu ${moto} (${patente}) que necesitamos consultarte antes de seguir con la reparación.`;
+
+  return [
+    { label: "Aviso de ampliación", texto: t1 },
+    { label: "Imprevisto formal", texto: t2 },
+    { label: "Consulta rápida", texto: t3 },
+  ];
+}
+
 export function normalizarTelWA(tel) {
   const solo = String(tel || "").replace(/\D/g, "");
   if (!solo) return "";
