@@ -15,6 +15,12 @@ export const formatMoneyParts = (monto) => {
 
 export const formatMoney = (monto) => formatMoneyParts(monto).formatted;
 
+// Formato corto para cards: "$ 1.250.000" — sin prefijo ARS ni centavos
+export const formatMoneyShort = (monto) => {
+  const { sign, pesos } = formatMoneyParts(monto);
+  return `${sign}$ ${pesos}`;
+};
+
 export const formatMoneyInput = (val) => {
   if (val === "" || val === 0 || val === "0") return "";
   const clean = String(val).replace(/\D/g, "");

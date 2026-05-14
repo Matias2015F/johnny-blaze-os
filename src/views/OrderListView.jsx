@@ -1,7 +1,7 @@
 import React from "react";
 import { ArrowLeft } from "lucide-react";
 import { ESTADO_LABEL, ESTADO_CSS } from "../lib/constants.js";
-import { formatMoney } from "../utils/format.js";
+import { formatMoneyShort } from "../utils/format.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 
 export default function OrderListView({ orders, bikes, clients, setSelectedOrderId, setView }) {
@@ -24,14 +24,14 @@ export default function OrderListView({ orders, bikes, clients, setSelectedOrder
             const c = clients.find((x) => x.id === o.clientId);
             const totalOrden = calcularResultadosOrden(o).total;
             return (
-              <div key={o.id} onClick={() => { setSelectedOrderId(o.id); setView("detalleOrden"); }} className="bg-[#141414] p-6 rounded-[2.5rem] flex justify-between items-center active:scale-95 transition-all cursor-pointer border border-white/5">
-                <div className="text-left font-bold">
-                  <p className="text-2xl font-black text-white leading-none mb-1">{b?.patente || "---"}</p>
-                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{c?.nombre || "S/D"}</p>
+              <div key={o.id} onClick={() => { setSelectedOrderId(o.id); setView("detalleOrden"); }} className="bg-[#141414] p-6 rounded-[2.5rem] flex justify-between items-center gap-3 active:scale-95 transition-all cursor-pointer border border-white/5">
+                <div className="min-w-0 flex-1 text-left font-bold">
+                  <p className="text-2xl font-black text-white leading-none mb-1 truncate">{b?.patente || "---"}</p>
+                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest truncate">{c?.nombre || "S/D"}</p>
                   <span className={`inline-block mt-2 text-[8px] font-black px-2 py-0.5 rounded uppercase ${ESTADO_CSS[o.estado]}`}>{ESTADO_LABEL[o.estado]}</span>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-black text-white tracking-tighter">{formatMoney(totalOrden)}</p>
+                <div className="shrink-0 text-right">
+                  <p className="text-xl font-black leading-none text-white">{formatMoneyShort(totalOrden)}</p>
                   <p className="text-[10px] text-zinc-500 font-black uppercase mt-1">{o.fechaIngreso}</p>
                 </div>
               </div>

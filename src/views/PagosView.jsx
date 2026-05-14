@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { ArrowDownUp, ArrowRight, CheckCircle, CreditCard, ReceiptText } from "lucide-react";
 import { calcularResultadosOrden } from "../lib/calc.js";
-import { formatMoney } from "../utils/format.js";
+import { formatMoney, formatMoneyShort } from "../utils/format.js";
 
 const FILTROS = [
   { id: "hoy", label: "Hoy" },
@@ -95,11 +95,11 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
           <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
             <p className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Trabajos con saldo</p>
             <p className="mt-2 text-2xl font-black text-yellow-400">{sinCobrar.length}</p>
-            <p className="mt-1 text-[10px] font-bold text-zinc-500">{formatMoney(saldoPendienteTotal)} pendientes</p>
+            <p className="mt-1 text-[10px] font-bold text-zinc-500">{formatMoneyShort(saldoPendienteTotal)} pendientes</p>
           </div>
           <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
             <p className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Cobrado hoy</p>
-            <p className="mt-2 text-2xl font-black text-emerald-400">{formatMoney(cobradoHoy)}</p>
+            <p className="mt-2 text-xl font-black leading-none text-emerald-400">{formatMoneyShort(cobradoHoy)}</p>
             <p className="mt-1 text-[10px] font-bold text-zinc-500">Ingresos del día</p>
           </div>
         </div>

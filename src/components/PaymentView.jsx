@@ -4,7 +4,7 @@ import { LS, generateId } from "../lib/storage.js";
 import { hoyEstable } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { trackEvent } from "../lib/telemetry.js";
-import { formatMoney, parseMonto } from "../utils/format.js";
+import { formatMoney, formatMoneyShort, parseMonto } from "../utils/format.js";
 
 const METODO_LABEL = {
   efectivo: "Efectivo",
@@ -100,18 +100,18 @@ export default function PaymentView({ order, setView, showToast }) {
       <div className="space-y-5 px-4 pt-4">
         <div className="rounded-[2.5rem] border border-zinc-800 bg-zinc-900 p-5 shadow-xl">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">Saldo actual</p>
-          <p className={`mt-3 text-5xl font-black tracking-tighter ${pagoCompleto ? "text-emerald-400" : "text-white"}`}>
-            {formatMoney(Math.max(saldoActual, 0))}
+          <p className={`mt-3 text-4xl font-black leading-none tracking-tighter ${pagoCompleto ? "text-emerald-400" : "text-white"}`}>
+            {formatMoneyShort(Math.max(saldoActual, 0))}
           </p>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
             <div className="rounded-[1.5rem] border border-white/5 bg-black/30 p-4">
               <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Total del trabajo</p>
-              <p className="mt-2 text-lg font-black text-white">{formatMoney(totalTrabajo)}</p>
+              <p className="mt-2 text-base font-black leading-none text-white">{formatMoneyShort(totalTrabajo)}</p>
             </div>
             <div className="rounded-[1.5rem] border border-white/5 bg-black/30 p-4">
               <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Ya cobrado</p>
-              <p className="mt-2 text-lg font-black text-emerald-400">{formatMoney(totalPagado)}</p>
+              <p className="mt-2 text-base font-black leading-none text-emerald-400">{formatMoneyShort(totalPagado)}</p>
             </div>
           </div>
 

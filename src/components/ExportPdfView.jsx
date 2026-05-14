@@ -50,12 +50,13 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
     <div className="min-h-screen bg-zinc-100 p-4 text-left font-sans text-zinc-900 animate-in fade-in print:bg-white print:p-0">
       <style>{`
         @media print {
-          @page { size: A4 portrait; margin: 14mm 14mm 14mm 14mm; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          @page { size: A4 portrait; margin: 12mm 12mm 12mm 12mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; }
+          .print-root { max-width: 100% !important; width: 100% !important; overflow: visible !important; }
         }
       `}</style>
 
-      <div className="mx-auto max-w-[740px] bg-white print:max-w-none print:w-full">
+      <div className="print-root mx-auto max-w-[680px] bg-white print:max-w-none print:w-full overflow-hidden print:overflow-visible">
         <div className="border-b-2 border-zinc-900 px-8 py-6 print:px-0 print:py-4" style={bloqueCompletoStyle}>
           <div className="flex items-start justify-between gap-8">
             <div className="flex-1">
@@ -270,7 +271,14 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           Cerrar
         </button>
         <button
-          onClick={() => window.print()}
+          onClick={() => {
+            const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+            if (isStandalone) {
+              alert("Para imprimir o guardar PDF:\n1. Tocá el botón de compartir (⬆) del navegador\n2. Elegí \"Imprimir\" o \"Guardar como PDF\"");
+            } else {
+              window.print();
+            }
+          }}
           className="flex items-center gap-2 rounded-3xl bg-red-600 px-8 py-4 text-xs font-black uppercase text-white shadow-2xl transition-all active:scale-95"
         >
           <Printer size={16} /> Imprimir / Guardar PDF

@@ -7,7 +7,7 @@ import { evaluarEstadoRecordatorio, generarMensajeWhatsApp } from "../lib/proxim
 import { LS, useCollection } from "../lib/storage.js";
 import { trackEvent } from "../lib/telemetry.js";
 import { obtenerTiempoActual } from "../lib/timer.js";
-import { formatMoney } from "../utils/format.js";
+import { formatMoneyShort } from "../utils/format.js";
 import { normalizarTelWA } from "../lib/messages.js";
 import { abrirEnlaceExterno } from "../lib/whatsappService.js";
 
@@ -185,7 +185,7 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
             </div>
             <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
               <p className="text-[9px] font-black uppercase tracking-wider text-orange-300">Pendiente de cobro</p>
-              <p className="mt-2 text-2xl font-black text-orange-400">{formatMoney(totalPendienteCobro)}</p>
+              <p className="mt-2 text-xl font-black leading-none text-orange-400">{formatMoneyShort(totalPendienteCobro)}</p>
               <p className="mt-1 text-[10px] font-bold text-orange-600">Saldo total</p>
             </div>
           </div>
@@ -218,7 +218,7 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
         </div>
         <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-4 text-center">
           <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Cobrado</p>
-          <p className="mt-2 text-xl font-black text-yellow-400">{formatMoney(cobradoHoy)}</p>
+          <p className="mt-2 text-base font-black leading-none text-yellow-400">{formatMoneyShort(cobradoHoy)}</p>
           <p className="mt-1 text-[9px] font-bold text-zinc-600">Hoy</p>
         </div>
       </div>
