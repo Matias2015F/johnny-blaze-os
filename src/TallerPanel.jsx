@@ -784,7 +784,7 @@ export default function TallerPanel() {
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-32 left-1/2 -translate-x-1/2 bg-white text-black px-10 py-5 rounded-3xl font-black text-xs uppercase shadow-2xl z-[100] animate-bounce">
+        <div className="fixed bottom-32 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm text-center bg-white text-black px-6 py-4 rounded-3xl font-black text-xs uppercase shadow-2xl z-[100] animate-bounce">
           {toastMessage}
         </div>
       )}

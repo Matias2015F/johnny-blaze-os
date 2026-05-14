@@ -37,8 +37,11 @@ export const calcularResultadosOrden = (order) => {
   const costoInternoTotal = moCosto + repuestosCosto + fletesCosto + insumosCosto;
 
   // ── Resultado ─────────────────────────────────────────────────
-  const margen       = totalCobrado - costoInternoTotal;
-  const rentabilidad = totalCobrado > 0 ? (margen / totalCobrado) * 100 : 0;
+  // gananciaEstimada = solo mano de obra cobrada (lo que el mecánico retiene).
+  // Repuestos, fletes e insumos son pass-through: se cobran al costo, no son ganancia.
+  const gananciaEstimada = moCliente;
+  const margen       = totalCobrado - costoInternoTotal; // conservado para análisis interno
+  const rentabilidad = totalCobrado > 0 ? (gananciaEstimada / totalCobrado) * 100 : 0;
 
   const tareasAnalizadas = tareasOk.map((t) => {
     const costoT = (t.horasReal || t.horasBase || 1) * vHoraInt;
@@ -50,6 +53,7 @@ export const calcularResultadosOrden = (order) => {
   return {
     total: totalCobrado,
     costoInterno: costoInternoTotal,
+    gananciaEstimada,
     margen,
     rentabilidad,
     tareasAnalizadas,

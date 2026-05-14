@@ -336,7 +336,7 @@ export default function App() {
 
       <TallerPanel />
       {pagoToast && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-white text-black px-8 py-4 rounded-3xl font-black text-xs shadow-2xl z-[220]">
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm text-center bg-white text-black px-6 py-4 rounded-3xl font-black text-xs shadow-2xl z-[220]">
           {pagoToast}
         </div>
       )}

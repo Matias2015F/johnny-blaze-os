@@ -922,10 +922,12 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 <p className="text-[10px] font-black uppercase tracking-widest text-orange-200">Total calculado</p>
                 <p className="text-lg font-black text-orange-200">{formatMoney(totalDetallePresupuesto)}</p>
               </div>
-              {res.margen > 0 && (
+              {(res.gananciaEstimada + Math.round(tiempoDiag * valorHora)) > 0 && (
                 <div className="mt-2 flex items-center justify-between gap-3 border-t border-emerald-500/20 pt-2">
                   <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Ganancia estimada</p>
-                  <p className="text-sm font-black text-emerald-300">{formatMoney(res.margen)}</p>
+                  <p className="text-sm font-black text-emerald-300">
+                    {formatMoney(res.gananciaEstimada + Math.round(tiempoDiag * valorHora))}
+                  </p>
                 </div>
               )}
               <div className="mt-2 flex items-center justify-between gap-3 border-t border-orange-500/20 pt-2">

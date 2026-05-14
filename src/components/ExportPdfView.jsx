@@ -55,8 +55,8 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         }
       `}</style>
 
-      <div className="mx-auto max-w-[740px] bg-white print:max-w-none">
-        <div className="border-b-2 border-zinc-900 px-8 py-6" style={bloqueCompletoStyle}>
+      <div className="mx-auto max-w-[740px] bg-white print:max-w-none print:w-full">
+        <div className="border-b-2 border-zinc-900 px-8 py-6 print:px-0 print:py-4" style={bloqueCompletoStyle}>
           <div className="flex items-start justify-between gap-8">
             <div className="flex-1">
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-600">
@@ -89,7 +89,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               </div>
 
               {snapshot.hash && (
-                <div className="rounded-lg border-3 border-zinc-900 bg-white p-2 print:p-3" style={bloqueCompletoStyle}>
+                <div className="rounded-lg border-2 border-zinc-900 bg-white p-2 print:p-3" style={bloqueCompletoStyle}>
                   <QRCodeCanvas
                     value={JSON.stringify({
                       numeroComprobante,
@@ -110,7 +110,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           </div>
         </div>
 
-        <div className="space-y-5 px-8 py-5">
+        <div className="space-y-5 px-8 py-5 print:px-0 print:py-3">
           <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
             <div className="border border-zinc-300 bg-zinc-50 p-4">
               <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">Cliente</p>
@@ -251,8 +251,9 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           </div>
 
           <div className="space-y-1 border-t border-zinc-300 pt-3 text-center" style={bloqueCompletoStyle}>
-            <p className="text-[8px] text-zinc-600">
-              <span className="font-black">Hash:</span> <span className="font-mono">{snapshot.hash}</span>
+            <p className="text-[8px] text-zinc-600 overflow-hidden">
+              <span className="font-black">Hash:</span>{" "}
+              <span className="font-mono break-all">{snapshot.hash}</span>
             </p>
             <p className="text-[8px] text-zinc-500">
               {order.fechaComprobante?.slice(0, 10) || order.fechaIngreso} • Moto Gestión

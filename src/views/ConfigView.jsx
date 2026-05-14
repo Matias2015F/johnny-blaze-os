@@ -838,7 +838,7 @@ function PantallaResumen({ orders, caja }) {
   const ordenesMes = useMemo(() => orders.filter(o => (o.fechaIngreso || "").startsWith(mesActual)), [orders, mesActual]);
   const { totalMes, gananciaMes } = useMemo(() => ({
     totalMes:    ordenesMes.reduce((s, o) => s + (o.total || 0), 0),
-    gananciaMes: ordenesMes.reduce((s, o) => s + calcularResultadosOrden(o).margen, 0),
+    gananciaMes: ordenesMes.reduce((s, o) => s + calcularResultadosOrden(o).gananciaEstimada, 0),
   }), [ordenesMes]);
   const balance = useMemo(() => caja.reduce((acc, m) => (m.tipo === "ingreso" ? acc + m.monto : acc - m.monto), 0), [caja]);
 
