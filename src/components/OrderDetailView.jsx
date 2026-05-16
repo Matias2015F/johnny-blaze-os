@@ -266,6 +266,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
   const bike = bikes.find((x) => x.id === order.bikeId) || {};
   const client = clients.find((x) => x.id === order.clientId) || {};
+  const clientPhone = clientTel || client.whatsapp || client.telefono || client.tel || order.clienteTel || "";
   const res = calcularResultadosOrden(order);
   const valorHora = config.valorHoraCliente || 15000;
   const totalPagado = (order.pagos || []).reduce((sum, pago) => sum + (pago.monto || 0), 0);
@@ -362,7 +363,8 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   // Sincronizar datos del cliente cuando cambia
   useEffect(() => {
     if (client?.nombre) setClientNombre(client.nombre);
-    if (client?.tel) setClientTel(client.tel);
+    const telefono = client?.tel || client?.telefono || client?.whatsapp || "";
+    if (telefono) setClientTel(telefono);
   }, [client?.id]);
   const currentStepIndex = Math.max(STEP_UI.findIndex((step) => step.id === order.estado), 0);
 
@@ -424,6 +426,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     client,
     bike,
     tareas: order.tareas || [],
+    repuestos: order.repuestos || [],
     total: sheetTotalBase,
     min: sheetMinVal,
     max: sheetMaxVal,
@@ -449,7 +452,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
   const handleEnviarDesdeSheet = () => {
     const msg = sheetEditando && sheetMensaje ? sheetMensaje : mensajeAutoSheet;
-    abrirWhatsApp(client.tel, msg);
+    abrirWhatsApp(clientPhone, msg);
     trackEvent("enviar_presupuesto_whatsapp", {
       screen: "detalleOrden",
       entityType: "trabajo",
@@ -524,10 +527,11 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       entityId: order.id,
       metadata: { min: presupuestoMinimo, max: presupuestoMaximo, nivel: nivelRiesgo },
     }).catch(console.error);
-    abrirWhatsApp(client.tel, mensajePresupuesto({
+    abrirWhatsApp(clientPhone, mensajePresupuesto({
       bike,
       client,
       tareas: order.tareas,
+      repuestos: order.repuestos,
       min: presupuestoMinimo,
       max: presupuestoMaximo,
       nivel: nivelRiesgo,
@@ -1008,7 +1012,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
               <button
                 onClick={() => {
-                  abrirWhatsApp(client.tel, imprevistoTexto);
+                  abrirWhatsApp(clientPhone, imprevistoTexto);
                   setShowImprevistoSheet(false);
                 }}
                 className="w-full rounded-[1.75rem] bg-green-600 py-4 text-[11px] font-black uppercase tracking-widest text-white shadow-xl transition-all active:scale-95"
