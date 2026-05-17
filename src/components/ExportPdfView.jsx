@@ -380,18 +380,19 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         >
           Cerrar
         </button>
+        {navigator.share && (
+          <button
+            onClick={() => navigator.share({ title: document.title, url: window.location.href })}
+            className="rounded-2xl border border-zinc-300 bg-zinc-800 px-5 py-4 text-[10px] font-black uppercase text-white shadow-lg active:scale-95"
+          >
+            Compartir
+          </button>
+        )}
         <button
-          onClick={() => {
-            const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-            if (isStandalone) {
-              alert("Para imprimir o guardar PDF:\n1. Tocá el botón de compartir (⬆) del navegador\n2. Elegí \"Imprimir\" o \"Guardar como PDF\"");
-            } else {
-              window.print();
-            }
-          }}
+          onClick={() => window.print()}
           className="flex items-center gap-2 rounded-3xl bg-red-600 px-8 py-4 text-xs font-black uppercase text-white shadow-2xl transition-all active:scale-95"
         >
-          <Printer size={16} /> Imprimir / Guardar PDF
+          <Printer size={16} /> Imprimir / PDF
         </button>
       </div>
     </div>
