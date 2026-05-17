@@ -78,11 +78,20 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
   }, [numeroComprobante]);
 
   return (
-    <div className="min-h-screen bg-zinc-100 p-4 text-left font-sans text-zinc-900 animate-in fade-in print:bg-white print:p-0">
+    <div className="min-h-screen bg-white p-4 text-left font-sans text-zinc-900 animate-in fade-in print:p-0 print:min-h-0">
       <style>{`
         @media print {
           @page { size: A4 portrait; margin: 12mm 12mm 12mm 12mm; }
-          html, body { background: #ffffff !important; color: #09090b !important; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          html, body, #root {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            background-image: none !important;
+            color: #09090b !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
           .print-root { max-width: 100% !important; width: 100% !important; overflow: visible !important; background: #ffffff !important; }
         }
       `}</style>
