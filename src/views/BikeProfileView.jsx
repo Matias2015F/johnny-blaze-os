@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ArrowLeft, PlusCircle, ChevronDown, Bell, MessageCircle, X } from "lucide-react";
+import { ArrowLeft, PlusCircle, ChevronDown, Bell, MessageCircle, X, Printer } from "lucide-react";
 import { formatMoney } from "../utils/format.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { LS, useCollection } from "../lib/storage.js";
@@ -7,7 +7,7 @@ import { evaluarEstadoRecordatorio, generarMensajeWhatsApp } from "../lib/proxim
 import { normalizarTelWA } from "../lib/messages.js";
 import { abrirEnlaceExterno } from "../lib/whatsappService.js";
 
-export default function BikeProfileView({ bikeId, orders, bikes, clients, setView, handleStartNewService }) {
+export default function BikeProfileView({ bikeId, orders, bikes, clients, setView, handleStartNewService, setSelectedOrderId, setFinalPdfData }) {
   const b = bikes.find((x) => x.id === bikeId);
   const c = clients.find((x) => x.id === b?.clienteId);
   const history = orders
@@ -56,11 +56,11 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
 
       <div className="p-6 space-y-4">
 
-        {/* Alertas de próximo service */}
+        {/* Alertas de prï¿½ximo service */}
         {alertasMoto.length > 0 && (
           <div className="space-y-2">
             <p className="text-[10px] font-black text-yellow-600 uppercase tracking-widest flex items-center gap-2">
-              <Bell size={12} /> Próximo control sugerido
+              <Bell size={12} /> Prï¿½ximo control sugerido
             </p>
             {alertasMoto.map(r => (
               <div key={r.id} className={`rounded-[2rem] p-5 border space-y-3 ${r.estadoAlerta === "service_vencido" ? "bg-red-50 border-red-200" : "bg-yellow-50 border-yellow-200"}`}>
@@ -68,7 +68,7 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
                   <div>
                     <p className="text-sm font-black text-zinc-800 uppercase">{r.descripcion}</p>
                     <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-lg inline-block mt-1 ${r.estadoAlerta === "service_vencido" ? "bg-red-500 text-white" : "bg-yellow-400 text-black"}`}>
-                      {r.estadoAlerta === "service_vencido" ? "Vencido" : "Próximo"}
+                      {r.estadoAlerta === "service_vencido" ? "Vencido" : "Prï¿½ximo"}
                     </span>
                     {r.testMode && (
                       <span className="bg-purple-500 text-white text-[8px] font-black px-2 py-0.5 rounded ml-1 inline-block uppercase">PRUEBA</span>
@@ -202,15 +202,27 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
                   )}
                   {order.diagnostico && (
                     <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-                      <p className="text-[8px] font-black uppercase text-zinc-400 mb-1">Diagnóstico</p>
+                      <p className="text-[8px] font-black uppercase text-zinc-400 mb-1">Diagnï¿½stico</p>
                       <p className="text-xs font-bold italic text-zinc-600">"{order.diagnostico}"</p>
                     </div>
                   )}
                   {order.observacionesProxima && (
                     <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
-                      <p className="text-[8px] font-black uppercase text-orange-400 mb-1">Notas para la próxima visita</p>
+                      <p className="text-[8px] font-black uppercase text-orange-400 mb-1">Notas para la prï¿½xima visita</p>
                       <p className="text-xs font-bold italic text-orange-900">"{order.observacionesProxima}"</p>
                     </div>
+                  )}
+                  {order.pdfEntregado && order.numeroComprobante && (
+                    <button
+                      onClick={() => {
+                        setSelectedOrderId(order.id);
+                        setFinalPdfData({});
+                        setView("imprimirOrden");
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-3 text-[11px] font-black uppercase text-white active:scale-95 transition-all"
+                    >
+                      <Printer size={14} /> Reimprimir comprobante {order.numeroComprobante}
+                    </button>
                   )}
                 </div>
               )}

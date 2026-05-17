@@ -582,7 +582,7 @@ export default function TallerPanel() {
       {view === "pago" && selectedOrderId && <PagoView ordenId={selectedOrderId} setView={setView} />}
       {view === "retiro" && selectedOrderId && <RetiroView ordenId={selectedOrderId} setView={setView} />}
       {view === "historial" && <HistoryView orders={orders} bikes={bikes} clients={clients} setView={setView} setSelectedBikeId={setSelectedBikeId} />}
-      {view === "perfilMoto" && <BikeProfileView bikeId={selectedBikeId} orders={orders} bikes={bikes} clients={clients} setView={setView} handleStartNewService={handleStartNewService} />}
+      {view === "perfilMoto" && <BikeProfileView bikeId={selectedBikeId} orders={orders} bikes={bikes} clients={clients} setView={setView} handleStartNewService={handleStartNewService} setSelectedOrderId={setSelectedOrderId} setFinalPdfData={setFinalPdfData} />}
       </Suspense>
       </ChunkErrorBoundary>
 
