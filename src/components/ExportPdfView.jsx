@@ -81,7 +81,22 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
     <div className="min-h-screen bg-white p-4 text-left font-sans text-zinc-900 animate-in fade-in print:p-0 print:min-h-0">
       <style>{`
         @media print {
-          @page { size: A4 portrait; margin: 18mm; }
+          @page {
+            size: A4 portrait;
+            margin: 18mm;
+            @top-right {
+              content: "${numeroComprobante}";
+              font-size: 7pt;
+              font-family: system-ui, sans-serif;
+              color: #71717a;
+            }
+            @bottom-center {
+              content: "Pág. " counter(page) " de " counter(pages);
+              font-size: 7pt;
+              font-family: system-ui, sans-serif;
+              color: #71717a;
+            }
+          }
           html, body, #root {
             background: #ffffff !important;
             background-color: #ffffff !important;
