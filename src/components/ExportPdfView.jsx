@@ -81,7 +81,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
     <div className="min-h-screen bg-white p-4 text-left font-sans text-zinc-900 animate-in fade-in print:p-0 print:min-h-0">
       <style>{`
         @media print {
-          @page { size: A4 portrait; margin: 12mm 12mm 12mm 12mm; }
+          @page { size: A4 portrait; margin: 18mm; }
           html, body, #root {
             background: #ffffff !important;
             background-color: #ffffff !important;
@@ -93,6 +93,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
             print-color-adjust: exact;
           }
           .print-root { max-width: 100% !important; width: 100% !important; overflow: visible !important; background: #ffffff !important; }
+          .print-toolbar { display: none !important; }
         }
       `}</style>
 
@@ -180,8 +181,8 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               {esRechazo ? "Detalle del cierre" : "Trabajos realizados"}
             </h3>
             <div className="border border-zinc-300">
-              <div className="bg-zinc-900 px-4 py-2">
-                <p className="text-[9px] font-black uppercase tracking-wide text-white">Descripción</p>
+              <div className="bg-zinc-900 print:bg-zinc-200 px-4 py-2">
+                <p className="text-[9px] font-black uppercase tracking-wide text-white print:text-zinc-700">Descripción</p>
               </div>
               {esRechazo ? (
                 <>
@@ -289,8 +290,8 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                 {esRechazo ? "Condicion del cierre" : "Garantía"}
               </p>
               {!esRechazo && vencimientoLabel && (
-                <div className="mt-2 inline-block rounded bg-zinc-900 px-2 py-1">
-                  <p className="text-[9px] font-black uppercase tracking-wide text-white">
+                <div className="mt-2 inline-block rounded bg-zinc-900 print:bg-transparent print:border print:border-zinc-700 px-2 py-1">
+                  <p className="text-[9px] font-black uppercase tracking-wide text-white print:text-zinc-800">
                     Válido hasta: {vencimientoLabel}
                   </p>
                 </div>
@@ -365,14 +366,14 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                 {order.fechaComprobante?.slice(0, 10) || order.fechaIngreso} • Moto Gestión
               </p>
               {snapshot.hash && (
-                <p className="mt-0.5 text-[7px] font-mono text-zinc-400">Hash: {snapshot.hash}</p>
+                <p className="mt-0.5 text-[7px] font-mono text-zinc-400">Hash: {snapshot.hash.slice(0, 16)}</p>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="fixed bottom-8 left-1/2 flex -translate-x-1/2 gap-3 print:hidden">
+      <div className="print-toolbar fixed bottom-8 left-1/2 flex -translate-x-1/2 gap-3 print:hidden">
         <button
           onClick={() => setView("detalleOrden")}
           className="rounded-2xl border border-zinc-200 bg-zinc-100 p-4 text-[10px] font-black uppercase shadow-lg active:scale-95"
