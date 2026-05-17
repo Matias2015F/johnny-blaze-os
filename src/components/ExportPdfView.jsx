@@ -82,8 +82,8 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
       <style>{`
         @media print {
           @page { size: A4 portrait; margin: 12mm 12mm 12mm 12mm; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; }
-          .print-root { max-width: 100% !important; width: 100% !important; overflow: visible !important; }
+          html, body { background: #ffffff !important; color: #09090b !important; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print-root { max-width: 100% !important; width: 100% !important; overflow: visible !important; background: #ffffff !important; }
         }
       `}</style>
 
@@ -144,7 +144,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           </div>
         </div>
 
-        <div className="space-y-5 px-8 py-5 print:px-0 print:py-3">
+        <div className="space-y-4 px-8 py-4 print:px-0 print:py-2">
           <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
             <div className="border border-zinc-300 bg-zinc-50 p-4">
               <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">Cliente</p>
@@ -176,28 +176,28 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               </div>
               {esRechazo ? (
                 <>
-                  <div className="border-b border-zinc-200 px-4 py-3 text-sm">
+                  <div className="border-b border-zinc-200 px-4 py-2 text-sm">
                     <p className="font-black uppercase text-zinc-900">Diagnostico / revision facturable</p>
                     <p className="text-[10px] font-bold text-zinc-500">
                       Tiempo: {cierreRechazo.horasDiagnostico || 0} h - Base: {formatMoney(cierreRechazo.baseManoObra || totalOrden)}
                     </p>
                   </div>
                   {cierreRechazo.extraMonto > 0 && (
-                    <div className="border-b border-zinc-200 px-4 py-3 text-sm">
+                    <div className="border-b border-zinc-200 px-4 py-2 text-sm">
                       <p className="font-black uppercase text-zinc-900">Cargo adicional acordado</p>
                       <p className="text-[10px] font-bold text-zinc-500">{formatMoney(cierreRechazo.extraMonto)}</p>
                     </div>
                   )}
-                  <div className="px-4 py-3 text-sm">
+                  <div className="px-4 py-2 text-sm">
                     <p className="font-black uppercase text-zinc-900">Presupuesto rechazado o pospuesto</p>
                     <p className="text-[10px] font-bold text-zinc-500">
                       Presupuesto original no cobrado: {formatMoney(cierreRechazo.presupuestoOriginalTotal || order.presupuestoOriginalTotal || 0)}
                     </p>
                   </div>
                   {tareasPresupuestadas.length > 0 && (
-                    <div className="border-t border-zinc-200 px-4 py-3 text-sm">
+                    <div className="border-t border-zinc-200 px-4 py-2 text-sm">
                       <p className="font-black uppercase text-zinc-900">Mano de obra rechazada / pospuesta</p>
-                      <ul className="mt-2 space-y-1">
+                      <ul className="mt-1 space-y-0.5">
                         {tareasPresupuestadas.map((t, i) => (
                           <li key={`tarea-rechazada-${i}`} className="text-[10px] font-bold uppercase text-zinc-700">
                             {t.nombre || "Trabajo presupuestado"}
@@ -207,9 +207,9 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                     </div>
                   )}
                   {repuestosPresupuestados.length > 0 && (
-                    <div className="border-t border-zinc-200 px-4 py-3 text-sm">
+                    <div className="border-t border-zinc-200 px-4 py-2 text-sm">
                       <p className="font-black uppercase text-zinc-900">Repuestos rechazados / no cambiados</p>
-                      <ul className="mt-2 space-y-1">
+                      <ul className="mt-1 space-y-0.5">
                         {repuestosPresupuestados.map((r, i) => (
                           <li key={`repuesto-rechazado-${i}`} className="text-[10px] font-bold uppercase text-zinc-700">
                             {r.cantidad > 1 ? `${r.cantidad}x ` : ""}{r.nombre || "Repuesto presupuestado"}
@@ -221,13 +221,13 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                 </>
               ) : tareas.length > 0 ? (
                 tareas.map((t, i) => (
-                  <div key={i} className={`px-4 py-3 text-sm ${i < tareas.length - 1 ? "border-b border-zinc-200" : ""}`}>
+                  <div key={i} className={`px-4 py-2 text-sm ${i < tareas.length - 1 ? "border-b border-zinc-200" : ""}`}>
                     <p className="font-black uppercase text-zinc-900">{t.nombre}</p>
                     <p className="text-[10px] font-bold text-zinc-500">Mano de obra realizada</p>
                   </div>
                 ))
               ) : (
-                <p className="px-4 py-3 text-xs font-bold text-zinc-400">Sin trabajos cargados</p>
+                <p className="px-4 py-2 text-xs font-bold text-zinc-400">Sin trabajos cargados</p>
               )}
             </div>
           </div>
@@ -240,7 +240,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                   <p className="text-[9px] font-black uppercase tracking-wide text-zinc-700">Descripción</p>
                 </div>
                 {repuestos.map((r, i) => (
-                  <div key={`rep-${i}`} className={`px-4 py-3 text-sm ${i < repuestos.length - 1 ? "border-b border-zinc-200" : ""}`}>
+                  <div key={`rep-${i}`} className={`px-4 py-2 text-sm ${i < repuestos.length - 1 ? "border-b border-zinc-200" : ""}`}>
                     <p className="font-black uppercase text-zinc-900">{r.cantidad > 1 ? `${r.cantidad}x ` : ""}{r.nombre}</p>
                   </div>
                 ))}
@@ -274,8 +274,8 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
-            <div className="border border-zinc-300 p-4">
+          <div className="grid grid-cols-[1.1fr_0.9fr] gap-4" style={bloqueCompletoStyle}>
+            <div className="border border-zinc-300 p-3">
               <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
                 {esRechazo ? "Condicion del cierre" : "Garantía"}
               </p>
@@ -301,30 +301,30 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               )}
             </div>
 
-            <div className="space-y-2 border border-zinc-300 p-4">
-              <div className="flex justify-between text-sm">
-                <span className="font-bold text-zinc-600">{esRechazo ? "Total cobrado:" : "Total trabajo:"}</span>
-                <span className="font-black text-zinc-900">{formatMoney(totalOrden)}</span>
+            <div className="space-y-2 border border-zinc-300 p-3">
+              <div className="flex items-baseline justify-between gap-1 text-xs">
+                <span className="whitespace-nowrap font-bold text-zinc-600">{esRechazo ? "Total cobrado:" : "Total trabajo:"}</span>
+                <span className="whitespace-nowrap font-black text-zinc-900">{formatMoney(totalOrden)}</span>
               </div>
               {totalPagado > 0 && (
-                <div className="flex justify-between border-t border-zinc-300 pt-2 text-sm">
-                  <span className="font-bold text-green-700">Total pagado:</span>
-                  <span className="font-black text-green-700">{formatMoney(totalPagado)}</span>
+                <div className="flex items-baseline justify-between gap-1 border-t border-zinc-300 pt-2 text-xs">
+                  <span className="whitespace-nowrap font-bold text-green-700">Total pagado:</span>
+                  <span className="whitespace-nowrap font-black text-green-700">{formatMoney(totalPagado)}</span>
                 </div>
               )}
-              <div className={`mt-3 flex justify-between rounded px-3 py-3 font-black text-white ${saldo <= 0 ? "bg-green-600" : "bg-zinc-900"}`}>
-                <span>{saldo <= 0 ? "PAGADO" : "SALDO PENDIENTE"}</span>
-                <span>{formatMoney(Math.max(saldo, 0))}</span>
+              <div className={`mt-2 flex items-center justify-between rounded px-3 py-2 text-xs font-black text-white ${saldo <= 0 ? "bg-green-600" : "bg-zinc-900"}`}>
+                <span className="whitespace-nowrap">{saldo <= 0 ? "PAGADO" : "SALDO"}</span>
+                <span className="whitespace-nowrap">{formatMoney(Math.max(saldo, 0))}</span>
               </div>
             </div>
           </div>
 
-          <div className="space-y-2 border-2 border-yellow-300 bg-yellow-50 p-4" style={bloqueCompletoStyle}>
-            <p className="text-[10px] font-black uppercase tracking-wide text-yellow-800">
+          <div className="space-y-1.5 border-2 border-yellow-300 bg-yellow-50 p-3" style={bloqueCompletoStyle}>
+            <p className="text-[9px] font-black uppercase tracking-wide text-yellow-800">
               {esRechazo ? "Terminos del cierre sin garantia" : "Términos de garantía y validez"}
             </p>
             {esRechazo ? (
-              <ul className="space-y-1">
+              <ul className="space-y-0.5">
                 <li className="text-[9px] text-zinc-700">El cliente rechaza o pospone el presupuesto.</li>
                 <li className="text-[9px] text-zinc-700">No se realizaron los trabajos presupuestados ni se cambiaron repuestos.</li>
                 <li className="text-[9px] text-zinc-700">El monto cobrado corresponde al diagnostico, revision y cargos acordados.</li>
@@ -332,7 +332,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                 <li className="text-[9px] text-zinc-700">Número único verificable. Escaneá el QR para validar.</li>
               </ul>
             ) : (
-              <ul className="space-y-1">
+              <ul className="space-y-0.5">
                 <li className="text-[9px] text-zinc-700">Sin comprobante no se pueden realizar reclamos de garantía.</li>
                 <li className="text-[9px] text-zinc-700">La garantía de mano de obra se informa en este comprobante.</li>
                 <li className="text-[9px] text-zinc-700">Los repuestos quedan sujetos a la garantía del fabricante.</li>
@@ -342,23 +342,23 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
             )}
           </div>
 
-          <div className="space-y-2 border-t-2 border-zinc-300 pt-4" style={bloqueCompletoStyle}>
-            <p className="text-[10px] font-black uppercase tracking-wide text-zinc-700">Conformidad</p>
-            <p className="text-[10px] leading-relaxed text-zinc-600">
-              {esRechazo
-                ? "La recepcion de este documento deja constancia del presupuesto rechazado o pospuesto y del monto real cobrado por diagnostico/revision."
-                : "La recepción de este documento implica conformidad con el trabajo detallado, los pagos registrados y la garantía informada."}
-            </p>
-          </div>
-
-          <div className="space-y-1 border-t border-zinc-300 pt-3 text-center" style={bloqueCompletoStyle}>
-            <p className="text-[8px] text-zinc-600 overflow-hidden">
-              <span className="font-black">Hash:</span>{" "}
-              <span className="font-mono break-all">{snapshot.hash}</span>
-            </p>
-            <p className="text-[8px] text-zinc-500">
-              {order.fechaComprobante?.slice(0, 10) || order.fechaIngreso} • Moto Gestión
-            </p>
+          <div className="flex items-start justify-between gap-4 border-t-2 border-zinc-300 pt-3" style={bloqueCompletoStyle}>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-700">Conformidad</p>
+              <p className="mt-1 text-[9px] leading-relaxed text-zinc-600">
+                {esRechazo
+                  ? "La recepcion de este documento deja constancia del presupuesto rechazado o pospuesto y del monto real cobrado por diagnostico/revision."
+                  : "La recepción de este documento implica conformidad con el trabajo detallado, los pagos registrados y la garantía informada."}
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-[8px] text-zinc-500">
+                {order.fechaComprobante?.slice(0, 10) || order.fechaIngreso} • Moto Gestión
+              </p>
+              {snapshot.hash && (
+                <p className="mt-0.5 text-[7px] font-mono text-zinc-400">Hash: {snapshot.hash}</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
