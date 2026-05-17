@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, ChevronDown, ClipboardList, DollarSign, Edit2, FileText, Play, Search, Send, ShieldCheck, ThumbsUp, Trash2, Truck, Wrench, X } from "lucide-react";
-import { LS, buscarRepuestosAutocomplete, crearEntradaHistorial, guardarRepuestoHistorial } from "../lib/storage.js";
-import { CONFIG_DEFAULT, ESTADO_CSS, ESTADO_LABEL } from "../lib/constants.js";
+import { LS, buscarRepuestosAutocomplete, crearEntradaHistorial, generateId, guardarRepuestoHistorial } from "../lib/storage.js";
+import { CONFIG_DEFAULT, ESTADO_CSS, ESTADO_LABEL, TEXTO_CIERRE_RECHAZO, hoyEstable } from "../lib/constants.js";
 import { calcularNuevoRango, calcularNuevoTotal, calcularResultadosOrden } from "../lib/calc.js";
 import { obtenerAprendizaje } from "../lib/priceLearning.js";
 import {
@@ -19,7 +19,7 @@ import {
 import { abrirWhatsApp, generarMensajePresupuestoConDatos, mensajeBloqueo, mensajePresupuesto, mensajesImprevisto } from "../lib/messages.js";
 import { trackEvent } from "../lib/telemetry.js";
 import { MOTIVOS_BLOQUEO } from "../lib/theme.js";
-import { formatMoney } from "../utils/format.js";
+import { formatMoney, parseMonto } from "../utils/format.js";
 
 const UMBRAL_ALERTA = { bajo: 0.9, medio: 0.8, alto: 0.7 };
 const RANGO_FACTOR = { bajo: 1.0, medio: 1.3, alto: 1.5 };
@@ -200,6 +200,13 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const [localConfirm, setLocalConfirm] = useState(null); // { mensaje, onOk }
   const [showImprevistoSheet, setShowImprevistoSheet] = useState(false);
   const [imprevistoTexto, setImprevistoTexto] = useState("");
+  const [showRechazoSheet, setShowRechazoSheet] = useState(false);
+  const [rechazoModo, setRechazoModo] = useState("porcentaje");
+  const [rechazoExtraPct, setRechazoExtraPct] = useState("0");
+  const [rechazoExtraMonto, setRechazoExtraMonto] = useState("");
+  const [rechazoMetodo, setRechazoMetodo] = useState("efectivo");
+  const [rechazoComprobante, setRechazoComprobante] = useState("");
+  const [rechazoObs, setRechazoObs] = useState(TEXTO_CIERRE_RECHAZO);
 
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
 
@@ -268,12 +275,32 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const client = clients.find((x) => x.id === order.clientId) || {};
   const clientPhone = clientTel || client.whatsapp || client.telefono || client.tel || order.clienteTel || "";
   const res = calcularResultadosOrden(order);
+  const esCierreRechazo = order.cierreTipo === "rechazo_cliente";
   const valorHora = config.valorHoraCliente || 15000;
   const totalPagado = (order.pagos || []).reduce((sum, pago) => sum + (pago.monto || 0), 0);
   const saldoPendiente = res.total - totalPagado;
   const isLocked = !!order.pdfEntregado;
   const trabajoLabel = order.numeroTrabajo || `#${order.id.slice(-4).toUpperCase()}`;
-  const detallePresupuesto = [
+  const presupuestoOriginalCierre = order.presupuestoOriginalTotal || order.cierreRechazo?.presupuestoOriginalTotal || 0;
+  const detallePresupuesto = esCierreRechazo ? [
+    {
+      label: "Cierre por rechazo / pausa",
+      note: presupuestoOriginalCierre > 0
+        ? `Presupuesto original no cobrado: ${formatMoney(presupuestoOriginalCierre)}`
+        : "Solo figura lo realmente cobrado",
+      total: res.total,
+      items: [
+        {
+          type: "cierre_rechazo",
+          index: 0,
+          raw: order.cierreRechazo || {},
+          nombre: "Diagnostico / revision facturable",
+          detalle: `${formatTiempoCorto(order.cierreRechazo?.horasDiagnostico || 0)} + cargos acordados`,
+          total: res.total,
+        },
+      ],
+    },
+  ] : [
     {
       label: "Trabajos / mano de obra",
       note: "Ganancia del taller",
@@ -421,6 +448,13 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const sheetMinVal = Number(sheetMin) > 0 ? Number(sheetMin) : presupuestoMinSheet;
   const sheetMaxVal = Number(sheetMax) > 0 ? Number(sheetMax) : presupuestoMaxSheet;
   const sheetTotalBase = sheetTipoFijo ? sheetMinVal : sheetMaxVal;
+  const rechazoBaseManoObra = Math.max(0, Math.round(tiempoDiag * valorHora));
+  const rechazoPctNum = Math.max(0, parseMonto(rechazoExtraPct));
+  const rechazoMontoNum = Math.max(0, parseMonto(rechazoExtraMonto));
+  const rechazoExtraCalculado = rechazoModo === "porcentaje"
+    ? Math.round(rechazoBaseManoObra * (rechazoPctNum / 100))
+    : rechazoMontoNum;
+  const rechazoTotal = Math.max(0, rechazoBaseManoObra + rechazoExtraCalculado);
 
   const mensajeAutoSheet = generarMensajePresupuestoConDatos({
     client,
@@ -450,6 +484,17 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     setShowPresupuestoSheet(true);
   };
 
+  const abrirRechazoSheet = () => {
+    const extraConfig = config.presupuestoConfig?.rechazoExtraMonto || 0;
+    setRechazoModo(extraConfig > 0 ? "fijo" : "porcentaje");
+    setRechazoExtraPct(String(config.presupuestoConfig?.rechazoExtraPct ?? 0));
+    setRechazoExtraMonto(extraConfig > 0 ? String(extraConfig) : "");
+    setRechazoMetodo("efectivo");
+    setRechazoComprobante("");
+    setRechazoObs(order.cierreRechazo?.observacion || TEXTO_CIERRE_RECHAZO);
+    setShowRechazoSheet(true);
+  };
+
   const handleEnviarDesdeSheet = () => {
     const msg = sheetEditando && sheetMensaje ? sheetMensaje : mensajeAutoSheet;
     abrirWhatsApp(clientPhone, msg);
@@ -463,6 +508,89 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     cambiarEstado("aprobacion");
     setPresupuestoSent(true);
     setShowPresupuestoSheet(false);
+  };
+
+  const cerrarPorRechazo = () => {
+    const horasDiagnostico = obtenerTiempoDiagActual(order);
+    const baseManoObra = Math.max(0, Math.round(horasDiagnostico * valorHora));
+    const extra = rechazoModo === "porcentaje"
+      ? Math.round(baseManoObra * (Math.max(0, parseMonto(rechazoExtraPct)) / 100))
+      : Math.max(0, Math.round(parseMonto(rechazoExtraMonto)));
+    const totalCobrado = Math.max(0, baseManoObra + extra);
+
+    if (totalCobrado <= 0) {
+      showToast("Cargá un monto de diagnóstico o un cargo fijo");
+      return;
+    }
+
+    const fecha = hoyEstable();
+    const hora = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+    const observacion = (rechazoObs || "").trim() || TEXTO_CIERRE_RECHAZO;
+    const pausado = pausarDiag(order);
+    const presupuestoOriginalTotal = res.total;
+    const pagadoPrevio = (order.pagos || []).reduce((sum, pago) => sum + (pago.monto || 0), 0);
+    const totalFinalCierre = pagadoPrevio + totalCobrado;
+    const pago = {
+      id: generateId(),
+      fecha,
+      hora,
+      monto: totalCobrado,
+      metodo: rechazoMetodo,
+      comprobante: rechazoComprobante,
+      tipo: "rechazo_presupuesto",
+      concepto: "Diagnostico por presupuesto rechazado o pospuesto",
+    };
+    const entrada = crearEntradaHistorial(order.estado, "listo_para_emitir");
+
+    LS.updateDoc("trabajos", order.id, {
+      ...pausado,
+      estado: "listo_para_emitir",
+      cierreTipo: "rechazo_cliente",
+      presupuestoOriginalTotal,
+      costoFinal: totalFinalCierre,
+      total: totalFinalCierre,
+      pagos: [...(order.pagos || []), pago],
+      garantiaFinal: observacion,
+      vencimientoGarantia: "",
+      cierreRechazo: {
+        fecha,
+        hora,
+        horasDiagnostico: Math.round(horasDiagnostico * 100) / 100,
+        valorHora,
+        baseManoObra,
+        extraTipo: rechazoModo,
+        extraPct: rechazoModo === "porcentaje" ? Math.max(0, parseMonto(rechazoExtraPct)) : 0,
+        extraMonto: extra,
+        montoCobradoAlCerrar: totalCobrado,
+        totalCobrado: totalFinalCierre,
+        observacion,
+        presupuestoOriginalTotal,
+      },
+      historial: [...(order.historial || []), entrada],
+    });
+
+    LS.addDoc("caja", {
+      fecha,
+      hora,
+      tipo: "ingreso",
+      concepto: `Diagnostico por rechazo ${trabajoLabel}`,
+      monto: totalCobrado,
+      metodo: rechazoMetodo,
+      comprobante: rechazoComprobante,
+      orderId: order.id,
+      categoria: "rechazo_presupuesto",
+    });
+
+    trackEvent("cerrar_presupuesto_rechazado", {
+      screen: "detalleOrden",
+      entityType: "trabajo",
+      entityId: order.id,
+      metadata: { totalCobrado: totalFinalCierre, montoCobradoAlCerrar: totalCobrado, baseManoObra, extra, presupuestoOriginalTotal },
+    }).catch(console.error);
+
+    setShowRechazoSheet(false);
+    showToast("Cierre por rechazo registrado");
+    setView("prePdf");
   };
 
   const cambiarEstado = (nuevo) => {
@@ -493,7 +621,9 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             : order.estado === "finalizada"
               ? { label: "Finalizar trabajo", action: () => setView("finalizacion"), className: "bg-orange-600 text-white" }
               : order.estado === "listo_para_emitir"
-                ? { label: "Registrar cobro", action: () => setView("pago"), className: "bg-green-600 text-white" }
+                ? saldoPendiente <= 0
+                  ? { label: "Emitir comprobante", action: () => setView("prePdf"), className: "bg-orange-600 text-white" }
+                  : { label: "Registrar cobro", action: () => setView("pago"), className: "bg-green-600 text-white" }
                 : order.estado === "cerrado_emitido"
                   ? { label: "Emitir comprobante", action: () => setView("prePdf"), className: "bg-orange-600 text-white" }
                   : null;
@@ -639,7 +769,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             <div className="rounded-2xl border border-orange-500/25 bg-zinc-950/95 px-4 py-3 shadow-2xl backdrop-blur">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Total del presupuesto</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{esCierreRechazo ? "Total cobrado" : "Total del presupuesto"}</p>
                   <p className="mt-1 text-xl font-black leading-tight text-white">{formatMoney(res.total)}</p>
                 </div>
                 <div className="shrink-0 text-right">
@@ -719,7 +849,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               )}
             </div>
             <div className="text-right">
-              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Total presupuesto</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">{esCierreRechazo ? "Total cobrado" : "Total presupuesto"}</p>
               <div className="rounded-[1.5rem] border border-orange-400/25 bg-zinc-950/50 px-4 py-3 shadow-xl backdrop-blur">
                 <p className="text-3xl font-black leading-none tracking-tighter text-orange-300">{formatMoney(res.total)}</p>
               </div>
@@ -734,13 +864,13 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       </div>
 
       <div className="mx-auto max-w-[440px] px-4 py-6 space-y-6">
-        {/* Cronómetro de diagnóstico */}
+        {/* Cronometro de trabajo / diagnostico */}
         {["diagnostico", "presupuesto"].includes(order.estado) && !isLocked && (
           <div className="rounded-[2rem] border border-violet-500/30 bg-violet-950/40 p-5 shadow-xl">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-violet-300">Cronómetro de diagnóstico</p>
-                <p className="text-[9px] font-bold text-zinc-500 mt-0.5">Tiempo de revisión facturable</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-violet-300">Cronometro de trabajo / diagnostico</p>
+                <p className="text-[9px] font-bold text-zinc-500 mt-0.5">Tiempo facturable si el cliente rechaza o pospone</p>
               </div>
               {tiempoDiag > 0 && (
                 <p className="text-xs font-black text-violet-400">≈ {formatMoney(Math.round(tiempoDiag * valorHora))}</p>
@@ -829,6 +959,15 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             className="w-full rounded-[1.75rem] border border-amber-500/50 bg-amber-500/10 py-3.5 text-[11px] font-black uppercase tracking-widest text-amber-300 shadow-lg transition-all active:scale-95"
           >
             Avisar imprevisto al cliente
+          </button>
+        )}
+
+        {!isLocked && ["diagnostico", "presupuesto", "aprobacion"].includes(order.estado) && (
+          <button
+            onClick={abrirRechazoSheet}
+            className="w-full rounded-[1.75rem] border border-red-500/40 bg-red-500/10 py-3.5 text-[11px] font-black uppercase tracking-widest text-red-200 shadow-lg transition-all active:scale-95"
+          >
+            Cliente rechaza / pospone
           </button>
         )}
 
@@ -970,6 +1109,145 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           onSave={guardarItemEditado}
           onCancel={() => setEditandoItem(null)}
         />
+      )}
+
+      {showRechazoSheet && (
+        <div className="fixed inset-0 z-50 flex items-end">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowRechazoSheet(false)} />
+          <div className="relative w-full max-h-[92vh] overflow-y-auto rounded-t-[2rem] border-t border-red-700/40 bg-zinc-900 shadow-2xl animate-in slide-in-from-bottom duration-300">
+            <div className="mx-auto max-w-[440px] p-6 space-y-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-red-300">Cierre comun de taller</p>
+                  <h3 className="mt-1 text-lg font-black uppercase tracking-tight text-white">Cliente rechaza / pospone</h3>
+                </div>
+                <button onClick={() => setShowRechazoSheet(false)} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-90 transition-all">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="rounded-2xl border border-orange-500/20 bg-orange-500/10 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-orange-200">Presupuesto original</p>
+                <p className="mt-1 text-2xl font-black text-orange-100">{formatMoney(res.total)}</p>
+                <p className="mt-1 text-[10px] font-bold text-orange-200/70">Este monto queda como referencia. No entra a caja si el cliente no lo aprueba.</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-violet-500/20 bg-violet-500/10 p-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-violet-300">Tiempo tomado</p>
+                  <p className="mt-1 text-xl font-black text-white tabular-nums">{formatTiempo(tiempoDiag)}</p>
+                  <p className="mt-1 text-[10px] font-bold text-violet-200/70">{formatTiempoCorto(tiempoDiag)}</p>
+                </div>
+                <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-emerald-300">Mano de obra</p>
+                  <p className="mt-1 text-xl font-black text-emerald-200">{formatMoney(rechazoBaseManoObra)}</p>
+                  <p className="mt-1 text-[10px] font-bold text-emerald-200/70">Cronometro x hora taller</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-black/25 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Cargo adicional acordado</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRechazoModo("porcentaje")}
+                    className={`rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${rechazoModo === "porcentaje" ? "bg-orange-600 text-white" : "bg-zinc-800 text-zinc-400"}`}
+                  >
+                    Porcentaje
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRechazoModo("fijo")}
+                    className={`rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${rechazoModo === "fijo" ? "bg-orange-600 text-white" : "bg-zinc-800 text-zinc-400"}`}
+                  >
+                    Monto fijo
+                  </button>
+                </div>
+
+                {rechazoModo === "porcentaje" ? (
+                  <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Extra sobre el diagnostico</label>
+                    <div className="mt-2 flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 focus-within:border-orange-500">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={rechazoExtraPct}
+                        onChange={(e) => setRechazoExtraPct(e.target.value)}
+                        className="w-full bg-transparent text-right text-2xl font-black text-white outline-none"
+                        placeholder="0"
+                      />
+                      <span className="text-lg font-black text-orange-400">%</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Cargo fijo</label>
+                    <div className="mt-2 flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 focus-within:border-orange-500">
+                      <span className="text-lg font-black text-orange-400">$</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={rechazoExtraMonto}
+                        onChange={(e) => setRechazoExtraMonto(e.target.value)}
+                        className="w-full bg-transparent text-right text-2xl font-black text-white outline-none"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-300">Total a cobrar ahora</p>
+                <p className="mt-1 text-3xl font-black text-emerald-200">{formatMoney(rechazoTotal)}</p>
+                <p className="mt-1 text-[10px] font-bold text-emerald-200/70">Solo este monto se registra en caja.</p>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Medio de pago</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    ["efectivo", "Efectivo"],
+                    ["transferencia", "Transferencia"],
+                    ["mercadopago", "Mercado Pago"],
+                  ].map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setRechazoMetodo(id)}
+                      className={`rounded-2xl border px-2 py-3 text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${rechazoMetodo === id ? "border-orange-500 bg-orange-600 text-white" : "border-zinc-700 bg-zinc-800 text-zinc-400"}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  value={rechazoComprobante}
+                  onChange={(e) => setRechazoComprobante(e.target.value)}
+                  placeholder="Numero de comprobante o referencia"
+                  className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm font-bold text-white outline-none placeholder:text-zinc-600 focus:border-orange-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Observacion para el comprobante</label>
+                <textarea
+                  value={rechazoObs}
+                  onChange={(e) => setRechazoObs(e.target.value)}
+                  rows={5}
+                  className="mt-2 w-full resize-none rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-xs font-bold leading-relaxed text-zinc-200 outline-none focus:border-orange-500"
+                />
+              </div>
+
+              <button
+                onClick={cerrarPorRechazo}
+                className="w-full rounded-[1.75rem] bg-red-600 py-5 text-[11px] font-black uppercase tracking-widest text-white shadow-xl shadow-red-900/30 transition-all active:scale-95"
+              >
+                Cobrar y emitir comprobante sin garantia
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showImprevistoSheet && (

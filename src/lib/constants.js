@@ -6,6 +6,8 @@ export const PLANTILLAS_GARANTIA = [
   { id: "transmision", nombre: "Transmisión / frenos", texto: "Garantía de 30 días. Sujeta a condiciones de uso normal y limpieza de cadena." },
 ];
 
+export const TEXTO_CIERRE_RECHAZO = "Cliente rechaza o pospone el trabajo. El presupuesto queda cerrado sin garantia porque no se realizo la reparacion presupuestada. Si el cliente regresa en el futuro, el presupuesto puede ajustarse segun precios, disponibilidad de repuestos y estado de la moto al momento de retomar.";
+
 export const CONFIG_DEFAULT = {
   id: "global",
   nombreTaller: "Moto Gestión",
@@ -37,6 +39,8 @@ export const CONFIG_DEFAULT = {
     incluirAlias: true,
     incluirCBU: true,
     advertenciaAbierto: true,
+    rechazoExtraPct: 0,
+    rechazoExtraMonto: 0,
   },
 };
 

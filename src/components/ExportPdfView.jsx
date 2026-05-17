@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { Printer } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { LS } from "../lib/storage.js";
-import { CONFIG_DEFAULT } from "../lib/constants.js";
+import { CONFIG_DEFAULT, TEXTO_CIERRE_RECHAZO } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { formatMoney } from "../utils/format.js";
 
@@ -24,10 +24,12 @@ const bloqueCompletoStyle = {
 export default function ExportPdfView({ order, bike, client, setView, extraData }) {
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const snapshot = order.snapshotFinal || {};
-  const tareas = snapshot.tareas || order.tareas || [];
-  const repuestos = snapshot.repuestos || order.repuestos || [];
+  const esRechazo = (snapshot.cierreTipo || order.cierreTipo) === "rechazo_cliente" || extraData?.tipoCierre === "rechazo_cliente";
+  const cierreRechazo = snapshot.cierreRechazo || order.cierreRechazo || {};
+  const tareas = esRechazo ? [] : snapshot.tareas || order.tareas || [];
+  const repuestos = esRechazo ? [] : snapshot.repuestos || order.repuestos || [];
   const pagos = snapshot.pagos || order.pagos || [];
-  const totalOrden = snapshot.total || calcularResultadosOrden(order).total;
+  const totalOrden = typeof snapshot.total === "number" ? snapshot.total : calcularResultadosOrden(order).total;
   const totalPagado = pagos.reduce((s, p) => s + (p.monto || 0), 0);
   const saldo = totalOrden - totalPagado;
   const numeroComprobante = extraData?.numeroComprobante || order.numeroComprobante || `COMP-${order.id.slice(-6).toUpperCase()}`;
@@ -61,13 +63,15 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           <div className="flex items-start justify-between gap-8">
             <div className="flex-1">
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-600">
-                Constancia de servicio técnico
+                {esRechazo ? "Constancia de diagnostico y presupuesto cerrado" : "Constancia de servicio técnico"}
               </p>
               <h1 className="mt-3 max-w-xs text-2xl font-black uppercase leading-tight tracking-tight">
                 {config.nombreTaller}
               </h1>
               <p className="mt-2 text-xs font-bold text-zinc-600">
-                Documento de entrega y detalle del trabajo realizado
+                {esRechazo
+                  ? "Cliente rechaza o pospone la reparacion presupuestada. Se cobra solo el cierre acordado."
+                  : "Documento de entrega y detalle del trabajo realizado"}
               </p>
               <div className="mt-4 space-y-1 text-[10px] leading-relaxed text-zinc-700">
                 <p><span className="font-black">Técnico:</span> {config.mecanicoResponsable}</p>
@@ -130,12 +134,35 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           </div>
 
           <div style={bloqueCompletoStyle}>
-            <h3 className="mb-2 text-[10px] font-black uppercase tracking-wide text-zinc-700">Trabajos realizados</h3>
+            <h3 className="mb-2 text-[10px] font-black uppercase tracking-wide text-zinc-700">
+              {esRechazo ? "Detalle del cierre" : "Trabajos realizados"}
+            </h3>
             <div className="border border-zinc-300">
               <div className="bg-zinc-900 px-4 py-2">
                 <p className="text-[9px] font-black uppercase tracking-wide text-white">Descripción</p>
               </div>
-              {tareas.length > 0 ? (
+              {esRechazo ? (
+                <>
+                  <div className="border-b border-zinc-200 px-4 py-3 text-sm">
+                    <p className="font-black uppercase text-zinc-900">Diagnostico / revision facturable</p>
+                    <p className="text-[10px] font-bold text-zinc-500">
+                      Tiempo: {cierreRechazo.horasDiagnostico || 0} h - Base: {formatMoney(cierreRechazo.baseManoObra || totalOrden)}
+                    </p>
+                  </div>
+                  {cierreRechazo.extraMonto > 0 && (
+                    <div className="border-b border-zinc-200 px-4 py-3 text-sm">
+                      <p className="font-black uppercase text-zinc-900">Cargo adicional acordado</p>
+                      <p className="text-[10px] font-bold text-zinc-500">{formatMoney(cierreRechazo.extraMonto)}</p>
+                    </div>
+                  )}
+                  <div className="px-4 py-3 text-sm">
+                    <p className="font-black uppercase text-zinc-900">Presupuesto rechazado o pospuesto</p>
+                    <p className="text-[10px] font-bold text-zinc-500">
+                      Presupuesto original no cobrado: {formatMoney(cierreRechazo.presupuestoOriginalTotal || order.presupuestoOriginalTotal || 0)}
+                    </p>
+                  </div>
+                </>
+              ) : tareas.length > 0 ? (
                 tareas.map((t, i) => (
                   <div key={i} className={`px-4 py-3 text-sm ${i < tareas.length - 1 ? "border-b border-zinc-200" : ""}`}>
                     <p className="font-black uppercase text-zinc-900">{t.nombre}</p>
@@ -192,8 +219,10 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
           <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
             <div className="border border-zinc-300 p-4">
-              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">Garantía</p>
-              {vencimientoLabel && (
+              <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
+                {esRechazo ? "Condicion del cierre" : "Garantía"}
+              </p>
+              {!esRechazo && vencimientoLabel && (
                 <div className="mt-2 inline-block rounded bg-zinc-900 px-2 py-1">
                   <p className="text-[9px] font-black uppercase tracking-wide text-white">
                     Válido hasta: {vencimientoLabel}
@@ -201,9 +230,9 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                 </div>
               )}
               <p className="mt-2 text-[10px] leading-relaxed text-zinc-700">
-                {extraData?.garantia || order.garantiaFinal || "Sin texto de garantía cargado."}
+                {extraData?.garantia || order.garantiaFinal || (esRechazo ? TEXTO_CIERRE_RECHAZO : "Sin texto de garantía cargado.")}
               </p>
-              {proximoControl?.activo && (
+              {!esRechazo && proximoControl?.activo && (
                 <div className="mt-3 border-t border-zinc-300 pt-3">
                   <p className="text-[9px] font-black uppercase text-orange-700">Próximo control</p>
                   <p className="mt-1 text-[10px] font-bold text-zinc-700">
@@ -217,7 +246,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
             <div className="space-y-2 border border-zinc-300 p-4">
               <div className="flex justify-between text-sm">
-                <span className="font-bold text-zinc-600">Total trabajo:</span>
+                <span className="font-bold text-zinc-600">{esRechazo ? "Total cobrado:" : "Total trabajo:"}</span>
                 <span className="font-black text-zinc-900">{formatMoney(totalOrden)}</span>
               </div>
               {totalPagado > 0 && (
@@ -234,20 +263,34 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           </div>
 
           <div className="space-y-2 border-2 border-yellow-300 bg-yellow-50 p-4" style={bloqueCompletoStyle}>
-            <p className="text-[10px] font-black uppercase tracking-wide text-yellow-800">Términos de garantía y validez</p>
-            <ul className="space-y-1">
-              <li className="text-[9px] text-zinc-700">Sin comprobante no se pueden realizar reclamos de garantía.</li>
-              <li className="text-[9px] text-zinc-700">La garantía de mano de obra se informa en este comprobante.</li>
-              <li className="text-[9px] text-zinc-700">Los repuestos quedan sujetos a la garantía del fabricante.</li>
-              <li className="text-[9px] text-zinc-700">Documento no modificable, generado automáticamente.</li>
-              <li className="text-[9px] text-zinc-700">Número único verificable. Escaneá el QR para validar.</li>
-            </ul>
+            <p className="text-[10px] font-black uppercase tracking-wide text-yellow-800">
+              {esRechazo ? "Terminos del cierre sin garantia" : "Términos de garantía y validez"}
+            </p>
+            {esRechazo ? (
+              <ul className="space-y-1">
+                <li className="text-[9px] text-zinc-700">El cliente rechaza o pospone el presupuesto.</li>
+                <li className="text-[9px] text-zinc-700">No se realizaron los trabajos presupuestados ni se cambiaron repuestos.</li>
+                <li className="text-[9px] text-zinc-700">El monto cobrado corresponde al diagnostico, revision y cargos acordados.</li>
+                <li className="text-[9px] text-zinc-700">Si retoma la reparacion en el futuro, el presupuesto puede ajustarse.</li>
+                <li className="text-[9px] text-zinc-700">Número único verificable. Escaneá el QR para validar.</li>
+              </ul>
+            ) : (
+              <ul className="space-y-1">
+                <li className="text-[9px] text-zinc-700">Sin comprobante no se pueden realizar reclamos de garantía.</li>
+                <li className="text-[9px] text-zinc-700">La garantía de mano de obra se informa en este comprobante.</li>
+                <li className="text-[9px] text-zinc-700">Los repuestos quedan sujetos a la garantía del fabricante.</li>
+                <li className="text-[9px] text-zinc-700">Documento no modificable, generado automáticamente.</li>
+                <li className="text-[9px] text-zinc-700">Número único verificable. Escaneá el QR para validar.</li>
+              </ul>
+            )}
           </div>
 
           <div className="space-y-2 border-t-2 border-zinc-300 pt-4" style={bloqueCompletoStyle}>
             <p className="text-[10px] font-black uppercase tracking-wide text-zinc-700">Conformidad</p>
             <p className="text-[10px] leading-relaxed text-zinc-600">
-              La recepción de este documento implica conformidad con el trabajo detallado, los pagos registrados y la garantía informada.
+              {esRechazo
+                ? "La recepcion de este documento deja constancia del presupuesto rechazado o pospuesto y del monto real cobrado por diagnostico/revision."
+                : "La recepción de este documento implica conformidad con el trabajo detallado, los pagos registrados y la garantía informada."}
             </p>
           </div>
 

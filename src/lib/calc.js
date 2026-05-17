@@ -3,6 +3,7 @@ import { CONFIG_DEFAULT } from "./constants.js";
 import { formatMoney } from "../utils/format.js";
 
 const noRechazado = x => x.aprobacion !== "rechazado";
+const numero = (v) => Number(v || 0);
 
 export const calcularNuevoTotal = (tareas = [], repuestos = [], fletes = [], insumos = []) => {
   const t = tareas.filter(noRechazado).reduce((s, x) => s + (x.monto || 0), 0);
@@ -13,6 +14,39 @@ export const calcularNuevoTotal = (tareas = [], repuestos = [], fletes = [], ins
 };
 
 export const calcularResultadosOrden = (order) => {
+  if (order?.cierreTipo === "rechazo_cliente") {
+    const cierre = order.cierreRechazo || {};
+    const totalCobrado = numero(cierre.totalCobrado ?? order.costoFinal ?? order.total);
+    const baseManoObra = numero(cierre.baseManoObra ?? totalCobrado);
+    const extra = Math.max(totalCobrado - baseManoObra, 0);
+
+    return {
+      total: totalCobrado,
+      costoInterno: 0,
+      gananciaEstimada: totalCobrado,
+      margen: totalCobrado,
+      rentabilidad: totalCobrado > 0 ? 100 : 0,
+      tareasAnalizadas: [],
+      sinCostoCargado: false,
+      desglose: {
+        moCliente: totalCobrado,
+        moCosto: 0,
+        margenMO: totalCobrado,
+        repuestosCliente: 0,
+        repuestosCosto: 0,
+        margenRepuestos: 0,
+        fletesCliente: 0,
+        fletesCosto: 0,
+        margenFletes: 0,
+        insumosCliente: 0,
+        insumosCosto: 0,
+        margenInsumos: 0,
+        rechazoBaseManoObra: baseManoObra,
+        rechazoExtra: extra,
+      },
+    };
+  }
+
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const vHoraInt = config.valorHoraInterno || 12000;
 
