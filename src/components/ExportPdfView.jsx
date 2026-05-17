@@ -16,6 +16,29 @@ function labelMetodo(metodo = "") {
   return metodo || "---";
 }
 
+function titleCase(texto = "") {
+  return String(texto || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/\b\p{L}/gu, (letra) => letra.toUpperCase());
+}
+
+function normalizarNombrePersona(nombre = "") {
+  return titleCase(nombre)
+    .replace(/\bJose\b/g, "José")
+    .replace(/\bLuiz\b/g, "Luis");
+}
+
+function normalizarMoto(marca = "", modelo = "") {
+  const marcaNorm = titleCase(marca)
+    .replace(/\bYhamaha\b/gi, "Yamaha")
+    .replace(/\bYamaha\b/gi, "Yamaha")
+    .replace(/\bHonda\b/gi, "Honda");
+  const modeloNorm = titleCase(modelo).replace(/\b(Fz|Ybr|Cg|Xr|Xtz|Ns|Rs|Glh|Cb|Crf)\b/g, (m) => m.toUpperCase());
+  return [marcaNorm, modeloNorm].filter(Boolean).join(" ").trim() || "---";
+}
+
 const bloqueCompletoStyle = {
   breakInside: "avoid",
   pageBreakInside: "avoid",
@@ -26,8 +49,10 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
   const snapshot = order.snapshotFinal || {};
   const esRechazo = (snapshot.cierreTipo || order.cierreTipo) === "rechazo_cliente" || extraData?.tipoCierre === "rechazo_cliente";
   const cierreRechazo = snapshot.cierreRechazo || order.cierreRechazo || {};
-  const tareas = esRechazo ? [] : snapshot.tareas || order.tareas || [];
-  const repuestos = esRechazo ? [] : snapshot.repuestos || order.repuestos || [];
+  const tareasPresupuestadas = snapshot.tareas || order.tareas || [];
+  const repuestosPresupuestados = snapshot.repuestos || order.repuestos || [];
+  const tareas = esRechazo ? [] : tareasPresupuestadas;
+  const repuestos = esRechazo ? [] : repuestosPresupuestados;
   const pagos = snapshot.pagos || order.pagos || [];
   const totalOrden = typeof snapshot.total === "number" ? snapshot.total : calcularResultadosOrden(order).total;
   const totalPagado = pagos.reduce((s, p) => s + (p.monto || 0), 0);
@@ -35,6 +60,10 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
   const numeroComprobante = extraData?.numeroComprobante || order.numeroComprobante || `COMP-${order.id.slice(-6).toUpperCase()}`;
   const kilometraje = order.kmIngreso || order.km || bike?.kilometrajeActual || bike?.km;
   const proximoControl = order.proximoControl || null;
+  const clienteNombre = normalizarNombrePersona(client?.nombre || snapshot.clienteNombre || "");
+  const clienteTelefono = client?.celular || client?.whatsapp || client?.tel || client?.telefono || "---";
+  const motoNombre = normalizarMoto(bike?.marca || snapshot.bikeMarca, bike?.modelo || snapshot.bikeModelo);
+  const motoPatente = bike?.patente || snapshot.bikePatente || "---";
   const vencimientoRaw = extraData?.vencimientoGarantia || order.vencimientoGarantia || null;
   const vencimientoLabel = vencimientoRaw
     ? new Date(vencimientoRaw + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })
@@ -119,16 +148,20 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
             <div className="border border-zinc-300 bg-zinc-50 p-4">
               <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">Cliente</p>
-              <p className="mt-2 text-sm font-black text-zinc-900">{client?.nombre || "---"}</p>
-              <p className="mt-1 text-xs text-zinc-600">{client?.tel || client?.telefono || "---"}</p>
+              <p className="mt-2 text-sm font-black text-zinc-900">
+                <span className="text-zinc-500">Cliente:</span> {clienteNombre || "---"}
+              </p>
+              <p className="mt-1 text-xs font-bold text-zinc-700">
+                <span className="text-zinc-500">Celular:</span> {clienteTelefono}
+              </p>
             </div>
             <div className="border border-zinc-300 bg-zinc-50 p-4">
               <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">Motocicleta</p>
               <p className="mt-2 text-sm font-black text-zinc-900">
-                {bike?.marca} {bike?.modelo}
+                <span className="text-zinc-500">Motocicleta:</span> {motoNombre}
               </p>
               <p className="mt-1 text-xs font-bold text-zinc-700">
-                {bike?.patente || "---"} {kilometraje ? `• ${kilometraje} km` : ""}
+                <span className="text-zinc-500">Patente:</span> {motoPatente}{kilometraje ? ` • ${kilometraje} km` : ""}
               </p>
             </div>
           </div>
@@ -161,6 +194,30 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                       Presupuesto original no cobrado: {formatMoney(cierreRechazo.presupuestoOriginalTotal || order.presupuestoOriginalTotal || 0)}
                     </p>
                   </div>
+                  {tareasPresupuestadas.length > 0 && (
+                    <div className="border-t border-zinc-200 px-4 py-3 text-sm">
+                      <p className="font-black uppercase text-zinc-900">Mano de obra rechazada / pospuesta</p>
+                      <ul className="mt-2 space-y-1">
+                        {tareasPresupuestadas.map((t, i) => (
+                          <li key={`tarea-rechazada-${i}`} className="text-[10px] font-bold uppercase text-zinc-700">
+                            {t.nombre || "Trabajo presupuestado"}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {repuestosPresupuestados.length > 0 && (
+                    <div className="border-t border-zinc-200 px-4 py-3 text-sm">
+                      <p className="font-black uppercase text-zinc-900">Repuestos rechazados / no cambiados</p>
+                      <ul className="mt-2 space-y-1">
+                        {repuestosPresupuestados.map((r, i) => (
+                          <li key={`repuesto-rechazado-${i}`} className="text-[10px] font-bold uppercase text-zinc-700">
+                            {r.cantidad > 1 ? `${r.cantidad}x ` : ""}{r.nombre || "Repuesto presupuestado"}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </>
               ) : tareas.length > 0 ? (
                 tareas.map((t, i) => (
