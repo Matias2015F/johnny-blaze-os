@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-AR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,6 +11,9 @@
     <meta name="robots" content="index, follow" />
     <meta name="author" content="MotoGestión" />
     <link rel="canonical" href="https://app.motogestion.ar/" />
+    <meta name="geo.region" content="AR" />
+    <meta name="geo.placename" content="Argentina" />
+    <meta name="ICBM" content="-34.6037, -58.3816" />
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/brand/motogestion-icon.png" />
@@ -38,16 +41,39 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="MotoGestión" />
 
-    <!-- JSON-LD -->
+    <!-- JSON-LD: Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "MotoGestion Argentina",
+      "alternateName": "motogestion.ar",
+      "url": "https://motogestion.ar",
+      "logo": "https://app.motogestion.ar/brand/motogestion-icon.png",
+      "description": "Software SaaS de gestión para talleres mecánicos de motos en Argentina.",
+      "areaServed": { "@type": "Country", "name": "Argentina" },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "matias4604@gmail.com",
+        "availableLanguage": "es-AR"
+      }
+    }
+    </script>
+    <!-- JSON-LD: SoftwareApplication -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "MotoGestión",
-      "description": "Sistema de gestión para talleres mecánicos de motos. Órdenes de trabajo digitales, historial de clientes y motos, cobros, recordatorios de service por km y comprobantes PDF.",
+      "alternateName": ["MotoGestion", "motogestion.ar", "MotoGestion Argentina"],
+      "description": "Sistema de gestión para talleres mecánicos de motos en Argentina. Órdenes de trabajo digitales, historial de clientes y motos, cobros, recordatorios de service por km y comprobantes PDF. Compatible con Yamaha, Honda, Bajaj, Zanella, Motomel y todas las marcas.",
       "url": "https://app.motogestion.ar/",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web, Android, iOS",
+      "inLanguage": "es-AR",
+      "countriesSupported": "AR",
+      "availableOnDevice": ["Desktop", "Mobile", "Tablet"],
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -59,16 +85,16 @@
         "Historial de clientes y motos",
         "Control de pagos y cobros",
         "Recordatorios de service por kilometraje",
-        "Comprobantes en PDF",
+        "Comprobantes en PDF con QR verificable",
         "Gestión de repuestos e insumos",
         "Catálogo de servicios",
-        "Perfil de moto con historial completo"
+        "Perfil de moto con historial completo",
+        "Presupuestos por WhatsApp",
+        "Control de ganancia por orden"
       ],
-      "inLanguage": "es-AR",
-      "availableOnDevice": ["Desktop", "Mobile", "Tablet"],
       "provider": {
         "@type": "Organization",
-        "name": "MotoGestión",
+        "name": "MotoGestion Argentina",
         "url": "https://motogestion.ar"
       }
     }
