@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Printer } from "lucide-react";
 import { QRCodeCanvas } from "qrcode.react";
 import { LS } from "../lib/storage.js";
@@ -69,6 +69,64 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
     ? new Date(vencimientoRaw + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })
     : null;
 
+  const printRootRef = useRef(null);
+  const [generating, setGenerating] = useState(false);
+
+  const isIosStandalone =
+    window.navigator.standalone === true ||
+    (window.matchMedia("(display-mode: standalone)").matches &&
+      /iPhone|iPad|iPod/i.test(navigator.userAgent));
+
+  async function handleGuardarPdf() {
+    setGenerating(true);
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const el = printRootRef.current;
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = pdf.internal.pageSize.getHeight();
+      const scaledH = (canvas.height * pdfW) / canvas.width;
+      let y = 0;
+      let rem = scaledH;
+      while (rem > 0) {
+        if (y > 0) pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, -y, pdfW, scaledH);
+        y += pdfH;
+        rem -= pdfH;
+      }
+      const blob = pdf.output("blob");
+      const file = new File([blob], `${numeroComprobante}.pdf`, { type: "application/pdf" });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: numeroComprobante });
+      } else if (navigator.share) {
+        await navigator.share({ title: document.title, url: window.location.href });
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${numeroComprobante}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      window.print();
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   useEffect(() => {
     const tituloAnterior = document.title;
     document.title = numeroComprobante;
@@ -112,7 +170,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         }
       `}</style>
 
-      <div className="print-root mx-auto max-w-[680px] bg-white print:max-w-none print:w-full overflow-hidden print:overflow-visible">
+      <div ref={printRootRef} className="print-root mx-auto max-w-[680px] bg-white print:max-w-none print:w-full overflow-hidden print:overflow-visible">
         <div className="border-b-2 border-zinc-900 px-8 py-6 print:px-0 print:py-4" style={bloqueCompletoStyle}>
           <div className="flex items-start justify-between gap-8">
             <div className="flex-1">
@@ -395,19 +453,18 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         >
           Cerrar
         </button>
-        {navigator.share && (
-          <button
-            onClick={() => navigator.share({ title: document.title, url: window.location.href })}
-            className="rounded-2xl border border-zinc-300 bg-zinc-800 px-5 py-4 text-[10px] font-black uppercase text-white shadow-lg active:scale-95"
-          >
-            Compartir
-          </button>
-        )}
         <button
-          onClick={() => window.print()}
-          className="flex items-center gap-2 rounded-3xl bg-red-600 px-8 py-4 text-xs font-black uppercase text-white shadow-2xl transition-all active:scale-95"
+          disabled={generating}
+          onClick={isIosStandalone ? handleGuardarPdf : () => window.print()}
+          className="flex items-center gap-2 rounded-3xl bg-red-600 px-8 py-4 text-xs font-black uppercase text-white shadow-2xl transition-all active:scale-95 disabled:opacity-60 disabled:scale-100"
         >
-          <Printer size={16} /> Imprimir / PDF
+          {generating ? (
+            "Generando PDF..."
+          ) : isIosStandalone ? (
+            <><Printer size={16} /> Guardar / Compartir PDF</>
+          ) : (
+            <><Printer size={16} /> Imprimir / PDF</>
+          )}
         </button>
       </div>
     </div>
