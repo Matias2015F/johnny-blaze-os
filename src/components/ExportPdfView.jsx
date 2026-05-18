@@ -108,12 +108,17 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
       el.style.overflow = "visible";
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-      // Collect block TOP positions before capture (screen px, relative to element)
+      // Collect block positions before capture so page cuts avoid breaking cards/tables.
       const elRect = el.getBoundingClientRect();
-      const blockTopsPxScreen = [];
+      const blockRectsPxScreen = [];
       el.querySelectorAll("[style*='avoid']").forEach((b) => {
         const r = b.getBoundingClientRect();
-        if (r.top > elRect.top + 5) blockTopsPxScreen.push(r.top - elRect.top);
+        if (r.top > elRect.top + 5) {
+          blockRectsPxScreen.push({
+            top: r.top - elRect.top,
+            bottom: r.bottom - elRect.top,
+          });
+        }
       });
 
       const canvas = await html2canvas(el, {
@@ -126,36 +131,67 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         height: el.scrollHeight,
       });
 
-      const imgData = canvas.toDataURL("image/jpeg", 0.92);
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pdfW = pdf.internal.pageSize.getWidth();
       const pdfH = pdf.internal.pageSize.getHeight();
       const contentW = pdfW - MARGIN_MM * 2;
       const contentH = pdfH - MARGIN_MM * 2;
 
-      // Full image height scaled to content width
-      const scaledH = (canvas.height * contentW) / canvas.width;
-      // Convert block tops from screen px → mm in scaled image
-      const mmPerCanvasPx = contentW / canvas.width;
-      const blockTopsMm = blockTopsPxScreen.map((px) => px * SCALE * mmPerCanvasPx);
+      const pageHeightPx = Math.floor((contentH * canvas.width) / contentW);
+      const minProgressPx = Math.floor(pageHeightPx * 0.35);
+      const avoidRectsPx = blockRectsPxScreen.map((r) => ({
+        top: Math.max(0, Math.floor(r.top * SCALE)),
+        bottom: Math.min(canvas.height, Math.ceil(r.bottom * SCALE)),
+      }));
 
-      let pageStartMm = 0;
-      let isFirst = true;
+      function getSafeCutPx(startPx, idealCutPx) {
+        let cutPx = Math.min(idealCutPx, canvas.height);
+        const minCutPx = Math.min(canvas.height, startPx + minProgressPx);
+        const paddingPx = Math.max(16, Math.floor(SCALE * 8));
 
-      while (pageStartMm < scaledH - 1) {
-        if (!isFirst) pdf.addPage();
-        pdf.addImage(imgData, "JPEG", MARGIN_MM, MARGIN_MM - pageStartMm, contentW, scaledH);
-
-        const idealEnd = pageStartMm + contentH;
-        if (idealEnd >= scaledH) break;
-
-        // Find the last block TOP before idealEnd (but at least 20mm past pageStart)
-        let bestCut = idealEnd;
-        for (const topMm of blockTopsMm) {
-          if (topMm > pageStartMm + 20 && topMm <= idealEnd) bestCut = topMm;
+        for (const rect of avoidRectsPx) {
+          const insideBlock = cutPx > rect.top + paddingPx && cutPx < rect.bottom - paddingPx;
+          if (insideBlock && rect.top - paddingPx > minCutPx) {
+            cutPx = rect.top - paddingPx;
+            break;
+          }
         }
 
-        pageStartMm = bestCut;
+        return Math.max(minCutPx, Math.min(cutPx, canvas.height));
+      }
+
+      let pageStartPx = 0;
+      let isFirst = true;
+
+      while (pageStartPx < canvas.height - 1) {
+        if (!isFirst) pdf.addPage();
+
+        const idealEndPx = Math.min(pageStartPx + pageHeightPx, canvas.height);
+        const pageEndPx = idealEndPx >= canvas.height ? canvas.height : getSafeCutPx(pageStartPx, idealEndPx);
+        const sliceHeightPx = Math.max(1, pageEndPx - pageStartPx);
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeightPx;
+        const pageCtx = pageCanvas.getContext("2d");
+        pageCtx.fillStyle = "#ffffff";
+        pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        pageCtx.drawImage(
+          canvas,
+          0,
+          pageStartPx,
+          canvas.width,
+          sliceHeightPx,
+          0,
+          0,
+          canvas.width,
+          sliceHeightPx,
+        );
+
+        const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.92);
+        const pageImgHeightMm = (sliceHeightPx * contentW) / canvas.width;
+        pdf.addImage(pageImgData, "JPEG", MARGIN_MM, MARGIN_MM, contentW, pageImgHeightMm);
+
+        pageStartPx = pageEndPx;
         isFirst = false;
       }
 
