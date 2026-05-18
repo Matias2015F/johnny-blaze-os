@@ -84,26 +84,59 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         import("html2canvas"),
         import("jspdf"),
       ]);
+
       const el = printRootRef.current;
+      const SCALE = 2;
+      const MARGIN_MM = 15;
+
+      // Collect block TOP positions before capture (screen px, relative to element)
+      const elRect = el.getBoundingClientRect();
+      const blockTopsPxScreen = [];
+      el.querySelectorAll("[style*='avoid']").forEach((b) => {
+        const r = b.getBoundingClientRect();
+        if (r.top > elRect.top + 5) blockTopsPxScreen.push(r.top - elRect.top);
+      });
+
       const canvas = await html2canvas(el, {
-        scale: 2,
+        scale: SCALE,
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
       });
+
       const imgData = canvas.toDataURL("image/jpeg", 0.92);
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pdfW = pdf.internal.pageSize.getWidth();
       const pdfH = pdf.internal.pageSize.getHeight();
-      const scaledH = (canvas.height * pdfW) / canvas.width;
-      let y = 0;
-      let rem = scaledH;
-      while (rem > 0) {
-        if (y > 0) pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, -y, pdfW, scaledH);
-        y += pdfH;
-        rem -= pdfH;
+      const contentW = pdfW - MARGIN_MM * 2;
+      const contentH = pdfH - MARGIN_MM * 2;
+
+      // Full image height scaled to content width
+      const scaledH = (canvas.height * contentW) / canvas.width;
+      // Convert block tops from screen px → mm in scaled image
+      const mmPerCanvasPx = contentW / canvas.width;
+      const blockTopsMm = blockTopsPxScreen.map((px) => px * SCALE * mmPerCanvasPx);
+
+      let pageStartMm = 0;
+      let isFirst = true;
+
+      while (pageStartMm < scaledH - 1) {
+        if (!isFirst) pdf.addPage();
+        pdf.addImage(imgData, "JPEG", MARGIN_MM, MARGIN_MM - pageStartMm, contentW, scaledH);
+
+        const idealEnd = pageStartMm + contentH;
+        if (idealEnd >= scaledH) break;
+
+        // Find the last block TOP before idealEnd (but at least 20mm past pageStart)
+        let bestCut = idealEnd;
+        for (const topMm of blockTopsMm) {
+          if (topMm > pageStartMm + 20 && topMm <= idealEnd) bestCut = topMm;
+        }
+
+        pageStartMm = bestCut;
+        isFirst = false;
       }
+
       const blob = pdf.output("blob");
       const file = new File([blob], `${numeroComprobante}.pdf`, { type: "application/pdf" });
       if (navigator.canShare?.({ files: [file] })) {
