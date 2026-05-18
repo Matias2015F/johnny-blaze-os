@@ -76,18 +76,37 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
     window.navigator.standalone === true ||
     (window.matchMedia("(display-mode: standalone)").matches &&
       /iPhone|iPad|iPod/i.test(navigator.userAgent));
+  const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+  const shouldGeneratePdfFile = isMobileDevice || isStandalone;
 
   async function handleGuardarPdf() {
     setGenerating(true);
+    const el = printRootRef.current;
+    const previousRootStyle = el
+      ? {
+          width: el.style.width,
+          maxWidth: el.style.maxWidth,
+          overflow: el.style.overflow,
+        }
+      : null;
     try {
       const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
         import("html2canvas"),
         import("jspdf"),
       ]);
 
-      const el = printRootRef.current;
       const SCALE = 2;
       const MARGIN_MM = 15;
+      const EXPORT_WIDTH_PX = 680;
+
+      if (!el) throw new Error("No se encontró la hoja para exportar.");
+
+      const targetWidth = Math.max(EXPORT_WIDTH_PX, el.scrollWidth || 0);
+      el.style.width = `${targetWidth}px`;
+      el.style.maxWidth = `${targetWidth}px`;
+      el.style.overflow = "visible";
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
       // Collect block TOP positions before capture (screen px, relative to element)
       const elRect = el.getBoundingClientRect();
@@ -102,6 +121,9 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         useCORS: true,
         backgroundColor: "#ffffff",
         logging: false,
+        width: targetWidth,
+        windowWidth: targetWidth,
+        height: el.scrollHeight,
       });
 
       const imgData = canvas.toDataURL("image/jpeg", 0.92);
@@ -156,6 +178,11 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
     } catch {
       window.print();
     } finally {
+      if (el && previousRootStyle) {
+        el.style.width = previousRootStyle.width;
+        el.style.maxWidth = previousRootStyle.maxWidth;
+        el.style.overflow = previousRootStyle.overflow;
+      }
       setGenerating(false);
     }
   }
@@ -174,7 +201,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         @media print {
           @page {
             size: A4 portrait;
-            margin: 18mm;
+            margin: 12mm;
             @top-right {
               content: "${numeroComprobante}";
               font-size: 7pt;
@@ -199,13 +226,34 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
             print-color-adjust: exact;
           }
           .print-root { max-width: 100% !important; width: 100% !important; overflow: visible !important; background: #ffffff !important; }
+          #root > .max-w-md,
+          #root > .max-w-md > div,
+          .print-root {
+            max-width: none !important;
+            width: 100% !important;
+            margin: 0 auto !important;
+          }
+          .print-root {
+            width: 186mm !important;
+            max-width: 186mm !important;
+            box-sizing: border-box !important;
+          }
+          .print-root * {
+            box-sizing: border-box !important;
+          }
+          .print-header {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) 42mm !important;
+            gap: 8mm !important;
+            align-items: start !important;
+          }
           .print-toolbar { display: none !important; }
         }
       `}</style>
 
       <div ref={printRootRef} className="print-root mx-auto max-w-[680px] bg-white print:max-w-none print:w-full overflow-hidden print:overflow-visible">
         <div className="border-b-2 border-zinc-900 px-8 py-6 print:px-0 print:py-4" style={bloqueCompletoStyle}>
-          <div className="flex items-start justify-between gap-8">
+          <div className="print-header flex items-start justify-between gap-8">
             <div className="flex-1">
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-600">
                 {esRechazo ? "Constancia de diagnostico y presupuesto cerrado" : "Constancia de servicio técnico"}
@@ -488,12 +536,12 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         </button>
         <button
           disabled={generating}
-          onClick={isIosStandalone ? handleGuardarPdf : () => window.print()}
+          onClick={shouldGeneratePdfFile ? handleGuardarPdf : () => window.print()}
           className="flex items-center gap-2 rounded-3xl bg-red-600 px-8 py-4 text-xs font-black uppercase text-white shadow-2xl transition-all active:scale-95 disabled:opacity-60 disabled:scale-100"
         >
           {generating ? (
             "Generando PDF..."
-          ) : isIosStandalone ? (
+          ) : shouldGeneratePdfFile ? (
             <><Printer size={16} /> Guardar / Compartir PDF</>
           ) : (
             <><Printer size={16} /> Imprimir / PDF</>
