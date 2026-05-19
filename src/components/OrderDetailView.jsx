@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowLeft, CheckCircle2, ChevronDown, ClipboardList, DollarSign, Edit2, FileText, Play, Search, Send, ShieldCheck, ThumbsUp, Trash2, Truck, Wrench, X } from "lucide-react";
+import { ArrowLeft, Bell, CheckCircle2, ChevronDown, ClipboardList, DollarSign, Edit2, FileText, Play, Search, Send, ShieldCheck, ThumbsUp, Trash2, Truck, Wrench, X } from "lucide-react";
 import { LS, buscarRepuestosAutocomplete, crearEntradaHistorial, generateId, guardarRepuestoHistorial } from "../lib/storage.js";
+import { buildProximoControl } from "../lib/proximoControl.js";
 import { CONFIG_DEFAULT, ESTADO_CSS, ESTADO_LABEL, TEXTO_CIERRE_RECHAZO, hoyEstable } from "../lib/constants.js";
 import { calcularNuevoRango, calcularNuevoTotal, calcularResultadosOrden } from "../lib/calc.js";
 import { obtenerAprendizaje } from "../lib/priceLearning.js";
@@ -46,6 +47,8 @@ function EditarItemSheet({ tipo, datos, cilindrada, onSave, onCancel }) {
   const tipoHistorial = tipo === "repuestos" ? "repuesto" : tipo === "insumos" ? "insumo" : "flete";
 
   const [form, setForm] = useState({ ...datos });
+  const [cantidadStr, setCantidadStr] = useState(String(datos.cantidad || 1));
+  const [montoStr, setMontoStr] = useState(datos.monto > 0 ? String(datos.monto) : "");
   const [busqueda, setBusqueda] = useState(datos.nombre || "");
   const [sugerencias, setSugerencias] = useState([]);
   const [mostrarSug, setMostrarSug] = useState(false);
@@ -64,6 +67,7 @@ function EditarItemSheet({ tipo, datos, cilindrada, onSave, onCancel }) {
 
   const seleccionar = (s) => {
     setBusqueda(s.nombre);
+    setMontoStr(String(s.precio));
     setForm(f => ({ ...f, nombre: s.nombre, monto: s.precio }));
     setMostrarSug(false);
   };
@@ -129,8 +133,13 @@ function EditarItemSheet({ tipo, datos, cilindrada, onSave, onCancel }) {
               <input
                 type="text" inputMode="numeric"
                 className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 font-black text-white outline-none focus:border-orange-500 transition-colors"
-                value={form.cantidad || 1}
-                onChange={e => setForm(f => ({ ...f, cantidad: Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 1) }))}
+                value={cantidadStr}
+                onChange={e => {
+                  const v = e.target.value.replace(/\D/g, "");
+                  setCantidadStr(v);
+                  setForm(f => ({ ...f, cantidad: Math.max(1, Number(v) || 1) }));
+                }}
+                onBlur={() => setCantidadStr(String(Math.max(1, Number(cantidadStr) || 1)))}
               />
             </div>
           )}
@@ -145,10 +154,11 @@ function EditarItemSheet({ tipo, datos, cilindrada, onSave, onCancel }) {
               <input
                 type="text" inputMode="numeric"
                 className="w-full bg-transparent font-black text-orange-400 outline-none text-right"
-                value={form.monto > 0 ? form.monto.toLocaleString("es-AR") : ""}
+                value={montoStr}
                 onChange={e => {
-                  const v = Number(e.target.value.replace(/\D/g, "")) || 0;
-                  setForm(f => ({ ...f, monto: v }));
+                  const v = e.target.value.replace(/\D/g, "");
+                  setMontoStr(v);
+                  setForm(f => ({ ...f, monto: Number(v) || 0 }));
                 }}
                 placeholder="0"
               />
@@ -207,6 +217,9 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const [rechazoMetodo, setRechazoMetodo] = useState("efectivo");
   const [rechazoComprobante, setRechazoComprobante] = useState("");
   const [rechazoObs, setRechazoObs] = useState(TEXTO_CIERRE_RECHAZO);
+  const [kmProximoStr, setKmProximoStr] = useState(() =>
+    order.proximoControl?.kmObjetivo ? String(order.proximoControl.kmObjetivo) : ""
+  );
 
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
 
@@ -739,6 +752,27 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const handleStop = () => LS.updateDoc("trabajos", order.id, detenerCronometro(order));
   const handleSinCronometro = () => LS.updateDoc("trabajos", order.id, trabajarSinCronometro(order));
 
+  const guardarProximoControl = () => {
+    const kmObj = parseInt(kmProximoStr, 10);
+    const kmBase = order.kmIngreso || order.km || 0;
+    if (!kmObj || kmObj <= kmBase) return;
+    const pc = buildProximoControl({
+      tipo: "service",
+      descripcion: "Service general",
+      unidad: "km",
+      valorObjetivo: kmObj - kmBase,
+      kmBase,
+    });
+    LS.updateDoc("trabajos", order.id, { proximoControl: pc });
+    showToast("Proximo service guardado");
+  };
+
+  const quitarProximoControl = () => {
+    LS.updateDoc("trabajos", order.id, { proximoControl: null });
+    setKmProximoStr("");
+    showToast("Recordatorio quitado");
+  };
+
   const ejecutarPaso = (idx) => {
     if (isLocked) return;
     const pasoId = STEP_UI[idx]?.id;
@@ -1099,6 +1133,70 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             </div>
           </section>
         )}
+
+        {/* PRÓXIMO SERVICE */}
+        {!isLocked && (
+          <section className="rounded-[2rem] border border-yellow-500/20 bg-zinc-900/95 p-4 shadow-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <Bell size={13} className="text-yellow-400" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-yellow-300">Proximo service</p>
+            </div>
+
+            {order.proximoControl?.activo ? (
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-white">{order.proximoControl.descripcion}</p>
+                  <p className="text-[10px] font-bold text-zinc-400 mt-0.5">
+                    A los {Number(order.proximoControl.kmObjetivo || 0).toLocaleString("es-AR")} km
+                    {" · "}Aviso a {Number(order.proximoControl.kmAviso || 0).toLocaleString("es-AR")} km
+                  </p>
+                </div>
+                <button
+                  onClick={quitarProximoControl}
+                  className="rounded-2xl bg-zinc-800 px-3 py-2 text-[9px] font-black uppercase text-zinc-400 active:scale-95 transition-all flex-shrink-0"
+                >
+                  Quitar
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-[9px] font-bold text-zinc-500">
+                  Km al ingreso:{" "}
+                  <span className="text-zinc-300 font-black">
+                    {(order.kmIngreso || order.km || 0).toLocaleString("es-AR")} km
+                  </span>
+                </p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-800 px-3 py-2.5 focus-within:border-yellow-500 transition-colors">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Objetivo km..."
+                      value={kmProximoStr}
+                      onChange={e => setKmProximoStr(e.target.value.replace(/\D/g, ""))}
+                      className="w-full bg-transparent font-black text-white outline-none placeholder:text-zinc-600 text-sm"
+                    />
+                    <span className="text-[10px] font-black text-zinc-500">km</span>
+                  </div>
+                  <button
+                    onClick={guardarProximoControl}
+                    disabled={!kmProximoStr || parseInt(kmProximoStr, 10) <= (order.kmIngreso || order.km || 0)}
+                    className="rounded-2xl bg-yellow-600 px-4 py-2.5 text-[10px] font-black uppercase text-white active:scale-95 transition-all disabled:opacity-40"
+                  >
+                    Guardar
+                  </button>
+                </div>
+                {kmProximoStr && parseInt(kmProximoStr, 10) > (order.kmIngreso || order.km || 0) && (
+                  <p className="text-[9px] font-bold text-yellow-400/80">
+                    Intervalo:{" "}
+                    {(parseInt(kmProximoStr, 10) - (order.kmIngreso || order.km || 0)).toLocaleString("es-AR")} km
+                    {" · "}Aviso a {(parseInt(kmProximoStr, 10) - 500).toLocaleString("es-AR")} km
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
+        )}
       </div>
 
       {editandoItem && (
@@ -1343,10 +1441,10 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 <div>
                   <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">Monto total</p>
                   <input
-                    type="number"
+                    type="text"
                     inputMode="numeric"
                     value={sheetMin}
-                    onChange={(e) => { setSheetMin(e.target.value); setSheetMax(e.target.value); }}
+                    onChange={(e) => { const v = e.target.value.replace(/\D/g, ""); setSheetMin(v); setSheetMax(v); }}
                     placeholder="0"
                     className="w-full text-center text-4xl font-black bg-transparent text-white border-b-2 border-zinc-600 focus:border-orange-500 outline-none py-2"
                   />
@@ -1356,10 +1454,10 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   <div className="flex-1">
                     <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-center">Mínimo</p>
                     <input
-                      type="number"
+                      type="text"
                       inputMode="numeric"
                       value={sheetMin}
-                      onChange={(e) => setSheetMin(e.target.value)}
+                      onChange={(e) => setSheetMin(e.target.value.replace(/\D/g, ""))}
                       placeholder="0"
                       className="w-full text-center text-2xl font-black bg-transparent text-white border-b-2 border-zinc-600 focus:border-orange-500 outline-none py-2"
                     />
@@ -1367,10 +1465,10 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   <div className="flex-1">
                     <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500 text-center">Máximo</p>
                     <input
-                      type="number"
+                      type="text"
                       inputMode="numeric"
                       value={sheetMax}
-                      onChange={(e) => setSheetMax(e.target.value)}
+                      onChange={(e) => setSheetMax(e.target.value.replace(/\D/g, ""))}
                       placeholder="0"
                       className="w-full text-center text-2xl font-black bg-transparent text-white border-b-2 border-zinc-600 focus:border-orange-500 outline-none py-2"
                     />

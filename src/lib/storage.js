@@ -172,7 +172,7 @@ export function useSyncStatus() {
 }
 
 // ── Colecciones y migraciones ────────────────────────────────────────────────
-export const DATA_COLS = ["trabajos", "clientes", "motos", "caja", "config", "catalogoTareas", "titularidades", "precioHistorial", "recordatorios", "agendaTurnos", "repuestosHistorial"];
+export const DATA_COLS = ["trabajos", "presupuestos", "clientes", "motos", "caja", "config", "catalogoTareas", "titularidades", "precioHistorial", "recordatorios", "agendaTurnos", "repuestosHistorial"];
 
 const LS_PREFIX     = "jbos_johnny-blaze-os_";
 const MIGRATION_KEY = "jbos_fs_migrated_v1";
@@ -442,4 +442,31 @@ export function crearSnapshotVerificable(order, numeroComprobante, cliente, moto
   snapshot.hash = generarHashSimple(stringParaHash);
 
   return snapshot;
+}
+
+export function crearRecordatorioDeOrden(orden) {
+  const pc = orden.proximoControl;
+  if (!pc?.activo) return null;
+  const existing = (LS.getAll("recordatorios") || []).find(
+    (r) => r.trabajoId === orden.id && r.estado !== "hecho"
+  );
+  if (existing) return null;
+  return LS.addDoc("recordatorios", {
+    trabajoId: orden.id,
+    clienteId: orden.clientId,
+    motoId: orden.bikeId,
+    tipo: pc.tipo || "service",
+    descripcion: pc.descripcion || "Service general",
+    estado: "pendiente",
+    unidad: pc.unidad,
+    kmBase: pc.kmBase ?? null,
+    kmObjetivo: pc.kmObjetivo ?? null,
+    kmAviso: pc.kmAviso ?? null,
+    fechaBase: pc.fechaBase ?? null,
+    fechaObjetivo: pc.fechaObjetivo ?? null,
+    valorObjetivo: pc.valorObjetivo ?? null,
+    testMode: false,
+    enviado: false,
+    createdAt: Date.now(),
+  });
 }

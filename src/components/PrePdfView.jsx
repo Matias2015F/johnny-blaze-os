@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { AlertCircle, ArrowLeft, FileText } from "lucide-react";
-import { LS, crearSnapshotVerificable, generarNumeroComprobante } from "../lib/storage.js";
+import { LS, crearSnapshotVerificable, crearRecordatorioDeOrden, generarNumeroComprobante } from "../lib/storage.js";
 import { CONFIG_DEFAULT, PLANTILLAS_GARANTIA, TEXTO_CIERRE_RECHAZO } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { trackEvent } from "../lib/telemetry.js";
@@ -66,6 +66,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
         comprobante: numeroComprobante,
       },
     });
+    crearRecordatorioDeOrden(order);
 
     setFinalPdfData({
       garantia: garantiaFinal,
@@ -214,11 +215,10 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
           </div>
           <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
             <input
-              type="number"
+              type="text"
               inputMode="numeric"
-              min="0"
               value={diasPersonalizados}
-              onChange={(e) => setDiasPersonalizados(e.target.value)}
+              onChange={(e) => setDiasPersonalizados(e.target.value.replace(/\D/g, ""))}
               placeholder="Días personalizados"
               className="rounded-2xl border-2 border-zinc-100 bg-white px-4 py-3 text-sm font-black text-zinc-700 outline-none focus:border-orange-500"
             />

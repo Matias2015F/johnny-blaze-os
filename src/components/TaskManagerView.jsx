@@ -5,7 +5,6 @@ import { CONFIG_DEFAULT, SERVICIOS_DEFAULT } from "../lib/constants.js";
 import { calcularNuevoTotal } from "../lib/calc.js";
 import { obtenerAprendizaje, evaluarConfianza } from "../lib/priceLearning.js";
 import { formatMoney } from "../utils/format.js";
-import { TIPOS_SERVICIO, detectarProximoControl, buildProximoControl } from "../lib/proximoControl.js";
 import { trackEvent } from "../lib/telemetry.js";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -39,7 +38,8 @@ function Sheet({ onClose, title, children }) {
 function TrabajoSheet({ config, bike, bikes, catalogData, orders, editData, editIdx, onSave, onClose }) {
   const defaultMargen = config.margenPolitica ?? 25;
   const [nombre, setNombre] = useState(editData?.nombre || "");
-  const [horasBase, setHorasBase] = useState(editData?.horasBase || 1);
+  const [horasStr, setHorasStr] = useState(String(editData?.horasBase || 1));
+  const horasBase = Number(horasStr.replace(",", ".")) || 0;
   const [dificultad, setDificultad] = useState(editData?.dificultad || "normal");
   const [margenPct, setMargenPct] = useState(editData?.margenPct ?? defaultMargen);
   const [sugerencia, setSugerencia] = useState(null);
@@ -67,7 +67,7 @@ function TrabajoSheet({ config, bike, bikes, catalogData, orders, editData, edit
     : servicios;
 
   const seleccionar = (s) => {
-    setNombre(s.nombre); setHorasBase(s.horasBase || 1); setDificultad(s.dificultad || "normal");
+    setNombre(s.nombre); setHorasStr(String(s.horasBase || 1)); setDificultad(s.dificultad || "normal");
     if (s.margenPct) setMargenPct(s.margenPct);
     const apr = obtenerAprendizaje(s.nombre, bike?.cilindrada);
     setSugerencia(apr ? { apr, confianza: evaluarConfianza(apr) } : null);
@@ -118,7 +118,7 @@ function TrabajoSheet({ config, bike, bikes, catalogData, orders, editData, edit
             <p className="text-[9px] font-black text-amber-300 uppercase tracking-widest">
               Promedio real: {Math.round(sugerencia.apr.promedio * 10) / 10}h · {sugerencia.apr.muestras} trabajo{sugerencia.apr.muestras > 1 ? "s" : ""}
             </p>
-            <button onClick={() => setHorasBase(Math.round(sugerencia.apr.promedio * 10) / 10)}
+            <button onClick={() => setHorasStr(String(Math.round(sugerencia.apr.promedio * 10) / 10))}
               className="text-[9px] font-black text-amber-400 underline">Usar promedio</button>
           </div>
         </div>
@@ -129,8 +129,12 @@ function TrabajoSheet({ config, bike, bikes, catalogData, orders, editData, edit
           <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block mb-2">Horas</label>
           <input type="text" inputMode="decimal"
             className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-center font-black text-white outline-none focus:border-orange-500 transition-colors"
-            value={horasBase}
-            onChange={e => setHorasBase(Number(e.target.value.replace(",", ".").replace(/[^0-9.]/g, "")) || 0)}
+            value={horasStr}
+            onChange={e => {
+              const v = e.target.value.replace(",", ".").replace(/[^0-9.]/g, "");
+              setHorasStr(v.split(".").length > 2 ? v.slice(0, v.lastIndexOf(".")) : v);
+            }}
+            onBlur={() => { if (!horasStr || horasStr === ".") setHorasStr("1"); }}
           />
         </div>
         <div>
@@ -176,10 +180,13 @@ function TrabajoSheet({ config, bike, bikes, catalogData, orders, editData, edit
 // ── Sheet: repuesto ───────────────────────────────────────────────────────────
 function RepuestoSheet({ bike, editData, editIdx, onSave, onClose }) {
   const [nombre, setNombre] = useState(editData?.nombre || "");
-  const [cantidad, setCantidad] = useState(editData?.cantidad || 1);
-  const [monto, setMonto] = useState(editData?.monto || 0);
+  const [cantidadStr, setCantidadStr] = useState(String(editData?.cantidad || 1));
+  const [montoStr, setMontoStr] = useState(editData?.monto > 0 ? String(editData.monto) : "");
   const [sugs, setSugs] = useState([]);
   const [mostrar, setMostrar] = useState(false);
+
+  const cantidad = Math.max(1, Number(cantidadStr) || 1);
+  const monto = Number(montoStr) || 0;
 
   const buscar = (v) => {
     setNombre(v);
@@ -200,7 +207,7 @@ function RepuestoSheet({ bike, editData, editIdx, onSave, onClose }) {
         {mostrar && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-2xl shadow-xl z-10 max-h-40 overflow-y-auto">
             {sugs.map((s, i) => (
-              <button key={i} onMouseDown={() => { setNombre(s.nombre); setMonto(s.precio); setMostrar(false); }}
+              <button key={i} onMouseDown={() => { setNombre(s.nombre); setMontoStr(String(s.precio)); setMostrar(false); }}
                 className="w-full text-left px-4 py-3 hover:bg-zinc-700 border-b border-zinc-700/40 last:border-0">
                 <p className="text-sm font-black text-white">{s.nombre}</p>
                 <p className="text-[9px] text-zinc-400">{formatMoney(s.precio)} · {s.usos || 0} usos</p>
@@ -214,7 +221,9 @@ function RepuestoSheet({ bike, editData, editIdx, onSave, onClose }) {
           <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block mb-2">Cantidad</label>
           <input type="text" inputMode="numeric"
             className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-center font-black text-white outline-none focus:border-orange-500 transition-colors"
-            value={cantidad} onChange={e => setCantidad(Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 1))} />
+            value={cantidadStr}
+            onChange={e => setCantidadStr(e.target.value.replace(/\D/g, ""))}
+            onBlur={() => setCantidadStr(String(Math.max(1, Number(cantidadStr) || 1)))} />
         </div>
         <div>
           <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block mb-2">Precio unit.</label>
@@ -222,8 +231,8 @@ function RepuestoSheet({ bike, editData, editIdx, onSave, onClose }) {
             <span className="font-black text-zinc-400">$</span>
             <input type="text" inputMode="numeric"
               className="w-full bg-transparent font-black text-orange-400 outline-none text-right"
-              value={monto > 0 ? monto.toLocaleString("es-AR") : ""}
-              onChange={e => setMonto(Number(e.target.value.replace(/\D/g, "")) || 0)} placeholder="0" />
+              value={montoStr}
+              onChange={e => setMontoStr(e.target.value.replace(/\D/g, ""))} placeholder="0" />
           </div>
         </div>
       </div>
@@ -245,8 +254,11 @@ function RepuestoSheet({ bike, editData, editIdx, onSave, onClose }) {
 // ── Sheet: insumo ─────────────────────────────────────────────────────────────
 function InsumoSheet({ bike, editData, editIdx, onSave, onClose }) {
   const [nombre, setNombre] = useState(editData?.nombre || "");
-  const [cantidad, setCantidad] = useState(editData?.cantidad || 1);
-  const [monto, setMonto] = useState(editData?.monto || 0);
+  const [cantidadStr, setCantidadStr] = useState(String(editData?.cantidad || 1));
+  const [montoStr, setMontoStr] = useState(editData?.monto > 0 ? String(editData.monto) : "");
+
+  const cantidad = Math.max(1, Number(cantidadStr) || 1);
+  const monto = Number(montoStr) || 0;
   const [sugs, setSugs] = useState([]);
   const [mostrar, setMostrar] = useState(false);
 
@@ -269,7 +281,7 @@ function InsumoSheet({ bike, editData, editIdx, onSave, onClose }) {
         {mostrar && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-2xl shadow-xl z-10 max-h-40 overflow-y-auto">
             {sugs.map((s, i) => (
-              <button key={i} onMouseDown={() => { setNombre(s.nombre); setMonto(s.precio); setMostrar(false); }}
+              <button key={i} onMouseDown={() => { setNombre(s.nombre); setMontoStr(String(s.precio)); setMostrar(false); }}
                 className="w-full text-left px-4 py-3 hover:bg-zinc-700 border-b border-zinc-700/40 last:border-0">
                 <p className="text-sm font-black text-white">{s.nombre}</p>
                 <p className="text-[9px] text-zinc-400">{formatMoney(s.precio)} · {s.usos || 0} usos</p>
@@ -283,7 +295,9 @@ function InsumoSheet({ bike, editData, editIdx, onSave, onClose }) {
           <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block mb-2">Cantidad</label>
           <input type="text" inputMode="numeric"
             className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-center font-black text-white outline-none focus:border-orange-500 transition-colors"
-            value={cantidad} onChange={e => setCantidad(Math.max(1, Number(e.target.value.replace(/\D/g, "")) || 1))} />
+            value={cantidadStr}
+            onChange={e => setCantidadStr(e.target.value.replace(/\D/g, ""))}
+            onBlur={() => setCantidadStr(String(Math.max(1, Number(cantidadStr) || 1)))} />
         </div>
         <div>
           <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 block mb-2">Costo unit.</label>
@@ -291,8 +305,8 @@ function InsumoSheet({ bike, editData, editIdx, onSave, onClose }) {
             <span className="font-black text-zinc-400">$</span>
             <input type="text" inputMode="numeric"
               className="w-full bg-transparent font-black text-orange-400 outline-none text-right"
-              value={monto > 0 ? monto.toLocaleString("es-AR") : ""}
-              onChange={e => setMonto(Number(e.target.value.replace(/\D/g, "")) || 0)} placeholder="0" />
+              value={montoStr}
+              onChange={e => setMontoStr(e.target.value.replace(/\D/g, ""))} placeholder="0" />
           </div>
         </div>
       </div>
@@ -314,7 +328,8 @@ function InsumoSheet({ bike, editData, editIdx, onSave, onClose }) {
 // ── Sheet: flete ──────────────────────────────────────────────────────────────
 function FleteSheet({ editData, editIdx, onSave, onClose }) {
   const [nombre, setNombre] = useState(editData?.nombre || editData?.descripcion || "");
-  const [monto, setMonto] = useState(editData?.monto || 0);
+  const [montoStr, setMontoStr] = useState(editData?.monto > 0 ? String(editData.monto) : "");
+  const monto = Number(montoStr) || 0;
   const [sugs, setSugs] = useState([]);
   const [mostrar, setMostrar] = useState(false);
 
@@ -337,7 +352,7 @@ function FleteSheet({ editData, editIdx, onSave, onClose }) {
         {mostrar && (
           <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-2xl shadow-xl z-10 max-h-40 overflow-y-auto">
             {sugs.map((s, i) => (
-              <button key={i} onMouseDown={() => { setNombre(s.nombre); setMonto(s.precio); setMostrar(false); }}
+              <button key={i} onMouseDown={() => { setNombre(s.nombre); setMontoStr(String(s.precio)); setMostrar(false); }}
                 className="w-full text-left px-4 py-3 hover:bg-zinc-700 border-b border-zinc-700/40 last:border-0">
                 <p className="text-sm font-black text-white">{s.nombre}</p>
                 <p className="text-[9px] text-zinc-400">{formatMoney(s.precio)}</p>
@@ -352,8 +367,8 @@ function FleteSheet({ editData, editIdx, onSave, onClose }) {
           <span className="font-black text-zinc-400">$</span>
           <input type="text" inputMode="numeric"
             className="w-full bg-transparent font-black text-purple-400 outline-none text-right"
-            value={monto > 0 ? monto.toLocaleString("es-AR") : ""}
-            onChange={e => setMonto(Number(e.target.value.replace(/\D/g, "")) || 0)} placeholder="0" />
+            value={montoStr}
+            onChange={e => setMontoStr(e.target.value.replace(/\D/g, ""))} placeholder="0" />
         </div>
       </div>
       <button onClick={() => { if (!nombre.trim() || !monto) return; guardarRepuestoHistorial(nombre.trim(), monto, null, "flete"); onSave({ nombre: nombre.trim(), monto }, editIdx); }}
@@ -386,7 +401,7 @@ function AddBtn({ label, onClick }) {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function TaskManagerView({ order, setView, showToast, serviceToEdit, setServiceToEdit }) {
+export default function TaskManagerView({ order, coleccion = "trabajos", setView, showToast, serviceToEdit, setServiceToEdit, onBack }) {
   const catalogData = useCollection("catalogoTareas");
   const bikes       = useCollection("motos");
   const orders      = useCollection("trabajos");
@@ -430,7 +445,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
     const f = field === "fletes"    ? lista : fletes;
     const i = field === "insumos"   ? lista : insumos;
     const nTotal = calcularNuevoTotal(t, r, f, i);
-    LS.updateDoc("trabajos", order.id, { [field]: lista, total: nTotal });
+    LS.updateDoc(coleccion, order.id, { [field]: lista, total: nTotal });
   };
 
   const closeSheet = () => { setSheet(null); setServiceToEdit?.(null); };
@@ -482,7 +497,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
   };
 
   const guardarObservaciones = () => {
-    LS.updateDoc("trabajos", order.id, { observacionesProxima: observaciones });
+    LS.updateDoc(coleccion, order.id, { observacionesProxima: observaciones });
     showToast("Notas guardadas ✓");
   };
 
@@ -492,7 +507,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
       {/* Header */}
       <div className="bg-zinc-900 px-4 pt-5 pb-4 border-b border-white/5">
         <div className="mx-auto max-w-[440px] flex items-center gap-4">
-          <button onClick={() => { setServiceToEdit?.(null); setView("detalleOrden"); }}
+          <button onClick={() => { setServiceToEdit?.(null); onBack ? onBack() : setView("detalleOrden"); }}
             className="p-3 bg-zinc-800 rounded-2xl border border-white/5 text-white active:scale-90 transition-all">
             <ArrowLeft size={16} />
           </button>
@@ -670,7 +685,7 @@ export default function TaskManagerView({ order, setView, showToast, serviceToEd
               <p className="text-xl font-black text-white">{formatMoney(total)}</p>
             </div>
             <button
-              onClick={() => { setServiceToEdit?.(null); setView("detalleOrden"); }}
+              onClick={() => { setServiceToEdit?.(null); onBack ? onBack() : setView("detalleOrden"); }}
               className="rounded-2xl bg-orange-600 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-orange-500/30 active:scale-95 transition-all whitespace-nowrap">
               Listo ✓
             </button>

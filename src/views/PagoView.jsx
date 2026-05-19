@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
-import { LS, generateId, obtenerOrden, actualizarOrden, crearEntradaHistorial } from "../lib/storage.js";
+import { LS, generateId, obtenerOrden, actualizarOrden, crearEntradaHistorial, crearRecordatorioDeOrden } from "../lib/storage.js";
 import { hoyEstable } from "../lib/constants.js";
 import { formatMoney, formatMoneyParts } from "../utils/format.js";
 
@@ -74,6 +74,7 @@ export default function PagoView({ ordenId, setView }) {
       metodo: metodoPago,
       comprobante,
     });
+    crearRecordatorioDeOrden(orden);
     setView("retiro");
   };
 
@@ -111,12 +112,12 @@ export default function PagoView({ ordenId, setView }) {
           <div className="flex items-baseline gap-2 rounded-[1.75rem] border border-zinc-700 bg-zinc-900 px-4 py-4">
             <span className="text-xl font-black text-zinc-500">$</span>
             <input
-              type="number"
+              type="text"
               inputMode="numeric"
               className="w-full bg-transparent text-3xl font-black text-emerald-400 outline-none"
               placeholder={String(costoFinal)}
               value={montoRecibido}
-              onChange={(e) => setMontoRecibido(e.target.value)}
+              onChange={(e) => setMontoRecibido(e.target.value.replace(/\D/g, ""))}
             />
           </div>
           {diferencia > 0 && (
