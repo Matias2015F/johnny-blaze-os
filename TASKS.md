@@ -48,7 +48,7 @@ Actualizado: 2026-05-20
 ## PENDIENTES — Próximos a implementar
 
 ### UX / Ergonomía de entrada (NewOrderView)
-- [ ] Dictado por voz: botón Web Speech API (`webkitSpeechRecognition`, locale `es-AR`) en campo Falla
+- [x] Dictado por voz: botón Web Speech API (`webkitSpeechRecognition`, locale `es-AR`) en campo Falla
 - [ ] Macro-chips de carga rápida: "Cambio de aceite", "Service general", etc. → inyectan texto en el campo
 - [ ] Foco continuo (desktop): `useRef` + `onKeyDown` Enter para saltar entre campos sin mouse
 
