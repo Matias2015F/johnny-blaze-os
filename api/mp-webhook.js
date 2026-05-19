@@ -8,58 +8,122 @@ const {
   templateCambioPlan,
   templateReactivado,
 } = require("./_email.js");
+const { applyRateLimit } = require("./_ratelimit.js");
 
 const PLAN_BILLING_DAYS = { base: 30, pro: 90, full: 365 };
 const getBillingDays = (plan) => PLAN_BILLING_DAYS[plan] || 30;
 const ESTADOS_BLOQUEADOS = ["suspendido", "vencido", "trial_vencido"];
 
-// Verifica la firma HMAC-SHA256 que Mercado Pago incluye en cada notificacion.
-// Lanza si MP_WEBHOOK_SECRET no esta configurado; retorna false si la firma no coincide.
+// ── HMAC failure tracker ─────────────────────────────────────────────────────
+// Tracks per-IP HMAC failures. After HMAC_FAILURE_MAX failures in the window,
+// the IP is temporarily blocked to prevent probing/brute-force.
+const HMAC_FAILURES = new Map();
+const HMAC_FAILURE_MAX = 5;
+const HMAC_FAILURE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+
+function isHmacBlocked(ip) {
+  const entry = HMAC_FAILURES.get(ip);
+  if (!entry) return false;
+  if (Date.now() - entry.windowStart >= HMAC_FAILURE_WINDOW_MS) {
+    HMAC_FAILURES.delete(ip);
+    return false;
+  }
+  return entry.count >= HMAC_FAILURE_MAX;
+}
+
+function recordHmacFailure(ip) {
+  const now = Date.now();
+  let entry = HMAC_FAILURES.get(ip);
+  if (!entry || now - entry.windowStart >= HMAC_FAILURE_WINDOW_MS) {
+    HMAC_FAILURES.set(ip, { count: 1, windowStart: now });
+  } else {
+    entry.count += 1;
+  }
+}
+
+// ── Timestamp freshness (anti-replay) ────────────────────────────────────────
+// MP includes ts=<unix_seconds> in x-signature. Requests older than 5 minutes
+// or more than 60s in the future are rejected as likely replays.
+const MAX_TS_AGE_MS = 5 * 60 * 1000;
+const MAX_TS_FUTURE_MS = 60 * 1000;
+
+function checkTimestampFreshness(ts) {
+  const tsSec = parseInt(ts, 10);
+  if (isNaN(tsSec)) return false;
+  const ageMs = Date.now() - tsSec * 1000;
+  return ageMs <= MAX_TS_AGE_MS && ageMs >= -MAX_TS_FUTURE_MS;
+}
+
+// ── HMAC-SHA256 signature verification ───────────────────────────────────────
+// Returns { valid: boolean, ts: string|null }
+// Throws if MP_WEBHOOK_SECRET is not configured.
 function verifyMpSignature(req) {
   const secret = process.env.MP_WEBHOOK_SECRET;
   if (!secret) throw new Error("MP_WEBHOOK_SECRET no configurado");
 
   const xSignature = req.headers["x-signature"];
   const xRequestId = req.headers["x-request-id"];
-  // MP envia el payment id como query param "data.id", no solo en el body
   const dataId = req.query["data.id"];
 
-  if (!xSignature || !xRequestId || !dataId) return false;
+  if (!xSignature || !xRequestId || !dataId) return { valid: false, ts: null };
 
-  // x-signature tiene formato: ts=<unix_ms>,v1=<hex_hmac>
   const parts = {};
   for (const part of xSignature.split(",")) {
     const eqIdx = part.indexOf("=");
     if (eqIdx !== -1) parts[part.slice(0, eqIdx).trim()] = part.slice(eqIdx + 1).trim();
   }
   const { ts, v1 } = parts;
-  if (!ts || !v1) return false;
+  if (!ts || !v1) return { valid: false, ts: null };
 
   const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
   const hmacBuf = crypto.createHmac("sha256", secret).update(manifest).digest();
   const v1Buf = Buffer.from(v1, "hex");
 
-  // timingSafeEqual requiere buffers del mismo largo
-  if (hmacBuf.length !== v1Buf.length) return false;
-  return crypto.timingSafeEqual(hmacBuf, v1Buf);
+  if (hmacBuf.length !== v1Buf.length) return { valid: false, ts };
+  return { valid: crypto.timingSafeEqual(hmacBuf, v1Buf), ts };
+}
+
+function getIp(req) {
+  return (req.headers["x-forwarded-for"] || "").split(",")[0].trim() || req.socket?.remoteAddress || "unknown";
 }
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
+  const ip = getIp(req);
+
+  // Rate limit: 200 req/min per IP
+  if (applyRateLimit(req, res, "mp-webhook")) return;
+
+  // Block IPs that have accumulated too many HMAC failures
+  if (isHmacBlocked(ip)) {
+    console.warn(`[mp-webhook] IP bloqueada por fallos HMAC repetidos: ${ip}`);
+    return res.status(403).end();
+  }
+
   try {
-    // Verificar firma antes de procesar cualquier dato
-    let signatureValid;
+    // Verify signature + extract timestamp
+    let sigResult;
     try {
-      signatureValid = verifyMpSignature(req);
+      sigResult = verifyMpSignature(req);
     } catch (err) {
-      console.error("Error en verificacion de firma MP:", err.message);
+      console.error("[mp-webhook] Error en verificacion de firma:", err.message);
       return res.status(500).end();
     }
-    if (!signatureValid) {
-      console.warn("Firma de webhook MP invalida — request rechazado");
+
+    if (!sigResult.valid) {
+      recordHmacFailure(ip);
+      console.warn(`[mp-webhook] Firma invalida — ip:${ip} ua:${req.headers["user-agent"] || "-"}`);
       return res.status(401).end();
     }
+
+    // Reject replayed or future-dated requests
+    if (!checkTimestampFreshness(sigResult.ts)) {
+      console.warn(`[mp-webhook] Timestamp fuera de rango (posible replay) — ts:${sigResult.ts} ip:${ip}`);
+      return res.status(401).end();
+    }
+
+    console.log(`[mp-webhook] OK — ip:${ip} ts:${sigResult.ts}`);
 
     const { type, data } = req.body || {};
     if (type !== "payment") return res.status(200).end();

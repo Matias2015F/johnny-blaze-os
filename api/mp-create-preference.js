@@ -4,6 +4,7 @@ try {
 } catch (e) {
   console.error("Firebase Admin error:", e.message);
 }
+const { applyRateLimit } = require("./_ratelimit.js");
 
 const PLANES_FALLBACK = {
   base: { label: "Plan Base", monto: 5000 },
@@ -44,6 +45,7 @@ function buildPlanesConfig(adminData = {}) {
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
   if (!db) return res.status(500).json({ error: "Firebase no inicializado" });
+  if (applyRateLimit(req, res, "mp-create-preference")) return;
 
   let decoded;
   try {

@@ -4,11 +4,13 @@
 
 const { db, verifyIdToken } = require("./_firebase-admin.js");
 const { sendEmail, templateBienvenida } = require("./_email.js");
+const { applyRateLimit } = require("./_ratelimit.js");
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
+  if (applyRateLimit(req, res, "send-welcome")) return;
 
   let decoded;
   try {

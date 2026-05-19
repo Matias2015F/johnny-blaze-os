@@ -4,10 +4,12 @@ try {
 } catch (initError) {
   console.error("ERROR al inicializar Firebase Admin:", initError.message);
 }
+const { applyRateLimit } = require("./_ratelimit.js");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
   if (!db) return res.status(500).json({ error: "Servidor sin base de datos" });
+  if (applyRateLimit(req, res, "mp-diagnose")) return;
 
   let decoded;
   try {

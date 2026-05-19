@@ -70,8 +70,17 @@ service cloud.firestore {
       allow update, delete: if isPlatformAdmin();
     }
 
-    // Datos del taller por usuario — aislados completamente
+    // Datos del taller por usuario — aislados completamente.
+    // El wildcard {document=**} cubre todas las colecciones del taller:
+    // trabajos, presupuestos, clientes, motos, caja, config, catalogoTareas,
+    // titularidades, precioHistorial, recordatorios, agendaTurnos, repuestosHistorial.
     match /users/{uid}/{document=**} {
+      allow read, write: if isOwner(uid) || isPlatformAdmin();
+    }
+
+    // Presupuestos: regla explícita para documentar la colección.
+    // Cubierta por el wildcard anterior; se repite aquí por claridad.
+    match /users/{uid}/presupuestos/{presId} {
       allow read, write: if isOwner(uid) || isPlatformAdmin();
     }
 

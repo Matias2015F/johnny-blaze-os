@@ -115,12 +115,12 @@ export default function FinalizacionView({ ordenId, setView }) {
         <div className="space-y-3">
           <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-1">Costos adicionales</p>
           <input
-            type="number"
+            type="text"
             inputMode="numeric"
             className="w-full bg-zinc-900 border border-white/5 rounded-2xl p-4 text-white outline-none focus:border-orange-600"
             placeholder="0"
             value={costosAdicionales || ""}
-            onChange={(e) => setCostosAdicionales(e.target.value)}
+            onChange={(e) => setCostosAdicionales(e.target.value.replace(/\D/g, ""))}
           />
           <input
             type="text"

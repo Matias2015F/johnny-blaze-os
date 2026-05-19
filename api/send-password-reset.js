@@ -4,9 +4,11 @@
 const { db } = require("./_firebase-admin.js");
 const { getAuth } = require("firebase-admin/auth");
 const { sendEmail } = require("./_email.js");
+const { applyRateLimit } = require("./_ratelimit.js");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
+  if (applyRateLimit(req, res, "send-password-reset")) return;
 
   const { email } = req.body || {};
   if (!email || !email.includes("@")) {

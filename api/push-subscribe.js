@@ -4,12 +4,15 @@
 
 const { db, verifyIdToken } = require("./_firebase-admin.js");
 const crypto = require("crypto");
+const { applyRateLimit } = require("./_ratelimit.js");
 
 function endpointHash(endpoint) {
   return crypto.createHash("sha256").update(endpoint).digest("hex").slice(0, 20);
 }
 
 module.exports = async function handler(req, res) {
+  if (applyRateLimit(req, res, "push-subscribe")) return;
+
   let decoded;
   try {
     decoded = await verifyIdToken(req);

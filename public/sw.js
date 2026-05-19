@@ -21,6 +21,16 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
+  const { pathname } = new URL(event.request.url);
+
+  // Never cache these files — always network so version checks get fresh data
+  if (pathname === "/version.json" || pathname === "/index.html") {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request)),
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
