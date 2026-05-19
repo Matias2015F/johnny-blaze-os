@@ -1,5 +1,7 @@
-import React, { useMemo, useState } from "react";
-import { ArrowLeft, Info } from "lucide-react";
+import React, { useMemo, useRef, useState } from "react";
+import { ArrowLeft, Info, Mic, MicOff } from "lucide-react";
+
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 function normalizar(value = "") {
   return String(value).trim().toUpperCase();
@@ -17,6 +19,30 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
     falla: "",
   });
   const [ignorarSugerencia, setIgnorarSugerencia] = useState(false);
+  const [escuchando, setEscuchando] = useState(false);
+  const reconRef = useRef(null);
+
+  const toggleDictado = () => {
+    if (!SpeechRecognitionAPI) return;
+    if (escuchando) {
+      reconRef.current?.stop();
+      return;
+    }
+    const rec = new SpeechRecognitionAPI();
+    rec.lang = "es-AR";
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = (e) => {
+      const texto = e.results[0][0].transcript;
+      setF((prev) => ({ ...prev, falla: prev.falla ? prev.falla + " " + texto : texto }));
+    };
+    rec.onend = () => setEscuchando(false);
+    rec.onerror = () => setEscuchando(false);
+    reconRef.current = rec;
+    rec.start();
+    setEscuchando(true);
+  };
 
   // Autocomplete: detecta moto conocida apenas se escribe la patente
   const coincidenciaMoto = useMemo(() => {
@@ -143,9 +169,27 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
           />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Motivo del Ingreso</label>
+          <div className="flex items-center justify-between ml-2 mr-1">
+            <label className="text-[10px] font-black uppercase text-zinc-500">Motivo del Ingreso</label>
+            {SpeechRecognitionAPI && (
+              <button
+                type="button"
+                onClick={toggleDictado}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-90 ${
+                  escuchando
+                    ? "bg-red-600/20 border border-red-500/40 text-red-300 animate-pulse"
+                    : "bg-zinc-800 border border-zinc-700 text-zinc-400"
+                }`}
+              >
+                {escuchando ? <MicOff size={12} /> : <Mic size={12} />}
+                {escuchando ? "Detener" : "Dictado"}
+              </button>
+            )}
+          </div>
           <textarea
-            className="w-full border border-white/5 bg-zinc-900 rounded-2xl p-4 font-bold text-white outline-none focus:border-orange-600"
+            className={`w-full border bg-zinc-900 rounded-2xl p-4 font-bold text-white outline-none transition-all ${
+              escuchando ? "border-red-500/50 focus:border-red-500" : "border-white/5 focus:border-orange-600"
+            }`}
             rows="2"
             value={f.falla}
             onChange={(e) => setF({ ...f, falla: e.target.value })}
