@@ -278,6 +278,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const handleControllerChange = () => window.location.reload();
+    navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
+    return () => navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
+  }, []);
+
+  useEffect(() => {
     if (estado === "ok" && !autoBackupDone.current) {
       autoBackupDone.current = true;
       if (shouldAutoBackup()) exportBackup();
