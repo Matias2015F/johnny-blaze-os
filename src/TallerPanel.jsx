@@ -34,6 +34,9 @@ const PagoView                = lazy(() => import("./views/PagoView.jsx"));
 const RetiroView              = lazy(() => import("./views/RetiroView.jsx"));
 const AgendaView              = lazy(() => import("./views/AgendaView.jsx"));
 const RecordatoriosView       = lazy(() => import("./views/RecordatoriosView.jsx"));
+const PresupuestosView        = lazy(() => import("./views/PresupuestosView.jsx"));
+const NuevoPresupuestoView    = lazy(() => import("./views/NuevoPresupuestoView.jsx"));
+const PresupuestoDetailView   = lazy(() => import("./views/PresupuestoDetailView.jsx"));
 
 const Cargando = () => (
   <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-zinc-600 text-[10px] font-black uppercase tracking-widest">
@@ -168,10 +171,11 @@ function getInstallGuide() {
   };
 }
 
-export default function TallerPanel() {
-  const [view, setView] = useState("home");
+export default function TallerPanel({ modoLectura = false }) {
+  const [view, setViewRaw] = useState("home");
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [selectedBikeId, setSelectedBikeId] = useState(null);
+  const [selectedPresupuestoId, setSelectedPresupuestoId] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
   const [confirm, setConfirm] = useState(null); // { mensaje, onOk }
   const [isOnline, setIsOnline] = useState(() => navigator.onLine);
@@ -185,16 +189,24 @@ export default function TallerPanel() {
   const [installAvailable, setInstallAvailable] = useState(false);
   const [selectedInstallPlatform, setSelectedInstallPlatform] = useState("auto");
 
-  const clients       = useCollection("clientes");
-  const bikes         = useCollection("motos");
-  const orders        = useCollection("trabajos");
-  const titularidades = useCollection("titularidades");
+  const clients         = useCollection("clientes");
+  const bikes           = useCollection("motos");
+  const orders          = useCollection("trabajos");
+  const presupuestos    = useCollection("presupuestos");
+  const titularidades   = useCollection("titularidades");
   useCollection("config");
   useCollection("repuestosHistorial");
 
   const syncStatus = useSyncStatus();
 
   const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 2500); };
+  const setView = (v) => {
+    if (modoLectura && (v === "nuevaOrden" || v === "nuevoPresupuesto")) {
+      showToast("Plan vencido. Renova tu suscripcion para crear nuevas ordenes.");
+      return;
+    }
+    setViewRaw(v);
+  };
   const handleLogout = async () => { try { await signOut(auth); } catch (e) { console.error(e); } };
 
   useEffect(() => {
@@ -233,7 +245,17 @@ export default function TallerPanel() {
         const remote = await fetchRemoteVersion();
         if (!alive) return;
         if (isNewerBuild(APP_BUILD, remote)) {
-          setUpdateInfo(remote);
+          const isIosStandalone = window.navigator.standalone === true;
+          if (isIosStandalone) {
+            // On iOS PWA apply immediately — no modal interaction required
+            try {
+              await applyRemoteUpdate(remote);
+            } catch {
+              window.location.reload();
+            }
+          } else {
+            setUpdateInfo(remote);
+          }
         }
       } catch (e) {
         console.error(e);
@@ -387,8 +409,135 @@ export default function TallerPanel() {
   };
 
   const handleStartNewService = (bike, client) => {
+    if (modoLectura) {
+      showToast("Plan vencido. Renova tu suscripcion para crear nuevas ordenes.");
+      return;
+    }
     setPrefillData({ bike, client });
-    setView("nuevaOrden");
+    setViewRaw("nuevaOrden");
+  };
+
+  // -- Presupuestos -----------------------------------------------------------
+  const handleCreatePresupuesto = (payload) => {
+    const kmActual = Number(payload.km) || 0;
+
+    const ec = clients.find(
+      (c) => c.nombre?.trim().toLowerCase() === payload.nombre?.trim().toLowerCase() && c.tel === payload.tel
+    );
+    const clientId = ec ? ec.id : LS.addDoc("clientes", {
+      nombre: payload.nombre,
+      tel: payload.tel,
+      telefono: payload.tel,
+      whatsapp: payload.tel,
+      etiquetas: [],
+      activo: true,
+      createdAt: Date.now(),
+    }).id;
+
+    const eb = bikes.find((b) => b.patente === payload.patente.toUpperCase());
+    let bikeId;
+    if (eb) {
+      bikeId = eb.id;
+      if (kmActual) LS.updateDoc("motos", bikeId, { km: kmActual, kilometrajeActual: kmActual, clienteId: clientId });
+    } else {
+      bikeId = LS.addDoc("motos", {
+        patente: payload.patente.toUpperCase(),
+        patenteNormalizada: payload.patente.toUpperCase(),
+        marca: payload.marca,
+        modelo: payload.modelo,
+        cilindrada: Number(payload.cilindrada) || 0,
+        anio: null,
+        color: null,
+        estado: "activa",
+        km: kmActual,
+        kilometrajeActual: kmActual,
+        clienteId: clientId,
+        createdAt: Date.now(),
+      }).id;
+    }
+
+    const numeroPresupuesto = `PRE-${String(presupuestos.length + 1).padStart(6, "0")}`;
+    const pres = LS.addDoc("presupuestos", {
+      numeroPresupuesto,
+      clientId,
+      bikeId,
+      estado: "borrador",
+      km: kmActual,
+      motivoConsulta: payload.consulta || "",
+      tareas: [],
+      repuestos: [],
+      insumos: [],
+      fletes: [],
+      total: 0,
+      costoInterno: 0,
+      margen: 0,
+      validezDias: payload.validezDias || 7,
+      trabajoId: null,
+      cronometroActivo: false,
+      inicioCronometro: null,
+      tiempoReal: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    setSelectedPresupuestoId(pres.id);
+    setView("detallePresupuesto");
+    showToast("Presupuesto creado");
+  };
+
+  const handleConvertirPresupuestoAOT = () => {
+    const pres = presupuestos.find((p) => p.id === selectedPresupuestoId);
+    if (!pres) return;
+
+    const numeroTrabajo = `OT-${String(orders.length + 1).padStart(6, "0")}`;
+    const orden = LS.addDoc("trabajos", {
+      numeroTrabajo,
+      clientId: pres.clientId,
+      bikeId: pres.bikeId,
+      estado: "aprobacion",
+      prioridad: "normal",
+      fechaIngreso: hoyEstable(),
+      fechaEntrega: null,
+      motivoIngreso: pres.motivoConsulta || "",
+      diagnostico: pres.motivoConsulta || "",
+      km: pres.km || 0,
+      kmIngreso: pres.km || 0,
+      kmEntrega: null,
+      total: pres.total || 0,
+      pagos: [],
+      tareas: pres.tareas || [],
+      repuestos: pres.repuestos || [],
+      insumos: pres.insumos || [],
+      fletes: pres.fletes || [],
+      margen: pres.margen || 0,
+      costoInterno: pres.costoInterno || 0,
+      observacionesProxima: "",
+      pdfEntregado: false,
+      tiempoReal: 0,
+      cronometroActivo: false,
+      inicioCronometro: null,
+      maxAutorizado: 0,
+      presupuestoId: pres.id,
+      createdAt: Date.now(),
+    });
+
+    LS.updateDoc("presupuestos", pres.id, {
+      estado: "convertido",
+      trabajoId: orden.id,
+      updatedAt: Date.now(),
+    });
+
+    setSelectedOrderId(orden.id);
+    setView("detalleOrden");
+    showToast("OT creada desde presupuesto");
+  };
+
+  const handleEliminarPresupuesto = () => {
+    if (!selectedPresupuestoId) return;
+    LS.deleteDoc("presupuestos", selectedPresupuestoId);
+    setSelectedPresupuestoId(null);
+    setView("presupuestos");
+    showToast("Presupuesto eliminado");
   };
 
   // -- Demo / Reset -----------------------------------------------------------
@@ -554,7 +703,7 @@ export default function TallerPanel() {
 
       <ChunkErrorBoundary>
       <Suspense fallback={<Cargando />}>
-      {view === "home" && <HomeView stats={stats} setView={setView} bikes={bikes} orders={orders} setSelectedOrderId={setSelectedOrderId} handleLogout={handleLogout} />}
+      {view === "home" && <HomeView stats={stats} setView={setView} bikes={bikes} orders={orders} presupuestos={presupuestos} setSelectedOrderId={setSelectedOrderId} handleLogout={handleLogout} modoLectura={modoLectura} />}
       {view === "nuevaOrden" && <NewOrderView handleCreateAll={handleCreateOrder} setView={setView} prefill={prefillData} bikes={bikes} clients={clients} />}
       {view === "ordenes" && <OrderListView orders={orders} bikes={bikes} clients={clients} setSelectedOrderId={setSelectedOrderId} setView={setView} />}
       {view === "detalleOrden" && selectedOrder && <OrderDetailView order={selectedOrder} clients={clients} bikes={bikes} setView={setView} showToast={showToast} setServiceToEdit={setServiceToEdit} />}
@@ -583,6 +732,36 @@ export default function TallerPanel() {
       {view === "retiro" && selectedOrderId && <RetiroView ordenId={selectedOrderId} setView={setView} />}
       {view === "historial" && <HistoryView orders={orders} bikes={bikes} clients={clients} setView={setView} setSelectedBikeId={setSelectedBikeId} />}
       {view === "perfilMoto" && <BikeProfileView bikeId={selectedBikeId} orders={orders} bikes={bikes} clients={clients} setView={setView} handleStartNewService={handleStartNewService} setSelectedOrderId={setSelectedOrderId} setFinalPdfData={setFinalPdfData} />}
+      {view === "presupuestos" && <PresupuestosView presupuestos={presupuestos} bikes={bikes} clients={clients} setSelectedPresupuestoId={setSelectedPresupuestoId} setView={setView} />}
+      {view === "nuevoPresupuesto" && <NuevoPresupuestoView onCrear={handleCreatePresupuesto} setView={setView} bikes={bikes} clients={clients} />}
+      {view === "detallePresupuesto" && (() => {
+        const pres = presupuestos.find((p) => p.id === selectedPresupuestoId);
+        return pres ? (
+          <PresupuestoDetailView
+            presupuesto={pres}
+            bike={bikes.find((b) => b.id === pres.bikeId)}
+            client={clients.find((c) => c.id === pres.clientId)}
+            onConvertirAOT={handleConvertirPresupuestoAOT}
+            onEliminar={handleEliminarPresupuesto}
+            setView={setView}
+            showToast={showToast}
+          />
+        ) : null;
+      })()}
+      {view === "gestionarPresupuesto" && (() => {
+        const pres = presupuestos.find((p) => p.id === selectedPresupuestoId);
+        return pres ? (
+          <TaskManagerView
+            order={pres}
+            coleccion="presupuestos"
+            setView={setView}
+            showToast={showToast}
+            serviceToEdit={serviceToEdit}
+            setServiceToEdit={setServiceToEdit}
+            onBack={() => setView("detallePresupuesto")}
+          />
+        ) : null;
+      })()}
       </Suspense>
       </ChunkErrorBoundary>
 

@@ -175,7 +175,7 @@ export function resolveSaasAccess(usuario) {
     return { acceso: true, motivo: "gracia", estado: usuario.estado, activoHasta, graceEndsAt };
   }
 
-  return { acceso: false, motivo: "vencido", estado: usuario.estado, activoHasta, graceEndsAt };
+  return { acceso: "lectura", motivo: "vencido", estado: usuario.estado, activoHasta, graceEndsAt };
 }
 
 export async function leerAdminSettings() {

@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Bell, Calendar, Clock, ChevronRight, History, LogOut, MessageCircle, PlusCircle, ReceiptText, Wrench } from "lucide-react";
+import { Bell, Calendar, Clock, ChevronRight, FileText, History, LogOut, MessageCircle, PlusCircle, ReceiptText, Wrench } from "lucide-react";
 import { auth } from "../firebase.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { evaluarEstado } from "../lib/calc.js";
@@ -40,7 +40,7 @@ function guardarAlertaNotificada(id, estado) {
   localStorage.setItem(ALERTAS_NOTIFICADAS_KEY, JSON.stringify(actuales));
 }
 
-export default function HomeView({ setView, bikes, orders, setSelectedOrderId, handleLogout }) {
+export default function HomeView({ setView, bikes, orders, presupuestos = [], setSelectedOrderId, handleLogout, modoLectura = false }) {
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
   const recordatorios = useCollection("recordatorios");
   const clients = useCollection("clientes");
@@ -223,18 +223,33 @@ export default function HomeView({ setView, bikes, orders, setSelectedOrderId, h
         </div>
       </div>
 
-      <button onClick={() => {
-        trackEvent("nuevo_ingreso", { screen: "home" }).catch(console.error);
-        setView("nuevaOrden");
-      }} className="w-full rounded-[2.5rem] bg-orange-600 p-8 text-white shadow-xl transition-all active:scale-[0.98]">
-        <div className="flex items-center gap-5 text-left font-bold">
-          <div className="rounded-3xl bg-white/20 p-4"><PlusCircle size={32} /></div>
-          <div>
-            <p className="mb-1 text-2xl font-black uppercase leading-none tracking-tighter">Nuevo ingreso</p>
-            <p className="text-xs font-bold uppercase tracking-widest text-white/80">Ingresar moto al taller</p>
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={() => {
+          trackEvent("nuevo_ingreso", { screen: "home" }).catch(console.error);
+          setView("nuevaOrden");
+        }} className={`rounded-[2.5rem] p-6 text-white shadow-xl transition-all active:scale-[0.98] ${modoLectura ? "bg-zinc-700 opacity-60" : "bg-orange-600"}`}>
+          <div className="flex flex-col items-start gap-3 font-bold">
+            <div className={`rounded-3xl p-3 ${modoLectura ? "bg-white/10" : "bg-white/20"}`}><PlusCircle size={26} /></div>
+            <div>
+              <p className="text-lg font-black uppercase leading-tight tracking-tighter">Nuevo ingreso</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/70 mt-0.5">{modoLectura ? "Plan vencido" : "Ingresar moto"}</p>
+            </div>
           </div>
-        </div>
-      </button>
+        </button>
+        <button onClick={() => setView("presupuestos")} className="rounded-[2.5rem] border border-zinc-700 bg-zinc-900 p-6 text-white shadow-xl transition-all active:scale-[0.98]">
+          <div className="flex flex-col items-start gap-3 font-bold">
+            <div className="rounded-3xl bg-zinc-800 p-3"><FileText size={26} className="text-orange-400" /></div>
+            <div>
+              <p className="text-lg font-black uppercase leading-tight tracking-tighter">Presupuestos</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mt-0.5">
+                {presupuestos.filter(p => p.estado === "borrador" || p.estado === "enviado").length > 0
+                  ? `${presupuestos.filter(p => p.estado === "borrador" || p.estado === "enviado").length} activo${presupuestos.filter(p => p.estado === "borrador" || p.estado === "enviado").length !== 1 ? "s" : ""}`
+                  : "Cotizar trabajos"}
+              </p>
+            </div>
+          </div>
+        </button>
+      </div>
 
       <button onClick={() => setView("agenda")} className="w-full rounded-[2rem] border border-orange-500/20 bg-orange-500/10 p-5 text-left shadow-xl transition-all active:scale-95">
         <div className="flex items-center gap-4">

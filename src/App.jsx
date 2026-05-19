@@ -59,10 +59,13 @@ function buildBannerData(account, settings) {
   }
 
   if ((access.motivo === "gracia" || access.motivo === "gracia_pago") && graceEndsAt) {
-    const daysLeft = Math.max(0, Math.ceil((graceEndsAt - now) / (24 * 60 * 60 * 1000)));
-    tone = "red";
-    titulo = "Estas en periodo de gracia";
-    detalle = `Te quedan ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"} para renovar antes de la suspension.`;
+    const horasLeft = Math.max(0, Math.ceil((graceEndsAt - now) / (60 * 60 * 1000)));
+    const tiempoStr = horasLeft <= 24
+      ? `${horasLeft} ${horasLeft === 1 ? "hora" : "horas"}`
+      : `${Math.ceil(horasLeft / 24)} dias`;
+    tone = "amber";
+    titulo = "Periodo de gracia activo";
+    detalle = `Tenes ${tiempoStr} de acceso completo para regularizar tu suscripcion.`;
   }
 
   if (!titulo) return null;
@@ -78,6 +81,47 @@ function buildBannerData(account, settings) {
       account?.activoHasta || account?.trialEndsAt || account?.nextBillingAt || account?.graceEndsAt || "",
     ].join("::"),
   };
+}
+
+function PagoOkSheet({ account, onClose }) {
+  const activoHasta = normalizeDateMs(account?.activoHasta);
+  const fechaStr = activoHasta
+    ? new Date(activoHasta).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })
+    : null;
+
+  return (
+    <div className="fixed inset-0 z-[220] flex items-end">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full rounded-t-[2rem] bg-zinc-900 border-t border-zinc-700 shadow-2xl animate-in slide-in-from-bottom duration-300">
+        <div className="mx-auto max-w-[440px] p-6 space-y-5">
+          <div className="text-center space-y-3">
+            <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto">
+              <span className="text-emerald-400 font-black text-2xl">✓</span>
+            </div>
+            <div>
+              <h3 className="text-base font-black text-white uppercase tracking-tight">Pago recibido</h3>
+              {fechaStr ? (
+                <p className="text-sm text-zinc-300 mt-1">
+                  Tu cuenta esta activa hasta el{" "}
+                  <span className="text-emerald-400 font-black">{fechaStr}</span>
+                </p>
+              ) : (
+                <p className="text-sm text-zinc-400 mt-1">
+                  Estamos activando tu acceso. En unos segundos todo queda habilitado.
+                </p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-full rounded-2xl bg-orange-600 py-4 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+          >
+            Entrar al taller
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function PantallaBloqueo({ account, settings }) {
@@ -199,7 +243,7 @@ export default function App() {
   const [estado, setEstado] = useState("loading");
   const [account, setAccount] = useState(null);
   const [settings, setSettings] = useState(DEFAULT_ADMIN_SETTINGS);
-  const [pagoToast, setPagoToast] = useState("");
+  const [pagoResult, setPagoResult] = useState(null);
   const autoBackupDone = useRef(false);
   const [dismissedBannerKey, setDismissedBannerKey] = useState("");
 
@@ -229,10 +273,8 @@ export default function App() {
     const pago = params.get("pago");
     if (!pago) return;
     window.history.replaceState({}, "", window.location.pathname);
-    if (pago === "ok") setPagoToast("Pago recibido. Estamos activando tu acceso.");
-    if (pago === "error") setPagoToast("El pago no se completo. Intenta de nuevo.");
-    if (pago === "pendiente") setPagoToast("El pago quedo pendiente de confirmacion.");
-    setTimeout(() => setPagoToast(""), 5000);
+    setPagoResult(pago);
+    if (pago !== "ok") setTimeout(() => setPagoResult(null), 5000);
   }, []);
 
   useEffect(() => {
@@ -278,7 +320,7 @@ export default function App() {
         const data = { id: snap.id, ...snap.data() };
         setAccount(data);
         const access = resolveAccountAccess(data);
-        setEstado(access.acceso ? "ok" : "bloqueado");
+        setEstado(access.acceso === true ? "ok" : access.acceso === "lectura" ? "lectura" : "bloqueado");
       });
     });
 
@@ -300,9 +342,28 @@ export default function App() {
   if (estado === "login") return <LoginScreen />;
   if (estado === "bloqueado") return <PantallaBloqueo account={account} settings={settings} />;
 
+  const modoLectura = estado === "lectura";
+
   return (
     <>
-      {banner && !hideBanner && (
+      {modoLectura && (
+        <div className="fixed bottom-[64px] left-0 right-0 z-[180] px-4">
+          <div className="mx-auto max-w-[440px] rounded-2xl bg-red-950/95 border border-red-800/50 px-4 py-3 flex items-center justify-between gap-3 backdrop-blur shadow-xl">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-red-300">Plan vencido — Modo lectura</p>
+              <p className="text-[9px] text-red-400/60 mt-0.5">No podes crear nuevas ordenes</p>
+            </div>
+            <button
+              onClick={abrirSuscripcion}
+              className="shrink-0 rounded-xl bg-red-600 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+            >
+              Renovar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!modoLectura && banner && !hideBanner && (
         <div
           className={`fixed top-4 left-1/2 z-[210] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-3xl border px-5 py-4 shadow-2xl ${
             banner.tone === "red"
@@ -334,10 +395,14 @@ export default function App() {
         </div>
       )}
 
-      <TallerPanel />
-      {pagoToast && (
+      <TallerPanel modoLectura={modoLectura} />
+
+      {pagoResult === "ok" && (
+        <PagoOkSheet account={account} onClose={() => setPagoResult(null)} />
+      )}
+      {pagoResult && pagoResult !== "ok" && (
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm text-center bg-white text-black px-6 py-4 rounded-3xl font-black text-xs shadow-2xl z-[220]">
-          {pagoToast}
+          {pagoResult === "error" ? "El pago no se completo. Intenta de nuevo." : "El pago quedo pendiente de confirmacion."}
         </div>
       )}
     </>

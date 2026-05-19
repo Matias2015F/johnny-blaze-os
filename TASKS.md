@@ -1,6 +1,6 @@
 # Johnny Blaze OS — Roadmap de Desarrollo Activo
 
-Actualizado: 2026-05-19
+Actualizado: 2026-05-20
 
 ---
 
@@ -26,6 +26,13 @@ Actualizado: 2026-05-19
 - [x] Creación automática del recordatorio al cerrar OT (PagoView + PrePdfView)
 - [x] RecordatoriosView: lista, filtros, WhatsApp, marcar hecho
 - [x] Cron push diario 9AM: notificaciones Web Push por recordatorio activo
+
+### SaaS — Control de acceso granular (2026-05-20)
+- [x] Modo Lectura: suscripción vencida → acceso restringido (ver OT existentes, no crear nuevas)
+- [x] Banner "Plan vencido — Modo lectura" persistente sobre el nav bar con botón Renovar
+- [x] Botón "Nuevo ingreso" en HomeView visualmente deshabilitado en modo lectura
+- [x] Periodo de gracia: banner amber (en lugar de rojo) con tiempo exacto en horas/días
+- [x] Retorno MP `?pago=ok` → Bottom Sheet con fecha de activación (en lugar de toast)
 
 ### Infraestructura
 - [x] Vercel API serverless con Firebase Admin
