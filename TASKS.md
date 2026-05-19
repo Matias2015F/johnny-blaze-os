@@ -15,10 +15,14 @@ Actualizado: 2026-05-20
 - [x] Historial de cambios de estado (audit log en orden.historial[])
 
 ### SaaS / Monetización
-- [x] Trial 30 días → bloqueo → pantalla suscripción
+- [x] Trial 30 días → modo lectura → pantalla suscripción
 - [x] MercadoPago producción: pago → webhook → Firestore → desbloqueo automático
 - [x] Panel admin: resumen usuarios, historial de cobros (billingInvoices)
 - [x] Planes base / pro configurables desde Firestore admin_settings/global
+- [x] Modo Lectura: suscripción vencida → acceso restringido (ver OT, no crear)
+- [x] Banner "Plan vencido" persistente sobre nav bar con botón Renovar
+- [x] Periodo de gracia: banner amber, tiempo en horas si < 24h
+- [x] Retorno MP `?pago=ok` → Bottom Sheet con fecha activoHasta
 
 ### Recordatorios de service
 - [x] Colección `recordatorios` en Firestore
@@ -26,13 +30,6 @@ Actualizado: 2026-05-20
 - [x] Creación automática del recordatorio al cerrar OT (PagoView + PrePdfView)
 - [x] RecordatoriosView: lista, filtros, WhatsApp, marcar hecho
 - [x] Cron push diario 9AM: notificaciones Web Push por recordatorio activo
-
-### SaaS — Control de acceso granular (2026-05-20)
-- [x] Modo Lectura: suscripción vencida → acceso restringido (ver OT existentes, no crear nuevas)
-- [x] Banner "Plan vencido — Modo lectura" persistente sobre el nav bar con botón Renovar
-- [x] Botón "Nuevo ingreso" en HomeView visualmente deshabilitado en modo lectura
-- [x] Periodo de gracia: banner amber (en lugar de rojo) con tiempo exacto en horas/días
-- [x] Retorno MP `?pago=ok` → Bottom Sheet con fecha de activación (en lugar de toast)
 
 ### Infraestructura
 - [x] Vercel API serverless con Firebase Admin
@@ -50,31 +47,36 @@ Actualizado: 2026-05-20
 
 ## PENDIENTES — Próximos a implementar
 
+### UX / Ergonomía de entrada (NewOrderView)
+- [ ] Dictado por voz: botón Web Speech API (`webkitSpeechRecognition`, locale `es-AR`) en campo Falla
+- [ ] Macro-chips de carga rápida: "Cambio de aceite", "Service general", etc. → inyectan texto en el campo
+- [ ] Foco continuo (desktop): `useRef` + `onKeyDown` Enter para saltar entre campos sin mouse
+
 ### UX / Funcionalidad
-- [ ] Input dictado (Web Speech API) en campo "Falla" de NewOrderView
-- [ ] Actualizacion de km de moto al cerrar OT (campo kmEntrega → moto.kilometrajeActual)
+- [ ] Actualización de km de moto al cerrar OT (kmEntrega → moto.kilometrajeActual)
 - [ ] Recordatorios por tiempo (días) además de km
 - [ ] Editar recordatorio existente desde RecordatoriosView
 - [ ] Filtro por moto/cliente en RecordatoriosView
 
 ### Agenda
-- [ ] Vista AgendaView: turnos confirmados con recordatorio previo (ya tiene base)
+- [ ] AgendaView: turnos confirmados con recordatorio previo (base existente)
 
 ### Admin / Analítica
 - [ ] Métricas de conversión trial → pago en panel admin
 - [ ] Exportar lista de usuarios a CSV
 
 ### Técnico
-- [ ] Code splitting HistoryView (842 kB → mayor a 500 kB, warning en build)
-- [ ] Actualizar `CONTEXTO_APP.txt` → deprecado, usar `CLAUDE.md`
-- [ ] npm audit: vulnerabilidades transitivas en firebase-admin y vite/esbuild (no afectan producción, fixes son breaking changes)
+- [ ] Code splitting HistoryView (842 kB, warning en build)
+- [ ] npm audit: vulnerabilidades transitivas (no afectan producción, fixes son breaking changes — no ejecutar)
 
 ---
 
 ## DESCARTADO / FUERA DE SCOPE
 
-- React Router (el ruteo manual por estado es suficiente y más simple)
+- React Router (ruteo por estado string es suficiente y más simple)
 - Redux / Context API (LS + useCollection resuelve el estado)
 - Testing automatizado (MVP prioriza velocidad de iteración)
-- Múltiples técnicos / roles (fuera de roadmap actual)
-- `.agents/skills/` sync script (la carpeta no existe en producción)
+- Múltiples técnicos / roles
+- `.agents/skills/` sync script (carpetas eliminadas del repo)
+- Layout sidebar/bottom-nav responsivo para desktop (app es mobile-first, no hay demanda real)
+- `CONTEXTO_APP.txt` (deprecado, reemplazado por CLAUDE.md)
