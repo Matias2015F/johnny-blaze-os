@@ -17,6 +17,7 @@ import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_E
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
+import { runIntegrityCheckFromCache } from "../lib/integrityTest.js";
 import { collection, collectionGroup, doc, getDoc, getDocs, query, limit, orderBy, setDoc } from "firebase/firestore";
 
 const DIFICULTADES = [
@@ -116,7 +117,7 @@ function sortByDateDesc(items = [], ...fields) {
 const FEATURE_LABELS = {
   pdf: "Comprobantes PDF",
   recordatorios: "Proximo control",
-  analytics: "Analitica de uso",
+  analytics: "Analítica de uso",
   multiusuario: "Multiusuario",
 };
 
@@ -730,7 +731,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
           <Card>
             <SectionTitle>Historial de pagos</SectionTitle>
             {stats.todosPagos.length === 0 && (
-              <p className="text-sm font-black text-zinc-500">No hay pagos registrados todavia.</p>
+              <p className="text-sm font-black text-zinc-500">No hay pagos registrados todavía.</p>
             )}
             <div className="space-y-2">
               {stats.todosPagos.map(pago => (
@@ -1067,7 +1068,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
       {/* Datos de Cobro */}
       <Card>
         <SectionTitle>Datos de Cobro</SectionTitle>
-        <p className="text-[10px] text-zinc-400 font-bold mb-4">Se usan para generar mensajes de presupuesto automaticamente</p>
+        <p className="text-[10px] text-zinc-400 font-bold mb-4">Se usan para generar mensajes de presupuesto automáticamente</p>
         <div className="space-y-3">
           {[
             ["datosCobro.titular",    "Titular de cuenta", "text"],
@@ -1170,14 +1171,21 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
   const [loadingBackups, setLoadingBackups] = React.useState(false);
   const [guardandoBkp, setGuardandoBkp] = React.useState(false);
   const [restaurando, setRestaurando] = React.useState(null);
-  const [confirmDatos, setConfirmDatos] = React.useState(null);
+  const [cloudRestoreConfirm, setCloudRestoreConfirm] = React.useState(null);
+  const [confirmText, setConfirmText] = React.useState("");
+  const [restoreStateInfo, setRestoreStateInfo] = React.useState(null);
+  const [integrityResult, setIntegrityResult] = React.useState(null);
 
   const cargarBackups = async () => {
     setLoadingBackups(true);
     try {
       const uid = auth.currentUser?.uid;
-      const lista = await listCloudBackups(uid);
+      const [lista, rsSnap] = await Promise.all([
+        listCloudBackups(uid),
+        getDoc(doc(db, "users", uid, "restoreState", "current")).catch(() => null),
+      ]);
       setBackups(lista);
+      if (rsSnap?.exists()) setRestoreStateInfo(rsSnap.data());
     } catch (e) {
       showToast("Error al cargar copias: " + e.message);
     } finally {
@@ -1190,7 +1198,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
     try {
       const uid = auth.currentUser?.uid;
       const r = await createCloudBackup(uid);
-      showToast(r ? `Copia guardada en la nube (${r.total} registros) OK` : "No hay datos para guardar");
+      showToast(r ? `Copia guardada en la nube. ${r.total} registros protegidos.` : "No se encontraron datos para respaldar.");
       cargarBackups();
     } catch (e) {
       showToast("Error: " + e.message);
@@ -1199,23 +1207,26 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
     }
   };
 
-  const handleRestaurarNube = (backupId, fecha) => {
-    setConfirmDatos({
-      mensaje: `¿Restaurar la copia del ${new Date(fecha).toLocaleString("es-AR")}? Esto reemplaza todos los datos actuales.`,
-      onOk: async () => {
-        setRestaurando(backupId);
-        try {
-          const uid = auth.currentUser?.uid;
-          const n = await restoreCloudBackup(uid, backupId);
-          showToast(`Restaurado: ${n} registros recuperados OK`);
-          setTimeout(() => window.location.reload(), 1500);
-        } catch (e) {
-          showToast("Error al restaurar: " + e.message);
-        } finally {
-          setRestaurando(null);
-        }
-      },
-    });
+  const handleRestaurarNube = (backup) => {
+    setCloudRestoreConfirm(backup);
+    setConfirmText("");
+  };
+
+  const ejecutarRestauracionNube = async () => {
+    const backup = cloudRestoreConfirm;
+    setCloudRestoreConfirm(null);
+    setConfirmText("");
+    setRestaurando(backup.id);
+    try {
+      const uid = auth.currentUser?.uid;
+      const n = await restoreCloudBackup(uid, backup.id);
+      showToast(`Restauración completa. ${n} registros recuperados. La app se va a recargar.`);
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (e) {
+      showToast(`No se restauraron los datos. Motivo: ${e.message}`);
+    } finally {
+      setRestaurando(null);
+    }
   };
 
   React.useEffect(() => { cargarBackups(); }, []);
@@ -1257,10 +1268,13 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
 
       {/* Backup */}
       <Card>
-        <SectionTitle>Copia de Seguridad</SectionTitle>
+        <SectionTitle>Copia de Seguridad Local</SectionTitle>
+        <p className="text-[10px] text-zinc-400 font-bold mb-3 leading-relaxed">
+          Guardá una copia completa de los datos del taller en este dispositivo. Incluye clientes, motos, trabajos, presupuestos, caja, repuestos, turnos, recordatorios y configuración.
+        </p>
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
-            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Ultima manual</p>
+            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Última manual</p>
             <p className="text-xs font-black text-zinc-700">{tiempoDesde(bkpEstado.ultimoManual) || "Nunca"}</p>
           </div>
           <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
@@ -1271,12 +1285,12 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
 
         <div className="space-y-2">
           <button
-            onClick={() => { descargarBackup(); setBkpEstado(estadoBackup()); showToast("Copia descargada OK"); }}
+            onClick={() => { descargarBackup(); setBkpEstado(estadoBackup()); showToast("Copia descargada. Guardá ese archivo en un lugar seguro."); }}
             className="w-full flex items-center justify-between bg-orange-600 text-white rounded-2xl p-5 active:scale-[0.98] transition-all shadow-md"
           >
             <div className="text-left">
-              <p className="text-sm font-black uppercase">Descargar copia</p>
-              <p className="text-[10px] font-bold text-orange-100 mt-0.5">Archivo .json en tu dispositivo</p>
+              <p className="text-sm font-black uppercase">Descargar copia completa</p>
+              <p className="text-[10px] font-bold text-orange-100 mt-0.5">Archivo .json verificable para recuperar tus datos si algo falla.</p>
             </div>
             <Download size={20} />
           </button>
@@ -1286,8 +1300,8 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
             className="w-full flex items-center justify-between bg-zinc-900 text-white rounded-2xl p-5 active:scale-[0.98] transition-all"
           >
             <div className="text-left">
-              <p className="text-sm font-black uppercase">Restaurar desde archivo</p>
-              <p className="text-[10px] font-bold text-zinc-400 mt-0.5">Elegi el .json descargado</p>
+              <p className="text-sm font-black uppercase">Restaurar desde archivo local</p>
+              <p className="text-[10px] font-bold text-zinc-400 mt-0.5">Usá esta opción solo si necesitás recuperar datos desde una copia anterior.</p>
             </div>
             <RotateCcw size={20} />
           </button>
@@ -1312,7 +1326,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
       <Card>
         <SectionTitle>Copias en la Nube</SectionTitle>
         <p className="text-[10px] text-zinc-400 font-bold mb-3 leading-relaxed">
-          Se guarda automaticamente 1 vez por dia. Podes guardar ahora o restaurar una copia anterior desde cualquier dispositivo.
+          Las copias en la nube protegen los datos del taller y permiten recuperarlos desde otro dispositivo. Se guarda automáticamente 1 vez por día.
         </p>
         <button
           onClick={handleGuardarEnNube}
@@ -1321,7 +1335,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
         >
           <div className="text-left">
             <p className="text-sm font-black uppercase">{guardandoBkp ? "Guardando..." : "Guardar copia ahora"}</p>
-            <p className="text-[10px] font-bold text-orange-100 mt-0.5">Guarda todos los datos en la nube</p>
+            <p className="text-[10px] font-bold text-orange-100 mt-0.5">Guarda una copia completa y verificable en la nube.</p>
           </div>
           <HardDrive size={20} />
         </button>
@@ -1329,45 +1343,160 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
         {loadingBackups ? (
           <p className="text-center text-[10px] text-zinc-400 font-bold py-4">Cargando copias...</p>
         ) : backups.length === 0 ? (
-          <p className="text-center text-[10px] text-zinc-400 font-bold py-4">No hay copias guardadas en la nube todavia</p>
+          <p className="text-center text-[10px] text-zinc-400 font-bold py-4">No hay copias guardadas en la nube todavía</p>
         ) : (
           <div className="space-y-2">
-            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2">Copias disponibles (ultimas {backups.length})</p>
-            {backups.map((b) => (
-              <div key={b.id} className="flex items-center justify-between bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
-                <div>
-                  <p className="text-xs font-black text-zinc-800">{new Date(b.fecha).toLocaleString("es-AR", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}</p>
-                  <p className="text-[9px] font-bold text-zinc-400">{b.total} registros</p>
+            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2">Copias disponibles (últimas {backups.length})</p>
+            {backups.map((b) => {
+              const integ = b.integrity;
+              const hasErrors = integ && !integ.ok;
+              const hasWarnings = integ && integ.ok && integ.warnings?.length > 0;
+              return (
+                <div key={b.id} className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-black text-zinc-800">{new Date(b.fecha).toLocaleString("es-AR", { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-[9px] font-bold text-zinc-400">{b.total} registros</p>
+                        {hasErrors && <span className="text-[9px] font-black text-red-600 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">No restaurable</span>}
+                        {hasWarnings && <span className="text-[9px] font-black text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">{integ.warnings.length} advert.</span>}
+                        {integ && !hasErrors && !hasWarnings && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">Sin errores</span>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRestaurarNube(b)}
+                      disabled={restaurando === b.id}
+                      className="bg-zinc-800 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase active:scale-95 transition-all disabled:opacity-50 shrink-0 ml-3"
+                    >
+                      {restaurando === b.id ? "..." : "Ver / Restaurar"}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleRestaurarNube(b.id, b.fecha)}
-                  disabled={restaurando === b.id}
-                  className="bg-zinc-800 text-white px-4 py-2 rounded-xl font-black text-[10px] uppercase active:scale-95 transition-all disabled:opacity-50"
-                >
-                  {restaurando === b.id ? "..." : "Restaurar"}
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </Card>
 
-      {confirmDatos && (
-        <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-6">
-          <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm space-y-4 shadow-2xl">
-            <p className="text-zinc-900 font-black text-sm text-center leading-relaxed">{confirmDatos.mensaje}</p>
+      {restoreStateInfo && (
+        <div className={`rounded-2xl border p-3 ${restoreStateInfo.status === "completed" ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
+          <p className={`text-[9px] font-black uppercase tracking-widest ${restoreStateInfo.status === "completed" ? "text-emerald-700" : "text-red-700"}`}>Última restauración</p>
+          {restoreStateInfo.status === "completed" ? (
+            <>
+              <p className="text-xs font-black text-emerald-900 mt-1">Completada el {new Date(restoreStateInfo.completedAt).toLocaleString("es-AR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+              <p className="text-[10px] font-bold text-emerald-700 mt-0.5">{restoreStateInfo.restoredCount} registros recuperados</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs font-black text-red-900 mt-1">Fallida — {restoreStateInfo.failedAt ? new Date(restoreStateInfo.failedAt).toLocaleString("es-AR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "fecha desconocida"}</p>
+              <p className="text-[10px] font-bold text-red-700 mt-0.5">{restoreStateInfo.error || "Error desconocido"}</p>
+            </>
+          )}
+        </div>
+      )}
+
+      <Card>
+        <SectionTitle>Integridad de Datos</SectionTitle>
+        <p className="text-[10px] text-zinc-400 font-bold mb-3 leading-relaxed">
+          Verificá el estado actual de los datos en este dispositivo: errores críticos, advertencias y cantidad por colección.
+        </p>
+        <button
+          onClick={() => setIntegrityResult(runIntegrityCheckFromCache())}
+          className="w-full flex items-center justify-center gap-2 bg-zinc-50 border border-zinc-200 text-zinc-600 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+        >
+          <Shield size={14} /> Verificar integridad actual
+        </button>
+        {integrityResult && (
+          <div className={`mt-3 rounded-2xl border p-4 space-y-2 ${integrityResult.ok ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
+            <div className="flex items-center justify-between">
+              <p className={`text-[9px] font-black uppercase tracking-widest ${integrityResult.ok ? "text-emerald-700" : "text-red-700"}`}>
+                {integrityResult.ok ? "Estado: Correcto" : "Estado: Errores encontrados"}
+              </p>
+              <p className="text-[9px] font-bold text-zinc-500">{integrityResult.total} registros</p>
+            </div>
+            {integrityResult.errors.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-[9px] font-black text-red-700 uppercase">Errores ({integrityResult.errors.length})</p>
+                {integrityResult.errors.slice(0, 5).map((e, i) => <p key={i} className="text-[9px] text-red-600">{e}</p>)}
+              </div>
+            )}
+            {integrityResult.warnings.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-[9px] font-black text-amber-700 uppercase">Advertencias ({integrityResult.warnings.length})</p>
+                {integrityResult.warnings.slice(0, 5).map((w, i) => <p key={i} className="text-[9px] text-amber-600">{w}</p>)}
+                {integrityResult.warnings.length > 5 && <p className="text-[9px] text-zinc-400">...y {integrityResult.warnings.length - 5} más</p>}
+              </div>
+            )}
+            {integrityResult.ok && integrityResult.warnings.length === 0 && (
+              <p className="text-xs font-black text-emerald-700">Sin errores ni advertencias.</p>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {cloudRestoreConfirm && (
+        <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-6 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm space-y-4 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div>
+              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Restaurar copia de seguridad</p>
+              <p className="text-sm font-black text-zinc-900 leading-snug">Esta acción reemplaza los datos actuales del taller por los datos de la copia seleccionada.</p>
+            </div>
+            <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-4 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-zinc-500 font-bold">Fecha</span>
+                <span className="text-zinc-800 font-black">{new Date(cloudRestoreConfirm.fecha).toLocaleString("es-AR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500 font-bold">Registros</span>
+                <span className="text-zinc-800 font-black">{cloudRestoreConfirm.total}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500 font-bold">Errores críticos</span>
+                <span className={`font-black ${(cloudRestoreConfirm.integrity?.errors?.length || 0) > 0 ? "text-red-600" : "text-emerald-600"}`}>{cloudRestoreConfirm.integrity?.errors?.length || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500 font-bold">Advertencias</span>
+                <span className={`font-black ${(cloudRestoreConfirm.integrity?.warnings?.length || 0) > 0 ? "text-amber-600" : "text-zinc-800"}`}>{cloudRestoreConfirm.integrity?.warnings?.length || 0}</span>
+              </div>
+            </div>
+            {!cloudRestoreConfirm.integrity?.ok ? (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-3">
+                <p className="text-xs font-black text-red-700">Esta copia no se puede restaurar porque tiene errores críticos. Tus datos actuales no fueron modificados.</p>
+              </div>
+            ) : (
+              <>
+                {cloudRestoreConfirm.integrity?.warnings?.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3">
+                    <p className="text-xs font-black text-amber-700">Esta copia tiene advertencias. Podés restaurarla, pero conviene revisar el detalle.</p>
+                  </div>
+                )}
+                <p className="text-[10px] text-zinc-500 font-bold">Antes de restaurar, el sistema intentará crear una copia de seguridad del estado actual.</p>
+                <div>
+                  <p className="text-[10px] font-black text-zinc-700 uppercase tracking-widest mb-2">Para confirmar, escribí RESTAURAR:</p>
+                  <input
+                    type="text"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
+                    placeholder="RESTAURAR"
+                    autoCapitalize="characters"
+                    className="w-full border-2 border-zinc-200 rounded-2xl px-4 py-3 text-sm font-black text-center uppercase tracking-widest focus:border-orange-400 outline-none"
+                  />
+                </div>
+              </>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => setConfirmDatos(null)}
+                onClick={() => { setCloudRestoreConfirm(null); setConfirmText(""); }}
                 className="bg-zinc-100 text-zinc-700 py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95"
               >
                 Cancelar
               </button>
               <button
-                onClick={() => { confirmDatos.onOk(); setConfirmDatos(null); }}
-                className="bg-orange-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95"
+                disabled={!cloudRestoreConfirm.integrity?.ok || confirmText !== "RESTAURAR"}
+                onClick={ejecutarRestauracionNube}
+                className="bg-orange-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 disabled:opacity-40"
               >
-                Restaurar
+                Restaurar datos
               </button>
             </div>
           </div>
@@ -1615,7 +1744,7 @@ function PantallaSuscripcion({ showToast }) {
           showToast("Preferencia creada, pero Mercado Pago no registro pago. Revisa que el comprador sea usuario test distinto.");
           return;
         }
-        showToast("Sin pagos asociados todavia. Proba de nuevo en 30s.");
+        showToast("Sin pagos asociados todavía. Proba de nuevo en 30s.");
         return;
       }
 
@@ -1992,7 +2121,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
   const probarNotificacion = async () => {
     const result = await sendTestNotification();
     if (result.ok) {
-      showToast("Notificacion de prueba enviada");
+      showToast("Notificación de prueba enviada.");
       return;
     }
     if (result.permission === "denied") {
@@ -2006,7 +2135,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
     const nuevo = { ...cfg, analyticsEnabled: !(cfg.analyticsEnabled ?? true) };
     setCfg(nuevo);
     LS.setDoc("config", "global", nuevo);
-    showToast(nuevo.analyticsEnabled ? "Analitica activada" : "Analitica desactivada");
+    showToast(nuevo.analyticsEnabled ? "Analítica activada" : "Analítica desactivada");
   };
 
   const buscarActualizacion = async () => {
@@ -2014,10 +2143,10 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
     try {
       const remote = await fetchRemoteVersion();
       setRemoteBuild(remote);
-      showToast(isNewerBuild(APP_BUILD, remote) ? "Hay una version nueva lista para instalar" : "Esta app ya tiene la ultima version");
+      showToast(isNewerBuild(APP_BUILD, remote) ? "Hay una versión nueva lista para instalar" : "Esta app ya tiene la última versión");
     } catch (error) {
       console.error(error);
-      showToast("No se pudo consultar la ultima version");
+      showToast("No se pudo consultar la última versión");
     } finally {
       setCheckingUpdate(false);
     }
@@ -2054,7 +2183,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
       <PantallaSuscripcion showToast={showToast} />
 
       <Card>
-        <SectionTitle>Analitica del producto</SectionTitle>
+        <SectionTitle>Analítica del producto</SectionTitle>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-black text-zinc-800">Medicion de uso</p>
@@ -2118,7 +2247,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         </div>
         <div className="mt-3 bg-orange-50 border border-orange-200 rounded-2xl p-4">
           <p className="text-[9px] font-black text-orange-600 uppercase tracking-wider">
-            Como usarlo
+            Cómo usarlo
           </p>
           <div className="mt-2 space-y-1 text-[11px] font-bold leading-relaxed text-orange-800">
             <p>1. Activá los avisos y aceptá el permiso.</p>
@@ -2172,7 +2301,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         </div>
         <div className="space-y-3 mb-4">
           <p className="text-[10px] text-zinc-400 font-bold">
-            Si la app instalada se queda vieja, busca la ultima version e instalala desde aca.
+            Si la app instalada se queda vieja, buscá la última versión e instalala desde acá.
           </p>
           <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-3">
             <p className="text-[9px] font-black text-zinc-500 uppercase tracking-wider">Modo de uso</p>
@@ -2185,21 +2314,24 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
             </p>
           </div>
           <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-3">
-            <p className="text-[9px] font-black text-zinc-500 uppercase tracking-wider">Ultima compilacion local</p>
-            <p className="text-xs font-black text-zinc-700 mt-1">{new Date(APP_BUILD.buildTime).toLocaleString("es-AR")}</p>
+            <p className="text-[9px] font-black text-zinc-500 uppercase tracking-wider">Última compilación local</p>
+            <p className="text-xs font-black text-zinc-700 mt-1">{new Date(APP_BUILD.buildTime).toLocaleString("es-AR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
+            {APP_BUILD.sha && APP_BUILD.sha !== "dev" && (
+              <p className="text-[10px] font-bold text-zinc-400 mt-0.5">{APP_BUILD.sha}</p>
+            )}
           </div>
           <div className={`rounded-2xl border p-3 ${hasRemoteUpdate ? "bg-amber-50 border-amber-200" : "bg-zinc-50 border-zinc-200"}`}>
-            <p className={`text-[9px] font-black uppercase tracking-wider ${hasRemoteUpdate ? "text-amber-700" : "text-zinc-500"}`}>Ultimo deploy detectado</p>
+            <p className={`text-[9px] font-black uppercase tracking-wider ${hasRemoteUpdate ? "text-amber-700" : "text-zinc-500"}`}>Último deploy detectado</p>
             <p className={`text-xs font-black mt-1 ${hasRemoteUpdate ? "text-amber-900" : "text-zinc-700"}`}>
-              {remoteBuild?.version || "Sin dato"}
+              {remoteBuild?.buildTime
+                ? new Date(remoteBuild.buildTime).toLocaleString("es-AR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                : "Sin dato"}
             </p>
-            {remoteBuild?.buildTime && (
-              <p className="text-[10px] font-bold text-zinc-500 mt-1">
-                {new Date(remoteBuild.buildTime).toLocaleString("es-AR")}
-              </p>
+            {remoteBuild?.sha && remoteBuild.sha !== "dev" && (
+              <p className="text-[10px] font-bold text-zinc-400 mt-0.5">{remoteBuild.sha}</p>
             )}
             <p className={`mt-2 text-[10px] font-black ${hasRemoteUpdate ? "text-amber-700" : "text-emerald-600"}`}>
-              {hasRemoteUpdate ? "Hay una actualizacion pendiente para esta app instalada." : "Esta app ya esta al dia."}
+              {hasRemoteUpdate ? "Hay una actualización pendiente para esta app instalada." : "Esta app ya está al día."}
             </p>
           </div>
         </div>
@@ -2216,7 +2348,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
             disabled={checkingUpdate || updatingApp}
             className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 ${hasRemoteUpdate ? "bg-orange-600 text-white" : "bg-zinc-900 text-white"}`}
           >
-            {updatingApp ? "Actualizando..." : hasRemoteUpdate ? "Instalar version nueva" : "Recargar app"}
+            {updatingApp ? "Actualizando..." : hasRemoteUpdate ? "Instalar versión nueva" : "Recargar app"}
           </button>
         </div>
         {!displayMode.installed && (
@@ -2354,10 +2486,10 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
     reader.onload = (ev) => {
       const resultado = restaurarDesdeTexto(ev.target.result);
       if (resultado.ok) {
-        showToast(`Restaurado OK (${resultado.restaurados} colecciones)`);
-        setTimeout(() => window.location.reload(), 1200);
+        showToast(`Restauración completa. ${resultado.restaurados} colecciones recuperadas. La app se va a recargar.`);
+        setTimeout(() => window.location.reload(), 1500);
       } else {
-        showToast(`Error: ${resultado.error}`);
+        showToast(`No se restauraron los datos. Motivo: ${resultado.error}`);
       }
     };
     reader.readAsText(file);
@@ -2367,10 +2499,10 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
   const handleRestaurarAuto = () => {
     const resultado = restaurarAutoBackup();
     if (resultado.ok) {
-      showToast("Restaurado desde copia automatica OK");
-      setTimeout(() => window.location.reload(), 1200);
+      showToast("Restauración completa desde auto-guardado. La app se va a recargar.");
+      setTimeout(() => window.location.reload(), 1500);
     } else {
-      showToast(`Error: ${resultado.error}`);
+      showToast(`No se restauraron los datos. Motivo: ${resultado.error}`);
     }
   };
 
