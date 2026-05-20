@@ -10,6 +10,7 @@ import { APP_BUILD } from "./generated/appVersion.js";
 import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, promptInstallApp } from "./lib/appUpdate.js";
 import { ensureAccountProfile, trackEvent } from "./lib/telemetry.js";
 import { upsertClienteYMoto } from "./services/clienteMotoService.js";
+import { nextNumeroOT, nextNumeroPRE } from "./services/counterService.js";
 
 // HomeView se carga de forma eager � es la pantalla inicial
 import HomeView from "./views/HomeView.jsx";
@@ -302,7 +303,7 @@ export default function TallerPanel({ modoLectura = false }) {
   }, []);
 
   // -- Crear orden nueva ------------------------------------------------------
-  const handleCreateOrder = (payload) => {
+  const handleCreateOrder = async (payload) => {
     const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
     const { clientId, bikeId, kmActual } = upsertClienteYMoto(
       payload,
@@ -310,7 +311,7 @@ export default function TallerPanel({ modoLectura = false }) {
       { soloSiKm: false, actualizarService: true, crearTitularidad: true }
     );
 
-    const numeroTrabajo = `OT-${String(orders.length + 1).padStart(6, "0")}`;
+    const numeroTrabajo = await nextNumeroOT(orders.length + 1);
     const orden = LS.addDoc("trabajos", {
       numeroTrabajo,
       clientId, bikeId,
@@ -362,14 +363,14 @@ export default function TallerPanel({ modoLectura = false }) {
   };
 
   // -- Presupuestos -----------------------------------------------------------
-  const handleCreatePresupuesto = (payload) => {
+  const handleCreatePresupuesto = async (payload) => {
     const { clientId, bikeId, kmActual } = upsertClienteYMoto(
       payload,
       { clients, bikes, titularidades },
       { soloSiKm: true, actualizarService: false, crearTitularidad: false }
     );
 
-    const numeroPresupuesto = `PRE-${String(presupuestos.length + 1).padStart(6, "0")}`;
+    const numeroPresupuesto = await nextNumeroPRE(presupuestos.length + 1);
     const pres = LS.addDoc("presupuestos", {
       numeroPresupuesto,
       clientId,
@@ -398,11 +399,11 @@ export default function TallerPanel({ modoLectura = false }) {
     showToast("Presupuesto creado");
   };
 
-  const handleConvertirPresupuestoAOT = () => {
+  const handleConvertirPresupuestoAOT = async () => {
     const pres = presupuestos.find((p) => p.id === selectedPresupuestoId);
     if (!pres) return;
 
-    const numeroTrabajo = `OT-${String(orders.length + 1).padStart(6, "0")}`;
+    const numeroTrabajo = await nextNumeroOT(orders.length + 1);
     const orden = LS.addDoc("trabajos", {
       numeroTrabajo,
       clientId: pres.clientId,
