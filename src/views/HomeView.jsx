@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { Bell, Calendar, Clock, ChevronRight, FileText, History, LogOut, MessageCircle, PlusCircle, ReceiptText, Wrench } from "lucide-react";
+import React, { useEffect, useMemo } from "react";
+import { Bell, Calendar, Clock, ChevronRight, FileText, History, LogOut, MessageCircle, PlusCircle, ReceiptText, Wrench, Zap } from "lucide-react";
 import { auth } from "../firebase.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { evaluarEstado } from "../lib/calc.js";
@@ -150,6 +150,31 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
     (p) => (p.fecha || "").slice(0, 10) === hoy
   ).reduce((s, p) => s + (p.monto || 0), 0);
 
+  const accionesUrgentes = useMemo(() => {
+    const ACCION_MAP = {
+      listo_para_emitir: { label: "Emitir comprobante",   color: "text-emerald-400", urgencia: 1 },
+      presupuesto:       { label: "Enviar presupuesto",   color: "text-purple-400",  urgencia: 3 },
+      aprobacion:        { label: "Reenviar aprobacion",  color: "text-yellow-400",  urgencia: 4 },
+      diagnostico:       { label: "Armar presupuesto",    color: "text-slate-400",   urgencia: 6 },
+    };
+    return ordenesActivas
+      .map((order) => {
+        const bike = bikes?.find((b) => b.id === order.bikeId) || {};
+        const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
+        const saldo = (order.total || 0) - totalPagado;
+        let accion = ACCION_MAP[order.estado] ? { ...ACCION_MAP[order.estado] } : null;
+        if (order.estado === "finalizada" && saldo > 0)
+          accion = { label: "Cobrar saldo", color: "text-green-400", urgencia: 2 };
+        if (order.estado === "reparacion" && order.estadoCron === "BLOQUEADO")
+          accion = { label: "Trabajo detenido", color: "text-red-400", urgencia: 5 };
+        if (!accion) return null;
+        return { order, bike, accion };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.accion.urgencia - b.accion.urgencia)
+      .slice(0, 5);
+  }, [ordenesActivas, bikes]);
+
   useEffect(() => {
     trackEvent("open_home", { screen: "home" }).catch(console.error);
   }, []);
@@ -222,6 +247,36 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
           <p className="mt-1 text-[9px] font-bold text-zinc-600">Hoy</p>
         </div>
       </div>
+
+      {accionesUrgentes.length > 0 && (
+        <div className="rounded-[2.5rem] border border-orange-600/30 bg-gradient-to-b from-orange-600/10 to-zinc-900/80 p-5 space-y-3 shadow-xl">
+          <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-orange-300">
+            <Zap size={13} />
+            {accionesUrgentes.length} acción{accionesUrgentes.length !== 1 ? "es" : ""} urgente{accionesUrgentes.length !== 1 ? "s" : ""}
+          </p>
+          {accionesUrgentes.map(({ order, bike, accion }) => (
+            <button
+              key={order.id}
+              onClick={() => {
+                trackEvent("accion_urgente", { screen: "home", entityType: "trabajo", entityId: order.id, metadata: { accion: accion.label } }).catch(console.error);
+                setSelectedOrderId(order.id);
+                setView("detalleOrden");
+              }}
+              className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-left transition-all active:scale-[0.98]"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-xs font-black uppercase text-white">
+                  {bike?.patente || "---"} · {bike?.marca || ""} {bike?.modelo || ""}
+                </p>
+                <p className={`mt-1 text-[10px] font-black uppercase tracking-widest ${accion.color}`}>
+                  {accion.label}
+                </p>
+              </div>
+              <ChevronRight size={16} className="shrink-0 text-orange-400" />
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <button onClick={() => {

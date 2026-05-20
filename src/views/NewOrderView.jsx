@@ -108,9 +108,14 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
         <button onClick={() => setView(prefill ? "historial" : "home")} className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-white active:scale-90 transition-all">
           <ArrowLeft size={16} />
         </button>
-        <h1 className="text-3xl font-black text-white tracking-tighter uppercase">
-          {prefill ? "Nuevo Service" : "Nuevo Ingreso"}
-        </h1>
+        <div>
+          <h1 className="text-3xl font-black text-white tracking-tighter uppercase">
+            {prefill ? "Nuevo Service" : "Nuevo Ingreso"}
+          </h1>
+          <p className="mt-1 text-[10px] font-bold text-zinc-500">
+            {prefill ? "Documentá el estado actual antes de empezar." : "Registrá cómo entra la moto. Evita reclamos."}
+          </p>
+        </div>
       </div>
       <div className="bg-[#141414] p-8 rounded-[2.5rem] space-y-4 border border-white/5 shadow-2xl">
         {coincidenciaMoto && !ignorarSugerencia && (
