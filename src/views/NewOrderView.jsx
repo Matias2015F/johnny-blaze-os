@@ -31,6 +31,20 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
   const [ignorarSugerencia, setIgnorarSugerencia] = useState(false);
   const [escuchando, setEscuchando] = useState(false);
   const reconRef = useRef(null);
+  const patRef = useRef(null);
+  const kmRef = useRef(null);
+  const marcaRef = useRef(null);
+  const modeloRef = useRef(null);
+  const cilRef = useRef(null);
+  const nombreRef = useRef(null);
+  const telRef = useRef(null);
+  const fallaRef = useRef(null);
+
+  const sig = (ref) => (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    ref.current?.focus();
+  };
 
   const toggleDictado = () => {
     if (!SpeechRecognitionAPI) return;
@@ -136,20 +150,26 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Patente</label>
             <input
+              ref={patRef}
               className="w-full border rounded-2xl p-4 font-black uppercase outline-none bg-zinc-900 text-white border-white/5 focus:border-orange-600"
               value={f.patente}
               onChange={(e) => setF({ ...f, patente: e.target.value })}
+              onKeyDown={sig(kmRef)}
+              enterKeyHint="next"
             />
           </div>
           <div className="space-y-1">
             <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Km Actual</label>
             <input
+              ref={kmRef}
               className="w-full border border-white/5 rounded-2xl p-4 font-black text-white outline-none focus:border-orange-600 bg-zinc-900"
               type="text"
               inputMode="numeric"
               value={f.km}
               onChange={(e) => setF({ ...f, km: e.target.value.replace(/\D/g, "") })}
               placeholder="Ej: 15400"
+              onKeyDown={sig(prefill ? nombreRef : marcaRef)}
+              enterKeyHint="next"
             />
           </div>
         </div>
@@ -157,34 +177,40 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Marca</label>
-              <input className="w-full border border-white/5 bg-zinc-900 rounded-2xl p-4 font-black text-white outline-none focus:border-orange-600 text-sm" value={f.marca} onChange={(e) => setF({ ...f, marca: e.target.value })} />
+              <input ref={marcaRef} className="w-full border border-white/5 bg-zinc-900 rounded-2xl p-4 font-black text-white outline-none focus:border-orange-600 text-sm" value={f.marca} onChange={(e) => setF({ ...f, marca: e.target.value })} onKeyDown={sig(modeloRef)} enterKeyHint="next" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Modelo</label>
-              <input className="w-full border border-white/5 bg-zinc-900 rounded-2xl p-4 font-black text-white outline-none focus:border-orange-600 text-sm" value={f.modelo} onChange={(e) => setF({ ...f, modelo: e.target.value })} />
+              <input ref={modeloRef} className="w-full border border-white/5 bg-zinc-900 rounded-2xl p-4 font-black text-white outline-none focus:border-orange-600 text-sm" value={f.modelo} onChange={(e) => setF({ ...f, modelo: e.target.value })} onKeyDown={sig(cilRef)} enterKeyHint="next" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Cilindrada</label>
-              <input className="w-full border border-white/5 bg-zinc-900 rounded-2xl p-4 font-black text-white outline-none focus:border-orange-600 text-sm" type="text" inputMode="numeric" placeholder="Ej: 250" value={f.cilindrada} onChange={(e) => setF({ ...f, cilindrada: e.target.value.replace(/\D/g, "") })} />
+              <input ref={cilRef} className="w-full border border-white/5 bg-zinc-900 rounded-2xl p-4 font-black text-white outline-none focus:border-orange-600 text-sm" type="text" inputMode="numeric" placeholder="Ej: 250" value={f.cilindrada} onChange={(e) => setF({ ...f, cilindrada: e.target.value.replace(/\D/g, "") })} onKeyDown={sig(nombreRef)} enterKeyHint="next" />
             </div>
           </div>
         )}
         <div className="space-y-1">
           <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Cliente</label>
           <input
+            ref={nombreRef}
             className="w-full border rounded-2xl p-4 font-black outline-none bg-zinc-900 text-white border-white/5 focus:border-orange-600"
             placeholder="Nombre completo"
             value={f.nombre}
             onChange={(e) => setF({ ...f, nombre: e.target.value })}
+            onKeyDown={sig(telRef)}
+            enterKeyHint="next"
           />
         </div>
         <div className="space-y-1">
           <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Teléfono</label>
           <input
+            ref={telRef}
             className="w-full border rounded-2xl p-4 font-black outline-none bg-zinc-900 text-white border-white/5 focus:border-orange-600"
             placeholder="Ej: 3434123456"
             value={f.tel}
             onChange={(e) => setF({ ...f, tel: e.target.value })}
+            onKeyDown={sig(fallaRef)}
+            enterKeyHint="next"
           />
         </div>
         <div className="space-y-1">
@@ -206,6 +232,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             )}
           </div>
           <textarea
+            ref={fallaRef}
             className={`w-full border bg-zinc-900 rounded-2xl p-4 font-bold text-white outline-none transition-all ${
               escuchando ? "border-red-500/50 focus:border-red-500" : "border-white/5 focus:border-orange-600"
             }`}
@@ -213,6 +240,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             value={f.falla}
             onChange={(e) => setF({ ...f, falla: e.target.value })}
             placeholder="¿Qué le pasa hoy?"
+            enterKeyHint="done"
           />
           <div className="flex flex-wrap gap-1.5 pt-1">
             {CHIPS_MOTIVO.map((chip) => (

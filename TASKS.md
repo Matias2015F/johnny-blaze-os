@@ -50,7 +50,7 @@ Actualizado: 2026-05-20
 ### UX / Ergonomía de entrada (NewOrderView)
 - [x] Dictado por voz: botón Web Speech API (`webkitSpeechRecognition`, locale `es-AR`) en campo Falla
 - [x] Macro-chips de carga rápida: "Cambio de aceite", "Service general", etc. → inyectan texto en el campo
-- [ ] Foco continuo (desktop): `useRef` + `onKeyDown` Enter para saltar entre campos sin mouse
+- [x] Foco continuo (desktop): `useRef` + `onKeyDown` Enter para saltar entre campos sin mouse
 
 ### UX / Funcionalidad
 - [ ] Actualización de km de moto al cerrar OT (kmEntrega → moto.kilometrajeActual)
