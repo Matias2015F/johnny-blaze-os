@@ -42,6 +42,15 @@ export const CONFIG_DEFAULT = {
     rechazoExtraPct: 0,
     rechazoExtraMonto: 0,
   },
+  motivosIngreso: [
+    "Service general",
+    "Cambio de aceite",
+    "Frenos",
+    "No arranca",
+    "Cadena / piñones",
+    "Eléctrico",
+    "Ruidos",
+  ],
 };
 
 export const SERVICIOS_DEFAULT = [

@@ -1,17 +1,9 @@
 import React, { useMemo, useRef, useState } from "react";
-import { ArrowLeft, Info, Mic, MicOff } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Info, Mic, MicOff, Pencil, Plus, Trash2, X } from "lucide-react";
+import { LS } from "../lib/storage.js";
+import { CONFIG_DEFAULT } from "../lib/constants.js";
 
 const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-const CHIPS_MOTIVO = [
-  "Service general",
-  "Cambio de aceite",
-  "Frenos",
-  "No arranca",
-  "Cadena / piñones",
-  "Eléctrico",
-  "Ruidos",
-];
 
 function normalizar(value = "") {
   return String(value).trim().toUpperCase();
@@ -30,6 +22,10 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
   });
   const [ignorarSugerencia, setIgnorarSugerencia] = useState(false);
   const [escuchando, setEscuchando] = useState(false);
+  const [listaAbierta, setListaAbierta] = useState(false);
+  const [nuevoMotivo, setNuevoMotivo] = useState("");
+  const [editandoIdx, setEditandoIdx] = useState(null);
+  const [editandoTexto, setEditandoTexto] = useState("");
   const reconRef = useRef(null);
   const patRef = useRef(null);
   const kmRef = useRef(null);
@@ -44,6 +40,34 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
     if (e.key !== "Enter") return;
     e.preventDefault();
     ref.current?.focus();
+  };
+
+  const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
+  const motivosList = config.motivosIngreso || CONFIG_DEFAULT.motivosIngreso;
+
+  const guardarMotivos = (lista) => {
+    LS.updateDoc("config", "global", { motivosIngreso: lista });
+  };
+
+  const agregarMotivo = () => {
+    const texto = nuevoMotivo.trim();
+    if (!texto || motivosList.includes(texto)) return;
+    guardarMotivos([...motivosList, texto]);
+    setNuevoMotivo("");
+  };
+
+  const confirmarEdicion = (idx) => {
+    const texto = editandoTexto.trim();
+    if (!texto) return;
+    const nueva = [...motivosList];
+    nueva[idx] = texto;
+    guardarMotivos(nueva);
+    setEditandoIdx(null);
+    setEditandoTexto("");
+  };
+
+  const eliminarMotivo = (idx) => {
+    guardarMotivos(motivosList.filter((_, i) => i !== idx));
   };
 
   const toggleDictado = () => {
@@ -77,7 +101,6 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
     });
   };
 
-  // Autocomplete: detecta moto conocida apenas se escribe la patente
   const coincidenciaMoto = useMemo(() => {
     if (prefill) return null;
     const patente = normalizar(f.patente);
@@ -135,16 +158,10 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={usarHistorial}
-                className="bg-orange-600 text-white py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95"
-              >
+              <button onClick={usarHistorial} className="bg-orange-600 text-white py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95">
                 Usar historial
               </button>
-              <button
-                onClick={() => setIgnorarSugerencia(true)}
-                className="bg-zinc-900 border border-white/10 text-zinc-300 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95"
-              >
+              <button onClick={() => setIgnorarSugerencia(true)} className="bg-zinc-900 border border-white/10 text-zinc-300 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95">
                 Seguir con lo escrito
               </button>
             </div>
@@ -247,17 +264,89 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             placeholder="¿Qué le pasa hoy?"
             enterKeyHint="done"
           />
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {CHIPS_MOTIVO.map((chip) => (
-              <button
-                key={chip}
-                type="button"
-                onClick={() => agregarChip(chip)}
-                className="shrink-0 px-3 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-[9px] font-black uppercase tracking-widest text-zinc-400 active:scale-95 active:bg-zinc-700 active:text-white transition-all"
-              >
-                {chip}
-              </button>
-            ))}
+
+          {/* Lista desplegable de motivos */}
+          <div className="pt-1 space-y-1">
+            <button
+              type="button"
+              onClick={() => setListaAbierta(!listaAbierta)}
+              className="flex w-full items-center justify-between rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-zinc-400 active:scale-[0.98] transition-all"
+            >
+              <span>Seleccionar motivo ({motivosList.length})</span>
+              {listaAbierta ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+
+            {listaAbierta && (
+              <div className="rounded-2xl border border-zinc-700 bg-zinc-800/60 overflow-hidden">
+                {motivosList.map((motivo, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-2 px-3 py-2.5 border-b border-zinc-700/40 last:border-0"
+                  >
+                    {editandoIdx === idx ? (
+                      <>
+                        <input
+                          autoFocus
+                          value={editandoTexto}
+                          onChange={(e) => setEditandoTexto(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); confirmarEdicion(idx); }
+                            if (e.key === "Escape") { setEditandoIdx(null); }
+                          }}
+                          className="flex-1 bg-zinc-900 rounded-xl px-3 py-1.5 text-xs font-bold text-white outline-none border border-orange-600/50"
+                        />
+                        <button type="button" onClick={() => confirmarEdicion(idx)} className="text-emerald-400 active:scale-90 transition-all shrink-0">
+                          <Check size={15} />
+                        </button>
+                        <button type="button" onClick={() => setEditandoIdx(null)} className="text-zinc-500 active:scale-90 transition-all shrink-0">
+                          <X size={15} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => agregarChip(motivo)}
+                          className="flex-1 text-left text-xs font-bold text-white active:text-orange-400 transition-colors truncate"
+                        >
+                          {motivo}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setEditandoIdx(idx); setEditandoTexto(motivo); }}
+                          className="shrink-0 text-zinc-600 active:text-zinc-300 transition-colors p-1"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => eliminarMotivo(idx)}
+                          className="shrink-0 text-zinc-700 active:text-red-400 transition-colors p-1"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                <div className="flex items-center gap-2 px-3 py-2.5 border-t border-zinc-600/60">
+                  <input
+                    value={nuevoMotivo}
+                    onChange={(e) => setNuevoMotivo(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); agregarMotivo(); } }}
+                    placeholder="Agregar motivo..."
+                    className="flex-1 bg-zinc-900 rounded-xl px-3 py-1.5 text-xs font-bold text-white outline-none placeholder:text-zinc-600 border border-transparent focus:border-orange-600/50 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={agregarMotivo}
+                    className="shrink-0 rounded-xl bg-orange-600 p-1.5 text-white active:scale-90 transition-all"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <button onClick={() => handleCreateAll(f)} className="w-full bg-orange-600 text-white py-5 rounded-[2.5rem] font-black uppercase shadow-xl shadow-orange-600/20 active:scale-95 transition-all tracking-widest">
@@ -267,4 +356,3 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
     </div>
   );
 }
-
