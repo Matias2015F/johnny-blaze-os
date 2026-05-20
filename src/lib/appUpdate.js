@@ -38,7 +38,12 @@ export async function promptInstallApp() {
 
 export function isNewerBuild(localBuild, remoteBuild) {
   if (!localBuild?.version || !remoteBuild?.version) return false;
-  return localBuild.version !== remoteBuild.version;
+  if (localBuild.version !== remoteBuild.version) return true;
+  // Versiones iguales (ej: ambas "dev"): desempatar por buildTime
+  if (localBuild.buildTime && remoteBuild.buildTime) {
+    return remoteBuild.buildTime > localBuild.buildTime;
+  }
+  return false;
 }
 
 export function getDisplayModeInfo() {
