@@ -1,8 +1,6 @@
-import { LS } from "../lib/storage.js";
+import { LS, DATA_COLS } from "../lib/storage.js";
 import { exportBackup, getMeta, setMeta, shouldAutoBackup } from "../lib/backup.js";
-
-const COLS_ACTUALES = ["trabajos", "clientes", "motos", "config", "caja", "catalogoTareas"];
-const LEGACY_MAP    = { ordenes: "trabajos", serviciosCatalogo: "catalogoTareas" };
+import { assertRestorableData } from "../lib/integrity.js";
 
 export function tiempoDesde(timestamp) {
   if (!timestamp) return null;
@@ -36,18 +34,14 @@ export function descargarBackup() {
 export function restaurarDesdeTexto(texto) {
   try {
     const parsed = JSON.parse(texto);
-    const data   = parsed.data || parsed;
+    const { data } = assertRestorableData(parsed);
     let restaurados = 0;
-
-    for (const col of COLS_ACTUALES) {
-      // Intentar con nombre actual
-      const legacyName = Object.entries(LEGACY_MAP).find(([, v]) => v === col)?.[0];
-      const items = data[col] || (legacyName ? data[legacyName] : null);
-      if (!Array.isArray(items) || !items.length) continue;
-      items.forEach(item => { if (item.id) LS.setDoc(col, item.id, item); });
-      restaurados++;
-    }
-
+    DATA_COLS.forEach((col) => {
+      if (Array.isArray(data[col]) && data[col].length) {
+        data[col].forEach((item) => { if (item.id) LS.setDoc(col, item.id, item); });
+        restaurados++;
+      }
+    });
     return { ok: true, fecha: parsed.fecha || "desconocida", restaurados };
   } catch (err) {
     return { ok: false, error: err.message };
