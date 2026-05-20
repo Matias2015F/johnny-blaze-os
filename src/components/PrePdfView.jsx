@@ -66,6 +66,12 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
         comprobante: numeroComprobante,
       },
     });
+
+    const kmEntrega = Number(order.kmEntrega) || 0;
+    if (kmEntrega > 0 && order.bikeId) {
+      LS.updateDoc("motos", order.bikeId, { km: kmEntrega, kilometrajeActual: kmEntrega });
+    }
+
     crearRecordatorioDeOrden(order);
 
     setFinalPdfData({

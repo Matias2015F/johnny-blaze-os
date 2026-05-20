@@ -53,7 +53,7 @@ Actualizado: 2026-05-20
 - [x] Foco continuo (desktop): `useRef` + `onKeyDown` Enter para saltar entre campos sin mouse
 
 ### UX / Funcionalidad
-- [ ] Actualización de km de moto al cerrar OT (kmEntrega → moto.kilometrajeActual)
+- [x] Actualización de km de moto al cerrar OT (kmEntrega → moto.kilometrajeActual)
 - [ ] Recordatorios por tiempo (días) además de km
 - [ ] Editar recordatorio existente desde RecordatoriosView
 - [ ] Filtro por moto/cliente en RecordatoriosView
