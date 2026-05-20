@@ -1,88 +1,179 @@
 import { db } from "../firebase.js";
 import {
-  collection, doc, getDocs, setDoc, deleteDoc, query, orderBy, limit,
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc,
+  query, orderBy, limit, writeBatch,
 } from "firebase/firestore";
 import { DATA_COLS } from "./storage.js";
+import { buildBackupEnvelope, assertRestorableData, countersFromData } from "./integrity.js";
 
 const BACKUP_KEY = "jbos_last_cloud_backup";
 const MAX_BACKUPS = 7;
+const BATCH_SIZE = 400;
 
-// Crea un snapshot de todos los datos en users/{uid}/snapshots/{id}
-export async function createCloudBackup(uid) {
+// ── Helpers de batch ─────────────────────────────────────────────────────────
+
+async function deleteCollectionBatched(uid, col) {
+  const snap = await getDocs(collection(db, "users", uid, col));
+  if (snap.empty) return;
+  for (let i = 0; i < snap.docs.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db);
+    snap.docs.slice(i, i + BATCH_SIZE).forEach((d) => batch.delete(d.ref));
+    await batch.commit();
+  }
+}
+
+async function writeCollectionBatched(uid, col, items) {
+  const valid = (items || []).filter((item) => item?.id);
+  let count = 0;
+  for (let i = 0; i < valid.length; i += BATCH_SIZE) {
+    const batch = writeBatch(db);
+    valid.slice(i, i + BATCH_SIZE).forEach((item) => {
+      batch.set(doc(db, "users", uid, col, item.id), item);
+      count++;
+    });
+    await batch.commit();
+  }
+  return count;
+}
+
+async function restoreCountersFromData(uid, data) {
+  const { trabajos: maxOT, presupuestos: maxPRE } = countersFromData(data);
+  const now = Date.now();
+  await setDoc(doc(db, "users", uid, "counters", "trabajos"), { ultimo: maxOT, updatedAt: now });
+  await setDoc(doc(db, "users", uid, "counters", "presupuestos"), { ultimo: maxPRE, updatedAt: now });
+}
+
+async function pruneOldBackups(uid, excludeId = null) {
+  const snap = await getDocs(
+    query(collection(db, "users", uid, "snapshots"), orderBy("fecha", "asc"))
+  );
+  const candidates = excludeId
+    ? snap.docs.filter((d) => d.id !== excludeId)
+    : snap.docs;
+  const excess = snap.docs.length - MAX_BACKUPS;
+  if (excess > 0) {
+    await Promise.all(candidates.slice(0, excess).map((d) => deleteDoc(d.ref)));
+  }
+}
+
+// ── API pública ───────────────────────────────────────────────────────────────
+
+export async function createCloudBackup(uid, { pruneProtect = null } = {}) {
   const data = {};
   for (const col of DATA_COLS) {
     const snap = await getDocs(collection(db, "users", uid, col));
     data[col] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   }
 
-  const total = Object.values(data).reduce((s, a) => s + a.length, 0);
-  if (total === 0) return null;
+  const envelope = buildBackupEnvelope(data, { source: "cloud" });
+  if (envelope.total === 0) return null;
 
   const id = new Date().toISOString().replace(/[:.]/g, "-");
-  const ref = doc(db, "users", uid, "snapshots", id);
-  await setDoc(ref, {
+  await setDoc(doc(db, "users", uid, "snapshots", id), {
     fecha: Date.now(),
-    total,
-    data: JSON.stringify(data),
+    total: envelope.total,
+    counts: envelope.integrity.counts,
+    integrity: envelope.integrity,
+    schema: "motogestion-backup",
+    v: 3,
+    data: JSON.stringify(envelope.data),
+    createdAt: Date.now(),
   });
 
   localStorage.setItem(BACKUP_KEY, Date.now().toString());
-  await pruneOldBackups(uid);
-  return { id, total };
+  await pruneOldBackups(uid, pruneProtect);
+  return { id, total: envelope.total };
 }
 
-// Backup automático — máximo una vez por día
 export async function autoCloudBackup(uid) {
   const last = Number(localStorage.getItem(BACKUP_KEY) || 0);
-  if (Date.now() - last < 86400000) return null; // menos de 24h
+  if (Date.now() - last < 86400000) return null;
   return createCloudBackup(uid);
 }
 
-// Lista los últimos MAX_BACKUPS backups
 export async function listCloudBackups(uid) {
   const snap = await getDocs(
     query(collection(db, "users", uid, "snapshots"), orderBy("fecha", "desc"), limit(MAX_BACKUPS))
   );
-  return snap.docs.map((d) => ({ id: d.id, ...d.data(), data: undefined }));
+  // Excluir el campo data (JSON pesado) de la lista
+  return snap.docs.map((d) => {
+    const { data: _data, ...rest } = d.data();
+    return { id: d.id, ...rest };
+  });
 }
 
-// Restaura un backup: sobreescribe todas las colecciones del usuario
 export async function restoreCloudBackup(uid, backupId) {
-  const snap = await getDocs(collection(db, "users", uid, "snapshots"));
-  const backupDoc = snap.docs.find((d) => d.id === backupId);
-  if (!backupDoc) throw new Error("Backup no encontrado");
+  let report = null;
+  const startedAt = Date.now();
+  const restoreRef = doc(db, "users", uid, "restoreState", "current");
 
-  const data = JSON.parse(backupDoc.data().data);
-  let count = 0;
+  // 1. Leer backup por doc directo
+  const backupSnap = await getDoc(doc(db, "users", uid, "snapshots", backupId));
+  if (!backupSnap.exists()) throw new Error("Backup no encontrado");
 
-  for (const col of DATA_COLS) {
-    const items = data[col];
-    if (!Array.isArray(items)) continue;
-    // Borrar colección actual
-    const cur = await getDocs(collection(db, "users", uid, col));
-    if (!cur.empty) {
-      const del = [];
-      cur.docs.forEach((d) => del.push(deleteDoc(d.ref)));
-      await Promise.all(del);
-    }
-    // Restaurar desde backup
-    const batch = [];
-    items.forEach((item) => {
-      if (!item.id) return;
-      batch.push(setDoc(doc(db, "users", uid, col, item.id), item));
-    });
-    await Promise.all(batch);
-    count += items.length;
+  // 2. Parsear y validar antes de tocar datos actuales
+  const raw = JSON.parse(backupSnap.data().data);
+  let data;
+  try {
+    ({ data, report } = assertRestorableData(raw));
+  } catch (err) {
+    await setDoc(restoreRef, {
+      status: "failed",
+      backupId,
+      failedAt: Date.now(),
+      error: err.message,
+      report: null,
+    }, { merge: true });
+    throw err;
   }
-  return count;
-}
 
-async function pruneOldBackups(uid) {
-  const snap = await getDocs(
-    query(collection(db, "users", uid, "snapshots"), orderBy("fecha", "asc"))
-  );
-  const excess = snap.docs.length - MAX_BACKUPS;
-  if (excess > 0) {
-    await Promise.all(snap.docs.slice(0, excess).map((d) => deleteDoc(d.ref)));
+  // 3. Guardar estado "running"
+  await setDoc(restoreRef, {
+    status: "running",
+    backupId,
+    startedAt,
+    report,
+    restoredCount: 0,
+  });
+
+  try {
+    // 4. Backup de seguridad antes de borrar (protege el backupId original)
+    await createCloudBackup(uid, { pruneProtect: backupId });
+
+    // 5. Borrar colecciones actuales en batches
+    for (const col of DATA_COLS) {
+      await deleteCollectionBatched(uid, col);
+    }
+
+    // 6. Restaurar desde backup en batches
+    let restoredCount = 0;
+    for (const col of DATA_COLS) {
+      restoredCount += await writeCollectionBatched(uid, col, data[col]);
+    }
+
+    // 7. Reconstruir contadores OT/PRE
+    await restoreCountersFromData(uid, data);
+
+    // 8. Marcar como completado
+    await setDoc(restoreRef, {
+      status: "completed",
+      backupId,
+      startedAt,
+      completedAt: Date.now(),
+      restoredCount,
+      report,
+    });
+
+    return restoredCount;
+  } catch (err) {
+    await setDoc(restoreRef, {
+      status: "failed",
+      backupId,
+      startedAt,
+      failedAt: Date.now(),
+      error: err.message || String(err),
+      report,
+    }, { merge: true });
+    throw err;
   }
 }
