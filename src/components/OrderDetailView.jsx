@@ -217,8 +217,16 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const [rechazoMetodo, setRechazoMetodo] = useState("efectivo");
   const [rechazoComprobante, setRechazoComprobante] = useState("");
   const [rechazoObs, setRechazoObs] = useState(TEXTO_CIERRE_RECHAZO);
+  const [unidadProximo, setUnidadProximo] = useState(() => order.proximoControl?.unidad || "km");
   const [kmProximoStr, setKmProximoStr] = useState(() =>
-    order.proximoControl?.kmObjetivo ? String(order.proximoControl.kmObjetivo) : ""
+    order.proximoControl?.unidad === "km" && order.proximoControl?.kmObjetivo
+      ? String(order.proximoControl.kmObjetivo)
+      : ""
+  );
+  const [diasProximoStr, setDiasProximoStr] = useState(() =>
+    order.proximoControl?.unidad === "dias" && order.proximoControl?.valorObjetivo
+      ? String(order.proximoControl.valorObjetivo)
+      : ""
   );
 
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
@@ -753,16 +761,17 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const handleSinCronometro = () => LS.updateDoc("trabajos", order.id, trabajarSinCronometro(order));
 
   const guardarProximoControl = () => {
-    const kmObj = parseInt(kmProximoStr, 10);
-    const kmBase = order.kmIngreso || order.km || 0;
-    if (!kmObj || kmObj <= kmBase) return;
-    const pc = buildProximoControl({
-      tipo: "service",
-      descripcion: "Service general",
-      unidad: "km",
-      valorObjetivo: kmObj - kmBase,
-      kmBase,
-    });
+    let pc;
+    if (unidadProximo === "km") {
+      const kmObj = parseInt(kmProximoStr, 10);
+      const kmBase = order.kmIngreso || order.km || 0;
+      if (!kmObj || kmObj <= kmBase) return;
+      pc = buildProximoControl({ tipo: "service", descripcion: "Service general", unidad: "km", valorObjetivo: kmObj - kmBase, kmBase });
+    } else {
+      const dias = parseInt(diasProximoStr, 10);
+      if (!dias || dias <= 0) return;
+      pc = buildProximoControl({ tipo: "service", descripcion: "Service general", unidad: "dias", valorObjetivo: dias });
+    }
     LS.updateDoc("trabajos", order.id, { proximoControl: pc });
     showToast("Proximo service guardado");
   };
@@ -770,6 +779,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   const quitarProximoControl = () => {
     LS.updateDoc("trabajos", order.id, { proximoControl: null });
     setKmProximoStr("");
+    setDiasProximoStr("");
     showToast("Recordatorio quitado");
   };
 
@@ -1146,10 +1156,19 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-black text-white">{order.proximoControl.descripcion}</p>
-                  <p className="text-[10px] font-bold text-zinc-400 mt-0.5">
-                    A los {Number(order.proximoControl.kmObjetivo || 0).toLocaleString("es-AR")} km
-                    {" · "}Aviso a {Number(order.proximoControl.kmAviso || 0).toLocaleString("es-AR")} km
-                  </p>
+                  {order.proximoControl.unidad === "km" ? (
+                    <p className="text-[10px] font-bold text-zinc-400 mt-0.5">
+                      A los {Number(order.proximoControl.kmObjetivo || 0).toLocaleString("es-AR")} km
+                      {" · "}Aviso a {Number(order.proximoControl.kmAviso || 0).toLocaleString("es-AR")} km
+                    </p>
+                  ) : (
+                    <p className="text-[10px] font-bold text-zinc-400 mt-0.5">
+                      En {order.proximoControl.valorObjetivo} días
+                      {order.proximoControl.fechaObjetivo && (
+                        <> · {new Date(order.proximoControl.fechaObjetivo).toLocaleDateString("es-AR")}</>
+                      )}
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={quitarProximoControl}
@@ -1160,38 +1179,99 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-[9px] font-bold text-zinc-500">
-                  Km al ingreso:{" "}
-                  <span className="text-zinc-300 font-black">
-                    {(order.kmIngreso || order.km || 0).toLocaleString("es-AR")} km
-                  </span>
-                </p>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-800 px-3 py-2.5 focus-within:border-yellow-500 transition-colors">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="Objetivo km..."
-                      value={kmProximoStr}
-                      onChange={e => setKmProximoStr(e.target.value.replace(/\D/g, ""))}
-                      className="w-full bg-transparent font-black text-white outline-none placeholder:text-zinc-600 text-sm"
-                    />
-                    <span className="text-[10px] font-black text-zinc-500">km</span>
-                  </div>
-                  <button
-                    onClick={guardarProximoControl}
-                    disabled={!kmProximoStr || parseInt(kmProximoStr, 10) <= (order.kmIngreso || order.km || 0)}
-                    className="rounded-2xl bg-yellow-600 px-4 py-2.5 text-[10px] font-black uppercase text-white active:scale-95 transition-all disabled:opacity-40"
-                  >
-                    Guardar
-                  </button>
+                <div className="flex gap-1.5">
+                  {["km", "dias"].map((u) => (
+                    <button
+                      key={u}
+                      onClick={() => setUnidadProximo(u)}
+                      className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+                        unidadProximo === u ? "bg-yellow-600 text-white" : "bg-zinc-800 text-zinc-400"
+                      }`}
+                    >
+                      {u === "km" ? "Por km" : "Por días"}
+                    </button>
+                  ))}
                 </div>
-                {kmProximoStr && parseInt(kmProximoStr, 10) > (order.kmIngreso || order.km || 0) && (
-                  <p className="text-[9px] font-bold text-yellow-400/80">
-                    Intervalo:{" "}
-                    {(parseInt(kmProximoStr, 10) - (order.kmIngreso || order.km || 0)).toLocaleString("es-AR")} km
-                    {" · "}Aviso a {(parseInt(kmProximoStr, 10) - 500).toLocaleString("es-AR")} km
-                  </p>
+
+                {unidadProximo === "km" ? (
+                  <>
+                    <p className="text-[9px] font-bold text-zinc-500">
+                      Km al ingreso:{" "}
+                      <span className="text-zinc-300 font-black">
+                        {(order.kmIngreso || order.km || 0).toLocaleString("es-AR")} km
+                      </span>
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-800 px-3 py-2.5 focus-within:border-yellow-500 transition-colors">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="Objetivo km..."
+                          value={kmProximoStr}
+                          onChange={e => setKmProximoStr(e.target.value.replace(/\D/g, ""))}
+                          className="w-full bg-transparent font-black text-white outline-none placeholder:text-zinc-600 text-sm"
+                        />
+                        <span className="text-[10px] font-black text-zinc-500">km</span>
+                      </div>
+                      <button
+                        onClick={guardarProximoControl}
+                        disabled={!kmProximoStr || parseInt(kmProximoStr, 10) <= (order.kmIngreso || order.km || 0)}
+                        className="rounded-2xl bg-yellow-600 px-4 py-2.5 text-[10px] font-black uppercase text-white active:scale-95 transition-all disabled:opacity-40"
+                      >
+                        Guardar
+                      </button>
+                    </div>
+                    {kmProximoStr && parseInt(kmProximoStr, 10) > (order.kmIngreso || order.km || 0) && (
+                      <p className="text-[9px] font-bold text-yellow-400/80">
+                        Intervalo:{" "}
+                        {(parseInt(kmProximoStr, 10) - (order.kmIngreso || order.km || 0)).toLocaleString("es-AR")} km
+                        {" · "}Aviso a {(parseInt(kmProximoStr, 10) - 500).toLocaleString("es-AR")} km
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-800 px-3 py-2.5 focus-within:border-yellow-500 transition-colors">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="Cantidad de días..."
+                          value={diasProximoStr}
+                          onChange={e => setDiasProximoStr(e.target.value.replace(/\D/g, ""))}
+                          className="w-full bg-transparent font-black text-white outline-none placeholder:text-zinc-600 text-sm"
+                        />
+                        <span className="text-[10px] font-black text-zinc-500">días</span>
+                      </div>
+                      <button
+                        onClick={guardarProximoControl}
+                        disabled={!diasProximoStr || parseInt(diasProximoStr, 10) <= 0}
+                        className="rounded-2xl bg-yellow-600 px-4 py-2.5 text-[10px] font-black uppercase text-white active:scale-95 transition-all disabled:opacity-40"
+                      >
+                        Guardar
+                      </button>
+                    </div>
+                    {diasProximoStr && parseInt(diasProximoStr, 10) > 0 && (() => {
+                      const d = parseInt(diasProximoStr, 10);
+                      const fecha = new Date(Date.now() + d * 86400000).toLocaleDateString("es-AR");
+                      return (
+                        <p className="text-[9px] font-bold text-yellow-400/80">
+                          Aviso 7 días antes · Vence el {fecha}
+                        </p>
+                      );
+                    })()}
+                    <div className="flex gap-1.5 flex-wrap">
+                      {[{ label: "30d", v: 30 }, { label: "60d", v: 60 }, { label: "90d", v: 90 }, { label: "180d", v: 180 }, { label: "365d", v: 365 }].map(({ label, v }) => (
+                        <button
+                          key={v}
+                          onClick={() => setDiasProximoStr(String(v))}
+                          className="px-2.5 py-1 rounded-xl bg-zinc-800 text-[9px] font-black text-zinc-400 active:bg-yellow-600 active:text-white transition-all"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}

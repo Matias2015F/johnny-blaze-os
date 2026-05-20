@@ -54,7 +54,7 @@ Actualizado: 2026-05-20
 
 ### UX / Funcionalidad
 - [x] Actualización de km de moto al cerrar OT (kmEntrega → moto.kilometrajeActual)
-- [ ] Recordatorios por tiempo (días) además de km
+- [x] Recordatorios por tiempo (días) además de km
 - [ ] Editar recordatorio existente desde RecordatoriosView
 - [ ] Filtro por moto/cliente en RecordatoriosView
 
