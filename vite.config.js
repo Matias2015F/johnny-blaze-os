@@ -53,9 +53,6 @@ export default defineConfig({
         passes: 2,
         drop_debugger: true,
         pure_funcs: ["console.log", "console.info", "console.debug"],
-        unsafe_comps: true,
-        unsafe_proto: true,
-        pure_getters: true,
       },
       mangle: {
         toplevel: true,

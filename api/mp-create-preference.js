@@ -12,7 +12,7 @@ const PLANES_FALLBACK = {
   full: { label: "Plan Full", monto: 45000 },
 };
 
-const BASE_URL = "https://johnny-blaze-os.vercel.app";
+const BASE_URL = process.env.PUBLIC_APP_URL || "https://app.motogestion.ar";
 
 function normalizeCurrency(value) {
   const currency = String(value || "ARS").trim().toUpperCase();

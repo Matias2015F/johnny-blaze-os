@@ -225,13 +225,13 @@ module.exports = async function handler(req, res) {
 
     // Emails
     if (emailDestino) {
-      const huboCarbioPlan = planAnterior && planPagado && planAnterior !== planPagado;
+      const huboCambioPlan = planAnterior && planPagado && planAnterior !== planPagado;
 
       if (estabaBloquado) {
         // Reactivación desde suspendido
         const tpl = templateReactivado({ plan: nuevoPlan, activoHasta: nuevoActivoHasta });
         await sendEmail({ to: emailDestino, ...tpl });
-      } else if (huboCarbioPlan) {
+      } else if (huboCambioPlan) {
         // Cambio de plan
         const tpl = templateCambioPlan({ planAnterior, planNuevo: nuevoPlan, activoHasta: nuevoActivoHasta });
         await sendEmail({ to: emailDestino, ...tpl });

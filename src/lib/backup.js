@@ -1,6 +1,5 @@
-import { LS } from "./storage.js";
+import { LS, DATA_COLS } from "./storage.js";
 
-const COLS = ["trabajos", "clientes", "motos", "caja", "config", "catalogoTareas"];
 // Mapa para leer backups antiguos (ordenes→trabajos, etc.)
 const LEGACY_MAP = { ordenes: "trabajos", serviciosCatalogo: "catalogoTareas" };
 const META_KEY = "jbos_backup_meta";
@@ -16,13 +15,13 @@ export function setMeta(patch) {
 
 export function exportBackup() {
   const data = {};
-  COLS.forEach(col => { data[col] = LS.getAll(col); });
-  const payload = JSON.stringify({ v: 1, fecha: new Date().toISOString(), data }, null, 2);
+  DATA_COLS.forEach(col => { data[col] = LS.getAll(col); });
+  const payload = JSON.stringify({ v: 2, fecha: new Date().toISOString(), data }, null, 2);
   const blob = new Blob([payload], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `jbos-backup-${new Date().toLocaleDateString("sv-SE")}.json`;
+  a.download = `motogestion-backup-${new Date().toLocaleDateString("sv-SE")}.json`;
   document.body.appendChild(a);
   a.click();
   setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
@@ -37,7 +36,7 @@ export function importBackup(file) {
         const parsed = JSON.parse(e.target.result);
         const data = parsed.data || parsed;
         // Importar con nombres actuales
-        COLS.forEach((col) => {
+        DATA_COLS.forEach((col) => {
           if (Array.isArray(data[col])) {
             data[col].forEach((item) => { if (item.id) LS.setDoc(col, item.id, item); });
           }
