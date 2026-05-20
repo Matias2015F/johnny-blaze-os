@@ -3,6 +3,16 @@ import { ArrowLeft, Info, Mic, MicOff } from "lucide-react";
 
 const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+const CHIPS_MOTIVO = [
+  "Service general",
+  "Cambio de aceite",
+  "Frenos",
+  "No arranca",
+  "Cadena / piñones",
+  "Eléctrico",
+  "Ruidos",
+];
+
 function normalizar(value = "") {
   return String(value).trim().toUpperCase();
 }
@@ -42,6 +52,15 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
     reconRef.current = rec;
     rec.start();
     setEscuchando(true);
+  };
+
+  const agregarChip = (texto) => {
+    setF((prev) => {
+      const actual = prev.falla.trim();
+      if (!actual) return { ...prev, falla: texto };
+      if (actual.includes(texto)) return prev;
+      return { ...prev, falla: actual + ", " + texto };
+    });
   };
 
   // Autocomplete: detecta moto conocida apenas se escribe la patente
@@ -195,6 +214,18 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             onChange={(e) => setF({ ...f, falla: e.target.value })}
             placeholder="¿Qué le pasa hoy?"
           />
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {CHIPS_MOTIVO.map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => agregarChip(chip)}
+                className="shrink-0 px-3 py-1.5 rounded-xl bg-zinc-800 border border-zinc-700 text-[9px] font-black uppercase tracking-widest text-zinc-400 active:scale-95 active:bg-zinc-700 active:text-white transition-all"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
         </div>
         <button onClick={() => handleCreateAll(f)} className="w-full bg-orange-600 text-white py-5 rounded-[2.5rem] font-black uppercase shadow-xl shadow-orange-600/20 active:scale-95 transition-all tracking-widest">
           {prefill ? "Abrir Nueva Orden" : "Ingresar al Taller"}
