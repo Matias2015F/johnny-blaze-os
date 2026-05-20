@@ -116,7 +116,7 @@ function sortByDateDesc(items = [], ...fields) {
 
 const FEATURE_LABELS = {
   pdf: "Comprobantes PDF",
-  recordatorios: "Proximo control",
+  recordatorios: "Próximo control",
   analytics: "Analítica de uso",
   multiusuario: "Multiusuario",
 };
@@ -1053,7 +1053,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
 
       {/* Plantilla WhatsApp */}
       <Card>
-        <SectionTitle>Plantilla WhatsApp - Proximo control</SectionTitle>
+        <SectionTitle>Plantilla WhatsApp - Próximo control</SectionTitle>
         <p className="text-[10px] text-zinc-400 font-bold mb-3 leading-relaxed">
           Variables: {"{nombreCliente}"} {"{nombreTaller}"} {"{marca}"} {"{modelo}"} {"{patente}"} {"{tipoControl}"}
         </p>
@@ -2287,14 +2287,14 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         {cfg.testModeRecordatorios && (
           <div className="mt-3 bg-purple-50 border border-purple-200 rounded-2xl p-3">
             <p className="text-[9px] font-black text-purple-600 uppercase tracking-wider">
-              Modo prueba activo. Las opciones de test aparecen en Proximo control al cargar un trabajo.
+              Modo prueba activo. Las opciones de test aparecen en Próximo control al cargar un trabajo.
             </p>
           </div>
         )}
       </Card>
 
       <Card>
-        <SectionTitle>Version de la app</SectionTitle>
+        <SectionTitle>Versión de la app</SectionTitle>
         <div className="flex justify-between items-center mb-3">
           <span className="text-sm font-black text-zinc-800">Moto Gestión</span>
           <span className="bg-orange-50 text-orange-600 text-[10px] font-black px-3 py-1 rounded-full border border-orange-100">{APP_BUILD.version}</span>
@@ -2341,7 +2341,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
             disabled={checkingUpdate || updatingApp}
             className="w-full bg-zinc-50 border border-zinc-200 text-zinc-600 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
           >
-            {checkingUpdate ? "Buscando..." : "Buscar actualizacion"}
+            {checkingUpdate ? "Buscando..." : "Buscar actualización"}
           </button>
           <button
             onClick={hasRemoteUpdate ? instalarActualizacion : () => window.location.reload()}
