@@ -9,6 +9,7 @@ import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
 import { APP_BUILD } from "./generated/appVersion.js";
 import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, promptInstallApp } from "./lib/appUpdate.js";
 import { ensureAccountProfile, trackEvent } from "./lib/telemetry.js";
+import { upsertClienteYMoto } from "./services/clienteMotoService.js";
 
 // HomeView se carga de forma eager � es la pantalla inicial
 import HomeView from "./views/HomeView.jsx";
@@ -303,68 +304,11 @@ export default function TallerPanel({ modoLectura = false }) {
   // -- Crear orden nueva ------------------------------------------------------
   const handleCreateOrder = (payload) => {
     const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
-    const kmActual = Number(payload.km);
-
-    // Cliente
-    const ec = clients.find(
-      (c) => c.nombre?.trim().toLowerCase() === payload.nombre?.trim().toLowerCase() && c.tel === payload.tel
+    const { clientId, bikeId, kmActual } = upsertClienteYMoto(
+      payload,
+      { clients, bikes, titularidades, config },
+      { soloSiKm: false, actualizarService: true, crearTitularidad: true }
     );
-    const clientId = ec ? ec.id : LS.addDoc("clientes", {
-      nombre: payload.nombre,
-      tel: payload.tel,
-      telefono: payload.tel,
-      whatsapp: payload.tel,
-      etiquetas: [],
-      activo: true,
-      createdAt: Date.now(),
-    }).id;
-
-    // Moto
-    const eb = bikes.find((b) => b.patente === payload.patente.toUpperCase());
-    let bikeId;
-    if (eb) {
-      bikeId = eb.id;
-      LS.updateDoc("motos", bikeId, {
-        km: kmActual,
-        kilometrajeActual: kmActual,
-        clienteId: clientId,
-        ultimaVisita: hoyEstable(),
-        proximoService: kmActual + (config.offsetServiceKm || 2500),
-      });
-    } else {
-      bikeId = LS.addDoc("motos", {
-        patente: payload.patente.toUpperCase(),
-        patenteNormalizada: payload.patente.toUpperCase(),
-        marca: payload.marca,
-        modelo: payload.modelo,
-        cilindrada: Number(payload.cilindrada),
-        anio: null,
-        color: null,
-        estado: "activa",
-        km: kmActual,
-        kilometrajeActual: kmActual,
-        clienteId: clientId,
-        ultimaVisita: hoyEstable(),
-        proximoService: kmActual + (config.offsetServiceKm || 2500),
-        createdAt: Date.now(),
-      }).id;
-    }
-
-    // Titularidad: relaci�n hist�rica cliente ? moto
-    const titActual = titularidades.find(t => t.motoId === bikeId && t.titularActual === true);
-    if (!titActual || titActual.clienteId !== clientId) {
-      if (titActual) {
-        LS.updateDoc("titularidades", titActual.id, { titularActual: false, fechaHasta: hoyEstable() });
-      }
-      LS.addDoc("titularidades", {
-        clienteId: clientId,
-        motoId: bikeId,
-        fechaDesde: hoyEstable(),
-        fechaHasta: null,
-        titularActual: true,
-        createdAt: Date.now(),
-      });
-    }
 
     const numeroTrabajo = `OT-${String(orders.length + 1).padStart(6, "0")}`;
     const orden = LS.addDoc("trabajos", {
@@ -419,42 +363,11 @@ export default function TallerPanel({ modoLectura = false }) {
 
   // -- Presupuestos -----------------------------------------------------------
   const handleCreatePresupuesto = (payload) => {
-    const kmActual = Number(payload.km) || 0;
-
-    const ec = clients.find(
-      (c) => c.nombre?.trim().toLowerCase() === payload.nombre?.trim().toLowerCase() && c.tel === payload.tel
+    const { clientId, bikeId, kmActual } = upsertClienteYMoto(
+      payload,
+      { clients, bikes, titularidades },
+      { soloSiKm: true, actualizarService: false, crearTitularidad: false }
     );
-    const clientId = ec ? ec.id : LS.addDoc("clientes", {
-      nombre: payload.nombre,
-      tel: payload.tel,
-      telefono: payload.tel,
-      whatsapp: payload.tel,
-      etiquetas: [],
-      activo: true,
-      createdAt: Date.now(),
-    }).id;
-
-    const eb = bikes.find((b) => b.patente === payload.patente.toUpperCase());
-    let bikeId;
-    if (eb) {
-      bikeId = eb.id;
-      if (kmActual) LS.updateDoc("motos", bikeId, { km: kmActual, kilometrajeActual: kmActual, clienteId: clientId });
-    } else {
-      bikeId = LS.addDoc("motos", {
-        patente: payload.patente.toUpperCase(),
-        patenteNormalizada: payload.patente.toUpperCase(),
-        marca: payload.marca,
-        modelo: payload.modelo,
-        cilindrada: Number(payload.cilindrada) || 0,
-        anio: null,
-        color: null,
-        estado: "activa",
-        km: kmActual,
-        kilometrajeActual: kmActual,
-        clienteId: clientId,
-        createdAt: Date.now(),
-      }).id;
-    }
 
     const numeroPresupuesto = `PRE-${String(presupuestos.length + 1).padStart(6, "0")}`;
     const pres = LS.addDoc("presupuestos", {
