@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   Download, LogOut, Trash2, Database, Info, Shield,
-  RotateCcw, FileSpreadsheet, ChevronRight, BarChart2,
+  RotateCcw, FileSpreadsheet, ChevronRight, ChevronLeft, BarChart2,
   Settings, HardDrive, Wrench, Plus, Minus,
 } from "lucide-react";
 import { LS, useCollection, migrateFromRootCollections, forceSyncCacheToFirestore, clearFirestoreData } from "../lib/storage.js";
@@ -1175,6 +1175,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
   const [confirmText, setConfirmText] = React.useState("");
   const [restoreStateInfo, setRestoreStateInfo] = React.useState(null);
   const [integrityResult, setIntegrityResult] = React.useState(null);
+  const [datosView, setDatosView] = React.useState("menu");
 
   const cargarBackups = async () => {
     setLoadingBackups(true);
@@ -1187,7 +1188,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
       setBackups(lista);
       if (rsSnap?.exists()) setRestoreStateInfo(rsSnap.data());
     } catch (e) {
-      showToast("Error al cargar copias: " + e.message);
+      showToast("No se pudieron cargar las copias: " + e.message);
     } finally {
       setLoadingBackups(false);
     }
@@ -1223,7 +1224,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
       showToast(`Restauración completa. ${n} registros recuperados. La app se va a recargar.`);
       setTimeout(() => window.location.reload(), 1500);
     } catch (e) {
-      showToast(`No se restauraron los datos. Motivo: ${e.message}`);
+      showToast(`No se restauró la copia. Motivo: ${e.message}`);
     } finally {
       setRestaurando(null);
     }
@@ -1231,58 +1232,32 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
 
   React.useEffect(() => { cargarBackups(); }, []);
 
-  return (
+  const SubHeader = ({ title, onBack }) => (
+    <button onClick={onBack} className="flex items-center gap-2 text-zinc-500 font-black text-[10px] uppercase tracking-widest mb-4 active:opacity-60 transition-opacity">
+      <ChevronLeft size={14} /> {title}
+    </button>
+  );
+
+  if (datosView === "backups") return (
     <div className="space-y-4">
-      {/* Exportar */}
-      <Card>
-        <SectionTitle>Exportar Datos</SectionTitle>
-        <button
-          onClick={() => { exportarOrdenes(orders, bikes, clients); showToast("Exportando CSV..."); }}
-          className="w-full flex items-center justify-between bg-green-600 text-white rounded-2xl p-5 active:scale-[0.98] transition-all shadow-md mb-4"
-        >
-          <div className="text-left">
-            <p className="text-sm font-black uppercase">Exportar trabajos (CSV)</p>
-            <p className="text-[10px] font-bold text-green-100 mt-0.5">Todos los trabajos con detalle</p>
-          </div>
-          <FileSpreadsheet size={22} />
-        </button>
+      <SubHeader title="Volver" onBack={() => setDatosView("menu")} />
 
-        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">CSV separados</p>
-        <div className="space-y-2">
-          {[
-            { label: "Clientes",             sub: `${clients.length} registros`,   fn: () => { exportarClientes(clients, orders); showToast("Exportando clientes..."); } },
-            { label: "Balance mensual",      sub: "Totales por mes",               fn: () => { exportarBalance(orders);           showToast("Exportando balance..."); } },
-            { label: "Repuestos utilizados", sub: "Ranking por uso",               fn: () => { exportarRepuestos(orders);         showToast("Exportando repuestos..."); } },
-          ].map(({ label, sub, fn }) => (
-            <button key={label} onClick={fn}
-              className="w-full flex items-center justify-between bg-zinc-50 border border-zinc-100 rounded-2xl p-4 active:scale-[0.98] transition-all">
-              <div className="text-left">
-                <p className="text-sm font-black text-zinc-800">{label}</p>
-                <p className="text-[10px] text-zinc-400 font-bold">{sub}</p>
-              </div>
-              <Download size={16} className="text-orange-500" />
-            </button>
-          ))}
-        </div>
-      </Card>
-
-      {/* Backup */}
+      {/* Backup local */}
       <Card>
-        <SectionTitle>Copia de Seguridad Local</SectionTitle>
+        <SectionTitle>Copia de seguridad local</SectionTitle>
         <p className="text-[10px] text-zinc-400 font-bold mb-3 leading-relaxed">
-          Guardá una copia completa de los datos del taller en este dispositivo. Incluye clientes, motos, trabajos, presupuestos, caja, repuestos, turnos, recordatorios y configuración.
+          Guardá una copia completa de la información del taller en este dispositivo. Incluye clientes, motos, trabajos, presupuestos, caja, repuestos, turnos, recordatorios y configuración.
         </p>
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
-            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Última manual</p>
+            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Última copia local</p>
             <p className="text-xs font-black text-zinc-700">{tiempoDesde(bkpEstado.ultimoManual) || "Nunca"}</p>
           </div>
           <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
-            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Auto-guardado</p>
+            <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Copia automática</p>
             <p className="text-xs font-black text-zinc-700">{tiempoDesde(bkpEstado.ultimoAuto) || "Nunca"}</p>
           </div>
         </div>
-
         <div className="space-y-2">
           <button
             onClick={() => { descargarBackup(); setBkpEstado(estadoBackup()); showToast("Copia descargada. Guardá ese archivo en un lugar seguro."); }}
@@ -1290,23 +1265,21 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
           >
             <div className="text-left">
               <p className="text-sm font-black uppercase">Descargar copia completa</p>
-              <p className="text-[10px] font-bold text-orange-100 mt-0.5">Archivo .json verificable para recuperar tus datos si algo falla.</p>
+              <p className="text-[10px] font-bold text-orange-100 mt-0.5">Archivo .json verificable para recuperar los datos del taller si algo falla.</p>
             </div>
             <Download size={20} />
           </button>
-
           <button
             onClick={() => fileInputRef.current?.click()}
             className="w-full flex items-center justify-between bg-zinc-900 text-white rounded-2xl p-5 active:scale-[0.98] transition-all"
           >
             <div className="text-left">
               <p className="text-sm font-black uppercase">Restaurar desde archivo local</p>
-              <p className="text-[10px] font-bold text-zinc-400 mt-0.5">Usá esta opción solo si necesitás recuperar datos desde una copia anterior.</p>
+              <p className="text-[10px] font-bold text-zinc-400 mt-0.5">Usá esta opción solo si necesitás recuperar información desde una copia anterior.</p>
             </div>
             <RotateCcw size={20} />
           </button>
           <input ref={fileInputRef} type="file" accept=".json" onChange={handleRestaurarArchivo} className="hidden" />
-
           {bkpEstado.tieneAuto && (
             <button
               onClick={handleRestaurarAuto}
@@ -1324,9 +1297,9 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
 
       {/* Backup en la nube */}
       <Card>
-        <SectionTitle>Copias en la Nube</SectionTitle>
+        <SectionTitle>Copias en la nube</SectionTitle>
         <p className="text-[10px] text-zinc-400 font-bold mb-3 leading-relaxed">
-          Las copias en la nube protegen los datos del taller y permiten recuperarlos desde otro dispositivo. Se guarda automáticamente 1 vez por día.
+          Las copias en la nube protegen la información del taller y permiten recuperarla desde otro dispositivo. La app puede crear una copia automática una vez por día.
         </p>
         <button
           onClick={handleGuardarEnNube}
@@ -1334,16 +1307,15 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
           className="w-full flex items-center justify-between bg-orange-600 text-white rounded-2xl p-5 active:scale-[0.98] transition-all shadow-md mb-3 disabled:opacity-50"
         >
           <div className="text-left">
-            <p className="text-sm font-black uppercase">{guardandoBkp ? "Guardando..." : "Guardar copia ahora"}</p>
-            <p className="text-[10px] font-bold text-orange-100 mt-0.5">Guarda una copia completa y verificable en la nube.</p>
+            <p className="text-sm font-black uppercase">{guardandoBkp ? "Guardando..." : "Guardar copia en la nube"}</p>
+            <p className="text-[10px] font-bold text-orange-100 mt-0.5">Crea una copia completa y verificable en la nube.</p>
           </div>
           <HardDrive size={20} />
         </button>
-
         {loadingBackups ? (
           <p className="text-center text-[10px] text-zinc-400 font-bold py-4">Cargando copias...</p>
         ) : backups.length === 0 ? (
-          <p className="text-center text-[10px] text-zinc-400 font-bold py-4">No hay copias guardadas en la nube todavía</p>
+          <p className="text-center text-[10px] text-zinc-400 font-bold py-4">Todavía no hay copias guardadas en la nube.</p>
         ) : (
           <div className="space-y-2">
             <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-2">Copias disponibles (últimas {backups.length})</p>
@@ -1395,10 +1367,89 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
         </div>
       )}
 
+      {cloudRestoreConfirm && (
+        <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-6 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm space-y-4 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div>
+              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Restaurar copia de seguridad</p>
+              <p className="text-sm font-black text-zinc-900 leading-snug">Esta acción reemplaza la información actual del taller por la información guardada en la copia seleccionada.</p>
+            </div>
+            <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-4 space-y-2 text-xs">
+              <div className="flex justify-between"><span className="text-zinc-500 font-bold">Fecha</span><span className="text-zinc-800 font-black">{new Date(cloudRestoreConfirm.fecha).toLocaleString("es-AR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span></div>
+              <div className="flex justify-between"><span className="text-zinc-500 font-bold">Registros</span><span className="text-zinc-800 font-black">{cloudRestoreConfirm.total}</span></div>
+              <div className="flex justify-between"><span className="text-zinc-500 font-bold">Errores críticos</span><span className={`font-black ${(cloudRestoreConfirm.integrity?.errors?.length || 0) > 0 ? "text-red-600" : "text-emerald-600"}`}>{cloudRestoreConfirm.integrity?.errors?.length || 0}</span></div>
+              <div className="flex justify-between"><span className="text-zinc-500 font-bold">Advertencias</span><span className={`font-black ${(cloudRestoreConfirm.integrity?.warnings?.length || 0) > 0 ? "text-amber-600" : "text-zinc-800"}`}>{cloudRestoreConfirm.integrity?.warnings?.length || 0}</span></div>
+            </div>
+            {!cloudRestoreConfirm.integrity?.ok ? (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-3">
+                <p className="text-xs font-black text-red-700">Esta copia no se puede restaurar porque tiene errores críticos. La información actual no fue modificada.</p>
+              </div>
+            ) : (
+              <>
+                {cloudRestoreConfirm.integrity?.warnings?.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3">
+                    <p className="text-xs font-black text-amber-700">Esta copia tiene advertencias. Podés restaurarla, pero conviene revisar el detalle.</p>
+                  </div>
+                )}
+                <p className="text-[10px] text-zinc-500 font-bold">Antes de restaurar, el sistema intentará crear una copia de seguridad del estado actual.</p>
+                <div>
+                  <p className="text-[10px] font-black text-zinc-700 uppercase tracking-widest mb-2">Para confirmar, escribí RESTAURAR:</p>
+                  <input type="text" value={confirmText} onChange={(e) => setConfirmText(e.target.value.toUpperCase())} placeholder="RESTAURAR" autoCapitalize="characters" className="w-full border-2 border-zinc-200 rounded-2xl px-4 py-3 text-sm font-black text-center uppercase tracking-widest focus:border-orange-400 outline-none" />
+                </div>
+              </>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => { setCloudRestoreConfirm(null); setConfirmText(""); }} className="bg-zinc-100 text-zinc-700 py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95">Cancelar</button>
+              <button disabled={!cloudRestoreConfirm.integrity?.ok || confirmText !== "RESTAURAR"} onClick={ejecutarRestauracionNube} className="bg-orange-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 disabled:opacity-40">Restaurar datos</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  if (datosView === "exportaciones") return (
+    <div className="space-y-4">
+      <SubHeader title="Volver" onBack={() => setDatosView("menu")} />
       <Card>
-        <SectionTitle>Integridad de Datos</SectionTitle>
+        <SectionTitle>Exportar datos</SectionTitle>
+        <button
+          onClick={() => { exportarOrdenes(orders, bikes, clients); showToast("Preparando archivo CSV..."); }}
+          className="w-full flex items-center justify-between bg-green-600 text-white rounded-2xl p-5 active:scale-[0.98] transition-all shadow-md mb-4"
+        >
+          <div className="text-left">
+            <p className="text-sm font-black uppercase">Exportar trabajos (CSV)</p>
+            <p className="text-[10px] font-bold text-green-100 mt-0.5">Todos los trabajos con detalle</p>
+          </div>
+          <FileSpreadsheet size={22} />
+        </button>
+        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3">Exportaciones disponibles</p>
+        <div className="space-y-2">
+          {[
+            { label: "Clientes",             sub: `${clients.length} registros`,   fn: () => { exportarClientes(clients, orders); showToast("Preparando archivo de clientes..."); } },
+            { label: "Balance mensual",      sub: "Totales por mes",               fn: () => { exportarBalance(orders);           showToast("Preparando balance mensual..."); } },
+            { label: "Repuestos utilizados", sub: "Ranking por uso",               fn: () => { exportarRepuestos(orders);         showToast("Preparando archivo de repuestos..."); } },
+          ].map(({ label, sub, fn }) => (
+            <button key={label} onClick={fn} className="w-full flex items-center justify-between bg-zinc-50 border border-zinc-100 rounded-2xl p-4 active:scale-[0.98] transition-all">
+              <div className="text-left">
+                <p className="text-sm font-black text-zinc-800">{label}</p>
+                <p className="text-[10px] text-zinc-400 font-bold">{sub}</p>
+              </div>
+              <Download size={16} className="text-orange-500" />
+            </button>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+
+  if (datosView === "integridad") return (
+    <div className="space-y-4">
+      <SubHeader title="Volver" onBack={() => setDatosView("menu")} />
+      <Card>
+        <SectionTitle>Integridad de datos</SectionTitle>
         <p className="text-[10px] text-zinc-400 font-bold mb-3 leading-relaxed">
-          Verificá el estado actual de los datos en este dispositivo: errores críticos, advertencias y cantidad por colección.
+          Revisá si la información actual está completa, correctamente vinculada y lista para respaldarse o restaurarse.
         </p>
         <button
           onClick={() => setIntegrityResult(runIntegrityCheckFromCache())}
@@ -1433,75 +1484,51 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
           </div>
         )}
       </Card>
+    </div>
+  );
 
-      {cloudRestoreConfirm && (
-        <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-6 backdrop-blur-sm">
-          <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm space-y-4 shadow-2xl overflow-y-auto max-h-[90vh]">
-            <div>
-              <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">Restaurar copia de seguridad</p>
-              <p className="text-sm font-black text-zinc-900 leading-snug">Esta acción reemplaza los datos actuales del taller por los datos de la copia seleccionada.</p>
-            </div>
-            <div className="bg-zinc-50 border border-zinc-200 rounded-2xl p-4 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-zinc-500 font-bold">Fecha</span>
-                <span className="text-zinc-800 font-black">{new Date(cloudRestoreConfirm.fecha).toLocaleString("es-AR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+  // menu (default)
+  return (
+    <div className="space-y-4">
+      {/* Menú principal */}
+      <Card>
+        <SectionTitle>Datos y seguridad</SectionTitle>
+        <div className="space-y-2">
+          {[
+            {
+              icon: <HardDrive size={18} className="text-orange-500" />,
+              label: "Copias de seguridad",
+              sub: bkpEstado.ultimoManual ? `Última copia local ${tiempoDesde(bkpEstado.ultimoManual)}` : "Sin copias locales todavía",
+              view: "backups",
+            },
+            {
+              icon: <FileSpreadsheet size={18} className="text-green-500" />,
+              label: "Exportaciones",
+              sub: "CSV de trabajos, clientes, balance y repuestos",
+              view: "exportaciones",
+            },
+            {
+              icon: <Shield size={18} className="text-zinc-500" />,
+              label: "Integridad de datos",
+              sub: integrityResult ? (integrityResult.ok ? `Sin errores · ${integrityResult.total} registros` : `${integrityResult.errors.length} errores encontrados`) : "Verificá el estado de la información",
+              view: "integridad",
+            },
+          ].map(({ icon, label, sub, view }) => (
+            <button
+              key={view}
+              onClick={() => setDatosView(view)}
+              className="w-full flex items-center gap-4 bg-zinc-50 border border-zinc-100 rounded-2xl p-4 active:scale-[0.98] transition-all text-left"
+            >
+              <div className="shrink-0">{icon}</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-black text-zinc-800">{label}</p>
+                <p className="text-[10px] text-zinc-400 font-bold truncate">{sub}</p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500 font-bold">Registros</span>
-                <span className="text-zinc-800 font-black">{cloudRestoreConfirm.total}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500 font-bold">Errores críticos</span>
-                <span className={`font-black ${(cloudRestoreConfirm.integrity?.errors?.length || 0) > 0 ? "text-red-600" : "text-emerald-600"}`}>{cloudRestoreConfirm.integrity?.errors?.length || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500 font-bold">Advertencias</span>
-                <span className={`font-black ${(cloudRestoreConfirm.integrity?.warnings?.length || 0) > 0 ? "text-amber-600" : "text-zinc-800"}`}>{cloudRestoreConfirm.integrity?.warnings?.length || 0}</span>
-              </div>
-            </div>
-            {!cloudRestoreConfirm.integrity?.ok ? (
-              <div className="bg-red-50 border border-red-200 rounded-2xl p-3">
-                <p className="text-xs font-black text-red-700">Esta copia no se puede restaurar porque tiene errores críticos. Tus datos actuales no fueron modificados.</p>
-              </div>
-            ) : (
-              <>
-                {cloudRestoreConfirm.integrity?.warnings?.length > 0 && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3">
-                    <p className="text-xs font-black text-amber-700">Esta copia tiene advertencias. Podés restaurarla, pero conviene revisar el detalle.</p>
-                  </div>
-                )}
-                <p className="text-[10px] text-zinc-500 font-bold">Antes de restaurar, el sistema intentará crear una copia de seguridad del estado actual.</p>
-                <div>
-                  <p className="text-[10px] font-black text-zinc-700 uppercase tracking-widest mb-2">Para confirmar, escribí RESTAURAR:</p>
-                  <input
-                    type="text"
-                    value={confirmText}
-                    onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
-                    placeholder="RESTAURAR"
-                    autoCapitalize="characters"
-                    className="w-full border-2 border-zinc-200 rounded-2xl px-4 py-3 text-sm font-black text-center uppercase tracking-widest focus:border-orange-400 outline-none"
-                  />
-                </div>
-              </>
-            )}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => { setCloudRestoreConfirm(null); setConfirmText(""); }}
-                className="bg-zinc-100 text-zinc-700 py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95"
-              >
-                Cancelar
-              </button>
-              <button
-                disabled={!cloudRestoreConfirm.integrity?.ok || confirmText !== "RESTAURAR"}
-                onClick={ejecutarRestauracionNube}
-                className="bg-orange-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 disabled:opacity-40"
-              >
-                Restaurar datos
-              </button>
-            </div>
-          </div>
+              <ChevronRight size={16} className="text-zinc-300 shrink-0" />
+            </button>
+          ))}
         </div>
-      )}
+      </Card>
     </div>
   );
 }
@@ -2186,7 +2213,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         <SectionTitle>Analítica del producto</SectionTitle>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-black text-zinc-800">Medicion de uso</p>
+            <p className="text-sm font-black text-zinc-800">Medición de uso</p>
             <p className="text-[10px] text-zinc-400 font-bold mt-0.5">
               Registra pantallas, acciones clave y friccion para mejorar la app.
             </p>
@@ -2489,7 +2516,7 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
         showToast(`Restauración completa. ${resultado.restaurados} colecciones recuperadas. La app se va a recargar.`);
         setTimeout(() => window.location.reload(), 1500);
       } else {
-        showToast(`No se restauraron los datos. Motivo: ${resultado.error}`);
+        showToast(`No se restauró la copia. Motivo: ${resultado.error}`);
       }
     };
     reader.readAsText(file);
@@ -2502,7 +2529,7 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
       showToast("Restauración completa desde auto-guardado. La app se va a recargar.");
       setTimeout(() => window.location.reload(), 1500);
     } else {
-      showToast(`No se restauraron los datos. Motivo: ${resultado.error}`);
+      showToast(`No se restauró la copia. Motivo: ${resultado.error}`);
     }
   };
 
