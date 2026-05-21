@@ -13,17 +13,19 @@ import { calcularResultadosOrden } from "../lib/calc.js";
 import { APP_BUILD } from "../generated/appVersion.js";
 import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, ensureNotificationPermission, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, promptInstallApp, sendTestNotification } from "../lib/appUpdate.js";
 import { subscribeToPush, unsubscribeFromPush, getPushStatus, isPushSupported } from "../lib/pushService.js";
-import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS, actualizarSuscripcionUsuario, crearTicketSoporte, guardarAdminSettings, leerAdminSettings, leerUsuarioSaas, normalizeDateMs, normalizeSaasUser } from "../services/saasService.js";
+import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS, actualizarSuscripcionUsuario, crearTicketSoporte, guardarAdminSettings, isPlatformAdminUser, leerAdminSettings, leerUsuarioSaas, normalizeAdminSettings, normalizeDateMs, normalizeSaasUser } from "../services/saasService.js";
+import { logAdminAction } from "../services/adminAuditService.js";
+import { validateAdminSettings, validateExtraDays, validatePlanKey } from "../services/adminValidationService.js";
 import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
 import { runIntegrityCheckFromCache } from "../lib/integrityTest.js";
-import { collection, collectionGroup, doc, getDoc, getDocs, query, limit, orderBy, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, limit, orderBy, setDoc } from "firebase/firestore";
 
 const DIFICULTADES = [
-  { key: "facil",      label: "Facil",      color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
+  { key: "facil",      label: "Fácil",      color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
   { key: "normal",     label: "Normal",     color: "text-orange-500",   bg: "bg-orange-50",   border: "border-orange-200" },
-  { key: "dificil",    label: "Dificil",    color: "text-orange-500", bg: "bg-orange-50", border: "border-orange-200" },
+  { key: "dificil",    label: "Difícil",    color: "text-orange-500", bg: "bg-orange-50", border: "border-orange-200" },
   { key: "complicado", label: "Complicado", color: "text-red-500",    bg: "bg-red-50",    border: "border-red-200" },
 ];
 
@@ -129,29 +131,40 @@ const ADMIN_TABS = [
   { id: "consultas",  label: "Consultas" },
 ];
 
+async function cargarPanelAdminDesdeServidor() {
+  const token = await auth.currentUser.getIdToken(true);
+  const res = await fetch("/api/admin-dashboard", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Cache-Control": "no-cache",
+    },
+  });
+  const contentType = res.headers.get("content-type") || "";
+  const body = contentType.includes("application/json") ? await res.json() : { error: await res.text() };
+  if (!res.ok) throw new Error(body?.error || "No se pudo cargar el panel administrador");
+  return body;
+}
+
 function MoneyValue({ amount, className = "" }) {
-  const value = Number(amount || 0);
-  const parts = formatMoney(value).replace(/^ARS\s*/, "");
-  const [pesos, centavos = "00"] = parts.split(",");
   return (
-    <div className={`space-y-1 ${className}`}>
-      <p className="text-xs font-black uppercase tracking-widest text-zinc-500">ARS {parts}</p>
-      <p className="text-[10px] font-bold text-zinc-500">Pesos: {pesos} | Centavos: {centavos}</p>
-    </div>
+    <p className={`text-2xl font-black text-zinc-800 ${className}`}>{formatMoney(Number(amount || 0))}</p>
   );
-  }
+}
 
 function StatBox({ label, value, color = "text-zinc-800" }) {
   return (
     <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
       <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">{label}</p>
-      <p className={`mt-1 text-2xl font-black ${color}`}>{value}</p>
+      <div className={`mt-1 text-2xl font-black ${color}`}>{value}</div>
     </div>
   );
 }
 
 function PantallaAdmin({ showToast, scrollRef }) {
+  const [remoteBuild, setRemoteBuild] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState(null);
   const [adminTab, setAdminTab] = React.useState("dashboard");
   const [account, setAccount] = React.useState(null);
   const [accounts, setAccounts] = React.useState([]);
@@ -161,6 +174,9 @@ function PantallaAdmin({ showToast, scrollRef }) {
   const [filterEstado, setFilterEstado] = React.useState("todos");
   const [expandedUid, setExpandedUid] = React.useState(null);
   const [accionando, setAccionando] = React.useState(null);
+  const [savingSettings, setSavingSettings] = React.useState(false);
+  const [accionandoOther, setAccionandoOther] = React.useState(null);
+  const [settingsConfirmOpen, setSettingsConfirmOpen] = React.useState(false);
   const user = auth.currentUser;
   const isPlatformAdmin =
     PLATFORM_ADMIN_EMAILS.includes((user?.email || "").toLowerCase()) ||
@@ -170,46 +186,32 @@ function PantallaAdmin({ showToast, scrollRef }) {
     const uid = auth.currentUser?.uid;
     if (!uid) return;
     setLoading(true);
+    setLoadError(null);
     try {
+      await auth.currentUser.getIdToken(true);
+
       const accountSnap = await getDoc(doc(db, "usuarios", uid));
       const mine = accountSnap.exists()
         ? { id: accountSnap.id, ...accountSnap.data() }
         : { id: uid, uid, estado: "trial", rol: "user", activoHasta: null, lastSeenAt: null };
       setAccount(mine);
 
-      setSettings(await leerAdminSettings());
-
-      const results = await Promise.allSettled([
-        getDocs(collection(db, "usuarios")),
-        getDocs(collectionGroup(db, "billingInvoices")),
-        getDocs(collection(db, "soporteTickets")),
-      ]);
-
-      const [accountsRes, invoicesRes, ticketsRes] = results;
-
-      if (accountsRes.status === "fulfilled") {
-        setAccounts(accountsRes.value.docs.map((d) => normalizeSaasUser({ id: d.id, ...d.data() }, { uid: d.id })));
-      } else {
-        setAccounts([]);
-      }
-
-      if (invoicesRes.status === "fulfilled") {
-        setInvoices(sortByDateDesc(invoicesRes.value.docs.map((d) => ({ id: d.id, ...d.data() })), "paidAt", "createdAt", "updatedAt"));
-      } else {
-        setInvoices([]);
-      }
-
-      if (ticketsRes.status === "fulfilled") {
-        setTickets(sortByDateDesc(ticketsRes.value.docs.map((d) => ({ id: d.id, ...d.data() })), "createdAt", "updatedAt"));
-      } else {
-        setTickets([]);
-      }
+      const adminData = await cargarPanelAdminDesdeServidor();
+      const normalizedAccounts = (adminData.accounts || []).map((item) =>
+        normalizeSaasUser(item, { uid: item.uid || item.id, email: item.email || "" }),
+      );
+      setAccounts(normalizedAccounts);
+      setInvoices(sortByDateDesc(adminData.invoices || [], "paidAt", "fecha", "createdAt", "updatedAt"));
+      setTickets(sortByDateDesc(adminData.tickets || [], "createdAt", "updatedAt"));
+      setSettings(normalizeAdminSettings(adminData.settings || DEFAULT_ADMIN_SETTINGS));
     } catch (e) {
       console.error(e);
-      showToast("No se pudo cargar el panel admin");
+      setLoadError(`Error inesperado: ${e?.message || String(e)}`);
     } finally {
       setLoading(false);
     }
+    // Fetch remote version silently for system health display
+    fetchRemoteVersion().then(v => setRemoteBuild(v)).catch(() => {});
   };
 
   React.useEffect(() => { cargar(); }, []);
@@ -277,25 +279,69 @@ function PantallaAdmin({ showToast, scrollRef }) {
 
     const pedidosPendientes = accounts.filter(a => a.requestedAction || a.cancelAtPeriodEnd).length;
     const reclamosPendientes = tickets.filter(t => t.estado !== "resuelto").length;
+    const conversionRate = total > 0 ? Math.round(activos / total * 100) : 0;
+
+    // Billing alerts — computed from existing data (no extra Firestore reads)
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const pagoSinActivacion = accounts.filter(a => {
+      if (isPlatformAdminUser(a)) return false;
+      const lastPago = normalizeDateMs(a.ultimoPago?.fecha);
+      return lastPago && lastPago >= sevenDaysAgo && a.estado !== "activo";
+    });
+    const vencidoConPagoReciente = accounts.filter(a => {
+      const lastPago = normalizeDateMs(a.ultimoPago?.fecha);
+      return lastPago && lastPago >= sevenDaysAgo && ["vencido", "suspendido"].includes(a.estado);
+    });
+    const activoSinFactura = invoices.length > 0 ? accounts.filter(a => {
+      if (a.estado !== "activo" || isPlatformAdminUser(a)) return false;
+      return !invoices.some(inv => inv.uid === a.uid);
+    }) : [];
+    const billingAlerts = { pagoSinActivacion, vencidoConPagoReciente, activoSinFactura };
+    const totalBillingAlerts = pagoSinActivacion.length + vencidoConPagoReciente.length;
+
+    // System health
+    const lastPayment = todosPagos[0] || null;
+    const lastTicket = tickets[0] || null;
+    const lastUser = accounts.reduce((best, a) => {
+      const t = normalizeDateMs(a.createdAt);
+      if (!t) return best;
+      return !best || t > normalizeDateMs(best.createdAt) ? a : best;
+    }, null);
 
     return {
       total, trial, activos, vencidos, admins, planBase, planPro, planFull,
       todosPagos, totalCobrado, cobradoMes, pagosEsteMes,
       promDias, trialsPorVencer, pedidosPendientes, reclamosPendientes,
+      conversionRate, billingAlerts, totalBillingAlerts,
+      lastPayment, lastTicket, lastUser,
     };
   }, [accounts, invoices, tickets]);
 
   const guardarSettings = async () => {
     try {
+      validateAdminSettings(settings);
+    } catch (validErr) {
+      showToast(validErr.message);
+      return;
+    }
+    setSavingSettings(true);
+    const settingsBefore = { precios: settings.precios, duracionTrialDias: settings.duracionTrialDias, graceDaysDefault: settings.graceDaysDefault };
+    try {
       await guardarAdminSettings(settings, { uid: user?.uid || "", email: user?.email || "" });
-      showToast("Configuracion guardada");
+      await logAdminAction({ action: "update_admin_settings", actorUid: user?.uid || "", actorEmail: user?.email || "", before: settingsBefore, after: { precios: settings.precios, duracionTrialDias: settings.duracionTrialDias, graceDaysDefault: settings.graceDaysDefault }, reason: "Cambio manual desde panel admin" });
+      showToast("Configuración guardada.");
+      setSettingsConfirmOpen(false);
       cargar();
     } catch (error) {
-      showToast("No se pudo guardar");
+      showToast("No se pudo guardar la configuración.");
+    } finally {
+      setSavingSettings(false);
     }
   };
 
   const resolverPedidoCuenta = async (item, patch, message) => {
+    setAccionandoOther(`pedido-${item.uid}`);
+    const before = { estado: item.estado, plan: item.currentPlanKey || item.plan, requestedAction: item.requestedAction };
     try {
       await actualizarSuscripcionUsuario(item.uid, {
         ...patch,
@@ -303,58 +349,97 @@ function PantallaAdmin({ showToast, scrollRef }) {
         requestedPlanKey: null,
         cancelAtPeriodEnd: false,
       });
+      await logAdminAction({ action: "resolve_account_request", targetUid: item.uid, targetEmail: item.email || "", actorUid: user?.uid || "", actorEmail: user?.email || "", before, after: patch, reason: message });
       showToast(message);
       cargar();
     } catch (error) {
-      showToast("No se pudo resolver el pedido");
+      showToast("No se pudo resolver el pedido.");
+    } finally {
+      setAccionandoOther(null);
     }
   };
 
-  const resolverTicket = async (ticketId) => {
+  const resolverTicket = async (ticketId, ticket) => {
+    setAccionandoOther(`ticket-${ticketId}`);
     try {
       await setDoc(doc(db, "soporteTickets", ticketId), { estado: "resuelto", updatedAt: new Date().toISOString() }, { merge: true });
-      showToast("Reclamo resuelto");
+      await logAdminAction({ action: "resolve_ticket", targetUid: ticket?.uid || "", targetEmail: ticket?.email || "", actorUid: user?.uid || "", actorEmail: user?.email || "", before: { estado: ticket?.estado || "nuevo" }, after: { estado: "resuelto" }, reason: "Marcado resuelto desde panel admin" });
+      showToast("Reclamo marcado como resuelto.");
       cargar();
     } catch (error) {
-      showToast("No se pudo resolver el reclamo");
+      showToast("No se pudo resolver el reclamo.");
+    } finally {
+      setAccionandoOther(null);
     }
   };
 
   const activarUsuario = async (item, planKey = "base", extraDias = 30) => {
+    try {
+      validatePlanKey(planKey);
+      validateExtraDays(extraDias);
+    } catch (validErr) {
+      showToast(validErr.message);
+      return;
+    }
     setAccionando(item.uid);
+    const before = { estado: item.estado, plan: item.currentPlanKey || item.plan, activoHasta: item.activoHasta };
+    const activoHasta = Date.now() + extraDias * 24 * 60 * 60 * 1000;
     try {
       await actualizarSuscripcionUsuario(item.uid, {
         estado: "activo",
         plan: planKey,
         currentPlanKey: planKey,
         pagoEstado: "pagado",
-        activoHasta: Date.now() + extraDias * 24 * 60 * 60 * 1000,
+        activoHasta,
         requestedAction: null,
         cancelAtPeriodEnd: false,
       });
-      showToast(`${item.email || item.uid} activado por ${extraDias} dias`);
+      await logAdminAction({ action: "activate_user", targetUid: item.uid, targetEmail: item.email || "", actorUid: user?.uid || "", actorEmail: user?.email || "", before, after: { estado: "activo", plan: planKey, activoHasta }, reason: `Activación manual ${extraDias} días` });
+      showToast(`${item.email || item.uid} activado por ${extraDias} días.`);
       setExpandedUid(null);
       cargar();
     } catch (error) {
-      showToast("No se pudo activar");
+      showToast(`No se pudo activar: ${error.message}`);
     } finally {
       setAccionando(null);
     }
   };
 
   const extenderUsuario = async (item, dias = 30) => {
-    setAccionando(item.uid);
     try {
-      const base = Math.max(Number(normalizeDateMs(item.activoHasta) || 0), Date.now());
-      await actualizarSuscripcionUsuario(item.uid, {
-        estado: "activo",
-        activoHasta: base + dias * 24 * 60 * 60 * 1000,
-      });
-      showToast(`Extendido ${dias} dias`);
+      validateExtraDays(dias);
+    } catch (validErr) {
+      showToast(validErr.message);
+      return;
+    }
+    setAccionando(item.uid);
+    const base = Math.max(Number(normalizeDateMs(item.activoHasta) || 0), Date.now());
+    const activoHasta = base + dias * 24 * 60 * 60 * 1000;
+    const before = { estado: item.estado, activoHasta: item.activoHasta };
+    try {
+      await actualizarSuscripcionUsuario(item.uid, { estado: "activo", activoHasta });
+      await logAdminAction({ action: "extend_user", targetUid: item.uid, targetEmail: item.email || "", actorUid: user?.uid || "", actorEmail: user?.email || "", before, after: { estado: "activo", activoHasta }, reason: `Extensión manual +${dias} días` });
+      showToast(`${item.email || item.uid} extendido ${dias} días.`);
       setExpandedUid(null);
       cargar();
     } catch (error) {
-      showToast("No se pudo extender");
+      showToast(`No se pudo extender: ${error.message}`);
+    } finally {
+      setAccionando(null);
+    }
+  };
+
+  const suspenderUsuario = async (item) => {
+    setAccionando(item.uid);
+    const before = { estado: item.estado };
+    try {
+      await actualizarSuscripcionUsuario(item.uid, { estado: "suspendido" });
+      await logAdminAction({ action: "suspend_user", targetUid: item.uid, targetEmail: item.email || "", actorUid: user?.uid || "", actorEmail: user?.email || "", before, after: { estado: "suspendido" }, reason: "Suspensión manual desde panel admin" });
+      showToast(`${item.email || item.uid} suspendido.`);
+      setExpandedUid(null);
+      cargar();
+    } catch (error) {
+      showToast(`No se pudo suspender: ${error.message}`);
     } finally {
       setAccionando(null);
     }
@@ -369,6 +454,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
   }
 
   const cuentasConPedidos = accounts.filter(a => a.requestedAction || a.cancelAtPeriodEnd);
+
   const usuariosFiltrados = filterEstado === "todos" ? accounts
     : filterEstado === "activos" ? accounts.filter(a => a.estado === "activo")
     : filterEstado === "trial" ? accounts.filter(a => a.estado === "trial")
@@ -382,6 +468,21 @@ function PantallaAdmin({ showToast, scrollRef }) {
 
   return (
     <div>
+      {/* Panel header */}
+      <div className="mb-4 px-1">
+        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Panel administrador</p>
+        <p className="text-[10px] font-bold text-zinc-600 mt-0.5">Control de usuarios, pagos, suscripciones, reclamos y operación de Moto Gestión.</p>
+      </div>
+
+      {/* Error de carga — muestra detalles y botón de reintento */}
+      {loadError && (
+        <div className="mb-4 rounded-2xl bg-red-50 border border-red-200 p-4 space-y-2">
+          <p className="text-[9px] font-black text-red-600 uppercase tracking-widest">Error de carga</p>
+          <p className="text-sm font-bold text-red-800 break-all">{loadError}</p>
+          <button onClick={cargar} className="mt-1 rounded-2xl bg-red-600 text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest active:scale-95">Reintentar</button>
+        </div>
+      )}
+
       {/* Sub-navegación — sticky */}
       <div className="sticky top-0 z-10 -mx-4 px-4 py-3 mb-4 bg-zinc-950/95 backdrop-blur-sm border-b border-white/5">
         <div className="flex gap-2 overflow-x-auto">
@@ -397,6 +498,11 @@ function PantallaAdmin({ showToast, scrollRef }) {
                   {stats.pedidosPendientes + stats.reclamosPendientes}
                 </span>
               )}
+              {t.id === "cobros" && stats.totalBillingAlerts > 0 && (
+                <span className="ml-1.5 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[8px]">
+                  {stats.totalBillingAlerts}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -405,22 +511,26 @@ function PantallaAdmin({ showToast, scrollRef }) {
       {/* -- DASHBOARD -- */}
       {adminTab === "dashboard" && (
         <div className="space-y-4">
+          {/* Estado comercial */}
           <Card>
-            <SectionTitle>Este mes</SectionTitle>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <SectionTitle>Estado comercial</SectionTitle>
+            <div className="grid grid-cols-2 gap-3">
               <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 col-span-2">
                 <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Cobrado este mes</p>
                 <MoneyValue amount={stats.cobradoMes} />
                 <p className="text-[10px] font-bold text-emerald-500 mt-1">{stats.pagosEsteMes} {stats.pagosEsteMes === 1 ? "pago" : "pagos"} recibidos</p>
               </div>
-              <StatBox label="Total cobrado" value={<MoneyValue amount={stats.totalCobrado} />} color="text-zinc-800" />
-              <StatBox label="Tiempo promedio a pagar" value={stats.promDias !== null ? `${stats.promDias} dias` : "—"} />
+              <StatBox label="Total cobrado" value={<MoneyValue amount={stats.totalCobrado} />} />
+              <StatBox label="Tiempo promedio a pagar" value={stats.promDias !== null ? `${stats.promDias} días` : "—"} />
+              <StatBox label="Tasa de conversión" value={`${stats.conversionRate}%`} color="text-orange-600" />
+              <StatBox label="Total de pagos" value={stats.todosPagos.length} />
             </div>
           </Card>
 
+          {/* Usuarios */}
           <Card>
             <SectionTitle>Usuarios ahora</SectionTitle>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3">
               <StatBox label="Total" value={stats.total} />
               <StatBox label="Activos" value={stats.activos} color="text-emerald-600" />
               <StatBox label="En prueba" value={stats.trial} color="text-amber-600" />
@@ -428,12 +538,31 @@ function PantallaAdmin({ showToast, scrollRef }) {
             </div>
           </Card>
 
+          {/* Alertas operativas */}
           <Card>
-            <SectionTitle>Alertas</SectionTitle>
+            <SectionTitle>Alertas operativas</SectionTitle>
             <div className="space-y-2">
+              {stats.billingAlerts.pagoSinActivacion.length > 0 && (
+                <div className="flex items-center justify-between rounded-2xl bg-red-50 border border-red-200 px-4 py-3">
+                  <p className="text-sm font-black text-red-700">Pago reciente sin activación</p>
+                  <p className="text-lg font-black text-red-700">{stats.billingAlerts.pagoSinActivacion.length}</p>
+                </div>
+              )}
+              {stats.billingAlerts.vencidoConPagoReciente.length > 0 && (
+                <div className="flex items-center justify-between rounded-2xl bg-red-50 border border-red-200 px-4 py-3">
+                  <p className="text-sm font-black text-red-700">Vencido con pago reciente</p>
+                  <p className="text-lg font-black text-red-700">{stats.billingAlerts.vencidoConPagoReciente.length}</p>
+                </div>
+              )}
+              {stats.billingAlerts.activoSinFactura.length > 0 && (
+                <div className="flex items-center justify-between rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3">
+                  <p className="text-sm font-black text-amber-700">Activo sin factura registrada</p>
+                  <p className="text-lg font-black text-amber-700">{stats.billingAlerts.activoSinFactura.length}</p>
+                </div>
+              )}
               {stats.trialsPorVencer > 0 && (
                 <div className="flex items-center justify-between rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3">
-                  <p className="text-sm font-black text-amber-700">Trials por vencer en 5 dias</p>
+                  <p className="text-sm font-black text-amber-700">Trials por vencer en 5 días</p>
                   <p className="text-lg font-black text-amber-700">{stats.trialsPorVencer}</p>
                 </div>
               )}
@@ -449,14 +578,33 @@ function PantallaAdmin({ showToast, scrollRef }) {
                   <p className="text-lg font-black text-red-700">{stats.reclamosPendientes}</p>
                 </div>
               )}
-              {stats.trialsPorVencer === 0 && stats.pedidosPendientes === 0 && stats.reclamosPendientes === 0 && (
-                <p className="text-sm font-black text-zinc-500 text-center py-2">Todo en orden. No hay alertas.</p>
+              {stats.billingAlerts.pagoSinActivacion.length === 0 && stats.billingAlerts.vencidoConPagoReciente.length === 0 && stats.trialsPorVencer === 0 && stats.pedidosPendientes === 0 && stats.reclamosPendientes === 0 && (
+                <p className="text-sm font-black text-zinc-500 text-center py-2">Sin alertas activas.</p>
               )}
             </div>
           </Card>
 
+          {/* Estado del sistema */}
           <Card>
-            <SectionTitle>Distribucion de planes</SectionTitle>
+            <SectionTitle>Estado del sistema</SectionTitle>
+            <div className="space-y-2">
+              {[
+                { label: "Último deploy detectado", value: remoteBuild?.buildTime ? new Date(remoteBuild.buildTime).toLocaleString("es-AR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "Sin dato" },
+                { label: "Último pago registrado", value: stats.lastPayment ? new Date(stats.lastPayment.fecha).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" }) + " — " + (stats.lastPayment.email || stats.lastPayment.uid || "?") : "Sin pagos" },
+                { label: "Último usuario registrado", value: stats.lastUser ? (stats.lastUser.email || stats.lastUser.uid) : "Sin dato" },
+                { label: "Último reclamo", value: stats.lastTicket ? (stats.lastTicket.email || stats.lastTicket.uid || "?") + " — " + (stats.lastTicket.estado || "nuevo") : "Sin reclamos" },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex items-start justify-between gap-4 py-2 border-b border-zinc-100 last:border-0">
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest shrink-0">{label}</p>
+                  <p className="text-[10px] font-bold text-zinc-700 text-right">{value}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Distribución de planes */}
+          <Card>
+            <SectionTitle>Distribución de planes</SectionTitle>
             <div className="grid grid-cols-3 gap-3">
               <StatBox label="Base" value={stats.planBase} />
               <StatBox label="Pro" value={stats.planPro} color="text-orange-600" />
@@ -608,8 +756,23 @@ function PantallaAdmin({ showToast, scrollRef }) {
             </div>
           </Card>
 
-          <button onClick={guardarSettings} className="w-full rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
-            Guardar todos los cambios
+          {settingsConfirmOpen && (
+            <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-6 backdrop-blur-sm">
+              <div className="bg-white rounded-[2rem] p-6 w-full max-w-sm space-y-4 shadow-2xl">
+                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Confirmar cambios</p>
+                <p className="text-sm font-black text-zinc-900 leading-snug">Los cambios de precios y períodos afectarán a nuevas cuentas y futuros pagos. Los cambios de funciones se aplican de forma inmediata.</p>
+                <p className="text-[10px] font-bold text-zinc-500">Verificá que los valores sean correctos antes de guardar.</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => setSettingsConfirmOpen(false)} className="bg-zinc-100 text-zinc-700 py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95">Cancelar</button>
+                  <button onClick={guardarSettings} disabled={savingSettings} className="bg-orange-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 disabled:opacity-50">
+                    {savingSettings ? "Guardando..." : "Confirmar"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          <button onClick={() => setSettingsConfirmOpen(true)} disabled={savingSettings} className="w-full rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50">
+            {savingSettings ? "Guardando..." : "Guardar todos los cambios"}
           </button>
         </div>
       )}
@@ -637,7 +800,12 @@ function PantallaAdmin({ showToast, scrollRef }) {
 
           <div className="space-y-2">
             {usuariosFiltrados.length === 0 && (
-              <Card><p className="text-sm font-black text-zinc-500">No hay usuarios en este filtro.</p></Card>
+              <Card>
+                <p className="text-sm font-black text-zinc-500">
+                  {loadError ? "No se pudieron cargar los usuarios. Ver error arriba." : "No hay usuarios en este filtro."}
+                </p>
+                {!loadError && <button onClick={cargar} className="mt-2 rounded-2xl bg-zinc-900 text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest active:scale-95">Recargar</button>}
+              </Card>
             )}
             {usuariosFiltrados.map(item => {
               const isExpanded = expandedUid === item.uid;
@@ -699,8 +867,17 @@ function PantallaAdmin({ showToast, scrollRef }) {
                           onClick={() => extenderUsuario(item, 30)}
                           className="rounded-2xl bg-zinc-900 py-3 text-[10px] font-black uppercase tracking-widest text-white col-span-2 disabled:opacity-50"
                         >
-                          Extender +30 dias
+                          Extender +30 días
                         </button>
+                        {item.estado !== "suspendido" && (
+                          <button
+                            disabled={accionando === item.uid}
+                            onClick={() => suspenderUsuario(item)}
+                            className="rounded-2xl border border-red-200 bg-red-50 py-3 text-[10px] font-black uppercase tracking-widest text-red-600 col-span-2 disabled:opacity-50"
+                          >
+                            Suspender usuario
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -754,6 +931,41 @@ function PantallaAdmin({ showToast, scrollRef }) {
               ))}
             </div>
           </Card>
+
+          {/* Alertas de facturación */}
+          {(stats.billingAlerts.pagoSinActivacion.length > 0 || stats.billingAlerts.vencidoConPagoReciente.length > 0 || stats.billingAlerts.activoSinFactura.length > 0) && (
+            <Card>
+              <SectionTitle>Alertas de facturación</SectionTitle>
+              <p className="text-[10px] font-bold text-zinc-400 mb-3">Inconsistencias detectadas en los últimos 7 días.</p>
+              {stats.billingAlerts.pagoSinActivacion.map(a => (
+                <div key={a.uid} className="rounded-2xl border border-red-200 bg-red-50 p-4 mb-2">
+                  <p className="text-[9px] font-black text-red-600 uppercase tracking-widest">Pago reciente sin activación</p>
+                  <p className="text-sm font-black text-red-900 mt-1">{a.email || a.uid}</p>
+                  <p className="text-[10px] font-bold text-red-700">Estado: {a.estado} · Pago: {formatMoney(a.ultimoPago?.monto || 0)}</p>
+                  <button onClick={() => activarUsuario(a, a.currentPlanKey || "base", 30)} disabled={accionando === a.uid} className="mt-2 w-full rounded-2xl bg-emerald-600 py-2 text-[10px] font-black uppercase text-white disabled:opacity-50">
+                    {accionando === a.uid ? "Procesando..." : "Activar manualmente"}
+                  </button>
+                </div>
+              ))}
+              {stats.billingAlerts.vencidoConPagoReciente.map(a => (
+                <div key={a.uid} className="rounded-2xl border border-amber-200 bg-amber-50 p-4 mb-2">
+                  <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest">Vencido con pago reciente</p>
+                  <p className="text-sm font-black text-amber-900 mt-1">{a.email || a.uid}</p>
+                  <p className="text-[10px] font-bold text-amber-700">Estado: {a.estado} · Último pago: {formatMoney(a.ultimoPago?.monto || 0)}</p>
+                  <button onClick={() => activarUsuario(a, a.currentPlanKey || "base", 30)} disabled={accionando === a.uid} className="mt-2 w-full rounded-2xl bg-orange-600 py-2 text-[10px] font-black uppercase text-white disabled:opacity-50">
+                    {accionando === a.uid ? "Procesando..." : "Reactivar usuario"}
+                  </button>
+                </div>
+              ))}
+              {stats.billingAlerts.activoSinFactura.map(a => (
+                <div key={a.uid} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 mb-2">
+                  <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Activo sin factura registrada</p>
+                  <p className="text-sm font-black text-zinc-800 mt-1">{a.email || a.uid}</p>
+                  <p className="text-[10px] font-bold text-zinc-500">Puede ser activación manual. Verificar con auditoría.</p>
+                </div>
+              ))}
+            </Card>
+          )}
         </div>
       )}
 
@@ -777,14 +989,16 @@ function PantallaAdmin({ showToast, scrollRef }) {
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <button
-                      onClick={() => resolverPedidoCuenta(item, { estado: "activo", currentPlanKey: item.requestedPlanKey || item.currentPlanKey || "base" }, "Pedido aprobado")}
-                      className="rounded-2xl bg-emerald-600 py-3 text-[10px] font-black uppercase tracking-widest text-white"
+                      onClick={() => resolverPedidoCuenta(item, { estado: "activo", currentPlanKey: item.requestedPlanKey || item.currentPlanKey || "base" }, "Pedido aprobado.")}
+                      disabled={accionandoOther === `pedido-${item.uid}`}
+                      className="rounded-2xl bg-emerald-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
                     >
-                      Aprobar
+                      {accionandoOther === `pedido-${item.uid}` ? "..." : "Aprobar"}
                     </button>
                     <button
-                      onClick={() => resolverPedidoCuenta(item, {}, "Pedido limpiado")}
-                      className="rounded-2xl bg-zinc-900 py-3 text-[10px] font-black uppercase tracking-widest text-white"
+                      onClick={() => resolverPedidoCuenta(item, {}, "Pedido rechazado.")}
+                      disabled={accionandoOther === `pedido-${item.uid}`}
+                      className="rounded-2xl bg-zinc-900 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
                     >
                       Rechazar
                     </button>
@@ -812,11 +1026,11 @@ function PantallaAdmin({ showToast, scrollRef }) {
                   <p className="text-xs font-bold leading-relaxed text-zinc-700">{ticket.mensaje || "Sin mensaje"}</p>
                   <p className="text-[9px] font-bold text-zinc-400">{formatAdminDate(ticket.createdAt, "Fecha desconocida")}</p>
                   <button
-                    onClick={() => resolverTicket(ticket.id)}
-                    disabled={ticket.estado === "resuelto"}
+                    onClick={() => resolverTicket(ticket.id, ticket)}
+                    disabled={ticket.estado === "resuelto" || accionandoOther === `ticket-${ticket.id}`}
                     className="w-full rounded-2xl bg-orange-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-40"
                   >
-                    {ticket.estado === "resuelto" ? "Ya resuelto" : "Marcar como resuelto"}
+                    {accionandoOther === `ticket-${ticket.id}` ? "Procesando..." : ticket.estado === "resuelto" ? "Ya resuelto" : "Marcar como resuelto"}
                   </button>
                 </div>
               ))}
@@ -915,7 +1129,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
       { notificationEmail: cfg.emailNotificacion || auth.currentUser?.email || DEFAULT_ADMIN_SETTINGS.notificationEmail },
       { merge: true }
     ).catch(console.error);
-    showToast("Guardado OK");
+    showToast("Cambios guardados.");
   };
 
   const setFactor = (key, val) => {
@@ -1202,7 +1416,7 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
       showToast(r ? `Copia guardada en la nube. ${r.total} registros protegidos.` : "No se encontraron datos para respaldar.");
       cargarBackups();
     } catch (e) {
-      showToast("Error: " + e.message);
+      showToast("No se pudo completar la operación: " + e.message);
     } finally {
       setGuardandoBkp(false);
     }
@@ -2502,6 +2716,14 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
   const visibleTabs = canSeeAdminTab ? TABS : TABS.filter((tab) => tab.id !== "admin");
 
   useEffect(() => {
+    const tabPermitida = visibleTabs.some((tab) => tab.id === activeTab);
+    if (!tabPermitida) {
+      setActiveTab("resumen");
+      window.localStorage.setItem("jbos_config_tab", "resumen");
+    }
+  }, [activeTab, visibleTabs]);
+
+  useEffect(() => {
     window.localStorage.setItem("jbos_config_tab", activeTab);
     scrollRef.current?.scrollTo({ top: 0 });
   }, [activeTab]);
@@ -2539,8 +2761,8 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
       case "taller":  return <PantallaTaller cfg={cfg} setCfg={setCfg} showToast={showToast} />;
       case "datos":   return <PantallaDatos orders={orders} bikes={bikes} clients={clients} cfg={cfg} showToast={showToast} bkpEstado={bkpEstado} setBkpEstado={setBkpEstado} fileInputRef={fileInputRef} handleRestaurarArchivo={handleRestaurarArchivo} handleRestaurarAuto={handleRestaurarAuto} />;
       case "sistema": return <PantallaSistema loadDemoData={loadDemoData} clearAllData={clearAllData} handleLogout={handleLogout} showToast={showToast} cfg={cfg} setCfg={setCfg} />;
-      case "admin":   return <PantallaAdmin showToast={showToast} scrollRef={scrollRef} />;
-      default: return null;
+      case "admin":   return canSeeAdminTab ? <PantallaAdmin showToast={showToast} scrollRef={scrollRef} /> : <PantallaResumen orders={orders} caja={caja} />;
+      default: return <PantallaResumen orders={orders} caja={caja} />;
     }
   };
 
