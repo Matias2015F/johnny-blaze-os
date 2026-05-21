@@ -190,23 +190,28 @@ function PantallaAdmin({ showToast, scrollRef }) {
     try {
       await auth.currentUser.getIdToken(true);
 
-      const accountSnap = await getDoc(doc(db, "usuarios", uid));
-      const mine = accountSnap.exists()
-        ? { id: accountSnap.id, ...accountSnap.data() }
-        : { id: uid, uid, estado: "trial", rol: "user", activoHasta: null, lastSeenAt: null };
-      setAccount(mine);
-
       const adminData = await cargarPanelAdminDesdeServidor();
       const normalizedAccounts = (adminData.accounts || []).map((item) =>
         normalizeSaasUser(item, { uid: item.uid || item.id, email: item.email || "" }),
       );
+      const mine = normalizedAccounts.find((item) => item.uid === uid) || {
+        id: uid,
+        uid,
+        email: auth.currentUser?.email || "",
+        estado: "trial",
+        rol: isPlatformAdmin ? "admin" : "user",
+        isPlatformAdmin,
+        activoHasta: null,
+        lastSeenAt: null,
+      };
+      setAccount(mine);
       setAccounts(normalizedAccounts);
       setInvoices(sortByDateDesc(adminData.invoices || [], "paidAt", "fecha", "createdAt", "updatedAt"));
       setTickets(sortByDateDesc(adminData.tickets || [], "createdAt", "updatedAt"));
       setSettings(normalizeAdminSettings(adminData.settings || DEFAULT_ADMIN_SETTINGS));
     } catch (e) {
       console.error(e);
-      setLoadError(`Error inesperado: ${e?.message || String(e)}`);
+      setLoadError(`No se pudo cargar el panel administrador: ${e?.message || String(e)}`);
     } finally {
       setLoading(false);
     }
