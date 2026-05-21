@@ -10,7 +10,12 @@ service cloud.firestore {
     }
 
     function isPlatformAdmin() {
-      return signedIn() && request.auth.uid == "TNwwuKJsIXN29zJg8HWfORawdFm1";
+      return signedIn() && (
+        request.auth.uid == "TNwwuKJsIXN29zJg8HWfORawdFm1" ||
+        request.auth.token.email == "matias4604@gmail.com" ||
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == "admin" ||
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.isPlatformAdmin == true
+      );
     }
 
     // Campos de suscripción: solo el Admin SDK (webhook) puede modificarlos.
@@ -20,6 +25,17 @@ service cloud.firestore {
                         'isPlatformAdmin', 'graceEndsAt', 'nextBillingAt',
                         'currentPlanKey', 'trialEndsAt', 'featureFlags', 'features'];
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(protegidos);
+    }
+
+    function perfilUsuarioInicialSeguro(uid) {
+      let data = request.resource.data;
+      return isOwner(uid) &&
+        data.uid == uid &&
+        data.rol != "admin" &&
+        data.isPlatformAdmin != true &&
+        (!('estado' in data) || data.estado == "trial") &&
+        (!('plan' in data) || data.plan == "trial" || data.plan == "base") &&
+        (!('pagoEstado' in data) || data.pagoEstado == "pendiente");
     }
 
     match /admin_settings/{docId} {
@@ -92,7 +108,7 @@ service cloud.firestore {
     // — Eliminar: el usuario puede eliminar su propia cuenta.
     match /usuarios/{uid} {
       allow read: if isOwner(uid) || isPlatformAdmin();
-      allow create: if isOwner(uid);
+      allow create: if perfilUsuarioInicialSeguro(uid) || isPlatformAdmin();
       allow update: if (isOwner(uid) && noModificaCamposSuscripcion()) || isPlatformAdmin();
       allow delete: if isOwner(uid) || isPlatformAdmin();
     }
