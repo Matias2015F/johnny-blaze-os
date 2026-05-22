@@ -659,6 +659,7 @@ export default function TallerPanel({ modoLectura = false }) {
             onEliminar={handleEliminarPresupuesto}
             setView={setView}
             showToast={showToast}
+            setSelectedOrderId={setSelectedOrderId}
           />
         ) : null;
       })()}
@@ -877,11 +878,12 @@ export default function TallerPanel({ modoLectura = false }) {
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-32 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm text-center bg-white text-black px-6 py-4 rounded-3xl font-black text-xs uppercase shadow-2xl z-[100] animate-bounce">
-          {toastMessage}
+        <div className="fixed inset-x-0 bottom-[calc(8rem+env(safe-area-inset-bottom))] z-[100] flex justify-center px-4 pointer-events-none">
+          <div className="w-full max-w-sm rounded-3xl bg-white px-5 py-4 text-center text-xs font-black uppercase leading-relaxed text-black shadow-2xl break-words animate-bounce">
+            {toastMessage}
+          </div>
         </div>
       )}
     </div>
   );
 }
-

@@ -102,7 +102,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
       if (!el) throw new Error("No se encontró la hoja para exportar.");
 
-      const targetWidth = Math.max(EXPORT_WIDTH_PX, el.scrollWidth || 0);
+      const targetWidth = EXPORT_WIDTH_PX;
       el.style.width = `${targetWidth}px`;
       el.style.maxWidth = `${targetWidth}px`;
       el.style.overflow = "visible";
@@ -273,9 +273,12 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
             width: 186mm !important;
             max-width: 186mm !important;
             box-sizing: border-box !important;
+            overflow-x: hidden !important;
+            overflow-y: visible !important;
           }
           .print-root * {
             box-sizing: border-box !important;
+            max-width: 100% !important;
           }
           .print-header {
             display: grid !important;
@@ -346,7 +349,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
         <div className="space-y-4 px-8 py-4 print:px-0 print:py-2">
           <div className="grid grid-cols-2 gap-4" style={bloqueCompletoStyle}>
-            <div className="border border-zinc-300 bg-zinc-50 p-4">
+            <div className="border border-zinc-300 bg-zinc-50 p-4" style={{ minWidth: 0 }}>
               <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">Cliente</p>
               <p className="mt-2 text-sm font-black text-zinc-900">
                 <span className="text-zinc-500">Cliente:</span> {clienteNombre || "---"}
@@ -355,7 +358,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                 <span className="text-zinc-500">Celular:</span> {clienteTelefono}
               </p>
             </div>
-            <div className="border border-zinc-300 bg-zinc-50 p-4">
+            <div className="border border-zinc-300 bg-zinc-50 p-4" style={{ minWidth: 0 }}>
               <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">Motocicleta</p>
               <p className="mt-2 text-sm font-black text-zinc-900">
                 <span className="text-zinc-500">Motocicleta:</span> {motoNombre}
@@ -451,7 +454,13 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           {pagos.length > 0 && (
             <div style={bloqueCompletoStyle}>
               <h3 className="mb-2 text-[10px] font-black uppercase tracking-wide text-zinc-700">Pagos registrados</h3>
-              <table className="w-full border border-zinc-300">
+              <table className="w-full border border-zinc-300" style={{ tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "20%" }} />
+                  <col style={{ width: "22%" }} />
+                  <col style={{ width: "40%" }} />
+                  <col style={{ width: "18%" }} />
+                </colgroup>
                 <thead>
                   <tr className="border-b border-zinc-300 bg-zinc-100">
                     <th className="px-4 py-2 text-left text-[9px] font-black text-zinc-700">Fecha</th>
@@ -463,10 +472,10 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                 <tbody>
                   {pagos.map((p, i) => (
                     <tr key={i} className={i < pagos.length - 1 ? "border-b border-zinc-200" : ""}>
-                      <td className="px-4 py-2 text-[10px] text-zinc-700">{p.fecha}</td>
-                      <td className="px-4 py-2 text-[10px] font-bold uppercase text-zinc-700">{labelMetodo(p.metodo)}</td>
-                      <td className="px-4 py-2 text-[10px] text-zinc-700">{p.comprobante || "---"}</td>
-                      <td className="px-4 py-2 text-right text-[10px] font-black text-zinc-900">{formatMoney(p.monto || 0)}</td>
+                      <td className="px-4 py-2 text-[10px] text-zinc-700" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.fecha}</td>
+                      <td className="px-4 py-2 text-[10px] font-bold uppercase text-zinc-700" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{labelMetodo(p.metodo)}</td>
+                      <td className="px-4 py-2 text-[10px] text-zinc-700" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.comprobante || "---"}</td>
+                      <td className="px-4 py-2 text-right text-[10px] font-black text-zinc-900" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formatMoney(p.monto || 0)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -475,7 +484,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           )}
 
           <div className="grid grid-cols-[1.1fr_0.9fr] gap-4" style={bloqueCompletoStyle}>
-            <div className="border border-zinc-300 p-3">
+            <div className="border border-zinc-300 p-3" style={{ minWidth: 0 }}>
               <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">
                 {esRechazo ? "Condicion del cierre" : "Garantía"}
               </p>
@@ -501,7 +510,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               )}
             </div>
 
-            <div className="space-y-2 border border-zinc-300 p-3">
+            <div className="space-y-2 border border-zinc-300 p-3" style={{ minWidth: 0 }}>
               <div className="flex items-baseline justify-between gap-1 text-xs">
                 <span className="whitespace-nowrap font-bold text-zinc-600">{esRechazo ? "Total cobrado:" : "Total trabajo:"}</span>
                 <span className="whitespace-nowrap font-black text-zinc-900">{formatMoney(totalOrden)}</span>

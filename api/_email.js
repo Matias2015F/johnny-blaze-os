@@ -114,7 +114,7 @@ function alertBox(color, text) {
 // ── Templates ─────────────────────────────────────────────────────────────────
 
 function templateBienvenida({ email, diasTrial, trialHasta }) {
-  const subject = "¡Bienvenido a Johnny Blaze OS! Tu prueba gratuita está activa";
+  const subject = "Bienvenido — prueba gratuita activa";
   const html = wrapTemplate(`
     <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">¡Bienvenido al taller!</h2>
     <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">Tu cuenta fue creada exitosamente. Ya podés empezar a gestionar tu taller.</p>
@@ -138,7 +138,7 @@ function templateBienvenida({ email, diasTrial, trialHasta }) {
 }
 
 function templatePagoAprobado({ plan, monto, activoHasta, paymentId }) {
-  const subject = `✅ Pago recibido — ${planLabel(plan)} activo`;
+  const subject = "Recibo — Plan activo";
   const html = wrapTemplate(`
     <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">Recibo de pago</h2>
     <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">Tu suscripción fue activada correctamente.</p>
@@ -161,7 +161,7 @@ function templatePagoAprobado({ plan, monto, activoHasta, paymentId }) {
 }
 
 function templatePagoFallido({ plan, monto, motivo }) {
-  const subject = "⚠️ No pudimos procesar tu pago — Johnny Blaze OS";
+  const subject = "Pago no procesado";
   const html = wrapTemplate(`
     <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">Pago no procesado</h2>
     <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">Tu pago no pudo completarse. Tus datos están seguros.</p>
@@ -181,9 +181,7 @@ function templatePagoFallido({ plan, monto, motivo }) {
 
 function templateVencimientoProximo({ diasRestantes, activoHasta }) {
   const urgente = diasRestantes <= 3;
-  const subject = urgente
-    ? `⚠️ Tu plan vence en ${diasRestantes} día${diasRestantes !== 1 ? "s" : ""} — Renovar ahora`
-    : `📅 Tu plan vence en ${diasRestantes} días — Johnny Blaze OS`;
+  const subject = `Plan vence en ${diasRestantes} día${diasRestantes !== 1 ? "s" : ""}`;
   const html = wrapTemplate(`
     <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">${urgente ? "⚠️" : "📅"} Tu plan vence pronto</h2>
     <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">
@@ -204,7 +202,7 @@ function templateVencimientoProximo({ diasRestantes, activoHasta }) {
 }
 
 function templateEnGracia({ graceEndsAt, diasRestantes }) {
-  const subject = `🔴 Período de gracia — te quedan ${diasRestantes} días para renovar`;
+  const subject = `Te quedan ${diasRestantes} día${diasRestantes !== 1 ? "s" : ""} para renovar`;
   const html = wrapTemplate(`
     <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">Estás en período de gracia</h2>
     <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">
@@ -223,7 +221,7 @@ function templateEnGracia({ graceEndsAt, diasRestantes }) {
 }
 
 function templateSuspendido() {
-  const subject = "🔒 Tu acceso a Johnny Blaze OS fue suspendido";
+  const subject = "Acceso suspendido";
   const html = wrapTemplate(`
     <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">Acceso suspendido</h2>
     <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">Tu suscripción venció y el período de gracia finalizó.</p>
@@ -242,7 +240,7 @@ function templateSuspendido() {
 }
 
 function templateReactivado({ plan, activoHasta }) {
-  const subject = "✅ Tu acceso fue reactivado — ¡Bienvenido de vuelta!";
+  const subject = "Acceso reactivado";
   const html = wrapTemplate(`
     <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">¡Acceso reactivado!</h2>
     <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">Tu pago fue procesado y tu cuenta está activa de nuevo.</p>
@@ -257,7 +255,7 @@ function templateReactivado({ plan, activoHasta }) {
 }
 
 function templateCambioPlan({ planAnterior, planNuevo, activoHasta }) {
-  const subject = `🔄 Tu plan fue actualizado — ${planLabel(planNuevo)}`;
+  const subject = "Plan actualizado";
   const html = wrapTemplate(`
     <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">Plan actualizado</h2>
     <p style="margin:0 0 20px;font-size:14px;color:#6b7280;">Tu plan de suscripción fue cambiado exitosamente.</p>

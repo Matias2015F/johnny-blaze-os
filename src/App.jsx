@@ -401,8 +401,10 @@ export default function App() {
         <PagoOkSheet account={account} onClose={() => setPagoResult(null)} />
       )}
       {pagoResult && pagoResult !== "ok" && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-sm text-center bg-white text-black px-6 py-4 rounded-3xl font-black text-xs shadow-2xl z-[220]">
-          {pagoResult === "error" ? "El pago no se completo. Intenta de nuevo." : "El pago quedo pendiente de confirmacion."}
+        <div className="fixed inset-x-0 bottom-[calc(2.5rem+env(safe-area-inset-bottom))] z-[220] flex justify-center px-4 pointer-events-none">
+          <div className="w-full max-w-sm rounded-3xl bg-white px-5 py-4 text-center text-xs font-black leading-relaxed text-black shadow-2xl break-words">
+            {pagoResult === "error" ? "El pago no se completo. Intenta de nuevo." : "El pago quedo pendiente de confirmacion."}
+          </div>
         </div>
       )}
     </>

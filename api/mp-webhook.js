@@ -141,6 +141,8 @@ module.exports = async function handler(req, res) {
 
     if (!uid) {
       console.error("UID faltante en pago:", paymentId);
+      // Register event for admin reconciliation
+      db.collection("billingEvents").add({ type: "payment_without_uid", paymentId: String(paymentId), mpStatus: payment.status, amount: Number(payment.transaction_amount || 0), rawEmail: payment.payer?.email || null, createdAt: FieldValue.serverTimestamp(), resolved: false }).catch(() => {});
       return res.status(200).end();
     }
 
@@ -152,20 +154,25 @@ module.exports = async function handler(req, res) {
     // ── Pago rechazado / cancelado ────────────────────────────────────────────
     if (payment.status === "rejected" || payment.status === "cancelled") {
       console.log(`Pago ${payment.status} → uid:${uid} plan:${planPagado}`);
-
+      db.collection("billingEvents").add({ type: "payment_failed", uid, paymentId: String(paymentId), plan: planPagado || "base", monto: Number(payment.transaction_amount || 0), status: payment.status, statusDetail: payment.status_detail || "", createdAt: FieldValue.serverTimestamp() }).catch(() => {});
       if (emailDestino) {
-        const tpl = templatePagoFallido({
-          plan: planPagado || userData.plan || "base",
-          monto: Number(payment.transaction_amount || 0),
-          motivo: payment.status_detail || "",
-        });
-        await sendEmail({ to: emailDestino, ...tpl });
+        try {
+          const tpl = templatePagoFallido({ plan: planPagado || userData.plan || "base", monto: Number(payment.transaction_amount || 0), motivo: payment.status_detail || "" });
+          await sendEmail({ to: emailDestino, ...tpl });
+        } catch (emailErr) {
+          console.warn("[mp-webhook] Email de pago fallido no enviado:", emailErr.message);
+        }
       }
-
       return res.status(200).end();
     }
 
-    // ── Pago pendiente — sin acción por ahora ────────────────────────────────
+    // ── Pago pendiente ────────────────────────────────────────────────────────
+    if (payment.status === "pending" || payment.status === "in_process") {
+      console.log(`Pago pendiente → uid:${uid} plan:${planPagado}`);
+      db.collection("billingEvents").add({ type: "payment_pending", uid, paymentId: String(paymentId), plan: planPagado || "base", monto: Number(payment.transaction_amount || 0), status: payment.status, createdAt: FieldValue.serverTimestamp() }).catch(() => {});
+      return res.status(200).end();
+    }
+
     if (payment.status !== "approved") return res.status(200).end();
 
     // ── Pago aprobado ─────────────────────────────────────────────────────────
@@ -178,6 +185,7 @@ module.exports = async function handler(req, res) {
       .get();
     if (!dupSnap.empty) {
       console.log("Pago ya procesado en billingInvoices, ignorando:", paymentId);
+      db.collection("billingEvents").add({ type: "payment_duplicate_ignored", uid, paymentId: String(paymentId), createdAt: FieldValue.serverTimestamp() }).catch(() => {});
       return res.status(200).end();
     }
 
@@ -216,35 +224,41 @@ module.exports = async function handler(req, res) {
     await userRef.collection("billingInvoices").add({
       uid,
       paymentId: String(paymentId),
+      provider: "mercadopago",
+      source: "mp_webhook",
+      status: "approved",
+      mpStatus: payment.status,
+      mpStatusDetail: payment.status_detail || "",
+      preferenceId: payment.preference_id || null,
+      externalReference: payment.external_reference || uid,
+      payerEmail: payment.payer?.email || null,
       plan: nuevoPlan,
       monto: Number(payment.transaction_amount || 0),
       metodoPago: payment.payment_type_id || null,
       fecha: Date.now(),
+      paidAt: Date.now(),
       activoHasta: nuevoActivoHasta,
     });
 
-    // Emails
+    // Register billing event for admin reconciliation
+    db.collection("billingEvents").add({ type: "payment_approved", uid, paymentId: String(paymentId), plan: nuevoPlan, monto: Number(payment.transaction_amount || 0), activoHasta: nuevoActivoHasta, createdAt: FieldValue.serverTimestamp() }).catch(() => {});
+
+    // Emails — wrapped so failure does not revert activation
     if (emailDestino) {
-      const huboCambioPlan = planAnterior && planPagado && planAnterior !== planPagado;
-
-      if (estabaBloquado) {
-        // Reactivación desde suspendido
-        const tpl = templateReactivado({ plan: nuevoPlan, activoHasta: nuevoActivoHasta });
+      try {
+        const huboCambioPlan = planAnterior && planPagado && planAnterior !== planPagado;
+        if (estabaBloquado) {
+          const tpl = templateReactivado({ plan: nuevoPlan, activoHasta: nuevoActivoHasta });
+          await sendEmail({ to: emailDestino, ...tpl });
+        } else if (huboCambioPlan) {
+          const tpl = templateCambioPlan({ planAnterior, planNuevo: nuevoPlan, activoHasta: nuevoActivoHasta });
+          await sendEmail({ to: emailDestino, ...tpl });
+        }
+        const tpl = templatePagoAprobado({ plan: nuevoPlan, monto: Number(payment.transaction_amount || 0), activoHasta: nuevoActivoHasta, paymentId: String(paymentId) });
         await sendEmail({ to: emailDestino, ...tpl });
-      } else if (huboCambioPlan) {
-        // Cambio de plan
-        const tpl = templateCambioPlan({ planAnterior, planNuevo: nuevoPlan, activoHasta: nuevoActivoHasta });
-        await sendEmail({ to: emailDestino, ...tpl });
+      } catch (emailErr) {
+        console.warn("[mp-webhook] Email post-pago no enviado (activación ya completada):", emailErr.message);
       }
-
-      // Siempre enviar recibo
-      const tpl = templatePagoAprobado({
-        plan: nuevoPlan,
-        monto: Number(payment.transaction_amount || 0),
-        activoHasta: nuevoActivoHasta,
-        paymentId: String(paymentId),
-      });
-      await sendEmail({ to: emailDestino, ...tpl });
     }
 
     console.log("Pago aprobado → usuario activado:", uid, "plan:", nuevoPlan, "hasta:", new Date(nuevoActivoHasta).toISOString());

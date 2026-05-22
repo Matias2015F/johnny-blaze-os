@@ -27,7 +27,7 @@ module.exports = async function handler(req, res) {
     const html = require("./_email.js").buildResetEmail({ email, link });
     const ok = await sendEmail({
       to: email.trim().toLowerCase(),
-      subject: "Restablecer contraseña — Johnny Blaze OS",
+      subject: "Restablecer contraseña",
       html,
     });
 

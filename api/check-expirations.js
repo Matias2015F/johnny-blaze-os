@@ -32,7 +32,7 @@ module.exports = async function handler(req, res) {
     for (const userDoc of snap.docs) {
       const u = userDoc.data();
       const emailDestino = u.emailNotificacion || u.email;
-      if (!emailDestino) { resultados.omitidos++; continue; }
+      const puedeEnviarEmail = !!emailDestino;
 
       const activoHasta = u.activoHasta || u.trialEndsAt || null;
       const estado = (u.estado || "trial").toLowerCase();
@@ -46,8 +46,7 @@ module.exports = async function handler(req, res) {
           const diasRestantes = Math.max(1, Math.ceil(msRestantes / MS_DAY));
           const umbral = UMBRALES_DIAS.find((u) => diasRestantes <= u);
 
-          if (umbral) {
-            const alertaKey = `alertas.d${umbral}SentAt`;
+          if (umbral && puedeEnviarEmail) {
             const yaEnviado = u.alertas?.[`d${umbral}SentAt`];
 
             if (!yaEnviado || now - yaEnviado > 20 * MS_DAY) {
@@ -71,12 +70,21 @@ module.exports = async function handler(req, res) {
       }
 
       // ── 2. Período de gracia (venció pero aún tiene graceEndsAt futuro) ────
-      const graceEndsAt = u.graceEndsAt || null;
-      if (activoHasta && activoHasta < now && graceEndsAt && graceEndsAt > now) {
+      const diasGracia = Number(u.graceDays || DIAS_GRACIA_DEFAULT);
+      const graceEndsAt = u.graceEndsAt || (diasGracia > 0 ? activoHasta + diasGracia * MS_DAY : null);
+
+      if (activoHasta && activoHasta < now && graceEndsAt && graceEndsAt > now && estado !== "suspendido") {
         const diasGracia = Math.max(1, Math.ceil((graceEndsAt - now) / MS_DAY));
         const yaEnviado = u.alertas?.graciaSentAt;
 
-        if (!yaEnviado || now - yaEnviado > 2 * MS_DAY) {
+        batch.set(userDoc.ref, {
+          estado: "gracia",
+          pagoEstado: "vencido",
+          graceEndsAt,
+          updatedAt: now,
+        }, { merge: true });
+
+        if (puedeEnviarEmail && (!yaEnviado || now - yaEnviado > 2 * MS_DAY)) {
           const tpl = templateEnGracia({ graceEndsAt, diasRestantes: diasGracia });
           emailPromises.push(
             sendEmail({ to: emailDestino, ...tpl })
@@ -104,11 +112,14 @@ module.exports = async function handler(req, res) {
       ) {
         const yaEnviado = u.alertas?.suspendidoSentAt;
 
-        if (!yaEnviado) {
-          // Calcular graceEndsAt por si corresponde aplicar gracia
-          const diasGracia = u.graceDays || DIAS_GRACIA_DEFAULT;
-          const graceCalculado = activoHasta + diasGracia * MS_DAY;
+        batch.set(userDoc.ref, {
+          estado: "suspendido",
+          pagoEstado: "vencido",
+          updatedAt: now,
+          ...(graceEndsAt ? { graceEndsAt } : {}),
+        }, { merge: true });
 
+        if (puedeEnviarEmail && !yaEnviado) {
           const tpl = templateSuspendido();
           emailPromises.push(
             sendEmail({ to: emailDestino, ...tpl })
@@ -116,8 +127,6 @@ module.exports = async function handler(req, res) {
                 if (ok) {
                   batch.set(userDoc.ref, {
                     alertas: { suspendidoSentAt: now },
-                    // Aplicar gracia si no la tiene
-                    ...(graceEndsAt ? {} : { graceEndsAt: graceCalculado }),
                   }, { merge: true });
                   resultados.suspendidos++;
                 }

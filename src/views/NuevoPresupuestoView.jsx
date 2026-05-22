@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { ArrowLeft, Info } from "lucide-react";
+import React, { useMemo, useRef, useState } from "react";
+import { ArrowLeft, Info, Mic, MicOff } from "lucide-react";
 
 function normalizar(value = "") {
   return String(value).trim().toUpperCase();
@@ -18,6 +18,37 @@ export default function NuevoPresupuestoView({ onCrear, setView, bikes = [], cli
     validezDias: 7,
   });
   const [ignorarSugerencia, setIgnorarSugerencia] = useState(false);
+  const [dictando, setDictando] = useState(false);
+  const recognitionRef = useRef(null);
+
+  const toggleDictado = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+
+    if (dictando && recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    const rec = new SR();
+    rec.lang = "es-AR";
+    rec.continuous = false;
+    rec.interimResults = false;
+    recognitionRef.current = rec;
+
+    rec.onstart = () => setDictando(true);
+    rec.onend = () => setDictando(false);
+    rec.onerror = () => setDictando(false);
+    rec.onresult = (e) => {
+      const texto = e.results[0][0].transcript;
+      setF((prev) => ({
+        ...prev,
+        consulta: prev.consulta ? prev.consulta + " " + texto : texto,
+      }));
+    };
+
+    rec.start();
+  };
 
   const coincidenciaMoto = useMemo(() => {
     const patente = normalizar(f.patente);
@@ -134,7 +165,23 @@ export default function NuevoPresupuestoView({ onCrear, setView, bikes = [], cli
           />
         </div>
         <div className="space-y-1">
-          <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Motivo / Consulta</label>
+          <div className="flex items-center justify-between ml-2 mr-1">
+            <label className="text-[10px] font-black uppercase text-zinc-500">Motivo / Consulta</label>
+            {(window.SpeechRecognition || window.webkitSpeechRecognition) && (
+              <button
+                type="button"
+                onClick={toggleDictado}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-90 ${
+                  dictando
+                    ? "bg-red-600 text-white animate-pulse"
+                    : "bg-zinc-800 text-zinc-400 border border-white/10"
+                }`}
+              >
+                {dictando ? <MicOff size={12} /> : <Mic size={12} />}
+                {dictando ? "Detener" : "Dictar"}
+              </button>
+            )}
+          </div>
           <textarea
             className="w-full border border-white/5 bg-zinc-900 rounded-2xl p-4 font-bold text-white outline-none focus:border-orange-600"
             rows="2"

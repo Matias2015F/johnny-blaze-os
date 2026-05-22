@@ -236,32 +236,42 @@ function PantallaAdmin({ showToast, scrollRef }) {
     const planPro  = accounts.filter(a => (a.currentPlanKey || a.plan) === "pro"  && a.estado === "activo").length;
     const planFull = accounts.filter(a => (a.currentPlanKey || a.plan) === "full" && a.estado === "activo").length;
 
-    // Pagos: combinar invoices + ultimoPago de accounts
-    const pagosDesdeAccounts = accounts
-      .filter(a => a.ultimoPago?.fecha && a.ultimoPago?.monto)
-      .map(a => ({
-        id: a.ultimoPago.paymentId || a.uid,
-        uid: a.uid,
-        email: a.email || "",
-        monto: Number(a.ultimoPago.monto || 0),
-        fecha: Number(a.ultimoPago.fecha),
-        paymentId: a.ultimoPago.paymentId || "",
-        plan: a.currentPlanKey || a.plan || "base",
-        status: "approved",
-      }));
-    const pagosDesdeInvoices = invoices.map(inv => ({
-      id: inv.id,
-      uid: inv.uid || "",
-      email: inv.email || "",
-      monto: Number(inv.monto || inv.amountPaid || inv.amount || 0),
-      fecha: Number(inv.fecha || inv.paidAt || inv.createdAt || 0),
-      paymentId: inv.paymentId || inv.mpPaymentId || inv.id,
-      plan: inv.plan || inv.planKey || "base",
-      status: "approved",
-    }));
+    const accountByUid = new Map(accounts.map(a => [a.uid || a.id, a]));
+    const getMercadoPagoPaymentId = (inv) => String(inv.paymentId || inv.mpPaymentId || inv.externalPaymentId || "").trim();
+    const isMercadoPagoAprobado = (inv) => {
+      const paymentId = getMercadoPagoPaymentId(inv);
+      const hasRealPaymentId = /^\d+$/.test(paymentId);
+      const status = String(inv.status || inv.estado || inv.mpStatus || inv.paymentStatus || "").toLowerCase();
+      if (["pending", "in_process", "error", "failed", "failure", "rejected", "cancelled", "canceled"].includes(status)) return false;
+      if (inv.errorText || inv.errorMessage || inv.blocked_by) return false;
+      const statusOk = !status || ["approved", "paid", "accredited", "success", "ok"].includes(status);
+      const provider = String(inv.provider || inv.proveedor || inv.source || inv.origen || "").toLowerCase();
+      const providerOk = !provider || provider.includes("mercadopago") || provider.includes("mp") || provider.includes("webhook");
+      return statusOk && providerOk && hasRealPaymentId && Number(inv.monto || inv.amountPaid || inv.amount || 0) > 0;
+    };
+
+    // Cobros reales: solo facturas confirmadas por Mercado Pago/webhook.
+    const pagosDesdeInvoices = invoices
+      .filter(isMercadoPagoAprobado)
+      .map(inv => {
+        const account = accountByUid.get(inv.uid || "");
+        const paymentId = getMercadoPagoPaymentId(inv);
+        return {
+          id: inv.id,
+          uid: inv.uid || "",
+          email: inv.email || account?.email || "",
+          monto: Number(inv.monto || inv.amountPaid || inv.amount || 0),
+          fecha: normalizeDateMs(inv.fecha || inv.paidAt || inv.createdAt || inv.updatedAt) || 0,
+          paymentId,
+          plan: inv.plan || inv.planKey || account?.currentPlanKey || account?.plan || "base",
+          status: inv.status || inv.estado || inv.mpStatus || "approved",
+          origen: "Mercado Pago",
+        };
+      });
+
     // Deduplicar por paymentId
     const seen = new Set();
-    const todosPagos = [...pagosDesdeAccounts, ...pagosDesdeInvoices]
+    const todosPagos = [...pagosDesdeInvoices]
       .filter(p => { if (seen.has(p.paymentId || p.id)) return false; seen.add(p.paymentId || p.id); return true; })
       .sort((a, b) => b.fecha - a.fecha);
 
@@ -270,9 +280,13 @@ function PantallaAdmin({ showToast, scrollRef }) {
     const pagosEsteMes = todosPagos.filter(p => p.fecha >= mesInicioMs).length;
 
     // Tiempo promedio trial ? pago (en días)
-    const tiemposConversion = accounts
-      .filter(a => a.ultimoPago?.fecha && a.createdAt)
-      .map(a => (Number(a.ultimoPago.fecha) - Number(a.createdAt)) / (1000 * 60 * 60 * 24));
+    const tiemposConversion = todosPagos
+      .map(p => {
+        const account = accountByUid.get(p.uid || "");
+        const createdAt = normalizeDateMs(account?.createdAt);
+        return createdAt && p.fecha ? (p.fecha - createdAt) / (1000 * 60 * 60 * 24) : null;
+      })
+      .filter(d => Number.isFinite(d) && d >= 0);
     const promDias = tiemposConversion.length > 0
       ? Math.round(tiemposConversion.reduce((s, d) => s + d, 0) / tiemposConversion.length)
       : null;
@@ -299,7 +313,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
     });
     const activoSinFactura = invoices.length > 0 ? accounts.filter(a => {
       if (a.estado !== "activo" || isPlatformAdminUser(a)) return false;
-      return !invoices.some(inv => inv.uid === a.uid);
+      return !todosPagos.some(p => p.uid === a.uid);
     }) : [];
     const billingAlerts = { pagoSinActivacion, vencidoConPagoReciente, activoSinFactura };
     const totalBillingAlerts = pagoSinActivacion.length + vencidoConPagoReciente.length;
@@ -912,6 +926,9 @@ function PantallaAdmin({ showToast, scrollRef }) {
 
           <Card>
             <SectionTitle>Historial de pagos</SectionTitle>
+            <p className="mb-3 text-[10px] font-bold leading-relaxed text-zinc-400">
+              Solo se listan cobros aprobados por Mercado Pago con ID numerico real. Cambios manuales de plan, preferencias, intentos pendientes, rechazados o con error no se suman a la caja.
+            </p>
             {stats.todosPagos.length === 0 && (
               <p className="text-sm font-black text-zinc-500">No hay pagos registrados todavía.</p>
             )}
@@ -923,7 +940,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
                       <p className="text-sm font-black text-zinc-800 truncate">{pago.email || pago.uid}</p>
                       <p className="text-[10px] font-bold text-zinc-400 mt-0.5">
                         {pago.fecha ? new Date(pago.fecha).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" }) : "Sin fecha"}
-                        {" · "}Plan {pago.plan || "base"}
+                        {" · "}Plan {pago.plan || "base"}{" · "}{pago.origen || "Mercado Pago"}
                       </p>
                       {pago.paymentId && (
                         <p className="text-[9px] font-bold text-zinc-400 mt-0.5 break-all">MP: {pago.paymentId}</p>

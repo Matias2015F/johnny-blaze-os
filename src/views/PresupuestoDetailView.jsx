@@ -3,8 +3,8 @@ import {
   ArrowLeft, CheckCircle2, ClipboardList, MessageCircle, Pause, Play,
   Plus, ThumbsDown, ThumbsUp, Trash2, Wrench, X,
 } from "lucide-react";
-import { LS } from "../lib/storage.js";
-import { CONFIG_DEFAULT } from "../lib/constants.js";
+import { LS, generateId } from "../lib/storage.js";
+import { CONFIG_DEFAULT, TEXTO_CIERRE_RECHAZO, hoyEstable } from "../lib/constants.js";
 import { formatMoney } from "../utils/format.js";
 import { generarMensajePresupuestoConDatos, abrirWhatsApp, normalizarTelWA } from "../lib/messages.js";
 import { iniciarCronometro, pausarCronometro, obtenerTiempoActual, formatTiempo, formatTiempoCorto } from "../lib/timer.js";
@@ -54,7 +54,7 @@ function CronDisplay({ pres }) {
 }
 
 // ── Modal rechazo ─────────────────────────────────────────────────────────────
-function ModalRechazo({ presupuesto, bike, client, config, onConfirm, onCancel }) {
+function ModalRechazoLegacy({ presupuesto, bike, client, config, onConfirm, onCancel }) {
   const [motivo, setMotivo] = useState("");
 
   const tiempoHoras = obtenerTiempoActual(presupuesto);
@@ -159,6 +159,194 @@ function ModalRechazo({ presupuesto, bike, client, config, onConfirm, onCancel }
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
+const parseMonto = (value) => {
+  const limpio = String(value ?? "").replace(/\./g, "").replace(",", ".");
+  const n = Number(limpio);
+  return Number.isFinite(n) ? n : 0;
+};
+
+function ModalRechazo({ presupuesto, bike, client, config, onConfirm, onCancel }) {
+  const [motivo, setMotivo] = useState("");
+  const [modoExtra, setModoExtra] = useState((config.presupuestoConfig?.rechazoExtraMonto || 0) > 0 ? "fijo" : "porcentaje");
+  const [extraPct, setExtraPct] = useState(String(config.presupuestoConfig?.rechazoExtraPct ?? 0));
+  const [extraMonto, setExtraMonto] = useState(config.presupuestoConfig?.rechazoExtraMonto ? String(config.presupuestoConfig.rechazoExtraMonto) : "");
+  const [metodo, setMetodo] = useState("efectivo");
+  const [comprobante, setComprobante] = useState("");
+  const [error, setError] = useState("");
+
+  const tiempoHoras = obtenerTiempoActual(presupuesto);
+  const { tareas = [], repuestos = [], insumos = [], total = 0, numeroPresupuesto } = presupuesto;
+  const valorHora = Number(config.valorHoraCliente || CONFIG_DEFAULT.valorHoraCliente || config.valorHoraInterno || 15000);
+  const baseManoObra = Math.max(0, Math.round(tiempoHoras * valorHora));
+  const extraCalculado = modoExtra === "porcentaje"
+    ? Math.round(baseManoObra * (Math.max(0, parseMonto(extraPct)) / 100))
+    : Math.max(0, Math.round(parseMonto(extraMonto)));
+  const totalCobrado = Math.max(0, baseManoObra + extraCalculado);
+
+  const generarMensajeCierre = () => {
+    const nombreTaller = config.nombreTaller || "Moto Gestion";
+    const fecha = new Date().toLocaleString("es-AR");
+    const patente = bike?.patente || "---";
+    const motoLabel = `${bike?.marca || ""} ${bike?.modelo || ""}`.trim() || "Moto";
+    const clienteNombre = client?.nombre || "Cliente";
+    const tiempoLabel = tiempoHoras > 0 ? formatTiempoCorto(tiempoHoras) : null;
+
+    let msg = `*${numeroPresupuesto || "Presupuesto"} - RECHAZADO / POSPUESTO*`;
+    msg += `\n${fecha}`;
+    msg += `\n\n*Taller:* ${nombreTaller}`;
+    msg += `\n*Cliente:* ${clienteNombre}`;
+    msg += `\n*Moto:* ${motoLabel} (${patente})`;
+
+    if (tareas.length) {
+      msg += `\n\n*Trabajos presupuestados no realizados:*`;
+      tareas.forEach((t) => { msg += `\n- ${t.nombre}`; });
+    }
+    if (repuestos.length) {
+      msg += `\n\n*Repuestos presupuestados no cambiados:*`;
+      repuestos.forEach((r) => { msg += `\n- ${r.cantidad > 1 ? `${r.cantidad}x ` : ""}${r.nombre}`; });
+    }
+    if (insumos.length) {
+      msg += `\n\n*Insumos/terceros presupuestados:*`;
+      insumos.forEach((r) => { msg += `\n- ${r.cantidad > 1 ? `${r.cantidad}x ` : ""}${r.nombre}`; });
+    }
+
+    if (total > 0) msg += `\n\n*Presupuesto original no cobrado:* ${formatMoney(total)}`;
+    if (tiempoLabel) msg += `\n*Tiempo de diagnostico/presupuesto:* ${tiempoLabel}`;
+    msg += `\n*Monto real a cobrar por diagnostico y cierre:* ${formatMoney(totalCobrado)}`;
+    if (motivo.trim()) msg += `\n\n*Motivo:* ${motivo.trim()}`;
+    msg += `\n\nNo se realizan los trabajos presupuestados ni se cambian repuestos, por lo tanto este cierre no tiene garantia. Si el cliente vuelve a futuro, el presupuesto puede ajustarse segun precios, repuestos disponibles y estado de la moto.`;
+    msg += `\n\n_${nombreTaller}_`;
+    return msg;
+  };
+
+  const confirmarCierre = (enviarWhatsapp = false) => {
+    if (totalCobrado <= 0) {
+      setError("Para cerrar por rechazo, carga tiempo de diagnostico o un monto fijo a cobrar.");
+      return;
+    }
+
+    if (enviarWhatsapp) {
+      const tel = client?.whatsapp || client?.tel || client?.telefono || "";
+      const telNorm = normalizarTelWA(tel);
+      if (telNorm) abrirWhatsApp(telNorm, generarMensajeCierre());
+    }
+
+    onConfirm({
+      motivo: motivo.trim(),
+      metodo,
+      comprobante,
+      horasDiagnostico: tiempoHoras,
+      valorHora,
+      baseManoObra,
+      extraTipo: modoExtra,
+      extraPct: modoExtra === "porcentaje" ? Math.max(0, parseMonto(extraPct)) : 0,
+      extraMonto: extraCalculado,
+      totalCobrado,
+      observacion: TEXTO_CIERRE_RECHAZO,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-end">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative w-full max-h-[92vh] overflow-y-auto rounded-t-[2rem] bg-zinc-900 border-t border-zinc-700 shadow-2xl animate-in slide-in-from-bottom duration-300">
+        <div className="mx-auto max-w-[440px] p-6 space-y-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-red-400">Cliente rechaza / pospone</h3>
+              <p className="mt-1 text-[10px] font-bold text-zinc-500">Cobra diagnostico, cierra sin garantia y genera comprobante.</p>
+            </div>
+            <button onClick={onCancel} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-90">
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-700 bg-zinc-800 p-4 space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Presupuesto original</p>
+            <p className="text-xs font-black text-white">{bike?.patente} - {bike?.marca} {bike?.modelo}</p>
+            <p className="text-[10px] font-bold text-zinc-400">{client?.nombre}</p>
+            {tareas.length > 0 && <p className="text-[10px] font-bold text-zinc-500">{tareas.length} trabajo{tareas.length !== 1 ? "s" : ""} presupuestado{tareas.length !== 1 ? "s" : ""}</p>}
+            {repuestos.length > 0 && <p className="text-[10px] font-bold text-zinc-500">{repuestos.length} repuesto{repuestos.length !== 1 ? "s" : ""} presupuestado{repuestos.length !== 1 ? "s" : ""}</p>}
+            {total > 0 && <p className="text-[10px] font-bold text-zinc-500">No se cobra este total: {formatMoney(total)}</p>}
+          </div>
+
+          <div className="rounded-3xl border border-orange-500/20 bg-orange-500/10 p-4 space-y-4">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-orange-300">Diagnostico facturable</p>
+              <p className="mt-1 text-[10px] font-bold text-zinc-400">Se cobra aunque el cliente no haga la reparacion.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-zinc-950/70 p-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Tiempo</p>
+                <p className="text-lg font-black text-white">{formatTiempoCorto(tiempoHoras)}</p>
+              </div>
+              <div className="rounded-2xl bg-zinc-950/70 p-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Base mano de obra</p>
+                <p className="text-lg font-black text-emerald-300">{formatMoney(baseManoObra)}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setModoExtra("porcentaje")} className={`rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest ${modoExtra === "porcentaje" ? "bg-orange-600 text-white" : "bg-zinc-800 text-zinc-400"}`}>
+                % extra
+              </button>
+              <button type="button" onClick={() => setModoExtra("fijo")} className={`rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest ${modoExtra === "fijo" ? "bg-orange-600 text-white" : "bg-zinc-800 text-zinc-400"}`}>
+                Monto fijo
+              </button>
+            </div>
+            {modoExtra === "porcentaje" ? (
+              <label className="block space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Extra por dificultad / armado / gastos</span>
+                <input type="text" inputMode="decimal" value={extraPct} onChange={(e) => setExtraPct(e.target.value.replace(/[^\d.,]/g, ""))} className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-center text-lg font-black text-white outline-none focus:border-orange-500" placeholder="0" />
+              </label>
+            ) : (
+              <label className="block space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Monto fijo acordado</span>
+                <input type="text" inputMode="decimal" value={extraMonto} onChange={(e) => setExtraMonto(e.target.value.replace(/[^\d.,]/g, ""))} className="w-full rounded-2xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-center text-lg font-black text-white outline-none focus:border-orange-500" placeholder="0" />
+              </label>
+            )}
+            <div className="rounded-2xl bg-emerald-500/10 p-4">
+              <p className="text-[9px] font-black uppercase tracking-widest text-emerald-300">Total real a cobrar</p>
+              <p className="mt-1 text-2xl font-black text-emerald-200">{formatMoney(totalCobrado)}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              ["efectivo", "Efectivo"],
+              ["transferencia", "Transferencia"],
+              ["mercadopago", "Mercado Pago"],
+              ["otro", "Otro"],
+            ].map(([id, label]) => (
+              <button key={id} type="button" onClick={() => setMetodo(id)} className={`rounded-2xl border px-2 py-3 text-[9px] font-black uppercase tracking-widest ${metodo === id ? "border-orange-500 bg-orange-600 text-white" : "border-zinc-700 bg-zinc-800 text-zinc-400"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <label className="block space-y-1">
+            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Nro. comprobante de pago (opcional)</span>
+            <input type="text" value={comprobante} onChange={(e) => setComprobante(e.target.value)} className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm font-bold text-white outline-none focus:border-orange-500" placeholder="Transferencia, MP, recibo..." />
+          </label>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Motivo del rechazo (opcional)</label>
+            <textarea className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm font-bold text-white outline-none focus:border-red-500 resize-none" rows={3} placeholder="Ej: precio, plazo, cliente decide no reparar..." value={motivo} onChange={e => setMotivo(e.target.value)} />
+          </div>
+
+          {error && <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-[10px] font-black uppercase tracking-widest text-red-300">{error}</div>}
+
+          <button onClick={() => confirmarCierre(true)} className="w-full flex items-center justify-center gap-2 rounded-[2rem] bg-emerald-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
+            <MessageCircle size={15} /> Avisar por WhatsApp y generar PDF
+          </button>
+          <button onClick={() => confirmarCierre(false)} className="w-full rounded-[2rem] border border-zinc-700 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-400 active:scale-95">
+            Generar PDF sin WhatsApp
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PresupuestoDetailView({
   presupuesto,
   bike,
@@ -167,6 +355,7 @@ export default function PresupuestoDetailView({
   onEliminar,
   setView,
   showToast,
+  setSelectedOrderId,
 }) {
   const [confirm, setConfirm] = useState(null);
   const [showRechazoModal, setShowRechazoModal] = useState(false);
@@ -214,12 +403,94 @@ export default function PresupuestoDetailView({
     showToast(`Presupuesto marcado como ${ESTADO_LABEL[nuevoEstado]}`);
   };
 
-  const handleRechazoConfirmado = (motivo) => {
+  const handleRechazoConfirmado = (cierre) => {
     setShowRechazoModal(false);
-    cambiarEstado("rechazado", {
-      motivoRechazo: motivo || "",
-      fechaRechazo: Date.now(),
+    const fecha = hoyEstable();
+    const hora = new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
+    const observacion = cierre.observacion || TEXTO_CIERRE_RECHAZO;
+    const pago = {
+      id: generateId(),
+      fecha,
+      hora,
+      monto: cierre.totalCobrado,
+      metodo: cierre.metodo || "efectivo",
+      comprobante: cierre.comprobante || "",
+      tipo: "rechazo_presupuesto",
+      concepto: "Diagnostico por presupuesto rechazado o pospuesto",
+    };
+    const trabajoCierre = {
+      numeroTrabajo: `CIE-${numeroPresupuesto || id.slice(-6).toUpperCase()}`,
+      presupuestoId: id,
+      fechaIngreso: fecha,
+      fecha: fecha,
+      clientId: presupuesto.clientId,
+      bikeId: presupuesto.bikeId,
+      estado: "listo_para_emitir",
+      prioridad: "normal",
+      diagnostico: motivoConsulta || "Presupuesto rechazado o pospuesto.",
+      tareas,
+      repuestos,
+      insumos,
+      fletes,
+      total: cierre.totalCobrado,
+      costoFinal: cierre.totalCobrado,
+      pagos: [pago],
+      cierreTipo: "rechazo_cliente",
+      presupuestoOriginalTotal: total,
+      garantiaFinal: observacion,
+      vencimientoGarantia: "",
+      motivoRechazo: cierre.motivo || "",
+      cierreRechazo: {
+        fecha,
+        hora,
+        horasDiagnostico: Math.round((cierre.horasDiagnostico || 0) * 100) / 100,
+        valorHora: cierre.valorHora,
+        baseManoObra: cierre.baseManoObra,
+        extraTipo: cierre.extraTipo,
+        extraPct: cierre.extraPct,
+        extraMonto: cierre.extraMonto,
+        montoCobradoAlCerrar: cierre.totalCobrado,
+        totalCobrado: cierre.totalCobrado,
+        observacion,
+        motivo: cierre.motivo || "",
+        presupuestoOriginalTotal: total,
+      },
+      historial: [{
+        fecha: new Date().toISOString(),
+        de: estado,
+        a: "listo_para_emitir",
+        nota: "Presupuesto rechazado o pospuesto. Se cobra diagnostico facturable.",
+      }],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    const nuevoTrabajo = LS.addDoc("trabajos", trabajoCierre);
+    LS.addDoc("caja", {
+      fecha,
+      hora,
+      tipo: "ingreso",
+      concepto: `Diagnostico por rechazo ${bike?.patente || numeroPresupuesto || ""}`.trim(),
+      monto: cierre.totalCobrado,
+      metodo: cierre.metodo || "efectivo",
+      comprobante: cierre.comprobante || "",
+      orderId: nuevoTrabajo.id,
+      presupuestoId: id,
+      categoria: "rechazo_presupuesto",
     });
+    cambiarEstado("rechazado", {
+      cronometroActivo: false,
+      inicioCronometro: null,
+      motivoRechazo: cierre.motivo || "",
+      fechaRechazo: Date.now(),
+      cierreTipo: "rechazo_cliente",
+      cierreTrabajoId: nuevoTrabajo.id,
+      cierreRechazo: trabajoCierre.cierreRechazo,
+    });
+    showToast("Cierre por rechazo registrado. Generando comprobante");
+    if (typeof setSelectedOrderId === "function") {
+      setSelectedOrderId(nuevoTrabajo.id);
+      setView("prePdf");
+    }
   };
 
   const compartirWhatsApp = () => {
