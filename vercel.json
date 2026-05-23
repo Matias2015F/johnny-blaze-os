@@ -62,10 +62,6 @@
   ],
   "rewrites": [
     {
-      "source": "/jms/(.*)",
-      "destination": "/api/noop"
-    },
-    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },

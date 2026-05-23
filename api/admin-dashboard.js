@@ -54,10 +54,11 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const [usuariosSnap, invoicesSnap, ticketsSnap, settingsSnap] = await Promise.all([
+    const [usuariosSnap, invoicesSnap, ticketsSnap, ratingsSnap, settingsSnap] = await Promise.all([
       db.collection("usuarios").get(),
       db.collectionGroup("billingInvoices").get(),
       db.collection("soporteTickets").get(),
+      db.collection("ratings").orderBy("createdAt", "desc").limit(100).get(),
       db.collection("admin_settings").doc("global").get(),
     ]);
 
@@ -72,6 +73,7 @@ module.exports = async function handler(req, res) {
       });
     });
     const tickets = ticketsSnap.docs.map((doc) => serializeFirestoreValue({ id: doc.id, ...doc.data() }));
+    const ratings = ratingsSnap.docs.map((doc) => serializeFirestoreValue({ id: doc.id, ...doc.data() }));
     const settings = settingsSnap.exists ? serializeFirestoreValue(settingsSnap.data()) : null;
 
     return res.status(200).json({
@@ -79,6 +81,7 @@ module.exports = async function handler(req, res) {
       accounts,
       invoices,
       tickets,
+      ratings,
       settings,
       loadedAt: Date.now(),
     });

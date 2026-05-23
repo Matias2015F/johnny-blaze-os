@@ -2,7 +2,7 @@
 import {
   Download, LogOut, Trash2, Database, Info, Shield,
   RotateCcw, FileSpreadsheet, ChevronRight, ChevronLeft, BarChart2,
-  Settings, HardDrive, Wrench, Plus, Minus,
+  Settings, HardDrive, Wrench, Plus, Minus, Star,
 } from "lucide-react";
 import { LS, useCollection, migrateFromRootCollections, forceSyncCacheToFirestore, clearFirestoreData } from "../lib/storage.js";
 import { auth, db } from "../firebase.js";
@@ -20,7 +20,7 @@ import { formatMoney } from "../utils/format.js";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
 import { runIntegrityCheckFromCache } from "../lib/integrityTest.js";
-import { collection, doc, getDoc, getDocs, query, limit, orderBy, setDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, getDocsFromServer, query, limit, orderBy, where, setDoc } from "firebase/firestore";
 
 const DIFICULTADES = [
   { key: "facil",      label: "Fácil",      color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
@@ -30,11 +30,12 @@ const DIFICULTADES = [
 ];
 
 const TABS = [
-  { id: "resumen", label: "Resumen",  Icon: BarChart2 },
-  { id: "taller",  label: "Taller",   Icon: Wrench },
-  { id: "datos",   label: "Datos",    Icon: HardDrive },
-  { id: "sistema", label: "Sistema",  Icon: Settings },
-  { id: "admin",   label: "Admin",    Icon: Shield },
+  { id: "resumen",    label: "Resumen",  Icon: BarChart2 },
+  { id: "taller",     label: "Taller",   Icon: Wrench },
+  { id: "datos",      label: "Datos",    Icon: HardDrive },
+  { id: "sistema",    label: "Sistema",  Icon: Settings },
+  { id: "reputacion", label: "Calific.", Icon: Star },
+  { id: "admin",      label: "Admin",    Icon: Shield },
 ];
 
 // Stepper component
@@ -124,11 +125,12 @@ const FEATURE_LABELS = {
 };
 
 const ADMIN_TABS = [
-  { id: "dashboard",  label: "Resumen" },
-  { id: "planes",     label: "Planes" },
-  { id: "usuarios",   label: "Usuarios" },
-  { id: "cobros",     label: "Cobros" },
-  { id: "consultas",  label: "Consultas" },
+  { id: "dashboard",      label: "Resumen" },
+  { id: "planes",         label: "Planes" },
+  { id: "usuarios",       label: "Usuarios" },
+  { id: "cobros",         label: "Cobros" },
+  { id: "consultas",      label: "Consultas" },
+  { id: "calificaciones", label: "Calificac." },
 ];
 
 async function cargarPanelAdminDesdeServidor() {
@@ -177,6 +179,8 @@ function PantallaAdmin({ showToast, scrollRef }) {
   const [savingSettings, setSavingSettings] = React.useState(false);
   const [accionandoOther, setAccionandoOther] = React.useState(null);
   const [settingsConfirmOpen, setSettingsConfirmOpen] = React.useState(false);
+  const [ratings, setRatings] = React.useState([]);
+  const [filterRating, setFilterRating] = React.useState("pendiente");
   const user = auth.currentUser;
   const isPlatformAdmin =
     PLATFORM_ADMIN_EMAILS.includes((user?.email || "").toLowerCase()) ||
@@ -209,6 +213,10 @@ function PantallaAdmin({ showToast, scrollRef }) {
       setInvoices(sortByDateDesc(adminData.invoices || [], "paidAt", "fecha", "createdAt", "updatedAt"));
       setTickets(sortByDateDesc(adminData.tickets || [], "createdAt", "updatedAt"));
       setSettings(normalizeAdminSettings(adminData.settings || DEFAULT_ADMIN_SETTINGS));
+      const ratingSnap = await getDocsFromServer(
+        query(collection(db, "ratings"), orderBy("creadoEn", "desc"), limit(200))
+      ).catch(() => ({ docs: [] }));
+      setRatings(ratingSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) {
       console.error(e);
       setLoadError(`No se pudo cargar el panel administrador: ${e?.message || String(e)}`);
@@ -1060,6 +1068,117 @@ function PantallaAdmin({ showToast, scrollRef }) {
           </Card>
         </div>
       )}
+
+      {/* Calificaciones */}
+      {adminTab === "calificaciones" && (() => {
+        const FILTER_TABS = [
+          { id: "pendiente",  label: "Pendientes" },
+          { id: "aprobada",   label: "Aprobadas" },
+          { id: "rechazada",  label: "Rechazadas" },
+          { id: "todas",      label: "Todas" },
+        ];
+        const shown = filterRating === "todas"
+          ? ratings
+          : ratings.filter(r => (r.status || "pendiente") === filterRating);
+
+        const moderarRating = async (ratingId, decision) => {
+          const key = `mod-${ratingId}`;
+          setAccionandoOther(key);
+          try {
+            const token = await auth.currentUser.getIdToken(true);
+            const res = await fetch("/api/moderate-rating", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ ratingId, decision }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Error al moderar");
+            setRatings(prev => prev.map(r => r.id === ratingId ? { ...r, status: data.status, reputationWeight: data.reputationWeight } : r));
+            showToast(decision === "aprobar" ? "Calificacion aprobada" : "Calificacion rechazada");
+          } catch (err) {
+            showToast(err.message || "No se pudo moderar");
+          } finally {
+            setAccionandoOther(null);
+          }
+        };
+
+        return (
+          <div className="space-y-3">
+            <Card>
+              <SectionTitle>Moderar calificaciones</SectionTitle>
+              <div className="flex gap-2 flex-wrap">
+                {FILTER_TABS.map(ft => (
+                  <button
+                    key={ft.id}
+                    onClick={() => setFilterRating(ft.id)}
+                    className={`rounded-2xl px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${filterRating === ft.id ? "bg-orange-600 text-white" : "bg-zinc-100 text-zinc-500"}`}
+                  >
+                    {ft.label}
+                    {ft.id !== "todas" && (
+                      <span className="ml-1 opacity-60">
+                        ({ratings.filter(r => (r.status || "pendiente") === ft.id).length})
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </Card>
+            {shown.length === 0 && (
+              <div className="text-center text-xs font-bold text-zinc-400 py-8">Sin calificaciones en esta categoria</div>
+            )}
+            {shown.map(r => {
+              const score = [r.scoreAtencion, r.scoreClaridad, r.scoreTrabajo, r.scoreCumplimiento].filter(Boolean);
+              const avg = score.length ? (score.reduce((a, b) => a + b, 0) / score.length).toFixed(1) : null;
+              const statusColor = r.status === "aprobada" ? "text-green-600 bg-green-50" : r.status === "rechazada" ? "text-red-500 bg-red-50" : "text-orange-600 bg-orange-50";
+              const isMod = accionandoOther === `mod-${r.id}`;
+              return (
+                <Card key={r.id}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-xl ${statusColor}`}>
+                      {r.status || "pendiente"}
+                    </span>
+                    {avg && <span className="text-xs font-black text-orange-600">{avg} / 5</span>}
+                  </div>
+                  <p className="text-[10px] font-bold text-zinc-500 mb-1">
+                    Taller: {r.uidTaller?.slice(0, 8)}... · {r.creadoEn ? new Date(r.creadoEn).toLocaleDateString("es-AR") : "?"}
+                  </p>
+                  {r.comentario && (
+                    <p className="text-xs font-bold text-zinc-700 italic mb-2 leading-relaxed">"{r.comentario}"</p>
+                  )}
+                  <div className="flex gap-2 text-[9px] font-black text-zinc-400 mb-3">
+                    {r.scoreAtencion && <span>Aten: {r.scoreAtencion}</span>}
+                    {r.scoreClaridad && <span>Clar: {r.scoreClaridad}</span>}
+                    {r.scoreTrabajo && <span>Trab: {r.scoreTrabajo}</span>}
+                    {r.scoreCumplimiento && <span>Plazo: {r.scoreCumplimiento}</span>}
+                    {r.recomienda !== undefined && <span>{r.recomienda ? "Recomienda" : "No recomienda"}</span>}
+                  </div>
+                  {(r.status || "pendiente") === "pendiente" && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => moderarRating(r.id, "aprobar")}
+                        disabled={isMod}
+                        className="flex-1 rounded-2xl bg-green-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-40"
+                      >
+                        {isMod ? "..." : "Aprobar"}
+                      </button>
+                      <button
+                        onClick={() => moderarRating(r.id, "rechazar")}
+                        disabled={isMod}
+                        className="flex-1 rounded-2xl bg-red-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-40"
+                      >
+                        {isMod ? "..." : "Rechazar"}
+                      </button>
+                    </div>
+                  )}
+                  {r.moderationReason && (
+                    <p className="text-[9px] font-bold text-zinc-400 mt-2">Motivo: {r.moderationReason}</p>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       {/* Botón actualizar */}
       <button onClick={cargar} className="w-full mt-2 rounded-2xl bg-zinc-100 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-500 active:scale-95">
@@ -2725,6 +2844,173 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
   );
 }
 
+// PANTALLA: Reputacion
+const CATS_REP = [
+  { key: "scoreAtencion",     label: "Atencion" },
+  { key: "scoreClaridad",     label: "Claridad ppto." },
+  { key: "scoreTrabajo",      label: "Calidad trabajo" },
+  { key: "scoreCumplimiento", label: "Plazos" },
+];
+
+function StarBar({ score }) {
+  if (!score) return <span className="text-zinc-600 text-xs">—</span>;
+  const n = Math.round(score);
+  return (
+    <span className="text-orange-500 tracking-tight text-sm">
+      {"★".repeat(n)}
+      <span className="text-zinc-700">{"★".repeat(5 - n)}</span>
+      <span className="text-zinc-400 text-[10px] ml-1">{Number(score).toFixed(1)}</span>
+    </span>
+  );
+}
+
+function PantallaReputacion() {
+  const [ratings, setRatings] = React.useState(null);
+  const [err, setErr] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!auth.currentUser) return;
+    getDocsFromServer(
+      query(
+        collection(db, "ratings"),
+        where("uidTaller", "==", auth.currentUser.uid),
+        orderBy("creadoEn", "desc"),
+        limit(60),
+      ),
+    )
+      .then((snap) => setRatings(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+      .catch((e) => setErr(e.message));
+  }, []);
+
+  if (ratings === null && !err) {
+    return (
+      <div className="p-6 flex items-center gap-2 text-zinc-400 text-sm">
+        <Star size={16} className="animate-pulse text-orange-500" /> Cargando calificaciones...
+      </div>
+    );
+  }
+  if (err) {
+    return <div className="p-6 text-red-400 text-xs">Error al cargar: {err}</div>;
+  }
+
+  if (!ratings.length) {
+    return (
+      <div className="p-6 animate-in fade-in space-y-4">
+        <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Calificaciones</h2>
+        <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5">
+          <Star size={24} className="text-orange-500 mb-3" />
+          <p className="text-sm font-bold text-zinc-300 mb-1">Todavia no tenes calificaciones</p>
+          <p className="text-xs text-zinc-500">Cada comprobante PDF que emitas genera un QR unico. Cuando el cliente lo escanea puede calificarte en segundos, sin necesidad de app ni cuenta.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const avg = (key) => {
+    const vals = ratings.filter((r) => r[key] > 0).map((r) => r[key]);
+    return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+  };
+  const genAvg = () => {
+    const avgs = CATS_REP.map((c) => avg(c.key)).filter((v) => v !== null);
+    return avgs.length ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null;
+  };
+  const pctRecomienda = () => {
+    const con = ratings.filter((r) => r.recomienda !== undefined && r.recomienda !== null);
+    if (!con.length) return null;
+    return Math.round((con.filter((r) => r.recomienda === true || r.recomienda === "si").length / con.length) * 100);
+  };
+  const pendientes = ratings.filter((r) => !r.status || r.status === "pendiente_validacion").length;
+  const ga = genAvg();
+  const pr = pctRecomienda();
+
+  return (
+    <div className="animate-in fade-in pb-32 space-y-4">
+      <h2 className="text-3xl font-black uppercase tracking-tighter text-white px-2">Calificaciones</h2>
+
+      {/* Resumen top */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 text-center">
+          <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Total</p>
+          <p className="text-2xl font-black text-white mt-1">{ratings.length}</p>
+          <p className="text-[9px] text-zinc-500 mt-0.5">recibidas</p>
+        </div>
+        <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 text-center">
+          <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Promedio</p>
+          <p className="text-2xl font-black text-orange-500 mt-1">{ga !== null ? ga.toFixed(1) : "—"}</p>
+          <p className="text-[9px] text-zinc-500 mt-0.5">de 5 estrellas</p>
+        </div>
+        <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 text-center">
+          <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Recomienda</p>
+          <p className="text-2xl font-black text-green-500 mt-1">{pr !== null ? `${pr}%` : "—"}</p>
+          <p className="text-[9px] text-zinc-500 mt-0.5">de los clientes</p>
+        </div>
+        <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 text-center">
+          <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Pendientes</p>
+          <p className="text-2xl font-black text-yellow-500 mt-1">{pendientes}</p>
+          <p className="text-[9px] text-zinc-500 mt-0.5">por validar</p>
+        </div>
+      </div>
+
+      {/* Promedios por categoria */}
+      <div className="rounded-[2rem] bg-zinc-900 border border-zinc-800 p-5 space-y-3">
+        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Por categoria</p>
+        {CATS_REP.map((c) => {
+          const val = avg(c.key);
+          const pct = val ? (val / 5) * 100 : 0;
+          return (
+            <div key={c.key}>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wide">{c.label}</span>
+                <span className="text-[11px] font-black text-orange-500">{val !== null ? val.toFixed(1) : "—"}</span>
+              </div>
+              <div className="h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                <div className="h-full rounded-full bg-orange-500 transition-all duration-700" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Lista de calificaciones */}
+      <div className="space-y-3">
+        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-1">Historial</p>
+        {ratings.map((r) => {
+          const fecha = r.creadoEn?.toDate?.()?.toLocaleDateString("es-AR") || "";
+          const aprobada = r.status === "aprobada";
+          return (
+            <div key={r.id} className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {CATS_REP.map((c) => r[c.key] ? (
+                    <div key={c.key}>
+                      <p className="text-[8px] text-zinc-500 uppercase tracking-widest">{c.label}</p>
+                      <StarBar score={r[c.key]} />
+                    </div>
+                  ) : null)}
+                </div>
+                <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-full flex-shrink-0 ${aprobada ? "bg-green-900/60 text-green-400" : "bg-yellow-900/60 text-yellow-400"}`}>
+                  {aprobada ? "Aprobada" : "Pendiente"}
+                </span>
+              </div>
+              {r.comentario ? (
+                <p className="text-[11px] text-zinc-400 italic border-l-2 border-orange-500 pl-3 leading-relaxed">"{r.comentario}"</p>
+              ) : null}
+              <div className="flex items-center justify-between">
+                {r.recomienda !== undefined && (
+                  <p className="text-[9px] font-black uppercase text-zinc-500">
+                    {r.recomienda === true || r.recomienda === "si" ? "✓ Recomienda" : "✗ No recomienda"}
+                  </p>
+                )}
+                <p className="text-[8px] text-zinc-600 ml-auto">{r.numeroComprobante ? `${r.numeroComprobante} · ` : ""}{fecha}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function ConfigView({ setView, showToast, orders = [], bikes = [], clients = [], handleLogout, loadDemoData, clearAllData }) {
   const [activeTab, setActiveTab] = useState(() => window.localStorage.getItem("jbos_config_tab") || "resumen");
   const [cfg, setCfg] = useState(() => LS.getDoc("config", "global") || CONFIG_DEFAULT);
@@ -2782,8 +3068,9 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
       case "resumen": return <PantallaResumen orders={orders} caja={caja} />;
       case "taller":  return <PantallaTaller cfg={cfg} setCfg={setCfg} showToast={showToast} />;
       case "datos":   return <PantallaDatos orders={orders} bikes={bikes} clients={clients} cfg={cfg} showToast={showToast} bkpEstado={bkpEstado} setBkpEstado={setBkpEstado} fileInputRef={fileInputRef} handleRestaurarArchivo={handleRestaurarArchivo} handleRestaurarAuto={handleRestaurarAuto} />;
-      case "sistema": return <PantallaSistema loadDemoData={loadDemoData} clearAllData={clearAllData} handleLogout={handleLogout} showToast={showToast} cfg={cfg} setCfg={setCfg} />;
-      case "admin":   return canSeeAdminTab ? <PantallaAdmin showToast={showToast} scrollRef={scrollRef} /> : <PantallaResumen orders={orders} caja={caja} />;
+      case "sistema":    return <PantallaSistema loadDemoData={loadDemoData} clearAllData={clearAllData} handleLogout={handleLogout} showToast={showToast} cfg={cfg} setCfg={setCfg} />;
+      case "reputacion": return <PantallaReputacion />;
+      case "admin":      return canSeeAdminTab ? <PantallaAdmin showToast={showToast} scrollRef={scrollRef} /> : <PantallaResumen orders={orders} caja={caja} />;
       default: return <PantallaResumen orders={orders} caja={caja} />;
     }
   };
