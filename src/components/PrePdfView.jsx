@@ -5,7 +5,7 @@ import { CONFIG_DEFAULT, PLANTILLAS_GARANTIA, TEXTO_CIERRE_RECHAZO } from "../li
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { trackEvent } from "../lib/telemetry.js";
 import { formatMoney } from "../utils/format.js";
-import { generateReceiptToken, crearPublicReceipt } from "../services/receiptService.js";
+import { generateReceiptToken, crearPublicReceipt } from "../services/receiptVerificationService.js";
 
 function calcularVencimiento(dias) {
   if (Number(dias) <= 0) return "";
@@ -47,11 +47,11 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
     const snapshotFinal = crearSnapshotVerificable(orderParaSnapshot, numeroComprobante, cliente, moto);
 
     // Generar token de verificación pública
-    let receiptToken = null;
-    let ratingExpiresAt = null;
+    let receiptToken = order.receiptToken || null;
+    let ratingExpiresAt = order.ratingExpiresAt || null;
     const puedeCalificar = !order.isDemo && !order.isTest && !order.excludedFromReputation;
 
-    if (puedeCalificar) {
+    if (puedeCalificar && !receiptToken) {
       const tokenCandidato = generateReceiptToken();
       const venceCalificacion = Date.now() + 30 * 24 * 60 * 60 * 1000;
       const telRaw = (cliente?.celular || cliente?.tel || cliente?.whatsapp || cliente?.telefono || "").replace(/\D/g, "");

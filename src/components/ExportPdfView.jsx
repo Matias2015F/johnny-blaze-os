@@ -343,7 +343,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                     bgColor="#FFFFFF"
                   />
                   <p className="mt-2 text-center text-[8px] font-bold text-zinc-700">
-                    {verifyUrl ? "ESCANEÁ PARA VERIFICAR Y CALIFICAR" : "ESCANEÁ PARA VALIDAR"}
+                    {verifyUrl ? "ESCANEÁ PARA VALIDAR Y CALIFICAR" : "ESCANEÁ PARA VALIDAR"}
                   </p>
                 </div>
               )}
