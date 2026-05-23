@@ -140,16 +140,19 @@ export async function sendTestNotification() {
     return { ok: false, permission: permiso };
   }
 
-  const NotificationApi = window.Notification;
-  const notification = new NotificationApi("Moto Gestión", {
-    body: "Notificacion de prueba. Si ves esto, las alertas del taller estan funcionando.",
-    silent: false,
-    tag: "jbos-test-notification",
-  });
+  if (!("serviceWorker" in navigator)) {
+    return { ok: false, permission: permiso, reason: "no-sw" };
+  }
 
-  notification.onclick = () => {
-    if (typeof window !== "undefined") window.focus();
-  };
+  const reg = await navigator.serviceWorker.ready;
+  await reg.showNotification("Moto Gestión", {
+    body: "Notificacion de prueba. Si ves esto, las alertas del taller estan funcionando.",
+    icon: "/brand/motogestion-icon.png",
+    badge: "/brand/motogestion-icon.png",
+    tag: "jbos-test-notification",
+    vibrate: [200, 100, 200],
+    data: { url: "/" },
+  });
 
   return { ok: true, permission: permiso };
 }

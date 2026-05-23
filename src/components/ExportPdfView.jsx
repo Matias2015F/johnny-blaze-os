@@ -58,6 +58,8 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
   const totalPagado = pagos.reduce((s, p) => s + (p.monto || 0), 0);
   const saldo = totalOrden - totalPagado;
   const numeroComprobante = extraData?.numeroComprobante || order.numeroComprobante || `COMP-${order.id.slice(-6).toUpperCase()}`;
+  const receiptToken = extraData?.receiptToken || order.receiptToken || null;
+  const verifyUrl = receiptToken ? `https://app.motogestion.ar/verificar/${receiptToken}` : null;
   const kilometraje = order.kmIngreso || order.km || bike?.kilometrajeActual || bike?.km;
   const proximoControl = order.proximoControl || null;
   const clienteNombre = normalizarNombrePersona(client?.nombre || snapshot.clienteNombre || "");
@@ -328,7 +330,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               {snapshot.hash && (
                 <div className="rounded-lg border-2 border-zinc-900 bg-white p-2 print:p-3" style={bloqueCompletoStyle}>
                   <QRCodeCanvas
-                    value={JSON.stringify({
+                    value={verifyUrl || JSON.stringify({
                       numeroComprobante,
                       orderId: order.id,
                       fecha: order.fechaComprobante,
@@ -340,7 +342,9 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                     fgColor="#000000"
                     bgColor="#FFFFFF"
                   />
-                  <p className="mt-2 text-center text-[8px] font-bold text-zinc-700">ESCANEÁ PARA VALIDAR</p>
+                  <p className="mt-2 text-center text-[8px] font-bold text-zinc-700">
+                    {verifyUrl ? "ESCANEÁ PARA VERIFICAR Y CALIFICAR" : "ESCANEÁ PARA VALIDAR"}
+                  </p>
                 </div>
               )}
             </div>
@@ -550,6 +554,19 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               </ul>
             )}
           </div>
+
+          {verifyUrl && (
+            <div className="border border-zinc-200 rounded-lg px-4 py-2" style={bloqueCompletoStyle}>
+              <p className="text-[8px] font-black uppercase tracking-wide text-zinc-500 mb-1">Verificar comprobante y calificar servicio</p>
+              <a
+                href={verifyUrl}
+                className="text-[8px] font-mono text-orange-700 break-all underline"
+                style={{ wordBreak: "break-all" }}
+              >
+                {verifyUrl}
+              </a>
+            </div>
+          )}
 
           <div className="flex items-start justify-between gap-4 border-t-2 border-zinc-300 pt-3" style={bloqueCompletoStyle}>
             <div>

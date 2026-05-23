@@ -1,13 +1,17 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
+import VerifyReceiptView from "./views/VerifyReceiptView.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import "./index.css";
 import { APP_BUILD } from "./generated/appVersion.js";
 
+const verifyMatch = window.location.pathname.match(/^\/verificar\/([a-zA-Z0-9_-]{10,})/);
+const VERIFY_TOKEN = verifyMatch ? verifyMatch[1] : null;
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <ErrorBoundary>
-    <App />
+    {VERIFY_TOKEN ? <VerifyReceiptView token={VERIFY_TOKEN} /> : <App />}
   </ErrorBoundary>
 );
 

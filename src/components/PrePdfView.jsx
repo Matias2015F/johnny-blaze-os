@@ -5,6 +5,7 @@ import { CONFIG_DEFAULT, PLANTILLAS_GARANTIA, TEXTO_CIERRE_RECHAZO } from "../li
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { trackEvent } from "../lib/telemetry.js";
 import { formatMoney } from "../utils/format.js";
+import { generateReceiptToken, crearPublicReceipt } from "../services/receiptService.js";
 
 function calcularVencimiento(dias) {
   if (Number(dias) <= 0) return "";
@@ -28,7 +29,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
   const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
   const saldo = totalOrden - totalPagado;
 
-  const irAlPdf = () => {
+  const irAlPdf = async () => {
     if (saldo > 0) return;
 
     const numeroComprobante = generarNumeroComprobante(order.id);
@@ -45,6 +46,34 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
     };
     const snapshotFinal = crearSnapshotVerificable(orderParaSnapshot, numeroComprobante, cliente, moto);
 
+    // Generar token de verificación pública
+    let receiptToken = null;
+    let ratingExpiresAt = null;
+    const puedeCalificar = !order.isDemo && !order.isTest && !order.excludedFromReputation;
+
+    if (puedeCalificar) {
+      const tokenCandidato = generateReceiptToken();
+      const venceCalificacion = Date.now() + 30 * 24 * 60 * 60 * 1000;
+      const telRaw = (cliente?.celular || cliente?.tel || cliente?.whatsapp || cliente?.telefono || "").replace(/\D/g, "");
+      const phoneLast4 = telRaw.length >= 4 ? telRaw.slice(-4) : null;
+
+      try {
+        await crearPublicReceipt({
+          order,
+          token: tokenCandidato,
+          hash: snapshotFinal.hash,
+          numeroComprobante,
+          config,
+          moto,
+          phoneLast4,
+        });
+        receiptToken = tokenCandidato;
+        ratingExpiresAt = venceCalificacion;
+      } catch (error) {
+        console.error("No se pudo crear el comprobante publico verificable", error);
+      }
+    }
+
     trackEvent("emitir_comprobante", {
       screen: "prePdf",
       entityType: "trabajo",
@@ -60,6 +89,10 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
       garantiaFinal,
       vencimientoGarantia: vencimientoFinal,
       snapshotFinal,
+      receiptToken,
+      ratingEnabled: !!receiptToken,
+      ratingUsed: false,
+      ratingExpiresAt,
       aprobacionCliente: {
         fecha: new Date().toISOString(),
         metodo: order.aprobadoPor || "manual",
@@ -79,6 +112,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
       vencimientoGarantia: vencimientoFinal,
       numeroComprobante,
       tipoCierre: esRechazo ? "rechazo_cliente" : "",
+      receiptToken,
       qrData: {
         numeroComprobante,
         orderId: order.id,

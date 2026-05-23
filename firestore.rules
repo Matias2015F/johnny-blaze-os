@@ -117,5 +117,27 @@ service cloud.firestore {
       allow read: if isPlatformAdmin() || isOwner(uid);
       allow create, update, delete: if isPlatformAdmin();
     }
+
+    // Comprobantes públicos verificables
+    match /publicReceipts/{token} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.uidTaller == request.auth.uid;
+      allow update: if isPlatformAdmin();
+      allow delete: if isPlatformAdmin();
+    }
+
+    // Secretos privados del comprobante, usados solo por el backend para validar
+    // los ultimos 4 digitos del telefono sin exponer hashes publicamente.
+    match /publicReceiptSecrets/{token} {
+      allow create: if signedIn() && request.resource.data.uidTaller == request.auth.uid;
+      allow read, update, delete: if isPlatformAdmin();
+    }
+
+    // Calificaciones de clientes
+    match /ratings/{ratingId} {
+      allow create: if isPlatformAdmin();
+      allow read: if (signedIn() && resource.data.uidTaller == request.auth.uid) || isPlatformAdmin();
+      allow update, delete: if isPlatformAdmin();
+    }
   }
 }

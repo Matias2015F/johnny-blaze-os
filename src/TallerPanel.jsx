@@ -878,8 +878,8 @@ export default function TallerPanel({ modoLectura = false }) {
       )}
 
       {toastMessage && (
-        <div className="fixed inset-x-0 bottom-[calc(8rem+env(safe-area-inset-bottom))] z-[100] flex justify-center px-4 pointer-events-none">
-          <div className="w-full max-w-sm rounded-3xl bg-white px-5 py-4 text-center text-xs font-black uppercase leading-relaxed text-black shadow-2xl break-words animate-bounce">
+        <div className="fixed inset-x-0 top-4 z-[100] flex justify-center px-4 pointer-events-none">
+          <div className="w-full max-w-sm rounded-3xl bg-white px-5 py-4 text-center text-xs font-black uppercase leading-relaxed text-black shadow-2xl break-words animate-in fade-in slide-in-from-top-2">
             {toastMessage}
           </div>
         </div>

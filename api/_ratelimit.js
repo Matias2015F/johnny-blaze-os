@@ -9,6 +9,7 @@ const LIMITS = {
   "mp-create-preference": { max: 10,  windowMs:  5 * 60 * 1000 },
   "send-welcome":         { max: 5,   windowMs: 60 * 60 * 1000 },
   "push-subscribe":       { max: 20,  windowMs: 60 * 60 * 1000 },
+  "submit-rating":        { max: 12,  windowMs:       60 * 1000 },
   "mp-diagnose":          { max: 5,   windowMs:       60 * 1000 },
   "mp-webhook":           { max: 200, windowMs:       60 * 1000 },
   default:                { max: 60,  windowMs:       60 * 1000 },
