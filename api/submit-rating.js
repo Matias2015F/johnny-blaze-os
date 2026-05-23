@@ -4,8 +4,8 @@ const { applyRateLimit } = require("./_ratelimit.js");
 
 function parseBody(req) {
   if (!req.body) return {};
-  if (Buffer.isBuffer(req.body)) return JSON.parse(req.body.toString("utf8"));
-  if (typeof req.body === "string") return JSON.parse(req.body);
+  if (Buffer.isBuffer(req.body)) return JSON.parse(req.body.toString("utf8").replace(/^\uFEFF/, "").trim());
+  if (typeof req.body === "string") return JSON.parse(req.body.replace(/^\uFEFF/, "").trim());
   return req.body;
 }
 
