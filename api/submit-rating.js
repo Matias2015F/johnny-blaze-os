@@ -2,11 +2,30 @@ const { createHash } = require("crypto");
 const { db } = require("./_firebase-admin.js");
 const { applyRateLimit } = require("./_ratelimit.js");
 
-function parseBody(req) {
-  if (!req.body) return {};
-  if (Buffer.isBuffer(req.body)) return JSON.parse(req.body.toString("utf8").replace(/^\uFEFF/, "").trim());
-  if (typeof req.body === "string") return JSON.parse(req.body.replace(/^\uFEFF/, "").trim());
-  return req.body;
+function parseJsonText(text) {
+  const clean = String(text || "").replace(/^\uFEFF/, "").trim();
+  try {
+    return JSON.parse(clean);
+  } catch {
+    const start = clean.indexOf("{");
+    const end = clean.lastIndexOf("}");
+    if (start >= 0 && end > start) return JSON.parse(clean.slice(start, end + 1));
+    throw new Error("JSON invalido");
+  }
+}
+
+async function readRawBody(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(Buffer.from(chunk));
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+async function parseBody(req) {
+  if (Buffer.isBuffer(req.body)) return parseJsonText(req.body.toString("utf8"));
+  if (typeof req.body === "string") return parseJsonText(req.body);
+  if (req.body && typeof req.body === "object") return req.body;
+  const raw = await readRawBody(req);
+  return raw ? parseJsonText(raw) : {};
 }
 
 function hashPhoneLast4(last4, token) {
@@ -46,7 +65,7 @@ module.exports = async function handler(req, res) {
 
   let body;
   try {
-    body = parseBody(req);
+    body = await parseBody(req);
   } catch {
     return res.status(400).json({ ok: false, error: "Solicitud invalida." });
   }
