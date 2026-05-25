@@ -46,6 +46,23 @@ function ErrorCard({ title, text, icon = "!" }) {
   );
 }
 
+function getScoreLabels(documentType) {
+  if (documentType === "diagnostico_presupuesto_cerrado") {
+    return [
+      { key: "atencion",     label: "Atención recibida" },
+      { key: "claridad",     label: "Claridad del diagnóstico" },
+      { key: "trabajo",      label: "Claridad del presupuesto" },
+      { key: "cumplimiento", label: "Transparencia del cierre" },
+    ];
+  }
+  return [
+    { key: "atencion",     label: "Atención recibida" },
+    { key: "claridad",     label: "Claridad del presupuesto" },
+    { key: "trabajo",      label: "Calidad del trabajo" },
+    { key: "cumplimiento", label: "Cumplimiento de lo acordado" },
+  ];
+}
+
 export default function VerifyReceiptView({ token }) {
   const [estado, setEstado] = useState("cargando");
   const [receipt, setReceipt] = useState(null);
@@ -251,11 +268,20 @@ export default function VerifyReceiptView({ token }) {
 
             {estado === "verificado" && fase === "verificacion" && (
               <div className="space-y-4 rounded-3xl border border-zinc-200 bg-white p-6">
+                <div className="space-y-1">
+                  <p className="font-black text-zinc-900">
+                    {receipt.documentType === "diagnostico_presupuesto_cerrado"
+                      ? "Validá la recepción de este comprobante"
+                      : "Validá el mantenimiento de tu moto"}
+                  </p>
+                  <p className="text-sm leading-relaxed text-zinc-500">
+                    Al validar, este registro queda vinculado a tu vehículo como historial verificado. El taller no puede modificarlo.
+                  </p>
+                </div>
                 {receipt.hasPhoneVerification ? (
                   <>
-                    <p className="font-black text-zinc-900">Verificá tu identidad</p>
-                    <p className="text-sm leading-relaxed text-zinc-500">
-                      Ingresá los últimos 4 dígitos del celular registrado en la orden. La validación se hace de forma segura en el servidor.
+                    <p className="text-sm text-zinc-500">
+                      Ingresá los últimos 4 dígitos del celular registrado en la orden para confirmar que sos el titular.
                     </p>
                     <input
                       type="tel"
@@ -280,7 +306,7 @@ export default function VerifyReceiptView({ token }) {
                     onClick={() => setFase("formulario")}
                     className="w-full rounded-2xl bg-orange-600 py-4 text-sm font-black uppercase tracking-widest text-white transition-all active:scale-95"
                   >
-                    Calificar el servicio
+                    Validar este registro
                   </button>
                 )}
               </div>
@@ -289,14 +315,22 @@ export default function VerifyReceiptView({ token }) {
             {estado === "verificado" && fase === "formulario" && (
               <div className="space-y-6 rounded-3xl border border-zinc-200 bg-white p-6">
                 <div>
-                  <p className="text-lg font-black text-zinc-900">Calificá el servicio</p>
-                  <p className="mt-1 text-sm text-zinc-500">Tu calificación queda asociada a un comprobante real.</p>
+                  <p className="text-lg font-black text-zinc-900">
+                    {receipt.documentType === "diagnostico_presupuesto_cerrado"
+                      ? "Calificá la atencion y el presupuesto"
+                      : "Calificá el servicio realizado"}
+                  </p>
+                  <p className="mt-1 text-sm text-zinc-500">Tu calificación queda vinculada a este comprobante real y no puede editarse.</p>
                 </div>
 
-                <StarSelector label="Atención recibida" value={scores.atencion} onChange={(v) => setScores((s) => ({ ...s, atencion: v }))} />
-                <StarSelector label="Claridad del presupuesto" value={scores.claridad} onChange={(v) => setScores((s) => ({ ...s, claridad: v }))} />
-                <StarSelector label="Calidad del trabajo" value={scores.trabajo} onChange={(v) => setScores((s) => ({ ...s, trabajo: v }))} />
-                <StarSelector label="Cumplimiento de lo acordado" value={scores.cumplimiento} onChange={(v) => setScores((s) => ({ ...s, cumplimiento: v }))} />
+                {getScoreLabels(receipt.documentType).map(({ key, label }) => (
+                  <StarSelector
+                    key={key}
+                    label={label}
+                    value={scores[key]}
+                    onChange={(v) => setScores((s) => ({ ...s, [key]: v }))}
+                  />
+                ))}
 
                 <div className="space-y-2">
                   <p className="text-sm font-bold text-zinc-700">¿Recomendarías este taller?</p>
@@ -308,7 +342,7 @@ export default function VerifyReceiptView({ token }) {
                         recomienda === true ? "bg-green-500 text-white" : "bg-zinc-100 text-zinc-600"
                       }`}
                     >
-                      Sí
+                      Si
                     </button>
                     <button
                       type="button"
@@ -341,22 +375,33 @@ export default function VerifyReceiptView({ token }) {
                   disabled={!formValido || enviando}
                   className="w-full rounded-2xl bg-orange-600 py-4 text-sm font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-40"
                 >
-                  {enviando ? "Enviando..." : "Enviar calificación"}
+                  {enviando ? "Enviando..." : "Confirmar validacion"}
                 </button>
 
                 <p className="text-center text-[10px] leading-relaxed text-zinc-400">
-                  La opinión queda pendiente de validación antes de sumar reputación pública del taller.
+                  Una vez enviada, la validacion queda registrada como parte del historial del vehiculo.
                 </p>
               </div>
             )}
 
             {fase === "enviado" && (
-              <div className="space-y-3 rounded-3xl border border-green-200 bg-green-50 p-8 text-center">
-                <div className="text-4xl">★</div>
-                <p className="text-lg font-black text-green-800">¡Gracias por tu calificación!</p>
-                <p className="text-sm leading-relaxed text-green-700">
-                  Tu opinión quedó asociada a un trabajo documentado. Eso ayuda a otros clientes a elegir con información real.
-                </p>
+              <div className="space-y-4 rounded-3xl border border-green-200 bg-green-50 p-8 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-2xl font-black text-green-600">✓</div>
+                <div>
+                  <p className="text-lg font-black text-green-800">Mantenimiento validado</p>
+                  <p className="mt-2 text-sm leading-relaxed text-green-700">
+                    Este registro quedo asociado al historial de tu moto como trabajo documentado y verificado.
+                  </p>
+                </div>
+                {receipt.incentive?.enabled && receipt.incentive?.title && (
+                  <div className="mt-4 rounded-2xl border border-green-300 bg-white p-4 text-left">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-green-600">Beneficio del taller</p>
+                    <p className="mt-1 font-black text-zinc-900">{receipt.incentive.title}</p>
+                    {receipt.incentive.description && (
+                      <p className="mt-1 text-sm text-zinc-500">{receipt.incentive.description}</p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </>

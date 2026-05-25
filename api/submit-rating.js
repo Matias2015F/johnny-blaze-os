@@ -159,6 +159,10 @@ module.exports = async function handler(req, res) {
         reputationWeight: 0,
         fraudScore,
         phoneVerified,
+        maintenanceValidated: true,
+        documentType: receipt.documentType || "servicio_realizado",
+        incentiveOffered: !!(receipt.incentive && receipt.incentive.enabled),
+        incentiveType: (receipt.incentive && receipt.incentive.type) || "",
         ipHash: ipHash(req, token),
         createdAt: now,
       };
@@ -168,6 +172,8 @@ module.exports = async function handler(req, res) {
         ratingUsed: true,
         ratingSubmittedAt: now,
         ratingId: ratingRef.id,
+        validationStatus: "validado",
+        validatedAt: now,
       });
 
       return { ratingId: ratingRef.id };

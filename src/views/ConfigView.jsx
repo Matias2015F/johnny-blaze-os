@@ -34,7 +34,7 @@ const TABS = [
   { id: "taller",     label: "Taller",   Icon: Wrench },
   { id: "datos",      label: "Datos",    Icon: HardDrive },
   { id: "sistema",    label: "Sistema",  Icon: Settings },
-  { id: "reputacion", label: "Calific.", Icon: Star },
+  { id: "reputacion", label: "Reput.",   Icon: Star },
   { id: "admin",      label: "Admin",    Icon: Shield },
 ];
 
@@ -2929,11 +2929,11 @@ function PantallaReputacion() {
   if (!ratings.length) {
     return (
       <div className="p-6 animate-in fade-in space-y-4">
-        <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Calificaciones</h2>
+        <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Reputación MotoGestión</h2>
         <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5">
           <Star size={24} className="text-orange-500 mb-3" />
-          <p className="text-sm font-bold text-zinc-300 mb-1">Todavia no tenes calificaciones</p>
-          <p className="text-xs text-zinc-500">Cada comprobante PDF que emitas genera un QR unico. Cuando el cliente lo escanea puede calificarte en segundos, sin necesidad de app ni cuenta.</p>
+          <p className="text-sm font-bold text-zinc-300 mb-1">Todavia no hay validaciones registradas</p>
+          <p className="text-xs text-zinc-500">Cada comprobante verificable que emitas incluye un QR. Cuando el cliente lo escanea, valida el mantenimiento de su moto y puede calificar el servicio. La calificacion queda asociada al comprobante real.</p>
         </div>
       </div>
     );
@@ -2958,7 +2958,7 @@ function PantallaReputacion() {
 
   return (
     <div className="animate-in fade-in pb-32 space-y-4">
-      <h2 className="text-3xl font-black uppercase tracking-tighter text-white px-2">Calificaciones</h2>
+      <h2 className="text-3xl font-black uppercase tracking-tighter text-white px-2">Reputación MotoGestión</h2>
 
       {/* Resumen top */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

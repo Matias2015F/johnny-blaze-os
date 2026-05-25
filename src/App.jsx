@@ -12,6 +12,7 @@ import { APP_BUILD } from "./generated/appVersion.js";
 
 import TallerPanel from "./TallerPanel.jsx";
 import LoginScreen from "./LoginScreen.jsx";
+import VerifyReceiptView from "./views/VerifyReceiptView.jsx";
 
 function formatMoney(value) {
   return "ARS " + new Intl.NumberFormat("es-AR", {
@@ -341,6 +342,11 @@ export default function App() {
       if (unsubAccount) unsubAccount();
     };
   }, []);
+
+  const matchVerify = window.location.pathname.match(/^\/verificar\/([^/]+)$/);
+  if (matchVerify) {
+    return <VerifyReceiptView token={matchVerify[1]} />;
+  }
 
   if (estado === "loading") {
     return (

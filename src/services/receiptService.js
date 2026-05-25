@@ -27,6 +27,8 @@ export async function crearPublicReceipt({ order, token, hash, numeroComprobante
 
   const batch = writeBatch(db);
 
+  const patente = moto?.patente || moto?.patenteNormalizada || "";
+
   batch.set(doc(db, "publicReceipts", token), {
     token,
     uidTaller: uid,
@@ -36,6 +38,11 @@ export async function crearPublicReceipt({ order, token, hash, numeroComprobante
     hash,
     estado: "emitido",
     fechaEmision: now,
+    documentType: order.cierreTipo === "rechazo_cliente"
+      ? "diagnostico_presupuesto_cerrado"
+      : "servicio_realizado",
+    validationStatus: "pendiente",
+    validatedAt: null,
     ratingEnabled: true,
     ratingUsed: false,
     ratingExpiresAt: now + 30 * 24 * 60 * 60 * 1000,
@@ -48,7 +55,16 @@ export async function crearPublicReceipt({ order, token, hash, numeroComprobante
     },
     resumen: {
       moto: motoNombre,
-      patente: moto?.patente || moto?.patenteNormalizada || "",
+      patente: patente.length >= 3 ? patente.slice(0, 3) + "***" : patente,
+      km: order.kmEntrega || order.kmIngreso || order.km || null,
+    },
+    incentive: {
+      enabled: false,
+      type: "",
+      title: "",
+      description: "",
+      expiresAt: null,
+      redeemed: false,
     },
   });
 

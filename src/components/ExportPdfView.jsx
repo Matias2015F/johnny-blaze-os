@@ -343,7 +343,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                     bgColor="#FFFFFF"
                   />
                   <p className="mt-2 max-w-[168px] text-left text-[7px] font-bold leading-tight text-zinc-700">
-                    {verifyUrl ? "ESCANEÁ PARA VALIDAR Y CALIFICAR" : "ESCANEÁ PARA VALIDAR"}
+                    ESCANEÁ PARA VERIFICAR ESTE COMPROBANTE
                   </p>
                 </div>
               )}
@@ -384,7 +384,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               {esRechazo ? (
                 <>
                   <div className="border-b border-zinc-200 px-4 py-2 text-sm">
-                    <p className="font-black uppercase text-zinc-900">Diagnostico / revision facturable</p>
+                    <p className="font-black uppercase text-zinc-900">Diagnóstico / revisión facturable</p>
                     <p className="text-[10px] font-bold text-zinc-500">
                       Tiempo: {cierreRechazo.horasDiagnostico || 0} h - Base: {formatMoney(cierreRechazo.baseManoObra || totalOrden)}
                     </p>
@@ -534,13 +534,13 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
           <div className="space-y-1.5 border-2 border-yellow-300 bg-yellow-50 p-3" style={bloqueCompletoStyle}>
             <p className="text-[9px] font-black uppercase tracking-wide text-yellow-800">
-              {esRechazo ? "Terminos del cierre sin garantia" : "Términos de garantía y validez"}
+              {esRechazo ? "Términos del cierre sin garantía" : "Términos de garantía y validez"}
             </p>
             {esRechazo ? (
               <ul className="space-y-0.5">
                 <li className="text-[9px] text-zinc-700">El cliente rechaza o pospone el presupuesto.</li>
                 <li className="text-[9px] text-zinc-700">No se realizaron los trabajos presupuestados ni se cambiaron repuestos.</li>
-                <li className="text-[9px] text-zinc-700">El monto cobrado corresponde al diagnostico, revision y cargos acordados.</li>
+                <li className="text-[9px] text-zinc-700">El monto cobrado corresponde al diagnóstico, revisión y cargos acordados.</li>
                 <li className="text-[9px] text-zinc-700">Si retoma la reparacion en el futuro, el presupuesto puede ajustarse.</li>
                 <li className="text-[9px] text-zinc-700">Número único verificable. Escaneá el QR para validar.</li>
               </ul>
@@ -555,9 +555,19 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
             )}
           </div>
 
+          <div className="space-y-1 border border-zinc-200 bg-zinc-50 rounded-lg px-4 py-3" style={bloqueCompletoStyle}>
+            <p className="text-[9px] font-black uppercase tracking-wide text-zinc-600">Respaldo para historial de la moto</p>
+            <p className="text-[9px] leading-relaxed text-zinc-600">
+              {esRechazo
+                ? "Este documento deja constancia del diagnóstico/revisión realizado, el presupuesto informado y la decisión del cliente al momento del cierre."
+                : "Este documento deja constancia del servicio realizado, los repuestos utilizados y las condiciones de garantía acordadas."}
+            </p>
+            <p className="text-[9px] text-zinc-500">Guardá este comprobante como parte del historial de la moto.</p>
+          </div>
+
           {verifyUrl && (
             <div className="border border-zinc-200 rounded-lg px-4 py-2" style={bloqueCompletoStyle}>
-              <p className="text-[8px] font-black uppercase tracking-wide text-zinc-500 mb-1">Verificar comprobante y calificar servicio</p>
+              <p className="text-[8px] font-black uppercase tracking-wide text-zinc-500 mb-1">Verificar comprobante y validar servicio</p>
               <a
                 href={verifyUrl}
                 className="text-[8px] font-mono text-orange-700 break-all underline"
@@ -579,11 +589,12 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
             </div>
             <div className="shrink-0 text-right">
               <p className="text-[8px] text-zinc-500">
-                {order.fechaComprobante?.slice(0, 10) || order.fechaIngreso} • Moto Gestión
+                {order.fechaComprobante?.slice(0, 10) || order.fechaIngreso}
               </p>
               {snapshot.hash && (
                 <p className="mt-0.5 text-[7px] font-mono text-zinc-400">Hash: {snapshot.hash.slice(0, 16)}</p>
               )}
+              <p className="mt-1 text-[7px] font-black uppercase tracking-wide text-orange-600">Documento emitido mediante MotoGestión</p>
             </div>
           </div>
         </div>
