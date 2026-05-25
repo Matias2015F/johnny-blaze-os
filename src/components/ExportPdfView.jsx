@@ -315,8 +315,8 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               </div>
             </div>
 
-            <div className="flex flex-col items-center gap-4" style={bloqueCompletoStyle}>
-              <div className="text-center">
+            <div className="flex flex-col items-start gap-4" style={bloqueCompletoStyle}>
+              <div className="text-left">
                 <p className="text-[9px] font-black uppercase tracking-wide text-orange-600">Comprobante N°</p>
                 <p className="mt-1 text-lg font-black tracking-tight">{numeroComprobante}</p>
                 <p className="mt-2 text-[9px] font-bold text-zinc-600">
@@ -336,13 +336,13 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                       fecha: order.fechaComprobante,
                       hash: snapshot.hash,
                     })}
-                    size={110}
+                    size={138}
                     level="H"
                     marginSize={2}
                     fgColor="#000000"
                     bgColor="#FFFFFF"
                   />
-                  <p className="mt-2 text-center text-[8px] font-bold text-zinc-700">
+                  <p className="mt-2 max-w-[138px] text-center text-[7px] font-bold leading-tight text-zinc-700">
                     {verifyUrl ? "ESCANEÁ PARA VALIDAR Y CALIFICAR" : "ESCANEÁ PARA VALIDAR"}
                   </p>
                 </div>
