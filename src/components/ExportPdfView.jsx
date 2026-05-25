@@ -460,10 +460,10 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               <h3 className="mb-2 text-[10px] font-black uppercase tracking-wide text-zinc-700">Pagos registrados</h3>
               <table className="w-full border border-zinc-300" style={{ tableLayout: "fixed" }}>
                 <colgroup>
-                  <col style={{ width: "20%" }} />
-                  <col style={{ width: "22%" }} />
-                  <col style={{ width: "40%" }} />
+                  <col style={{ width: "19%" }} />
                   <col style={{ width: "18%" }} />
+                  <col style={{ width: "31%" }} />
+                  <col style={{ width: "32%" }} />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-zinc-300 bg-zinc-100">
@@ -479,7 +479,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                       <td className="px-4 py-2 text-[10px] text-zinc-700" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.fecha}</td>
                       <td className="px-4 py-2 text-[10px] font-bold uppercase text-zinc-700" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{labelMetodo(p.metodo)}</td>
                       <td className="px-4 py-2 text-[10px] text-zinc-700" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.comprobante || "---"}</td>
-                      <td className="px-4 py-2 text-right text-[10px] font-black text-zinc-900" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formatMoney(p.monto || 0)}</td>
+                      <td className="px-2 py-2 text-right text-[10px] font-black leading-tight text-zinc-900" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>{formatMoney(p.monto || 0)}</td>
                     </tr>
                   ))}
                 </tbody>
