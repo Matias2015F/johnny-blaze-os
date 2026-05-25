@@ -17,7 +17,8 @@ export async function hashPhoneLast4(last4, token) {
 
 export async function crearPublicReceipt({ order, token, hash, numeroComprobante, config, moto, phoneLast4 }) {
   const uid = auth.currentUser?.uid;
-  if (!uid || !token) return;
+  if (!uid) throw new Error("No hay usuario autenticado para emitir el comprobante verificable.");
+  if (!token) throw new Error("Falta el token del comprobante verificable.");
 
   const phoneHash = phoneLast4 ? await hashPhoneLast4(phoneLast4, token) : null;
   const now = Date.now();

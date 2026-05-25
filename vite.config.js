@@ -4,7 +4,11 @@ import react from "@vitejs/plugin-react";
 
 function getBuildInfo() {
   const pkgVersion = process.env.npm_package_version || "1.0.0";
-  const envSha = process.env.VERCEL_GIT_COMMIT_SHA || process.env.GITHUB_SHA || "";
+  const envSha =
+    process.env.APP_COMMIT_SHA ||
+    process.env.VERCEL_GIT_COMMIT_SHA ||
+    process.env.GITHUB_SHA ||
+    "";
   let sha = envSha ? envSha.slice(0, 7) : "";
 
   if (!sha) {

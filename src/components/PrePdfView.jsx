@@ -24,13 +24,17 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
     esRechazo ? "" : order.vencimientoGarantia || calcularVencimiento(config.garantiaDias)
   );
   const [diasPersonalizados, setDiasPersonalizados] = useState("");
+  const [receiptError, setReceiptError] = useState("");
+  const [generandoPdf, setGenerandoPdf] = useState(false);
 
   const totalOrden = calcularResultadosOrden(order).total;
   const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
   const saldo = totalOrden - totalPagado;
 
   const irAlPdf = async () => {
-    if (saldo > 0) return;
+    if (saldo > 0 || generandoPdf) return;
+    setReceiptError("");
+    setGenerandoPdf(true);
 
     const numeroComprobante = generarNumeroComprobante(order.id);
     const cliente = LS.getDoc("clientes", order.clientId);
@@ -71,6 +75,11 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
         ratingExpiresAt = venceCalificacion;
       } catch (error) {
         console.error("No se pudo crear el comprobante publico verificable", error);
+        setReceiptError(
+          "No se pudo generar el link verificable del comprobante. Revisá la conexión e intentá de nuevo antes de entregar el PDF."
+        );
+        setGenerandoPdf(false);
+        return;
       }
     }
 
@@ -121,6 +130,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
       },
     });
     setView("imprimirOrden");
+    setGenerandoPdf(false);
   };
 
   return (
@@ -284,8 +294,14 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
           </div>
         )}
 
-        <button disabled={saldo > 0} onClick={irAlPdf} className={`flex w-full items-center justify-center gap-3 rounded-3xl py-6 font-black uppercase shadow-xl transition-all ${saldo > 0 ? "bg-zinc-200 text-zinc-400" : "bg-orange-600 text-white active:scale-95"}`}>
-          <FileText size={20} /> {esRechazo ? "Generar comprobante sin garantia" : "Generar comprobante para el cliente"}
+        {receiptError && (
+          <div className="rounded-3xl border-2 border-red-200 bg-red-50 p-4">
+            <p className="text-[10px] font-black uppercase leading-tight text-red-600">{receiptError}</p>
+          </div>
+        )}
+
+        <button disabled={saldo > 0 || generandoPdf} onClick={irAlPdf} className={`flex w-full items-center justify-center gap-3 rounded-3xl py-6 font-black uppercase shadow-xl transition-all ${saldo > 0 || generandoPdf ? "bg-zinc-200 text-zinc-400" : "bg-orange-600 text-white active:scale-95"}`}>
+          <FileText size={20} /> {generandoPdf ? "Generando comprobante..." : esRechazo ? "Generar comprobante sin garantia" : "Generar comprobante para el cliente"}
         </button>
       </div>
     </div>
