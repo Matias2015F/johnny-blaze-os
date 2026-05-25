@@ -514,20 +514,20 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               )}
             </div>
 
-            <div className="space-y-2 border border-zinc-300 p-3" style={{ minWidth: 0 }}>
-              <div className="flex items-baseline justify-between gap-1 text-xs">
-                <span className="whitespace-nowrap font-bold text-zinc-600">{esRechazo ? "Total cobrado:" : "Total trabajo:"}</span>
-                <span className="whitespace-nowrap font-black text-zinc-900">{formatMoney(totalOrden)}</span>
+            <div className="space-y-2 border border-zinc-300 p-3" style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+              <div className="text-xs">
+                <p className="font-bold text-zinc-600">{esRechazo ? "Total cobrado:" : "Total trabajo:"}</p>
+                <p className="mt-1 text-sm font-black leading-tight text-zinc-900">{formatMoney(totalOrden)}</p>
               </div>
               {totalPagado > 0 && (
-                <div className="flex items-baseline justify-between gap-1 border-t border-zinc-300 pt-2 text-xs">
-                  <span className="whitespace-nowrap font-bold text-green-700">Total pagado:</span>
-                  <span className="whitespace-nowrap font-black text-green-700">{formatMoney(totalPagado)}</span>
+                <div className="border-t border-zinc-300 pt-2 text-xs">
+                  <p className="font-bold text-green-700">Total pagado:</p>
+                  <p className="mt-1 text-sm font-black leading-tight text-green-700">{formatMoney(totalPagado)}</p>
                 </div>
               )}
-              <div className={`mt-2 flex items-center justify-between rounded px-3 py-2 text-xs font-black text-white ${saldo <= 0 ? "bg-green-600" : "bg-zinc-900"}`}>
-                <span className="whitespace-nowrap">{saldo <= 0 ? "PAGADO" : "SALDO"}</span>
-                <span className="whitespace-nowrap">{formatMoney(Math.max(saldo, 0))}</span>
+              <div className={`mt-2 rounded px-3 py-2 text-xs font-black text-white ${saldo <= 0 ? "bg-green-600" : "bg-zinc-900"}`}>
+                <p>{saldo <= 0 ? "PAGADO" : "SALDO"}</p>
+                <p className="mt-1 leading-tight">{formatMoney(Math.max(saldo, 0))}</p>
               </div>
             </div>
           </div>
