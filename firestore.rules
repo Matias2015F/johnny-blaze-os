@@ -139,5 +139,17 @@ service cloud.firestore {
       allow read: if (signedIn() && resource.data.uidTaller == request.auth.uid) || isPlatformAdmin();
       allow update, delete: if isPlatformAdmin();
     }
+
+    // Perfiles publicos de talleres — lectura publica, escritura solo Admin SDK
+    match /publicWorkshops/{workshopId} {
+      allow read: if true;
+      allow write: if isPlatformAdmin();
+    }
+
+    // Log de auditoria de acciones admin
+    match /adminAuditLogs/{logId} {
+      allow read: if isPlatformAdmin();
+      allow write: if isPlatformAdmin();
+    }
   }
 }

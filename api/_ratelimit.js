@@ -12,6 +12,7 @@ const LIMITS = {
   "submit-rating":        { max: 12,  windowMs:       60 * 1000 },
   "mp-diagnose":          { max: 5,   windowMs:       60 * 1000 },
   "mp-webhook":           { max: 200, windowMs:       60 * 1000 },
+  "public-workshops":     { max: 30,  windowMs:       60 * 1000 },
   default:                { max: 60,  windowMs:       60 * 1000 },
 };
 
