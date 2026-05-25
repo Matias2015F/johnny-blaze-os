@@ -8,6 +8,7 @@ import { leerAdminSettings, normalizeDateMs, resolveAccountAccess } from "./serv
 import { LS } from "./lib/storage.js";
 import { CONFIG_DEFAULT } from "./lib/constants.js";
 import { abrirEnlaceExterno } from "./lib/whatsappService.js";
+import { APP_BUILD } from "./generated/appVersion.js";
 
 import TallerPanel from "./TallerPanel.jsx";
 import LoginScreen from "./LoginScreen.jsx";
@@ -275,6 +276,16 @@ export default function App() {
     window.history.replaceState({}, "", window.location.pathname);
     setPagoResult(pago);
     if (pago !== "ok") setTimeout(() => setPagoResult(null), 5000);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlBuild = params.get("build");
+    if (!urlBuild || !APP_BUILD.sha || APP_BUILD.sha === "dev" || urlBuild === APP_BUILD.sha) return;
+    params.set("build", APP_BUILD.sha);
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ""}${window.location.hash || ""}`;
+    window.history.replaceState({}, "", nextUrl);
   }, []);
 
   useEffect(() => {
