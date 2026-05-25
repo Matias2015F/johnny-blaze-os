@@ -76,7 +76,7 @@ module.exports = async function handler(req, res) {
       updatedAt: now,
     }, { merge: true });
 
-    await db.collection("adminAudit").add({
+    await db.collection("adminAuditLogs").add({
       action: `rating_${status}`,
       targetId: id,
       targetUid: snap.data()?.uidTaller || "",

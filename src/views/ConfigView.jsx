@@ -180,7 +180,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
   const [accionandoOther, setAccionandoOther] = React.useState(null);
   const [settingsConfirmOpen, setSettingsConfirmOpen] = React.useState(false);
   const [ratings, setRatings] = React.useState([]);
-  const [filterRating, setFilterRating] = React.useState("pendiente");
+  const [filterRating, setFilterRating] = React.useState("pendiente_validacion");
   const user = auth.currentUser;
   const isPlatformAdmin =
     PLATFORM_ADMIN_EMAILS.includes((user?.email || "").toLowerCase()) ||
@@ -214,7 +214,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
       setTickets(sortByDateDesc(adminData.tickets || [], "createdAt", "updatedAt"));
       setSettings(normalizeAdminSettings(adminData.settings || DEFAULT_ADMIN_SETTINGS));
       const ratingSnap = await getDocsFromServer(
-        query(collection(db, "ratings"), orderBy("creadoEn", "desc"), limit(200))
+        query(collection(db, "ratings"), orderBy("createdAt", "desc"), limit(200))
       ).catch(() => ({ docs: [] }));
       setRatings(ratingSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) {
@@ -1072,14 +1072,14 @@ function PantallaAdmin({ showToast, scrollRef }) {
       {/* Calificaciones */}
       {adminTab === "calificaciones" && (() => {
         const FILTER_TABS = [
-          { id: "pendiente",  label: "Pendientes" },
-          { id: "aprobada",   label: "Aprobadas" },
-          { id: "rechazada",  label: "Rechazadas" },
-          { id: "todas",      label: "Todas" },
+          { id: "pendiente_validacion", label: "Pendientes" },
+          { id: "aprobada",             label: "Aprobadas" },
+          { id: "rechazada",            label: "Rechazadas" },
+          { id: "todas",                label: "Todas" },
         ];
         const shown = filterRating === "todas"
           ? ratings
-          : ratings.filter(r => (r.status || "pendiente") === filterRating);
+          : ratings.filter(r => (r.status || "pendiente_validacion") === filterRating);
 
         const moderarRating = async (ratingId, decision) => {
           const key = `mod-${ratingId}`;
@@ -1116,7 +1116,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
                     {ft.label}
                     {ft.id !== "todas" && (
                       <span className="ml-1 opacity-60">
-                        ({ratings.filter(r => (r.status || "pendiente") === ft.id).length})
+                        ({ratings.filter(r => (r.status || "pendiente_validacion") === ft.id).length})
                       </span>
                     )}
                   </button>
@@ -1135,12 +1135,12 @@ function PantallaAdmin({ showToast, scrollRef }) {
                 <Card key={r.id}>
                   <div className="flex items-center justify-between mb-2">
                     <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-xl ${statusColor}`}>
-                      {r.status || "pendiente"}
+                      {r.status || "pendiente_validacion"}
                     </span>
                     {avg && <span className="text-xs font-black text-orange-600">{avg} / 5</span>}
                   </div>
                   <p className="text-[10px] font-bold text-zinc-500 mb-1">
-                    Taller: {r.uidTaller?.slice(0, 8)}... · {r.creadoEn ? new Date(r.creadoEn).toLocaleDateString("es-AR") : "?"}
+                    Taller: {r.uidTaller?.slice(0, 8)}... · {r.createdAt ? new Date(r.createdAt).toLocaleDateString("es-AR") : "?"}
                   </p>
                   {r.comentario && (
                     <p className="text-xs font-bold text-zinc-700 italic mb-2 leading-relaxed">"{r.comentario}"</p>
@@ -1152,7 +1152,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
                     {r.scoreCumplimiento && <span>Plazo: {r.scoreCumplimiento}</span>}
                     {r.recomienda !== undefined && <span>{r.recomienda ? "Recomienda" : "No recomienda"}</span>}
                   </div>
-                  {(r.status || "pendiente") === "pendiente" && (
+                  {(r.status || "pendiente_validacion") === "pendiente_validacion" && (
                     <div className="flex gap-2">
                       <button
                         onClick={() => moderarRating(r.id, "aprobar")}
@@ -2874,7 +2874,7 @@ function PantallaReputacion() {
       query(
         collection(db, "ratings"),
         where("uidTaller", "==", auth.currentUser.uid),
-        orderBy("creadoEn", "desc"),
+        orderBy("createdAt", "desc"),
         limit(60),
       ),
     )
@@ -2975,7 +2975,7 @@ function PantallaReputacion() {
       <div className="space-y-3">
         <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-1">Historial</p>
         {ratings.map((r) => {
-          const fecha = r.creadoEn?.toDate?.()?.toLocaleDateString("es-AR") || "";
+          const fecha = r.createdAt ? new Date(r.createdAt).toLocaleDateString("es-AR") : "";
           const aprobada = r.status === "aprobada";
           return (
             <div key={r.id} className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 space-y-3">
