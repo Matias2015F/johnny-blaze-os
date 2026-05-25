@@ -2868,17 +2868,29 @@ function PantallaReputacion() {
   const [ratings, setRatings] = React.useState(null);
   const [err, setErr] = React.useState(null);
 
+  const ratingTime = (rating) => {
+    const value = rating?.createdAt;
+    if (!value) return 0;
+    if (typeof value === "number") return value;
+    if (typeof value === "string") return new Date(value).getTime() || 0;
+    return value?.toMillis?.() || value?.seconds * 1000 || 0;
+  };
+
   React.useEffect(() => {
     if (!auth.currentUser) return;
     getDocsFromServer(
       query(
         collection(db, "ratings"),
         where("uidTaller", "==", auth.currentUser.uid),
-        orderBy("createdAt", "desc"),
-        limit(60),
       ),
     )
-      .then((snap) => setRatings(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+      .then((snap) => {
+        const docs = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => ratingTime(b) - ratingTime(a))
+          .slice(0, 60);
+        setRatings(docs);
+      })
       .catch((e) => setErr(e.message));
   }, []);
 
