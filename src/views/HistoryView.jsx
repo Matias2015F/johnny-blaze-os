@@ -134,8 +134,27 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
     }
 
     setQrInputValue(rawValue);
-    const qrData = JSON.parse(rawValue);
-    procesarQRData(qrData);
+    try {
+      const qrData = JSON.parse(rawValue);
+      procesarQRData(qrData);
+      return;
+    } catch {
+      // Nuevo formato: el QR del PDF puede ser una URL pública /verificar/:token
+      const txt = rawValue.trim();
+      if (/^https?:\/\//i.test(txt) || txt.startsWith("/verificar/")) {
+        try {
+          const url = txt.startsWith("/verificar/") ? new URL(txt, window.location.origin) : new URL(txt);
+          if (url.pathname.startsWith("/verificar/")) {
+            setScanFeedback("Abriendo verificaciÃ³n del comprobante...");
+            window.location.assign(url.pathname + url.search + url.hash);
+            return;
+          }
+        } catch {
+          // ignore, fall through
+        }
+      }
+      throw new Error("CÃ³digo QR invÃ¡lido o corrupto.");
+    }
   };
 
   const validarQR = () => {
@@ -623,4 +642,3 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
     </>
   );
 }
-
