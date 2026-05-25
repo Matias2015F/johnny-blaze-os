@@ -309,7 +309,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               </p>
               <div className="mt-4 space-y-1 text-[10px] leading-relaxed text-zinc-700">
                 <p><span className="font-black">Técnico:</span> {config.mecanicoResponsable}</p>
-                {config.direccionTaller && <p>{config.direccionTaller}</p>}
+                {config.direccionTaller && <p><span className="font-black">Ubicado en:</span> {config.direccionTaller}</p>}
                 <p><span className="font-black">WhatsApp:</span> {config.telefonoTaller}</p>
                 <p><span className="font-black">Mail:</span> {config.emailNotificacion || "---"}</p>
               </div>
@@ -336,13 +336,13 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                       fecha: order.fechaComprobante,
                       hash: snapshot.hash,
                     })}
-                    size={138}
+                    size={168}
                     level="H"
                     marginSize={2}
                     fgColor="#000000"
                     bgColor="#FFFFFF"
                   />
-                  <p className="mt-2 max-w-[138px] text-center text-[7px] font-bold leading-tight text-zinc-700">
+                  <p className="mt-2 max-w-[168px] text-left text-[7px] font-bold leading-tight text-zinc-700">
                     {verifyUrl ? "ESCANEÁ PARA VALIDAR Y CALIFICAR" : "ESCANEÁ PARA VALIDAR"}
                   </p>
                 </div>
@@ -470,16 +470,16 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                     <th className="px-4 py-2 text-left text-[9px] font-black text-zinc-700">Fecha</th>
                     <th className="px-4 py-2 text-left text-[9px] font-black text-zinc-700">Medio</th>
                     <th className="px-4 py-2 text-left text-[9px] font-black text-zinc-700">N° pago</th>
-                    <th className="px-4 py-2 text-right text-[9px] font-black text-zinc-700">Monto</th>
+                    <th className="px-4 py-2 text-right text-[9px] font-black text-zinc-700 w-[132px]">Monto</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pagos.map((p, i) => (
                     <tr key={i} className={i < pagos.length - 1 ? "border-b border-zinc-200" : ""}>
-                      <td className="px-4 py-2 text-[10px] text-zinc-700" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.fecha}</td>
-                      <td className="px-4 py-2 text-[10px] font-bold uppercase text-zinc-700" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{labelMetodo(p.metodo)}</td>
-                      <td className="px-4 py-2 text-[10px] text-zinc-700" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.comprobante || "---"}</td>
-                      <td className="px-2 py-2 text-right text-[10px] font-black leading-tight text-zinc-900" style={{ overflowWrap: "anywhere", wordBreak: "break-word" }}>{formatMoney(p.monto || 0)}</td>
+                      <td className="px-4 py-2 text-[10px] text-zinc-700 whitespace-nowrap overflow-hidden text-ellipsis">{p.fecha}</td>
+                      <td className="px-4 py-2 text-[10px] font-bold uppercase text-zinc-700 whitespace-nowrap overflow-hidden text-ellipsis">{labelMetodo(p.metodo)}</td>
+                      <td className="px-4 py-2 text-[10px] text-zinc-700 whitespace-nowrap overflow-hidden text-ellipsis">{p.comprobante || "---"}</td>
+                      <td className="px-4 py-2 text-right text-[10px] font-black leading-tight text-zinc-900 whitespace-nowrap">{formatMoney(p.monto || 0)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -514,7 +514,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               )}
             </div>
 
-            <div className="space-y-2 border border-zinc-300 p-3" style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+            <div className="space-y-2 border border-zinc-300 p-3 overflow-hidden" style={{ minWidth: 0 }}>
               <div className="text-xs">
                 <p className="font-bold text-zinc-600">{esRechazo ? "Total cobrado:" : "Total trabajo:"}</p>
                 <p className="mt-1 text-sm font-black leading-tight text-zinc-900">{formatMoney(totalOrden)}</p>
@@ -525,7 +525,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                   <p className="mt-1 text-sm font-black leading-tight text-green-700">{formatMoney(totalPagado)}</p>
                 </div>
               )}
-              <div className={`mt-2 rounded px-3 py-2 text-xs font-black text-white ${saldo <= 0 ? "bg-green-600" : "bg-zinc-900"}`}>
+              <div className={`mt-2 rounded px-3 py-2 text-xs font-black text-white ${saldo <= 0 ? "bg-green-600" : "bg-zinc-900"} text-center whitespace-nowrap`}>
                 <p>{saldo <= 0 ? "PAGADO" : "SALDO"}</p>
                 <p className="mt-1 leading-tight">{formatMoney(Math.max(saldo, 0))}</p>
               </div>

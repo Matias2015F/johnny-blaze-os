@@ -2878,20 +2878,41 @@ function PantallaReputacion() {
 
   React.useEffect(() => {
     if (!auth.currentUser) return;
-    getDocsFromServer(
-      query(
-        collection(db, "ratings"),
-        where("uidTaller", "==", auth.currentUser.uid),
-      ),
-    )
-      .then((snap) => {
-        const docs = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => ratingTime(b) - ratingTime(a))
-          .slice(0, 60);
-        setRatings(docs);
-      })
-      .catch((e) => setErr(e.message));
+
+    const run = async () => {
+      try {
+        // Prefer server-side ordering/limit. If Firestore requires a composite index, fall back gracefully.
+        const snap = await getDocsFromServer(query(
+          collection(db, "ratings"),
+          where("uidTaller", "==", auth.currentUser.uid),
+          orderBy("createdAt", "desc"),
+          limit(60),
+        ));
+        setRatings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        const msg = e?.message || String(e || "");
+        if (msg.toLowerCase().includes("requires an index")) {
+          try {
+            const snap2 = await getDocsFromServer(query(
+              collection(db, "ratings"),
+              where("uidTaller", "==", auth.currentUser.uid),
+            ));
+            const docs = snap2.docs
+              .map((d) => ({ id: d.id, ...d.data() }))
+              .sort((a, b) => ratingTime(b) - ratingTime(a))
+              .slice(0, 60);
+            setRatings(docs);
+            return;
+          } catch (e2) {
+            setErr(e2?.message || String(e2 || ""));
+            return;
+          }
+        }
+        setErr(msg);
+      }
+    };
+
+    run();
   }, []);
 
   if (ratings === null && !err) {
