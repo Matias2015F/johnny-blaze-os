@@ -41,13 +41,8 @@
 - [x] validationStatus: "validado" + validatedAt escritos al receipt al completar calificación
 - [x] Pantalla final "Mantenimiento validado" con incentivo si existe
 - [x] Panel de reputación interna en ConfigView (tab "Reput.")
-- [ ] reputationWeight asignado automáticamente (hoy es 0 en todos — requiere moderación manual o lógica automática)
-- [ ] Calificaciones con phoneVerified: true deberían sumar reputación sin moderación manual
-
-### Pendiente Fase 3
-
-- Definir si `reputationWeight` se asigna automáticamente para ratings con `phoneVerified: true` y `fraudScore < 20`
-- Lógica de aprobación automática en `api/submit-rating.js` o función de moderación
+- [x] reputationWeight = 1 y status = "aprobado" automático si phoneVerified=true y fraudScore < 20 (submit-rating.js — commit 42d3bed 2026-05-25)
+- [x] Ratings sin verificación telefónica o fraudScore >= 20 quedan en pendiente_validacion con reputationWeight = 0
 
 ### Fase 4 — Autoridad pública (no empezar hasta cerrar Fase 3)
 
