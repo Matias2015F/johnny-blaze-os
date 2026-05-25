@@ -27,11 +27,57 @@ function reputacion(totalOTs, mesesActivo) {
   return { nivel: "Taller nuevo", estrellas: 1, mensaje: "Cuenta reciente" };
 }
 
+async function handlePublicWorkshops(req, res) {
+  if (applyRateLimit(req, res, "public-workshops")) return;
+  res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
+
+  try {
+    const snap = await db
+      .collection("publicWorkshops")
+      .where("publicProfileEnabled", "==", true)
+      .limit(50)
+      .get();
+
+    const workshops = snap.docs
+      .map((d) => {
+        const t = d.data();
+        return {
+          id: d.id,
+          nombreTaller: t.nombreTaller || "Taller",
+          ciudad: t.ciudad || "",
+          provincia: t.provincia || "",
+          lat: typeof t.lat === "number" ? t.lat : null,
+          lng: typeof t.lng === "number" ? t.lng : null,
+          nivel: t.nivel || "registrado",
+          ratingAvg: Number(t.ratingAvg) || 0,
+          ratingCount: Number(t.ratingCount) || 0,
+          recomiendaPct: t.recomiendaPct != null ? Number(t.recomiendaPct) : null,
+          trabajosDocumentados: Number(t.trabajosDocumentados) || 0,
+          garantiasRegistradas: Number(t.garantiasRegistradas) || 0,
+          comentariosRecientes: (t.comentariosRecientes || []).slice(0, 3).map((c) => ({
+            texto: String(c.texto || "").slice(0, 200),
+            fecha: c.fecha || null,
+          })),
+        };
+      })
+      .sort((a, b) => b.ratingAvg - a.ratingAvg);
+
+    return res.status(200).json({ ok: true, workshops });
+  } catch (error) {
+    console.error("[public-workshops]", error.message);
+    return res.status(500).json({ ok: false, workshops: [] });
+  }
+}
+
 module.exports = async function handler(req, res) {
   setCors(req, res);
 
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "GET") return res.status(405).end();
+
+  if (req.query?.mode === "public-workshops") {
+    return handlePublicWorkshops(req, res);
+  }
 
   if (applyRateLimit(req, res, "verify-document")) return;
 

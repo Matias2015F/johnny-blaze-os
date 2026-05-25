@@ -62,6 +62,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/public-workshops",
+      "destination": "/api/verify-document?mode=public-workshops"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },
