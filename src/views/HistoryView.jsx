@@ -28,6 +28,10 @@ function cargarImagenDesdeArchivo(file) {
 
 function detectarQRDesdeCanvas(canvas) {
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  try {
+    ctx.imageSmoothingEnabled = false;
+  } catch {
+  }
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   const resultado = jsQR(imageData.data, imageData.width, imageData.height, {
     inversionAttempts: "attemptBoth",
@@ -75,6 +79,34 @@ async function detectarQRDesdePdf(file) {
   }
 
   throw new Error("No encontramos un código QR dentro del PDF.");
+}
+
+async function detectarQRDesdePdfRobusto(file) {
+  const data = await file.arrayBuffer();
+  const pdf = await getDocument({ data }).promise;
+  const paginasARevisar = Math.min(pdf.numPages, 15);
+  const scales = [2.6, 3.2, 3.8];
+
+  for (let pageNumber = 1; pageNumber <= paginasARevisar; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+
+    for (let sIdx = 0; sIdx < scales.length; sIdx += 1) {
+      const viewport = page.getViewport({ scale: scales[sIdx] });
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+
+      await page.render({ canvasContext: context, viewport }).promise;
+
+      try {
+        return detectarQRDesdeCanvas(canvas);
+      } catch {
+      }
+    }
+  }
+
+  throw new Error("No encontramos un código QR dentro del PDF. Asegurate de subir el comprobante completo y no una captura recortada.");
 }
 
 export default function HistoryView({ orders, bikes, clients, setView, setSelectedBikeId }) {
@@ -203,8 +235,8 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
         await scanner.start(
           { facingMode: "environment" },
           {
-            fps: 10,
-            qrbox: { width: 220, height: 220 },
+            fps: 15,
+            qrbox: { width: 280, height: 280 },
             aspectRatio: 1,
           },
           async (decodedText) => {
@@ -256,7 +288,7 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
     setScanFeedback(origen === "pdf" ? "Leyendo QR dentro del PDF..." : "Buscando QR en la imagen...");
 
     try {
-      const rawValue = origen === "pdf" ? await detectarQRDesdePdf(file) : await detectarQRDesdeImagen(file);
+      const rawValue = origen === "pdf" ? await detectarQRDesdePdfRobusto(file) : await detectarQRDesdeImagen(file);
       procesarTextoQR(rawValue);
     } catch (error) {
       setValidacionActual({
