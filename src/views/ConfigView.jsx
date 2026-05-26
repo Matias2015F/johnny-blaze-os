@@ -2864,6 +2864,82 @@ function StarBar({ score }) {
   );
 }
 
+function PublicarRedCard({ aprobados }) {
+  const [publicando, setPublicando] = React.useState(false);
+  const [resultado, setResultado] = React.useState(null);
+  const [err, setErr] = React.useState("");
+
+  const uid = auth.currentUser?.uid;
+  const perfilUrl = uid ? `https://app.motogestion.ar/taller/${uid}` : null;
+
+  const publicar = async () => {
+    if (publicando) return;
+    setPublicando(true);
+    setErr("");
+    setResultado(null);
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch("/api/publish-workshop", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo publicar.");
+      setResultado(data);
+    } catch (e) {
+      setErr(e.message || "Error al publicar.");
+    } finally {
+      setPublicando(false);
+    }
+  };
+
+  return (
+    <div className="rounded-[2rem] bg-zinc-900 border border-zinc-800 p-5 space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-600 text-[10px] font-black text-white">MG</div>
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-orange-500">Red MotoGestión</p>
+          <p className="text-sm font-black text-white">Publicar perfil público del taller</p>
+        </div>
+      </div>
+
+      {aprobados.length === 0 ? (
+        <p className="text-xs text-zinc-500 leading-relaxed">
+          Necesitas al menos una calificación verificada (con teléfono) para aparecer en la red.
+        </p>
+      ) : (
+        <p className="text-xs text-zinc-400 leading-relaxed">
+          Publicá tu perfil con las {aprobados.length} calificación{aprobados.length !== 1 ? "es" : ""} verificada{aprobados.length !== 1 ? "s" : ""}.
+          Tu taller aparece en el mapa y en la red pública de MotoGestión.
+        </p>
+      )}
+
+      {resultado && (
+        <div className="rounded-2xl border border-green-800 bg-green-900/30 p-3 space-y-1">
+          <p className="text-[10px] font-black uppercase tracking-widest text-green-400">Perfil publicado</p>
+          <p className="text-xs text-zinc-300 break-all">{perfilUrl}</p>
+          <button
+            onClick={() => { if (perfilUrl) navigator.clipboard?.writeText(perfilUrl); }}
+            className="text-[10px] font-black uppercase text-orange-400 active:scale-95 transition-all"
+          >
+            Copiar enlace
+          </button>
+        </div>
+      )}
+
+      {err && <p className="text-xs font-bold text-red-400">{err}</p>}
+
+      <button
+        onClick={publicar}
+        disabled={publicando || aprobados.length === 0}
+        className="w-full rounded-2xl bg-orange-600 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-40"
+      >
+        {publicando ? "Publicando..." : resultado ? "Actualizar perfil" : "Publicar en la red"}
+      </button>
+    </div>
+  );
+}
+
 function PantallaReputacion() {
   const [ratings, setRatings] = React.useState(null);
   const [err, setErr] = React.useState(null);
@@ -3003,6 +3079,9 @@ function PantallaReputacion() {
           );
         })}
       </div>
+
+      {/* Publicar en Red MotoGestión */}
+      <PublicarRedCard aprobados={ratings.filter(r => r.status === "aprobado")} />
 
       {/* Lista de calificaciones */}
       <div className="space-y-3">

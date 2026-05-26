@@ -66,6 +66,10 @@
       "destination": "/api/verify-document?mode=public-workshops"
     },
     {
+      "source": "/api/publish-workshop",
+      "destination": "/api/verify-document?mode=publish-workshop"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },

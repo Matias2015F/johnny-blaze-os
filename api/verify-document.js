@@ -1,4 +1,4 @@
-const { db } = require("./_firebase-admin.js");
+const { db, verifyIdToken } = require("./_firebase-admin.js");
 const { applyRateLimit } = require("./_ratelimit.js");
 
 const ALLOWED_ORIGINS = [
@@ -14,8 +14,8 @@ function setCors(req, res) {
   } else {
     res.setHeader("Access-Control-Allow-Origin", "https://motogestion.ar");
   }
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
 function reputacion(totalOTs, mesesActivo) {
@@ -69,10 +69,96 @@ async function handlePublicWorkshops(req, res) {
   }
 }
 
+async function handlePublishWorkshop(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "POST requerido" });
+  if (applyRateLimit(req, res, "publish-workshop")) return;
+
+  let uid;
+  try {
+    const decoded = await verifyIdToken(req);
+    uid = decoded.uid;
+  } catch {
+    return res.status(401).json({ ok: false, error: "No autenticado" });
+  }
+
+  try {
+    const configSnap = await db.collection("users").doc(uid).collection("config").doc("global").get();
+    const cfg = configSnap.exists ? configSnap.data() : {};
+
+    const ratingsSnap = await db.collection("ratings")
+      .where("uidTaller", "==", uid)
+      .where("status", "==", "aprobado")
+      .get();
+
+    const aprobados = ratingsSnap.docs.map((d) => d.data());
+    if (aprobados.length === 0) {
+      return res.status(400).json({ ok: false, error: "Necesitas al menos una calificación verificada para publicar el perfil." });
+    }
+
+    const scoreKeys = ["scoreAtencion", "scoreClaridad", "scoreTrabajo", "scoreCumplimiento"];
+    const avgKey = (key) => {
+      const vals = aprobados.map((r) => r[key]).filter((v) => typeof v === "number" && v > 0);
+      return vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10 : 0;
+    };
+
+    const allScores = aprobados.flatMap((r) => scoreKeys.map((k) => r[k]).filter((v) => typeof v === "number" && v > 0));
+    const ratingAvg = allScores.length ? Math.round((allScores.reduce((a, b) => a + b, 0) / allScores.length) * 10) / 10 : 0;
+
+    const conRecomienda = aprobados.filter((r) => r.recomienda !== undefined && r.recomienda !== null);
+    const recomiendaPct = conRecomienda.length
+      ? Math.round((conRecomienda.filter((r) => r.recomienda === true).length / conRecomienda.length) * 100)
+      : null;
+
+    const comentariosRecientes = aprobados
+      .filter((r) => r.comentario && String(r.comentario).trim().length > 10)
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+      .slice(0, 3)
+      .map((r) => ({ texto: String(r.comentario).slice(0, 200), fecha: r.createdAt || null }));
+
+    const trabajosRef = db.collection("users").doc(uid).collection("trabajos");
+    const countSnap = await trabajosRef.count().get();
+    const trabajosDocumentados = countSnap.data().count;
+
+    const rep = reputacion(trabajosDocumentados, 0);
+
+    await db.collection("publicWorkshops").doc(uid).set({
+      uid,
+      nombreTaller: cfg.nombreTaller || "Taller",
+      ciudad: cfg.ciudadTaller || "",
+      provincia: cfg.provinciaTaller || "",
+      lat: typeof cfg.lat === "number" ? cfg.lat : null,
+      lng: typeof cfg.lng === "number" ? cfg.lng : null,
+      publicProfileEnabled: true,
+      nivel: rep.nivel,
+      ratingAvg,
+      ratingCount: aprobados.length,
+      recomiendaPct,
+      scoreAtencion: avgKey("scoreAtencion"),
+      scoreClaridad: avgKey("scoreClaridad"),
+      scoreTrabajo: avgKey("scoreTrabajo"),
+      scoreCumplimiento: avgKey("scoreCumplimiento"),
+      trabajosDocumentados,
+      garantiasRegistradas: 0,
+      comentariosRecientes,
+      updatedAt: Date.now(),
+    });
+
+    return res.status(200).json({ ok: true, ratingCount: aprobados.length, ratingAvg });
+  } catch (err) {
+    console.error("[publish-workshop]", err);
+    return res.status(500).json({ ok: false, error: "Error al publicar el perfil." });
+  }
+}
+
 module.exports = async function handler(req, res) {
   setCors(req, res);
 
   if (req.method === "OPTIONS") return res.status(200).end();
+
+  if (req.query?.mode === "publish-workshop") {
+    return handlePublishWorkshop(req, res);
+  }
+
   if (req.method !== "GET") return res.status(405).end();
 
   if (req.query?.mode === "public-workshops") {
