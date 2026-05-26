@@ -1,5 +1,6 @@
 const { db, verifyIdToken } = require("./_firebase-admin.js");
 const { applyRateLimit } = require("./_ratelimit.js");
+const { sendEmail } = require("./_email.js");
 
 const ALLOWED_ORIGINS = [
   "https://motogestion.ar",
@@ -66,6 +67,43 @@ async function handlePublicWorkshops(req, res) {
   } catch (error) {
     console.error("[public-workshops]", error.message);
     return res.status(500).json({ ok: false, workshops: [] });
+  }
+}
+
+async function handleLead(req, res) {
+  if (req.method !== "POST") return res.status(405).json({ ok: false, error: "POST requerido" });
+  if (applyRateLimit(req, res, "lead")) return;
+
+  const body = req.body || {};
+  const nombreTaller = String(body.nombreTaller || "").trim().slice(0, 100);
+  const ciudad = String(body.ciudad || "").trim().slice(0, 100);
+  const telefono = String(body.telefono || "").trim().slice(0, 30);
+
+  if (!nombreTaller || !ciudad || !telefono) {
+    return res.status(400).json({ ok: false, error: "Nombre, ciudad y teléfono son requeridos" });
+  }
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#fff;">
+      <h2 style="margin:0 0 16px;font-size:18px;color:#111827;font-weight:900;">Nuevo lead — MotoGestión</h2>
+      <p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Taller:</strong> ${nombreTaller}</p>
+      <p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Ciudad:</strong> ${ciudad}</p>
+      <p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Teléfono:</strong> ${telefono}</p>
+      <p style="margin:24px 0 0;font-size:11px;color:#9ca3af;">Enviado desde motogestion.ar</p>
+    </div>
+  `;
+
+  try {
+    await sendEmail({
+      to: "matias4604@gmail.com",
+      subject: `Lead — ${nombreTaller} (${ciudad})`,
+      html,
+    });
+    console.log("[lead]", nombreTaller, ciudad, telefono);
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    console.error("[lead]", err);
+    return res.status(500).json({ ok: false, error: "Error al enviar" });
   }
 }
 
@@ -154,6 +192,10 @@ module.exports = async function handler(req, res) {
   setCors(req, res);
 
   if (req.method === "OPTIONS") return res.status(200).end();
+
+  if (req.query?.mode === "lead") {
+    return handleLead(req, res);
+  }
 
   if (req.query?.mode === "publish-workshop") {
     return handlePublishWorkshop(req, res);

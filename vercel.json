@@ -70,6 +70,10 @@
       "destination": "/api/verify-document?mode=publish-workshop"
     },
     {
+      "source": "/api/lead",
+      "destination": "/api/verify-document?mode=lead"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },
