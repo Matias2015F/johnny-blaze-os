@@ -51,18 +51,21 @@ Cerrada: 2026-05-25 — commit 42d3bed
 
 ---
 
-## Fase 4 — Autoridad pública ← FOCO SIGUIENTE
+## Fase 4 — Autoridad pública ✅
 
 Mostrar talleres verificados públicamente.
 
 Incluye:
-- [ ] publicWorkshops con datos reales de talleres
-- [ ] perfil público del taller
-- [ ] sello MotoGestión Verificado
-- [ ] reputación visible públicamente
-- [ ] red por ciudad (mapa — estructura en landing ya lista)
+- [x] publicWorkshops escritura via API autenticada (publish-workshop en verify-document.js)
+- [x] perfil público del taller en /taller/:uid (TallerPublicView.jsx)
+- [x] sello MotoGestión Verificado en perfil público
+- [x] reputación visible públicamente (avg, count, recomienda %, categorías)
+- [x] red por ciudad (mapa en landing lee publicWorkshops automáticamente)
+- [x] botón "Publicar en la red" en tab Reput. del panel del taller
 
-Regla: no empezar hasta confirmar Fase 3 estable en producción.
+Cerrada: 2026-05-25 — commit 0b22a6d
+
+## Fase 5 — Escala ← FOCO SIGUIENTE
 
 ---
 

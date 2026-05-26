@@ -44,13 +44,14 @@
 - [x] reputationWeight = 1 y status = "aprobado" automático si phoneVerified=true y fraudScore < 20 (submit-rating.js — commit 42d3bed 2026-05-25)
 - [x] Ratings sin verificación telefónica o fraudScore >= 20 quedan en pendiente_validacion con reputationWeight = 0
 
-### Fase 4 — Autoridad pública (no empezar hasta cerrar Fase 3)
+### Fase 4 — Autoridad pública ✅ (commit 0b22a6d — 2026-05-25)
 
-- [ ] Perfil público del taller
-- [ ] Sello MotoGestión Verificado
-- [ ] Reputación visible públicamente
-- [ ] Red por ciudad (mapa — landing ya tiene estructura)
-- [ ] publicWorkshops collection con datos reales de talleres
+- [x] API POST /api/publish-workshop (auth requerida, Admin SDK escribe publicWorkshops)
+- [x] Perfil público /taller/:uid (TallerPublicView.jsx, lee publicWorkshops sin auth)
+- [x] Sello MotoGestión Verificado en perfil público
+- [x] Reputación pública: avg, count, recomiendaPct, scores por categoría
+- [x] Botón "Publicar en la red" en tab Reput. del panel
+- [x] Mapa de landing lee publicWorkshops automáticamente (ya estaba conectado)
 
 ## Deploy actual
 
