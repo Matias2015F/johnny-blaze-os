@@ -2972,7 +2972,13 @@ function PantallaReputacion() {
         setRatings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       } catch (e) {
         const msg = e?.message || String(e || "");
-        if (msg.toLowerCase().includes("requires an index")) {
+        // Firestore missing composite index usually surfaces as:
+        // - code: "failed-precondition"
+        // - message: "The query requires an index ..."
+        const isMissingIndex =
+          e?.code === "failed-precondition" ||
+          msg.toLowerCase().includes("requires an index");
+        if (isMissingIndex) {
           try {
             const snap2 = await getDocsFromServer(query(
               collection(db, "ratings"),
