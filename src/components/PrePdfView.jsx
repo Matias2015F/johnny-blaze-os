@@ -6,6 +6,7 @@ import { calcularResultadosOrden } from "../lib/calc.js";
 import { trackEvent } from "../lib/telemetry.js";
 import { formatMoney } from "../utils/format.js";
 import { generateReceiptToken, crearPublicReceipt } from "../services/receiptVerificationService.js";
+import { mensajeComprobanteVerificable, normalizarTelWA } from "../lib/messages.js";
 
 function calcularVencimiento(dias) {
   if (Number(dias) <= 0) return "";
@@ -14,9 +15,11 @@ function calcularVencimiento(dias) {
   return d.toLocaleDateString("sv-SE");
 }
 
-export default function PrePdfView({ order, setView, setFinalPdfData }) {
+export default function PrePdfView({ order, setView, setFinalPdfData, showToast }) {
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
+  const client = LS.getDoc("clientes", order.clientId);
   const esRechazo = order.cierreTipo === "rechazo_cliente";
+  const [generatedToken, setGeneratedToken] = useState(order.receiptToken || null);
   const [garantia, setGarantia] = useState(
     order.garantiaFinal || (esRechazo ? TEXTO_CIERRE_RECHAZO : config.garantiaDefault || PLANTILLAS_GARANTIA[0].texto)
   );
@@ -129,7 +132,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
         fecha: snapshotFinal.fechaComprobante,
       },
     });
-    setView("imprimirOrden");
+    setGeneratedToken(receiptToken || null);
     setGenerandoPdf(false);
   };
 
@@ -300,9 +303,62 @@ export default function PrePdfView({ order, setView, setFinalPdfData }) {
           </div>
         )}
 
-        <button disabled={saldo > 0 || generandoPdf} onClick={irAlPdf} className={`flex w-full items-center justify-center gap-3 rounded-3xl py-6 font-black uppercase shadow-xl transition-all ${saldo > 0 || generandoPdf ? "bg-zinc-200 text-zinc-400" : "bg-orange-600 text-white active:scale-95"}`}>
-          <FileText size={20} /> {generandoPdf ? "Generando comprobante..." : esRechazo ? "Generar comprobante sin garantia" : "Generar comprobante para el cliente"}
-        </button>
+        {!generatedToken && (
+          <button disabled={saldo > 0 || generandoPdf} onClick={irAlPdf} className={`flex w-full items-center justify-center gap-3 rounded-3xl py-6 font-black uppercase shadow-xl transition-all ${saldo > 0 || generandoPdf ? "bg-zinc-200 text-zinc-400" : "bg-orange-600 text-white active:scale-95"}`}>
+            <FileText size={20} /> {generandoPdf ? "Generando comprobante..." : esRechazo ? "Generar comprobante sin garantia" : "Generar comprobante para el cliente"}
+          </button>
+        )}
+
+        {generatedToken && (
+          <div className="space-y-3 rounded-3xl border border-orange-200 bg-orange-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-orange-600">
+              Comprobante disponible para el cliente
+            </p>
+            <p className="text-xs text-zinc-600 leading-relaxed">
+              Tu cliente puede revisar el detalle, validar el trabajo y calificar desde este link.
+            </p>
+            <div className="rounded-2xl bg-white border border-zinc-200 px-4 py-3">
+              <p className="font-mono text-xs text-zinc-500 break-all">
+                {`https://app.motogestion.ar/verificar/${generatedToken}`}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`https://app.motogestion.ar/verificar/${generatedToken}`);
+                  showToast?.("Link copiado");
+                }}
+                className="rounded-2xl border border-zinc-200 bg-white py-3 text-[10px] font-black uppercase tracking-widest text-zinc-700 active:scale-95 transition-all"
+              >
+                Copiar link
+              </button>
+              <button
+                onClick={() => {
+                  const mensaje = mensajeComprobanteVerificable({
+                    clienteNombre: client?.nombre,
+                    verifyUrl: `https://app.motogestion.ar/verificar/${generatedToken}`,
+                    nombreTaller: config.nombreTaller,
+                    documentType: esRechazo ? "diagnostico_presupuesto_cerrado" : "servicio_realizado",
+                  });
+                  const tel = normalizarTelWA(client?.whatsapp || client?.tel || "");
+                  const waUrl = tel
+                    ? `https://wa.me/${tel}?text=${encodeURIComponent(mensaje)}`
+                    : `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
+                  window.open(waUrl, "_blank");
+                }}
+                className="rounded-2xl bg-green-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+              >
+                Enviar WA
+              </button>
+            </div>
+            <button
+              onClick={() => setView("imprimirOrden")}
+              className="w-full rounded-2xl bg-orange-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+            >
+              Ver comprobante completo
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
