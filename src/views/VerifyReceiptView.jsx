@@ -69,6 +69,7 @@ export default function VerifyReceiptView({ token }) {
   const [fase, setFase] = useState("verificacion");
   const [phoneLast4, setPhoneLast4] = useState("");
   const [phoneError, setPhoneError] = useState("");
+  const [checks, setChecks] = useState([false, false, false, false]);
   const [scores, setScores] = useState({ atencion: 0, claridad: 0, trabajo: 0, cumplimiento: 0 });
   const [recomienda, setRecomienda] = useState(null);
   const [comentario, setComentario] = useState("");
@@ -247,6 +248,53 @@ export default function VerifyReceiptView({ token }) {
                 )}
               </div>
 
+              {receipt.resumen?.trabajos?.length > 0 && (
+                <div className="space-y-1 border-t border-zinc-100 pt-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
+                    {receipt.documentType === "diagnostico_presupuesto_cerrado"
+                      ? "Diagnóstico realizado"
+                      : "Trabajos realizados"}
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {receipt.resumen.trabajos.map((t, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-zinc-700">
+                        <span className="mt-0.5 text-orange-500">•</span>
+                        <span>{t}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {receipt.resumen?.repuestos?.length > 0 && (
+                <div className="space-y-1 border-t border-zinc-100 pt-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
+                    {receipt.documentType === "diagnostico_presupuesto_cerrado"
+                      ? "Repuestos presupuestados"
+                      : "Repuestos utilizados"}
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {receipt.resumen.repuestos.map((r, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-zinc-700">
+                        <span className="mt-0.5 text-zinc-400">–</span>
+                        <span>{r}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {receipt.resumen?.garantia && (
+                <div className="rounded-2xl bg-zinc-50 border border-zinc-100 p-3">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
+                    {receipt.documentType === "diagnostico_presupuesto_cerrado"
+                      ? "Condición de cierre"
+                      : "Garantía"}
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-zinc-700">{receipt.resumen.garantia}</p>
+                </div>
+              )}
+
               <p className="text-[10px] leading-relaxed text-zinc-400">
                 Este comprobante fue generado desde Moto Gestión y está asociado a una orden de trabajo registrada.
               </p>
@@ -302,12 +350,37 @@ export default function VerifyReceiptView({ token }) {
                     </button>
                   </>
                 ) : (
-                  <button
-                    onClick={() => setFase("formulario")}
-                    className="w-full rounded-2xl bg-orange-600 py-4 text-sm font-black uppercase tracking-widest text-white transition-all active:scale-95"
-                  >
-                    Validar este registro
-                  </button>
+                  <div className="space-y-3">
+                    {[
+                      "Reconozco esta moto como propia o vinculada a mí.",
+                      "Recibí este comprobante del taller.",
+                      "Los datos principales coinciden con lo informado.",
+                      receipt.documentType === "diagnostico_presupuesto_cerrado"
+                        ? "Entiendo la condición de cierre informada."
+                        : "Entiendo las condiciones de garantía indicadas.",
+                    ].map((texto, i) => (
+                      <label key={i} className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={checks[i] || false}
+                          onChange={e => {
+                            const next = [...checks];
+                            next[i] = e.target.checked;
+                            setChecks(next);
+                          }}
+                          className="mt-0.5 h-5 w-5 rounded accent-orange-500 cursor-pointer"
+                        />
+                        <span className="text-sm leading-relaxed text-zinc-700">{texto}</span>
+                      </label>
+                    ))}
+                    <button
+                      onClick={() => setFase("formulario")}
+                      disabled={!checks.every(Boolean)}
+                      className="w-full rounded-2xl bg-orange-600 py-4 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all disabled:opacity-40"
+                    >
+                      Continuar para calificar
+                    </button>
+                  </div>
                 )}
               </div>
             )}
@@ -385,16 +458,17 @@ export default function VerifyReceiptView({ token }) {
             )}
 
             {fase === "enviado" && (
-              <div className="space-y-4 rounded-3xl border border-green-200 bg-green-50 p-8 text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-2xl font-black text-green-600">✓</div>
+              <div className="space-y-4 rounded-3xl border border-green-200 bg-white p-8 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 text-2xl">✓</div>
                 <div>
-                  <p className="text-lg font-black text-green-800">Mantenimiento validado</p>
-                  <p className="mt-2 text-sm leading-relaxed text-green-700">
-                    Este registro quedo asociado al historial de tu moto como trabajo documentado y verificado.
+                  <p className="text-lg font-black text-zinc-900">Comprobante validado</p>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-500">
+                    Este registro quedó confirmado dentro del historial verificable de la moto.
+                    Podés guardarlo como respaldo del mantenimiento realizado.
                   </p>
                 </div>
                 {receipt.incentive?.enabled && receipt.incentive?.title && (
-                  <div className="mt-4 rounded-2xl border border-green-300 bg-white p-4 text-left">
+                  <div className="rounded-2xl border border-green-300 bg-green-50 p-4 text-left">
                     <p className="text-[9px] font-black uppercase tracking-widest text-green-600">Beneficio del taller</p>
                     <p className="mt-1 font-black text-zinc-900">{receipt.incentive.title}</p>
                     {receipt.incentive.description && (
@@ -402,6 +476,20 @@ export default function VerifyReceiptView({ token }) {
                     )}
                   </div>
                 )}
+                <div className="flex flex-col gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      if (navigator.share) {
+                        navigator.share({ title: "Mi comprobante", url: window.location.href });
+                      } else {
+                        navigator.clipboard.writeText(window.location.href);
+                      }
+                    }}
+                    className="w-full rounded-2xl border border-zinc-200 py-3 text-[11px] font-black uppercase tracking-widest text-zinc-700 active:scale-95 transition-all"
+                  >
+                    Guardar o compartir enlace
+                  </button>
+                </div>
               </div>
             )}
           </>
