@@ -101,7 +101,7 @@ function formatRequestedAction(item = {}) {
     return "Cancelar al vencer";
   }
   if (item.requestedAction === "change_plan") {
-    return `Cambiar a ${item.requestedPlanKey === "pro" ? "plan pro" : "plan base"}`;
+    return `Cambiar a ${item.requestedPlanKey === "pro" ? "Trimestral" : "Mensual"}`;
   }
   if (item.requestedAction === "pay_plan") {
     return "Pedido de pago";
@@ -667,7 +667,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
               {/* Plan Base */}
               <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Plan Base</p>
+                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Mensual</p>
                   <span className="text-[9px] font-black bg-zinc-200 text-zinc-600 px-2 py-1 rounded-full">30 días · mensual</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -686,7 +686,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
               {/* Plan Pro */}
               <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[9px] font-black text-orange-500 uppercase tracking-widest">Plan Pro</p>
+                  <p className="text-[9px] font-black text-orange-500 uppercase tracking-widest">Trimestral</p>
                   <span className="text-[9px] font-black bg-orange-200 text-orange-700 px-2 py-1 rounded-full">90 días · trimestral</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -705,7 +705,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
               {/* Plan Full */}
               <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-[9px] font-black text-zinc-300 uppercase tracking-widest">Plan Full</p>
+                  <p className="text-[9px] font-black text-zinc-300 uppercase tracking-widest">Anual</p>
                   <span className="text-[9px] font-black bg-zinc-700 text-zinc-300 px-2 py-1 rounded-full">365 días · anual</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1951,7 +1951,7 @@ function PantallaSuscripcion({ showToast }) {
     }
   }, []);
 
-  const planLabel = account?.currentPlanKey === "pro" ? "Plan Pro" : account?.estado === "trial" ? "Prueba" : "Plan Base";
+  const planLabel = account?.currentPlanKey === "pro" ? "Trimestral" : account?.estado === "trial" ? "Prueba" : "Mensual";
   const estadoLabel = account?.estado === "activo" ? "Activa" : account?.estado === "trial" ? "En prueba" : "Vencida";
   const activoHasta = normalizeDateMs(account?.activoHasta || account?.trialEndsAt || account?.nextBillingAt);
   const previousPlanKey = account?.previousPlanKey || "";
@@ -2318,7 +2318,7 @@ function PantallaSuscripcion({ showToast }) {
               <div className="flex-1 overflow-y-auto px-4 pb-3 pt-4">
                 <p className="text-[9px] font-black uppercase tracking-widest text-orange-500">Bases y condiciones</p>
                 <h3 className="mt-1 text-xl font-black text-zinc-900">
-                  {checkoutPlan.label || (checkoutPlanKey === "pro" ? "Plan Pro" : "Plan Base")}
+                  {checkoutPlan.label || (checkoutPlanKey === "pro" ? "Trimestral" : "Mensual")}
                 </h3>
                 <p className="mt-1 text-xs font-bold leading-relaxed text-zinc-600">
                   Antes de ir a Mercado Pago, revisá el plan elegido y el monto a contratar.
