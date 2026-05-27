@@ -2904,9 +2904,14 @@ function PublicarRedCard({ aprobados }) {
       </div>
 
       {aprobados.length === 0 ? (
-        <p className="text-xs text-zinc-500 leading-relaxed">
-          Necesitas al menos una calificación verificada (con teléfono) para aparecer en la red.
-        </p>
+        <div className="space-y-2">
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            Para aparecer en la red necesitás al menos una calificación de un cliente real.
+          </p>
+          <p className="text-xs text-zinc-500 leading-relaxed">
+            Paso a paso: emitís un comprobante, el cliente escanea el QR del PDF, verifica el trabajo y lo califica. Esa calificación habilita tu perfil público.
+          </p>
+        </div>
       ) : (
         <p className="text-xs text-zinc-400 leading-relaxed">
           Publicá tu perfil con las {aprobados.length} calificación{aprobados.length !== 1 ? "es" : ""} verificada{aprobados.length !== 1 ? "s" : ""}.
