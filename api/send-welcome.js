@@ -5,12 +5,41 @@
 const { db, verifyIdToken } = require("./_firebase-admin.js");
 const { sendEmail, templateBienvenida } = require("./_email.js");
 const { applyRateLimit } = require("./_ratelimit.js");
+const { getAuth } = require("firebase-admin/auth");
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
-  if (applyRateLimit(req, res, "send-welcome")) return;
+  const mode = String(req.query?.mode || "").toLowerCase();
+  if (applyRateLimit(req, res, mode === "password-reset" ? "send-password-reset" : "send-welcome")) return;
+
+  if (mode === "password-reset") {
+    const { email } = req.body || {};
+    if (!email || !String(email).includes("@")) {
+      return res.status(400).json({ error: "Email inválido" });
+    }
+    try {
+      const adminAuth = getAuth();
+      const link = await adminAuth.generatePasswordResetLink(String(email).trim().toLowerCase(), {
+        url: "https://app.motogestion.ar",
+      });
+      const html = require("./_email.js").buildResetEmail({ email, link });
+      const ok = await sendEmail({
+        to: String(email).trim().toLowerCase(),
+        subject: "Restablecer contraseña",
+        html,
+      });
+      if (!ok) return res.status(500).json({ error: "No se pudo enviar el correo" });
+      return res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error("[send-password-reset] Error:", err.code, err.message);
+      if (err.code === "auth/user-not-found" || err.code === "auth/email-not-found") {
+        return res.status(200).json({ ok: true });
+      }
+      return res.status(500).json({ error: "Error al procesar la solicitud" });
+    }
+  }
 
   let decoded;
   try {

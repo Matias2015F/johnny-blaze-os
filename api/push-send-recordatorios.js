@@ -36,6 +36,50 @@ function endpointHash(endpoint) {
 }
 
 module.exports = async function handler(req, res) {
+  // Consolidation: /api/push-subscribe is rewritten here with ?mode=subscribe
+  const mode = String(req.query?.mode || "").toLowerCase();
+  if (mode === "subscribe") {
+    const { verifyIdToken } = require("./_firebase-admin.js");
+    const { applyRateLimit } = require("./_ratelimit.js");
+    if (applyRateLimit(req, res, "push-subscribe")) return;
+
+    let decoded;
+    try {
+      decoded = await verifyIdToken(req);
+    } catch (err) {
+      return res.status(err.status || 401).json({ error: "No autorizado" });
+    }
+    const uid = decoded.uid;
+
+    if (req.method === "POST") {
+      const { subscription } = req.body || {};
+      if (!subscription?.endpoint) {
+        return res.status(400).json({ error: "subscription.endpoint requerido" });
+      }
+      const hash = endpointHash(subscription.endpoint);
+      await db.collection("users").doc(uid).collection("pushSubscriptions").doc(hash).set({
+        endpoint: subscription.endpoint,
+        keys: subscription.keys || null,
+        expirationTime: subscription.expirationTime || null,
+        uid,
+        updatedAt: Date.now(),
+      });
+      return res.status(200).json({ ok: true });
+    }
+
+    if (req.method === "DELETE") {
+      const { endpoint } = req.body || {};
+      if (!endpoint) {
+        return res.status(400).json({ error: "endpoint requerido" });
+      }
+      const hash = endpointHash(endpoint);
+      await db.collection("users").doc(uid).collection("pushSubscriptions").doc(hash).delete();
+      return res.status(200).json({ ok: true });
+    }
+
+    return res.status(405).end();
+  }
+
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret || req.headers.authorization !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: "Unauthorized" });

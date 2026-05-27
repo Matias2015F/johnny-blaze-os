@@ -62,6 +62,18 @@
   ],
   "rewrites": [
     {
+      "source": "/api/send-password-reset",
+      "destination": "/api/send-welcome?mode=password-reset"
+    },
+    {
+      "source": "/api/mp-diagnose",
+      "destination": "/api/mp-create-preference?mode=diagnose"
+    },
+    {
+      "source": "/api/push-subscribe",
+      "destination": "/api/push-send-recordatorios?mode=subscribe"
+    },
+    {
       "source": "/api/public-prices",
       "destination": "/api/verify-document?mode=public-prices"
     },
