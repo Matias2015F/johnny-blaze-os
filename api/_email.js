@@ -1,7 +1,7 @@
 // Email helper — Resend REST API (sin SDK, solo fetch)
 // Vars requeridas: RESEND_API_KEY, RESEND_FROM_EMAIL
 
-const FROM_DEFAULT = "Johnny Blaze OS <noreply@motogestion.ar>";
+const FROM_DEFAULT = "MotoGestión <noreply@motogestion.ar>";
 
 async function sendEmail({ to, subject, html }) {
   const key = process.env.RESEND_API_KEY;
@@ -39,7 +39,7 @@ function wrapTemplate(body, { accentColor = "#E85A1A" } = {}) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Johnny Blaze OS</title>
+  <title>MotoGestión</title>
 </head>
 <body style="margin:0;padding:0;background:#111111;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
@@ -48,8 +48,8 @@ function wrapTemplate(body, { accentColor = "#E85A1A" } = {}) {
     <div style="background:#0A0A0A;border-radius:16px 16px 0 0;border:1px solid #2A2A2A;border-bottom:2px solid ${accentColor};padding:22px 28px;display:flex;align-items:center;gap:14px;">
       <div style="background:${accentColor};border-radius:10px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🔧</div>
       <div>
-        <p style="margin:0;font-size:9px;color:${accentColor};font-weight:800;letter-spacing:0.35em;text-transform:uppercase;">Mecánica de Motos</p>
-        <p style="margin:0;font-size:19px;color:#ffffff;font-weight:900;letter-spacing:-0.03em;line-height:1;">JOHNNY BLAZE</p>
+        <p style="margin:0;font-size:9px;color:${accentColor};font-weight:800;letter-spacing:0.35em;text-transform:uppercase;">Gestión de Taller</p>
+        <p style="margin:0;font-size:19px;color:#ffffff;font-weight:900;letter-spacing:-0.03em;line-height:1;">MotoGestión</p>
       </div>
     </div>
 
@@ -72,9 +72,9 @@ function wrapTemplate(body, { accentColor = "#E85A1A" } = {}) {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function planLabel(plan = "") {
-  if (plan === "base")  return "Plan Base";
-  if (plan === "pro")   return "Plan Pro";
-  if (plan === "full")  return "Plan Full";
+  if (plan === "base")  return "Mensual";
+  if (plan === "pro")   return "Trimestral";
+  if (plan === "full")  return "Anual";
   if (plan === "trial") return "Período de prueba";
   return plan || "Plan activo";
 }
@@ -121,7 +121,7 @@ function templateBienvenida({ email, diasTrial, trialHasta }) {
 
     ${alertBox("green", `✓ Tu período de prueba gratuita está activo por ${diasTrial} días — hasta el ${formatFecha(trialHasta)}.`)}
 
-    <p style="margin:0 0 16px;font-size:14px;color:#374151;">Con Johnny Blaze OS podés:</p>
+    <p style="margin:0 0 16px;font-size:14px;color:#374151;">Con MotoGestión podés:</p>
     <ul style="margin:0 0 24px;padding:0 0 0 20px;font-size:14px;color:#374151;line-height:2;">
       <li>Registrar y seguir el estado de cada trabajo</li>
       <li>Gestionar clientes, motos y pagos</li>
