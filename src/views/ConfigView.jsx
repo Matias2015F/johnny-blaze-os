@@ -1937,8 +1937,18 @@ function PantallaSuscripcion({ showToast }) {
     try {
       const params = new URLSearchParams(window.location.search || "");
       const pago = params.get("pago");
-      if (pago === "ok" || pago === "error" || pago === "pendiente") setPaymentResult(pago);
-      else setPaymentResult(null);
+      const cs = params.get("collection_status");
+      let result = null;
+      if (pago === "ok" || pago === "error" || pago === "pendiente") {
+        result = pago;
+      } else if (cs === "approved") {
+        result = "ok";
+      } else if (cs === "rejected" || cs === "cancelled") {
+        result = "error";
+      } else if (cs === "pending" || cs === "in_process") {
+        result = "pendiente";
+      }
+      setPaymentResult(result);
     } catch {
       setPaymentResult(null);
     }

@@ -12,7 +12,7 @@ const PLANES_FALLBACK = {
   full: { label: "Anual",      monto: 900000 },
 };
 
-const BASE_URL = process.env.PUBLIC_APP_URL || "https://app.motogestion.ar";
+const BASE_URL = (process.env.PUBLIC_APP_URL || "https://app.motogestion.ar").replace(/\/+$/, "");
 
 function normalizeCurrency(value) {
   const currency = String(value || "ARS").trim().toUpperCase();
@@ -176,9 +176,9 @@ module.exports = async function handler(req, res) {
       external_reference: uid,
       metadata: { uid, plan },
       back_urls: {
-        success: `${BASE_URL}/?pago=ok`,
-        failure: `${BASE_URL}/?pago=error`,
-        pending: `${BASE_URL}/?pago=pendiente`,
+        success: `${BASE_URL}/`,
+        failure: `${BASE_URL}/`,
+        pending: `${BASE_URL}/`,
       },
       auto_return: "approved",
       notification_url: `${BASE_URL}/api/mp-webhook`,
