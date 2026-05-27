@@ -583,7 +583,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               <p className="text-[9px] font-black uppercase tracking-wide text-zinc-700">Conformidad</p>
               <p className="mt-1 text-[9px] leading-relaxed text-zinc-600">
                 {esRechazo
-                  ? "La recepción de este documento deja constancia del presupuesto rechazado o pospuesto y del monto real cobrado por diagnóstico/revisión."
+                  ? "La recepción de este documento deja constancia del diagnóstico/revisión realizado, el presupuesto informado y la decisión del cliente de no proceder. El taller no se responsabiliza por daños derivados de no realizar los trabajos recomendados."
                   : "La recepción de este documento implica conformidad con el trabajo detallado, los pagos registrados y la garantía informada."}
               </p>
             </div>
