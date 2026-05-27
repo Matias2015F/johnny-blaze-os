@@ -57,6 +57,18 @@ export async function crearPublicReceipt({ order, token, hash, numeroComprobante
       moto: motoNombre,
       patente: patente.length >= 3 ? patente.slice(0, 3) + "***" : patente,
       km: order.kmEntrega || order.kmIngreso || order.km || null,
+      trabajos: (order.tareas || [])
+        .filter(t => t.descripcion || t.nombre || t.texto)
+        .map(t => t.descripcion || t.nombre || t.texto || "")
+        .filter(Boolean),
+      repuestos: (order.repuestos || [])
+        .filter(r => r.descripcion || r.nombre)
+        .map(r => r.descripcion || r.nombre || "")
+        .filter(Boolean),
+      garantia: order.garantiaFinal || "",
+      condicionCierre: order.cierreTipo === "rechazo_cliente"
+        ? "diagnostico_cerrado"
+        : "servicio_realizado",
     },
     incentive: {
       enabled: false,
