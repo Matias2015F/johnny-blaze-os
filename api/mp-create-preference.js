@@ -7,9 +7,9 @@ try {
 const { applyRateLimit } = require("./_ratelimit.js");
 
 const PLANES_FALLBACK = {
-  base: { label: "Plan Base", monto: 5000 },
-  pro: { label: "Plan Pro", monto: 12000 },
-  full: { label: "Plan Full", monto: 45000 },
+  base: { label: "Mensual",    monto: 125000 },
+  pro:  { label: "Trimestral", monto: 300000 },
+  full: { label: "Anual",      monto: 900000 },
 };
 
 const BASE_URL = process.env.PUBLIC_APP_URL || "https://app.motogestion.ar";
@@ -76,7 +76,7 @@ module.exports = async function handler(req, res) {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      items: [{ title: `Johnny Blaze OS - ${p.label}`, quantity: 1, unit_price: p.monto, currency_id: p.currency || "ARS" }],
+      items: [{ title: `MotoGestión - ${p.label}`, quantity: 1, unit_price: p.monto, currency_id: p.currency || "ARS" }],
       external_reference: uid,
       metadata: { uid, plan },
       back_urls: {
