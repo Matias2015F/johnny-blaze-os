@@ -306,6 +306,41 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
         </button>
       </div>
 
+      {(orders || []).length === 0 && !modoLectura && (
+        <div className="rounded-[2rem] border border-zinc-700 bg-zinc-900/80 p-6 space-y-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-orange-400">Por dónde empezar</p>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-600 text-[10px] font-black text-white">1</span>
+              <div>
+                <p className="text-sm font-black text-white">Configurá tu taller</p>
+                <p className="text-[10px] text-zinc-500">Nombre, logo y datos de garantía en Más → Configuración.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-[10px] font-black text-zinc-300">2</span>
+              <div>
+                <p className="text-sm font-black text-white">Cargá tu primer cliente</p>
+                <p className="text-[10px] text-zinc-500">En Nuevo ingreso podés crearlo en el momento.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-[10px] font-black text-zinc-300">3</span>
+              <div>
+                <p className="text-sm font-black text-white">Abrí tu primera orden</p>
+                <p className="text-[10px] text-zinc-500">Desde ahí registrás el trabajo y generás el comprobante.</p>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => setView("nuevaOrden")}
+            className="w-full rounded-2xl bg-orange-600 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all active:scale-95"
+          >
+            Empezar primer ingreso
+          </button>
+        </div>
+      )}
+
       <button onClick={() => setView("agenda")} className="w-full rounded-[2rem] border border-orange-500/20 bg-orange-500/10 p-5 text-left shadow-xl transition-all active:scale-95">
         <div className="flex items-center gap-4">
           <div className="rounded-2xl bg-orange-600/20 p-3">
