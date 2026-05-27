@@ -2031,6 +2031,10 @@ function PantallaSuscripcion({ showToast }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.url) {
+        const statusLine = res?.status ? `HTTP ${res.status}` : "";
+        const hint = String(data.error || data.mpMessage || "").includes("MP_ACCESS_TOKEN")
+          ? " (configuración del servidor)"
+          : "";
         persistPaymentAttempt({
           invoiceId: data.invoiceId || null,
           preferenceId: data.preferenceId || null,
@@ -2038,11 +2042,11 @@ function PantallaSuscripcion({ showToast }) {
           tokenMode: data.tokenMode || null,
           at: Date.now(),
           status: "error",
-          errorMessage: data.mpMessage || data.error || null,
+          errorMessage: [data.mpMessage, data.error, statusLine ? `${statusLine}${hint}` : ""].filter(Boolean).join(" · ") || null,
           mpStatus: data.mpStatus || null,
         });
         await cargar();
-        throw new Error(data.error || "No se pudo generar el pago");
+        throw new Error([data.error, data.mpMessage, statusLine ? `${statusLine}${hint}` : ""].filter(Boolean).join(" · ") || "No se pudo generar el pago");
       }
 
       persistPaymentAttempt({
