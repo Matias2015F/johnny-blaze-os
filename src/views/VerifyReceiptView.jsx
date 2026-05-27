@@ -317,7 +317,7 @@ export default function VerifyReceiptView({ token }) {
                 <div>
                   <p className="text-lg font-black text-zinc-900">
                     {receipt.documentType === "diagnostico_presupuesto_cerrado"
-                      ? "Calificá la atencion y el presupuesto"
+                      ? "Calificá la atención y el presupuesto"
                       : "Calificá el servicio realizado"}
                   </p>
                   <p className="mt-1 text-sm text-zinc-500">Tu calificación queda vinculada a este comprobante real y no puede editarse.</p>
@@ -375,11 +375,11 @@ export default function VerifyReceiptView({ token }) {
                   disabled={!formValido || enviando}
                   className="w-full rounded-2xl bg-orange-600 py-4 text-sm font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-40"
                 >
-                  {enviando ? "Enviando..." : "Confirmar validacion"}
+                  {enviando ? "Enviando..." : "Confirmar validación"}
                 </button>
 
                 <p className="text-center text-[10px] leading-relaxed text-zinc-400">
-                  Una vez enviada, la validacion queda registrada como parte del historial del vehiculo.
+                  Una vez enviada, la validación queda registrada como parte del historial del vehículo.
                 </p>
               </div>
             )}

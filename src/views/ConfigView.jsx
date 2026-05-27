@@ -3008,8 +3008,8 @@ function PantallaReputacion() {
         <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Reputación MotoGestión</h2>
         <div className="rounded-2xl bg-zinc-900 border border-zinc-800 p-5">
           <Star size={24} className="text-orange-500 mb-3" />
-          <p className="text-sm font-bold text-zinc-300 mb-1">Todavia no hay validaciones registradas</p>
-          <p className="text-xs text-zinc-500">Cada comprobante verificable que emitas incluye un QR. Cuando el cliente lo escanea, valida el mantenimiento de su moto y puede calificar el servicio. La calificacion queda asociada al comprobante real.</p>
+          <p className="text-sm font-bold text-zinc-300 mb-1">Todavía no hay validaciones registradas</p>
+          <p className="text-xs text-zinc-500">Cada comprobante verificable que emitas incluye un QR. Cuando el cliente lo escanea, valida el mantenimiento de su moto y puede calificar el servicio. La calificación queda asociada al comprobante real.</p>
         </div>
       </div>
     );

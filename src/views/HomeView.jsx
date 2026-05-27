@@ -154,7 +154,7 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
     const ACCION_MAP = {
       listo_para_emitir: { label: "Emitir comprobante",   color: "text-emerald-400", urgencia: 1 },
       presupuesto:       { label: "Enviar presupuesto",   color: "text-purple-400",  urgencia: 3 },
-      aprobacion:        { label: "Reenviar aprobacion",  color: "text-yellow-400",  urgencia: 4 },
+      aprobacion:        { label: "Reenviar aprobación",  color: "text-yellow-400",  urgencia: 4 },
       diagnostico:       { label: "Armar presupuesto",    color: "text-slate-400",   urgencia: 6 },
     };
     return ordenesActivas

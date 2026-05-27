@@ -343,7 +343,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                     bgColor="#FFFFFF"
                   />
                   <p className="mt-2 max-w-[168px] text-left text-[7px] font-bold leading-tight text-zinc-700">
-                    ESCANEÁ PARA VERIFICAR ESTE COMPROBANTE
+                    Escaneá para verificar el trabajo realizado y calificar el servicio.
                   </p>
                 </div>
               )}
@@ -541,7 +541,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                 <li className="text-[9px] text-zinc-700">El cliente rechaza o pospone el presupuesto.</li>
                 <li className="text-[9px] text-zinc-700">No se realizaron los trabajos presupuestados ni se cambiaron repuestos.</li>
                 <li className="text-[9px] text-zinc-700">El monto cobrado corresponde al diagnóstico, revisión y cargos acordados.</li>
-                <li className="text-[9px] text-zinc-700">Si retoma la reparacion en el futuro, el presupuesto puede ajustarse.</li>
+                <li className="text-[9px] text-zinc-700">Si retoma la reparación en el futuro, el presupuesto puede ajustarse.</li>
                 <li className="text-[9px] text-zinc-700">Número único verificable. Escaneá el QR para validar.</li>
               </ul>
             ) : (
@@ -583,7 +583,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               <p className="text-[9px] font-black uppercase tracking-wide text-zinc-700">Conformidad</p>
               <p className="mt-1 text-[9px] leading-relaxed text-zinc-600">
                 {esRechazo
-                  ? "La recepcion de este documento deja constancia del presupuesto rechazado o pospuesto y del monto real cobrado por diagnostico/revision."
+                  ? "La recepción de este documento deja constancia del presupuesto rechazado o pospuesto y del monto real cobrado por diagnóstico/revisión."
                   : "La recepción de este documento implica conformidad con el trabajo detallado, los pagos registrados y la garantía informada."}
               </p>
             </div>
