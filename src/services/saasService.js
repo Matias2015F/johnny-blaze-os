@@ -25,9 +25,9 @@ export const PLAN_BILLING_DAYS = {
 
 export const DEFAULT_SAAS_ADMIN_SETTINGS = {
   precios: {
-    base: 5000,
-    pro:  12000,
-    full: 45000,
+    base: 125000,
+    pro:  300000,
+    full: 900000,
     currency: "ARS",
   },
   duracionTrialDias: 14,
@@ -77,7 +77,7 @@ export function normalizeAdminSettings(raw = {}) {
     features,
     plans: {
       base: {
-        label: "Plan Base",
+        label: "Mensual",
         description: "Suscripción mensual · se renueva cada 30 días",
         price: basePrice,
         currency,
@@ -86,7 +86,7 @@ export function normalizeAdminSettings(raw = {}) {
         features: { pdf: true, recordatorios: true, analytics: false, multiusuario: false, ...features },
       },
       pro: {
-        label: "Plan Pro",
+        label: "Trimestral",
         description: "Suscripción trimestral · se renueva cada 90 días",
         price: proPrice,
         currency,
@@ -95,12 +95,12 @@ export function normalizeAdminSettings(raw = {}) {
         features: { ...features, multiusuario: true },
       },
       full: {
-        label: "Plan Full",
+        label: "Anual",
         description: "Suscripción anual · se renueva cada 365 días",
         price: fullPrice,
         currency,
         billingDays: PLAN_BILLING_DAYS.full,
-        active: false,
+        active: true,
         features: { ...features, multiusuario: true },
       },
     },
