@@ -4,7 +4,7 @@ export const MIN_EXTENSION_DAYS = 1;
 
 export function validatePlanKey(planKey) {
   if (!VALID_PLAN_KEYS.includes(planKey)) {
-    throw new Error(`Plan inválido: "${planKey}". Los valores permitidos son: base, pro, full.`);
+    throw new Error(`Plan inválido: "${planKey}". Los valores permitidos son: base (Mensual), pro (Trimestral), full (Anual).`);
   }
 }
 
@@ -28,8 +28,8 @@ export function validateAdminSettings(settings) {
   const pro = Number(p.pro ?? 0);
   const full = Number(p.full ?? 0);
   if (base < 0) errors.push("El precio base no puede ser negativo.");
-  if (pro < base) errors.push("El precio Pro debe ser mayor o igual al precio Base.");
-  if (full < pro) errors.push("El precio Full debe ser mayor o igual al precio Pro.");
+  if (pro < base) errors.push("El precio Trimestral debe ser mayor o igual al Mensual.");
+  if (full < pro) errors.push("El precio Anual debe ser mayor o igual al Trimestral.");
   const trial = Number(settings?.duracionTrialDias ?? 14);
   if (!Number.isFinite(trial) || trial < 0 || trial > 30) {
     errors.push("Los días de prueba deben estar entre 0 y 30.");
