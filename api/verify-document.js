@@ -188,10 +188,33 @@ async function handlePublishWorkshop(req, res) {
   }
 }
 
+const PRICES_FALLBACK = { base: 125000, pro: 300000, full: 900000, currency: "ARS" };
+
+async function handlePublicPrices(req, res) {
+  res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
+  try {
+    const snap = await db.collection("admin_settings").doc("global").get();
+    const precios = snap.exists ? (snap.data().precios || {}) : {};
+    return res.status(200).json({
+      base:     Number(precios.base     ?? PRICES_FALLBACK.base),
+      pro:      Number(precios.pro      ?? PRICES_FALLBACK.pro),
+      full:     Number(precios.full     ?? PRICES_FALLBACK.full),
+      currency: precios.currency        || PRICES_FALLBACK.currency,
+    });
+  } catch (err) {
+    console.warn("[public-prices] Firestore error, using fallback:", err.message);
+    return res.status(200).json(PRICES_FALLBACK);
+  }
+}
+
 module.exports = async function handler(req, res) {
   setCors(req, res);
 
   if (req.method === "OPTIONS") return res.status(200).end();
+
+  if (req.query?.mode === "public-prices") {
+    return handlePublicPrices(req, res);
+  }
 
   if (req.query?.mode === "lead") {
     return handleLead(req, res);
