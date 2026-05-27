@@ -131,6 +131,31 @@ export function normalizarTelWA(tel) {
   return `549${nacional}`;
 }
 
+export function mensajeComprobanteVerificable({ clienteNombre, verifyUrl, nombreTaller, documentType }) {
+  const nombre = clienteNombre || "cliente";
+  const taller = nombreTaller || "el taller";
+
+  if (documentType === "diagnostico_presupuesto_cerrado") {
+    return `Hola ${nombre}, tu constancia de diagnóstico ya está disponible en MotoGestión.
+
+Podés revisarla, validar la recepción y calificar la atención desde este link:
+${verifyUrl}
+
+Este documento deja registro del diagnóstico informado y de la decisión tomada al momento del cierre.
+
+${taller}`;
+  }
+
+  return `Hola ${nombre}, tu comprobante ya está disponible en MotoGestión.
+
+Podés revisarlo, validar los datos y calificar la atención desde este link:
+${verifyUrl}
+
+Este registro te sirve como respaldo del mantenimiento realizado y del historial de tu moto.
+
+${taller}`;
+}
+
 export function abrirWhatsApp(tel, mensaje) {
   const numero = normalizarTelWA(tel);
   const phone = numero ? `phone=${numero}&` : "";
