@@ -1951,7 +1951,12 @@ function PantallaSuscripcion({ showToast }) {
     }
   }, []);
 
-  const planLabel = account?.currentPlanKey === "pro" ? "Trimestral" : account?.estado === "trial" ? "Prueba" : "Mensual";
+  const planKey = String(account?.currentPlanKey || account?.plan || "base");
+  const planLabel =
+    account?.estado === "trial"
+      ? "Prueba"
+      : settings?.plans?.[planKey]?.label ||
+        (planKey === "pro" ? "Trimestral" : planKey === "full" ? "Anual" : "Mensual");
   const estadoLabel = account?.estado === "activo" ? "Activa" : account?.estado === "trial" ? "En prueba" : "Vencida";
   const activoHasta = normalizeDateMs(account?.activoHasta || account?.trialEndsAt || account?.nextBillingAt);
   const previousPlanKey = account?.previousPlanKey || "";
@@ -2220,17 +2225,17 @@ function PantallaSuscripcion({ showToast }) {
               </p>
             </div>
             <div className="col-span-2">
-              <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Tu UID de Firebase</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Tu token de identificación</p>
               <div className="mt-2 flex items-center gap-2">
                 <p className="flex-1 rounded-2xl bg-white px-3 py-3 text-[11px] font-black text-zinc-700 break-all">{uid || "Sin UID"}</p>
                 <button
                   onClick={async () => {
                     try {
                       await navigator.clipboard.writeText(uid || "");
-                      showToast("UID copiado");
+                      showToast("Token copiado");
                     } catch (error) {
                       console.error(error);
-                      showToast("No se pudo copiar el UID");
+                      showToast("No se pudo copiar el token");
                     }
                   }}
                   className="rounded-2xl bg-zinc-900 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white"
@@ -2238,6 +2243,9 @@ function PantallaSuscripcion({ showToast }) {
                   Copiar
                 </button>
               </div>
+              <p className="mt-2 text-[10px] font-bold text-zinc-400">
+                Usalo para soporte o verificaciones. Es tu identificador único dentro de MotoGestión.
+              </p>
             </div>
           </div>
         </div>
@@ -2248,14 +2256,21 @@ function PantallaSuscripcion({ showToast }) {
             disabled={sending}
             className="rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
           >
-            {sending ? "Procesando..." : `Pagar base ${formatMoney(settings.precios?.base || 0)}`}
+            {sending ? "Procesando..." : `Pagar ${settings?.plans?.base?.label || "Base"} ${formatMoney(settings.precios?.base || 0)}`}
           </button>
           <button
             onClick={() => abrirConfirmacionPago("pro")}
             disabled={sending}
             className="rounded-2xl bg-zinc-900 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
           >
-            {sending ? "Procesando..." : `Cambiar a pro ${formatMoney(settings.precios?.pro || 0)}`}
+            {sending ? "Procesando..." : `Cambiar a ${settings?.plans?.pro?.label || "Pro"} ${formatMoney(settings.precios?.pro || 0)}`}
+          </button>
+          <button
+            onClick={() => abrirConfirmacionPago("full")}
+            disabled={sending}
+            className="col-span-2 rounded-2xl bg-zinc-800 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
+          >
+            {sending ? "Procesando..." : `Cambiar a ${settings?.plans?.full?.label || "Full"} ${formatMoney(settings.precios?.full || 0)}`}
           </button>
         </div>
 
