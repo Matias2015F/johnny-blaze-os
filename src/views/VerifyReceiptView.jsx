@@ -104,6 +104,8 @@ export default function VerifyReceiptView({ token }) {
           return;
         }
         setEstado("verificado");
+        // Start at checklist validation unless the receipt requires phone verification first.
+        setFase(data.hasPhoneVerification ? "verificacion" : "validacion");
       })
       .catch(() => setEstado("no_encontrado"));
   }, [token]);
@@ -114,8 +116,10 @@ export default function VerifyReceiptView({ token }) {
       return;
     }
     setPhoneError("");
-    setFase("formulario");
+    setFase("validacion");
   };
+
+  const checksValidos = checks.every(Boolean);
 
   const formValido =
     scores.atencion > 0 &&
@@ -300,6 +304,43 @@ export default function VerifyReceiptView({ token }) {
               </p>
             </div>
 
+            {estado === "verificado" && (
+              <>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (navigator.share) {
+                        navigator.share({ title: "Comprobante", url: window.location.href });
+                      } else {
+                        navigator.clipboard?.writeText(window.location.href);
+                      }
+                    }}
+                    className="w-full rounded-2xl border border-zinc-200 bg-white py-3 text-[11px] font-black uppercase tracking-widest text-zinc-700 active:scale-95 transition-all"
+                  >
+                    Guardar o compartir enlace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (receipt.pdfUrl) window.open(receipt.pdfUrl, "_blank");
+                    }}
+                    disabled={!receipt.pdfUrl}
+                    className={`w-full rounded-2xl py-3 text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all ${
+                      receipt.pdfUrl ? "bg-orange-600 text-white" : "bg-zinc-200 text-zinc-400"
+                    }`}
+                  >
+                    Descargar comprobante PDF
+                  </button>
+                </div>
+                {!receipt.pdfUrl && (
+                  <p className="text-[10px] leading-relaxed text-zinc-400">
+                    El PDF descargable desde este portal aún no está habilitado. Podés pedir el PDF al taller o guardarlo desde WhatsApp.
+                  </p>
+                )}
+              </>
+            )}
+
             {estado === "ya_calificado" && fase !== "enviado" && (
               <div className="space-y-2 rounded-3xl border border-green-200 bg-green-50 p-6 text-center">
                 <p className="text-2xl">★★★★★</p>
@@ -350,38 +391,63 @@ export default function VerifyReceiptView({ token }) {
                     </button>
                   </>
                 ) : (
-                  <div className="space-y-3">
-                    {[
-                      "Reconozco esta moto como propia o vinculada a mí.",
-                      "Recibí este comprobante del taller.",
-                      "Los datos principales coinciden con lo informado.",
-                      receipt.documentType === "diagnostico_presupuesto_cerrado"
-                        ? "Entiendo la condición de cierre informada."
-                        : "Entiendo las condiciones de garantía indicadas.",
-                    ].map((texto, i) => (
-                      <label key={i} className="flex items-start gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={checks[i] || false}
-                          onChange={e => {
-                            const next = [...checks];
-                            next[i] = e.target.checked;
-                            setChecks(next);
-                          }}
-                          className="mt-0.5 h-5 w-5 rounded accent-orange-500 cursor-pointer"
-                        />
-                        <span className="text-sm leading-relaxed text-zinc-700">{texto}</span>
-                      </label>
-                    ))}
-                    <button
-                      onClick={() => setFase("formulario")}
-                      disabled={!checks.every(Boolean)}
-                      className="w-full rounded-2xl bg-orange-600 py-4 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all disabled:opacity-40"
-                    >
-                      Continuar para calificar
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFase("validacion")}
+                    className="w-full rounded-2xl bg-orange-600 py-4 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+                  >
+                    Continuar
+                  </button>
                 )}
+              </div>
+            )}
+
+            {estado === "verificado" && fase === "validacion" && (
+              <div className="space-y-4 rounded-3xl border border-zinc-200 bg-white p-6">
+                <div className="space-y-1">
+                  <p className="text-lg font-black text-zinc-900">Validar comprobante</p>
+                  <p className="text-sm leading-relaxed text-zinc-500">
+                    Confirmá que recibiste este comprobante y que los datos principales coinciden con el servicio informado.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {[
+                    "Reconozco esta moto como propia o vinculada a mí.",
+                    "Recibí este comprobante del taller.",
+                    "Los datos principales coinciden con lo informado.",
+                    receipt.documentType === "diagnostico_presupuesto_cerrado"
+                      ? "Entiendo la condición de cierre indicada."
+                      : "Entiendo la condición de garantía indicada.",
+                  ].map((texto, i) => (
+                    <label key={i} className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checks[i] || false}
+                        onChange={(e) => {
+                          const next = [...checks];
+                          next[i] = e.target.checked;
+                          setChecks(next);
+                        }}
+                        className="mt-0.5 h-5 w-5 rounded accent-orange-500 cursor-pointer"
+                      />
+                      <span className="text-sm leading-relaxed text-zinc-700">{texto}</span>
+                    </label>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setFase("formulario")}
+                  disabled={!checksValidos}
+                  className="w-full rounded-2xl bg-orange-600 py-4 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all disabled:opacity-40"
+                >
+                  Validar comprobante
+                </button>
+
+                <p className="text-center text-[10px] leading-relaxed text-zinc-400">
+                  Confirmás recepción del comprobante y conformidad inicial con los datos informados.
+                </p>
               </div>
             )}
 
@@ -489,6 +555,15 @@ export default function VerifyReceiptView({ token }) {
                   >
                     Guardar o compartir enlace
                   </button>
+                  {receipt.pdfUrl && (
+                    <button
+                      type="button"
+                      onClick={() => window.open(receipt.pdfUrl, "_blank")}
+                      className="w-full rounded-2xl bg-orange-600 py-3 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+                    >
+                      Descargar comprobante PDF
+                    </button>
+                  )}
                 </div>
               </div>
             )}

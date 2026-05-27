@@ -43,6 +43,7 @@ export async function crearPublicReceipt({ order, token, hash, numeroComprobante
       : "servicio_realizado",
     validationStatus: "pendiente",
     validatedAt: null,
+    validatedByClient: false,
     ratingEnabled: true,
     ratingUsed: false,
     ratingExpiresAt: now + 30 * 24 * 60 * 60 * 1000,
@@ -70,6 +71,10 @@ export async function crearPublicReceipt({ order, token, hash, numeroComprobante
         ? "diagnostico_cerrado"
         : "servicio_realizado",
     },
+    // PDF downloadable (optional). If not implemented yet, keep null and show guidance in the public portal.
+    pdfUrl: null,
+    pdfStoragePath: null,
+    pdfGeneratedAt: null,
     incentive: {
       enabled: false,
       type: "",
