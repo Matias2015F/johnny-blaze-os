@@ -63,7 +63,7 @@ module.exports = async function handler(req, res) {
     if (!snap.exists) return res.status(404).json({ error: "Calificacion no encontrada" });
 
     const now = Date.now();
-    const status = normalizedDecision === "aprobar" ? "aprobada" : "rechazada";
+    const status = normalizedDecision === "aprobar" ? "aprobado" : "rechazado";
     const reputationWeight = normalizedDecision === "aprobar" ? 1 : 0;
 
     await ref.set({

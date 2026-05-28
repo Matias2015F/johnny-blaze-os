@@ -1073,8 +1073,8 @@ function PantallaAdmin({ showToast, scrollRef }) {
       {adminTab === "calificaciones" && (() => {
         const FILTER_TABS = [
           { id: "pendiente_validacion", label: "Pendientes" },
-          { id: "aprobada",             label: "Aprobadas" },
-          { id: "rechazada",            label: "Rechazadas" },
+          { id: "aprobado",             label: "Aprobadas" },
+          { id: "rechazado",            label: "Rechazadas" },
           { id: "todas",                label: "Todas" },
         ];
         const shown = filterRating === "todas"
@@ -1129,7 +1129,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
             {shown.map(r => {
               const score = [r.scoreAtencion, r.scoreClaridad, r.scoreTrabajo, r.scoreCumplimiento].filter(Boolean);
               const avg = score.length ? (score.reduce((a, b) => a + b, 0) / score.length).toFixed(1) : null;
-              const statusColor = r.status === "aprobada" ? "text-green-600 bg-green-50" : r.status === "rechazada" ? "text-red-500 bg-red-50" : "text-orange-600 bg-orange-50";
+              const statusColor = r.status === "aprobado" ? "text-green-600 bg-green-50" : r.status === "rechazado" ? "text-red-500 bg-red-50" : "text-orange-600 bg-orange-50";
               const isMod = accionandoOther === `mod-${r.id}`;
               return (
                 <Card key={r.id}>
@@ -3128,7 +3128,7 @@ function PantallaReputacion() {
         <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-1">Historial</p>
         {ratings.map((r) => {
           const fecha = r.createdAt ? new Date(r.createdAt).toLocaleDateString("es-AR") : "";
-          const aprobada = r.status === "aprobada";
+          const aprobada = r.status === "aprobado";
           return (
             <div key={r.id} className="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">
