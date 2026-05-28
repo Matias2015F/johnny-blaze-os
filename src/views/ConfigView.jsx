@@ -150,7 +150,7 @@ async function cargarPanelAdminDesdeServidor() {
 
 function MoneyValue({ amount, className = "" }) {
   return (
-    <p className={`text-2xl font-black text-zinc-800 ${className}`}>{formatMoney(Number(amount || 0))}</p>
+    <p className={`text-xl sm:text-2xl font-black text-zinc-800 ${className}`}>{formatMoney(Number(amount || 0))}</p>
   );
 }
 
