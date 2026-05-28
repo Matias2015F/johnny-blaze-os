@@ -1,0 +1,52 @@
+## ID y Estado
+mp-create-preference — En diagnóstico (back_urls invalid, 2026-05-28)
+
+## Objetivo principal
+Crear una preferencia de pago en MercadoPago y devolver `preferenceId` + `url`
+al cliente para iniciar el checkout.
+
+## Criterios de éxito
+- [ ] MP responde 201 con `id` y `init_point` sin errores
+- [ ] `back_urls` pasan validación de MP (dominio registrado, sin query params)
+- [ ] El usuario es redirigido a la app tras el pago con `collection_status`
+- [ ] Los precios vienen de Firestore `admin_settings/global`, con fallback al código
+
+## Entradas / Salidas
+- Input: `{ plan: "base" | "pro" | "full" }` en el body POST
+- Auth: Bearer token Firebase del usuario (uid en el token)
+- Output éxito: `{ preferenceId: string, url: string }`
+- Output error: `{ error: string, mpBody?: object }`
+
+## Flujo lógico
+1. Verificar method === POST
+2. Rate limit: `applyRateLimit(req, res, "mp-create-preference")`
+3. Verificar token Firebase → extraer `uid`
+4. Validar que `plan` es "base", "pro" o "full"
+5. Verificar `MP_ACCESS_TOKEN` en env
+6. Leer precios de Firestore `admin_settings/global` (fallback a PLANES_FALLBACK)
+7. Construir payload MP con `items`, `external_reference: uid`, `back_urls`
+8. POST a `https://api.mercadopago.com/checkout/preferences`
+9. Devolver `{ preferenceId, url }` o `{ error, mpBody }`
+
+## Dependencias y zonas protegidas
+- `src/views/ConfigView.jsx` consume `preferenceId` y `url` de la respuesta
+- `BASE_URL` debe ser el dominio registrado en la cuenta MP (actualmente bajo diagnóstico)
+- `external_reference` = uid del usuario (el webhook lo usa para activar suscripción)
+- Claves de plan `"base"/"pro"/"full"` NO cambiar — están en Firestore
+- `notification_url` fue removida temporalmente para diagnóstico (2026-05-28)
+
+## Estado del diagnóstico activo (2026-05-28)
+- Error: MP 400: back_urls invalid. Wrong format
+- Hipótesis descartada: query params en back_urls (removidos, error persiste)
+- Hipótesis activa: dominio `app.motogestion.ar` no registrado en cuenta MP
+- Hipótesis alternativa: notification_url con dominio diferente al registrado
+- Próximo paso: el usuario debe testear con deploy 7183765 y reportar mpBody completo
+- Si sigue fallando: cambiar back_urls a `https://johnny-blaze-os.vercel.app` (dominio original que funcionó)
+
+## Historial de cambios
+| Fecha | Commit | Cambio |
+|-------|--------|--------|
+| 2026-05-27 | 36a93eb | BASE_URL hardcodeado a johnny-blaze-os.vercel.app — funcionaba |
+| 2026-05-27 | 205ca5f | Cambio a env var PUBLIC_APP_URL — primer punto de falla |
+| 2026-05-27 | 4bf0433 | Mostrar detalle de error MP en respuesta |
+| 2026-05-28 | 7183765 | Remover notification_url + log + mpBody en error |
