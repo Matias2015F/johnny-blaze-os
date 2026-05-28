@@ -37,6 +37,11 @@ export const DEFAULT_SAAS_ADMIN_SETTINGS = {
   features: {
     ...DEFAULT_SAAS_FEATURES,
   },
+  planDurations: {
+    base: PLAN_BILLING_DAYS.base,
+    pro: PLAN_BILLING_DAYS.pro,
+    full: PLAN_BILLING_DAYS.full,
+  },
 };
 
 export function normalizeDateMs(value) {
@@ -64,8 +69,17 @@ export function normalizeAdminSettings(raw = {}) {
   const proPrice  = Number(precios.pro  ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.pro);
   const fullPrice = Number(precios.full ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.full);
   const currency  = precios.currency || DEFAULT_SAAS_ADMIN_SETTINGS.precios.currency;
+  const planDurationsRaw = raw.planDurations || {};
+  const baseDays = Number(planDurationsRaw.base ?? DEFAULT_SAAS_ADMIN_SETTINGS.planDurations.base);
+  const proDays = Number(planDurationsRaw.pro ?? DEFAULT_SAAS_ADMIN_SETTINGS.planDurations.pro);
+  const fullDays = Number(planDurationsRaw.full ?? DEFAULT_SAAS_ADMIN_SETTINGS.planDurations.full);
   const duracionTrialDias = Number(raw.duracionTrialDias ?? DEFAULT_SAAS_ADMIN_SETTINGS.duracionTrialDias);
   const features = { ...DEFAULT_SAAS_FEATURES, ...(raw.features || {}) };
+  const planDurations = {
+    base: Number.isFinite(baseDays) && baseDays > 0 ? baseDays : DEFAULT_SAAS_ADMIN_SETTINGS.planDurations.base,
+    pro: Number.isFinite(proDays) && proDays > 0 ? proDays : DEFAULT_SAAS_ADMIN_SETTINGS.planDurations.pro,
+    full: Number.isFinite(fullDays) && fullDays > 0 ? fullDays : DEFAULT_SAAS_ADMIN_SETTINGS.planDurations.full,
+  };
 
   return {
     precios: { base: basePrice, pro: proPrice, full: fullPrice, currency },
@@ -75,13 +89,14 @@ export function normalizeAdminSettings(raw = {}) {
     notificationEmail: raw.notificationEmail || DEFAULT_SAAS_ADMIN_SETTINGS.notificationEmail,
     subscriptionCurrency: currency,
     features,
+    planDurations,
     plans: {
       base: {
         label: "Mensual",
         description: "Suscripción mensual · se renueva cada 30 días",
         price: basePrice,
         currency,
-        billingDays: PLAN_BILLING_DAYS.base,
+        billingDays: planDurations.base,
         active: true,
         features: { pdf: true, recordatorios: true, analytics: false, multiusuario: false, ...features },
       },
@@ -90,7 +105,7 @@ export function normalizeAdminSettings(raw = {}) {
         description: "Suscripción trimestral · se renueva cada 90 días",
         price: proPrice,
         currency,
-        billingDays: PLAN_BILLING_DAYS.pro,
+        billingDays: planDurations.pro,
         active: true,
         features: { ...features, multiusuario: true },
       },
@@ -99,7 +114,7 @@ export function normalizeAdminSettings(raw = {}) {
         description: "Suscripción anual · se renueva cada 365 días",
         price: fullPrice,
         currency,
-        billingDays: PLAN_BILLING_DAYS.full,
+        billingDays: planDurations.full,
         active: true,
         features: { ...features, multiusuario: true },
       },
@@ -194,6 +209,7 @@ export async function guardarAdminSettings(settings, actor = {}) {
     graceDaysDefault: normalized.graceDaysDefault,
     applyPricingToNewAccountsOnly: normalized.applyPricingToNewAccountsOnly,
     features: normalized.features,
+    planDurations: normalized.planDurations,
     updatedAt: serverTimestamp(),
     updatedByUid: actor.uid || "",
     updatedByEmail: actor.email || "",

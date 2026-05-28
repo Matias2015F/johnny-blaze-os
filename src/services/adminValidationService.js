@@ -30,6 +30,13 @@ export function validateAdminSettings(settings) {
   if (base < 0) errors.push("El precio base no puede ser negativo.");
   if (pro < base) errors.push("El precio Trimestral debe ser mayor o igual al Mensual.");
   if (full < pro) errors.push("El precio Anual debe ser mayor o igual al Trimestral.");
+  const durations = settings?.planDurations || {};
+  for (const [key, label] of [["base", "Mensual"], ["pro", "Trimestral"], ["full", "Anual"]]) {
+    const days = Number(durations[key] ?? 0);
+    if (!Number.isFinite(days) || days < 1 || days > 730) {
+      errors.push(`La duracion del plan ${label} debe estar entre 1 y 730 dias.`);
+    }
+  }
   const trial = Number(settings?.duracionTrialDias ?? 14);
   if (!Number.isFinite(trial) || trial < 0 || trial > 30) {
     errors.push("Los días de prueba deben estar entre 0 y 30.");

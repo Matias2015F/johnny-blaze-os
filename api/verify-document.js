@@ -5,6 +5,7 @@ const { sendEmail } = require("./_email.js");
 const ALLOWED_ORIGINS = [
   "https://motogestion.ar",
   "https://www.motogestion.ar",
+  "https://motogestion-landing-rose.vercel.app",
   "https://app.motogestion.ar",
 ];
 
@@ -188,18 +189,31 @@ async function handlePublishWorkshop(req, res) {
   }
 }
 
-const PRICES_FALLBACK = { base: 125000, pro: 300000, full: 900000, currency: "ARS" };
+const PRICES_FALLBACK = {
+  base: 125000,
+  pro: 300000,
+  full: 900000,
+  currency: "ARS",
+  planDurations: { base: 30, pro: 90, full: 365 },
+};
 
 async function handlePublicPrices(req, res) {
   res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
   try {
     const snap = await db.collection("admin_settings").doc("global").get();
-    const precios = snap.exists ? (snap.data().precios || {}) : {};
+    const data = snap.exists ? snap.data() || {} : {};
+    const precios = data.precios || {};
+    const planDurations = data.planDurations || {};
     return res.status(200).json({
       base:     Number(precios.base     ?? PRICES_FALLBACK.base),
       pro:      Number(precios.pro      ?? PRICES_FALLBACK.pro),
       full:     Number(precios.full     ?? PRICES_FALLBACK.full),
       currency: precios.currency        || PRICES_FALLBACK.currency,
+      planDurations: {
+        base: Number(planDurations.base ?? PRICES_FALLBACK.planDurations.base),
+        pro: Number(planDurations.pro ?? PRICES_FALLBACK.planDurations.pro),
+        full: Number(planDurations.full ?? PRICES_FALLBACK.planDurations.full),
+      },
     });
   } catch (err) {
     console.warn("[public-prices] Firestore error, using fallback:", err.message);

@@ -11,7 +11,16 @@ const {
 const { applyRateLimit } = require("./_ratelimit.js");
 
 const PLAN_BILLING_DAYS = { base: 30, pro: 90, full: 365 };
-const getBillingDays = (plan) => PLAN_BILLING_DAYS[plan] || 30;
+async function getBillingDays(plan) {
+  try {
+    const snap = await db.collection("admin_settings").doc("global").get();
+    const days = snap.exists ? Number(snap.data()?.planDurations?.[plan]) : 0;
+    return Number.isFinite(days) && days > 0 ? days : (PLAN_BILLING_DAYS[plan] || 30);
+  } catch (err) {
+    console.warn("[mp-webhook] No se pudo leer duracion de plan, usando fallback:", err.message);
+    return PLAN_BILLING_DAYS[plan] || 30;
+  }
+}
 const ESTADOS_BLOQUEADOS = ["suspendido", "vencido", "trial_vencido"];
 
 // ── HMAC failure tracker ─────────────────────────────────────────────────────
@@ -198,7 +207,8 @@ module.exports = async function handler(req, res) {
       userData?.activoHasta && userData.activoHasta > Date.now()
         ? userData.activoHasta
         : Date.now();
-    const nuevoActivoHasta = baseTime + getBillingDays(nuevoPlan) * 24 * 60 * 60 * 1000;
+    const billingDays = await getBillingDays(nuevoPlan);
+    const nuevoActivoHasta = baseTime + billingDays * 24 * 60 * 60 * 1000;
 
     const updateData = {
       estado: "activo",
@@ -238,6 +248,7 @@ module.exports = async function handler(req, res) {
       fecha: Date.now(),
       paidAt: Date.now(),
       activoHasta: nuevoActivoHasta,
+      billingDays,
     });
 
     // Register billing event for admin reconciliation

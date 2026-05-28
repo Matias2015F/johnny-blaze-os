@@ -163,6 +163,70 @@ function StatBox({ label, value, color = "text-zinc-800" }) {
   );
 }
 
+function AdminPlanPriceBlock({ planKey, label, tone = "zinc", settings, setSettings }) {
+  const fallbackDays = { base: 30, pro: 90, full: 365 };
+  const price = Number(settings.precios?.[planKey] || 0);
+  const days = Number(settings.planDurations?.[planKey] || settings.plans?.[planKey]?.billingDays || fallbackDays[planKey] || 30);
+  const isDark = tone === "dark";
+  const borderClass = isDark ? "border-zinc-700 bg-zinc-900 text-white" : tone === "orange" ? "border-orange-100 bg-orange-50" : "border-zinc-100 bg-zinc-50";
+  const labelClass = isDark ? "text-zinc-300" : tone === "orange" ? "text-orange-600" : "text-zinc-500";
+  const badgeClass = isDark ? "bg-zinc-700 text-zinc-200" : tone === "orange" ? "bg-orange-200 text-orange-800" : "bg-zinc-200 text-zinc-700";
+  const inputClass = isDark ? "text-white" : "text-zinc-900";
+
+  const updatePrice = (value) => {
+    const next = Number(String(value).replace(/\D/g, "") || 0);
+    setSettings((p) => ({ ...p, precios: { ...(p.precios || {}), [planKey]: next } }));
+  };
+
+  const updateDays = (value) => {
+    const next = Number(String(value).replace(/\D/g, "") || fallbackDays[planKey] || 30);
+    setSettings((p) => ({ ...p, planDurations: { ...(p.planDurations || {}), [planKey]: next } }));
+  };
+
+  return (
+    <div className={`rounded-2xl border p-4 ${borderClass}`}>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className={`text-[10px] font-black uppercase tracking-widest ${labelClass}`}>{label}</p>
+          <p className={`mt-1 text-[10px] font-bold ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>Precio y duracion visibles en app y landing.</p>
+        </div>
+        <span className={`rounded-full px-2.5 py-1 text-[9px] font-black ${badgeClass}`}>{days} dias</span>
+      </div>
+
+      <div className="grid grid-cols-[minmax(0,1fr)_92px] gap-3">
+        <label className="min-w-0 rounded-2xl border border-black/5 bg-white/70 px-3 py-3">
+          <span className="block text-[9px] font-black uppercase tracking-widest text-zinc-400">Precio ARS</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={String(price)}
+            onChange={(e) => updatePrice(e.target.value)}
+            className={`mt-1 w-full min-w-0 bg-transparent text-2xl font-black outline-none ${inputClass}`}
+            placeholder="0"
+          />
+        </label>
+        <label className="rounded-2xl border border-black/5 bg-white/70 px-3 py-3">
+          <span className="block text-[9px] font-black uppercase tracking-widest text-zinc-400">Dias</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={String(days)}
+            onChange={(e) => updateDays(e.target.value)}
+            className={`mt-1 w-full bg-transparent text-2xl font-black outline-none ${inputClass}`}
+            placeholder="30"
+          />
+        </label>
+      </div>
+
+      <div className={`mt-3 rounded-2xl px-3 py-2 ${isDark ? "bg-black/20" : "bg-white/70"}`}>
+        <p className={`text-[9px] font-black uppercase tracking-widest ${isDark ? "text-zinc-400" : "text-zinc-400"}`}>Vista publica</p>
+        <p className={`mt-0.5 text-lg font-black leading-tight ${isDark ? "text-white" : "text-zinc-900"}`}>{formatMoney(price)}</p>
+        <p className={`text-[10px] font-bold ${isDark ? "text-zinc-400" : "text-zinc-500"}`}>ARS / {days} dias</p>
+      </div>
+    </div>
+  );
+}
+
 function PantallaAdmin({ showToast, scrollRef }) {
   const [remoteBuild, setRemoteBuild] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
@@ -352,10 +416,10 @@ function PantallaAdmin({ showToast, scrollRef }) {
       return;
     }
     setSavingSettings(true);
-    const settingsBefore = { precios: settings.precios, duracionTrialDias: settings.duracionTrialDias, graceDaysDefault: settings.graceDaysDefault };
+    const settingsBefore = { precios: settings.precios, planDurations: settings.planDurations, duracionTrialDias: settings.duracionTrialDias, graceDaysDefault: settings.graceDaysDefault };
     try {
       await guardarAdminSettings(settings, { uid: user?.uid || "", email: user?.email || "" });
-      await logAdminAction({ action: "update_admin_settings", actorUid: user?.uid || "", actorEmail: user?.email || "", before: settingsBefore, after: { precios: settings.precios, duracionTrialDias: settings.duracionTrialDias, graceDaysDefault: settings.graceDaysDefault }, reason: "Cambio manual desde panel admin" });
+      await logAdminAction({ action: "update_admin_settings", actorUid: user?.uid || "", actorEmail: user?.email || "", before: settingsBefore, after: { precios: settings.precios, planDurations: settings.planDurations, duracionTrialDias: settings.duracionTrialDias, graceDaysDefault: settings.graceDaysDefault }, reason: "Cambio manual desde panel admin" });
       showToast("Configuración guardada.");
       setSettingsConfirmOpen(false);
       cargar();
@@ -661,67 +725,11 @@ function PantallaAdmin({ showToast, scrollRef }) {
 
           <Card>
             <SectionTitle>Precios y duracion</SectionTitle>
-            <p className="text-[11px] font-bold text-zinc-500 mb-4">Cambiarlo no afecta suscripciones ya activas.</p>
+            <p className="text-[11px] font-bold text-zinc-500 mb-4">Los cambios aplican a nuevos pagos y se reflejan tambien en la landing.</p>
             <div className="space-y-3">
-
-              {/* Plan Base */}
-              <div className="bg-zinc-50 border border-zinc-100 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Mensual</p>
-                  <span className="text-[9px] font-black bg-zinc-200 text-zinc-600 px-2 py-1 rounded-full">30 días · mensual</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black uppercase tracking-widest text-zinc-400">ARS</span>
-                  <input
-                    type="text" inputMode="numeric"
-                    value={String(settings.precios?.base || 0)}
-                    onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), base: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
-                    className="flex-1 min-w-0 bg-transparent text-3xl font-black text-zinc-800 outline-none"
-                    placeholder="5000"
-                  />
-                </div>
-                <MoneyValue amount={settings.precios?.base || 0} className="mt-3" />
-              </div>
-
-              {/* Plan Pro */}
-              <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[9px] font-black text-orange-500 uppercase tracking-widest">Trimestral</p>
-                  <span className="text-[9px] font-black bg-orange-200 text-orange-700 px-2 py-1 rounded-full">90 días · trimestral</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black uppercase tracking-widest text-orange-400">ARS</span>
-                  <input
-                    type="text" inputMode="numeric"
-                    value={String(settings.precios?.pro || 0)}
-                    onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), pro: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
-                    className="flex-1 min-w-0 bg-transparent text-3xl font-black text-zinc-800 outline-none"
-                    placeholder="12000"
-                  />
-                </div>
-                <MoneyValue amount={settings.precios?.pro || 0} className="mt-3" />
-              </div>
-
-              {/* Plan Full */}
-              <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[9px] font-black text-zinc-300 uppercase tracking-widest">Anual</p>
-                  <span className="text-[9px] font-black bg-zinc-700 text-zinc-300 px-2 py-1 rounded-full">365 días · anual</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black uppercase tracking-widest text-zinc-500">ARS</span>
-                  <input
-                    type="text" inputMode="numeric"
-                    value={String(settings.precios?.full || 0)}
-                    onChange={e => setSettings(p => ({ ...p, precios: { ...(p.precios || {}), full: Number(e.target.value.replace(/\D/g,"") || 0) }}))}
-                    className="flex-1 min-w-0 bg-transparent text-3xl font-black text-white outline-none"
-                    placeholder="45000"
-                  />
-                </div>
-                <MoneyValue amount={settings.precios?.full || 0} className="mt-3" />
-                <p className="mt-2 text-[9px] font-bold text-zinc-500">Preparado — activalo cuando quieras habilitarlo para usuarios</p>
-              </div>
-
+              <AdminPlanPriceBlock planKey="base" label="Mensual" tone="zinc" settings={settings} setSettings={setSettings} />
+              <AdminPlanPriceBlock planKey="pro" label="Trimestral" tone="orange" settings={settings} setSettings={setSettings} />
+              <AdminPlanPriceBlock planKey="full" label="Anual" tone="dark" settings={settings} setSettings={setSettings} />
             </div>
           </Card>
 
