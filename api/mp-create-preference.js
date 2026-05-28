@@ -168,28 +168,33 @@ module.exports = async function handler(req, res) {
   }
 
   const p = planesConfig[plan] || PLANES_FALLBACK[plan];
+
+  const mpPayload = {
+    items: [{ title: `MotoGestión - ${p.label}`, quantity: 1, unit_price: p.monto, currency_id: p.currency || "ARS" }],
+    external_reference: uid,
+    metadata: { uid, plan },
+    back_urls: {
+      success: `${BASE_URL}/`,
+      failure: `${BASE_URL}/`,
+      pending: `${BASE_URL}/`,
+    },
+    auto_return: "approved",
+  };
+
+  console.log("[mp-pref] BASE_URL:", BASE_URL, "| back_urls.success:", mpPayload.back_urls.success, "| unit_price:", p.monto, "| plan:", plan);
+
   const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      items: [{ title: `MotoGestión - ${p.label}`, quantity: 1, unit_price: p.monto, currency_id: p.currency || "ARS" }],
-      external_reference: uid,
-      metadata: { uid, plan },
-      back_urls: {
-        success: `${BASE_URL}/`,
-        failure: `${BASE_URL}/`,
-        pending: `${BASE_URL}/`,
-      },
-      auto_return: "approved",
-      notification_url: `${BASE_URL}/api/mp-webhook`,
-    }),
+    body: JSON.stringify(mpPayload),
   });
 
   const body = await mpRes.json();
   if (!mpRes.ok) {
-    const cause = body.cause?.[0]?.description || body.message || body.error || "Error MP";
-    console.error("MP error:", mpRes.status, JSON.stringify(body));
-    return res.status(502).json({ error: `MP ${mpRes.status}: ${cause}` });
+    const causes = Array.isArray(body.cause) ? body.cause.map(c => c.description || c.code || JSON.stringify(c)).join(" | ") : null;
+    const cause = causes || body.message || body.error || "Error MP";
+    console.error("[mp-pref] ERROR MP", mpRes.status, JSON.stringify(body));
+    return res.status(502).json({ error: `MP ${mpRes.status}: ${cause}`, mpBody: body });
   }
 
   return res.status(200).json({
