@@ -12,7 +12,30 @@ const PLANES_FALLBACK = {
   full: { label: "Anual",      monto: 900000 },
 };
 
-const BASE_URL = (process.env.PUBLIC_APP_URL || "https://app.motogestion.ar").replace(/\/+$/, "");
+function normalizePublicBaseUrl(value) {
+  let v = String(value || "").trim();
+  if (!v) return "";
+
+  // If env var is configured as "app.motogestion.ar" (no scheme), make it a valid URL.
+  if (!/^https?:\/\//i.test(v)) v = `https://${v}`;
+
+  // Mercado Pago requires valid absolute URLs. In production we force https.
+  v = v.replace(/^http:\/\//i, "https://");
+
+  // Remove trailing slashes.
+  v = v.replace(/\/+$/, "");
+
+  // Final sanity: require https://host
+  if (!/^https:\/\/[^/]+/i.test(v)) return "";
+  return v;
+}
+
+function getBaseUrlFromRequest(req) {
+  const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").trim();
+  if (!host) return "https://app.motogestion.ar";
+  // Always https for MP back_urls to avoid "wrong format".
+  return `https://${host}`.replace(/\/+$/, "");
+}
 
 function normalizeCurrency(value) {
   const currency = String(value || "ARS").trim().toUpperCase();
@@ -46,6 +69,11 @@ module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
   if (!db) return res.status(500).json({ error: "Firebase no inicializado" });
   const mode = String(req.query?.mode || "").toLowerCase();
+  const BASE_URL =
+    normalizePublicBaseUrl(process.env.PUBLIC_APP_URL) ||
+    normalizePublicBaseUrl(process.env.PUBLIC_BASE_URL) ||
+    getBaseUrlFromRequest(req) ||
+    "https://app.motogestion.ar";
 
   // Consolidation: /api/mp-diagnose is rewritten here with ?mode=diagnose
   if (mode === "diagnose") {
@@ -170,6 +198,7 @@ module.exports = async function handler(req, res) {
   const p = planesConfig[plan] || PLANES_FALLBACK[plan];
 
   const mpPayload = {
+    // Mercado Pago solo valida formato de URL: usamos BASE_URL normalizado (https) y mantenemos titulo consistente.
     items: [{ title: `MotoGestión - ${p.label}`, quantity: 1, unit_price: p.monto, currency_id: p.currency || "ARS" }],
     external_reference: uid,
     metadata: { uid, plan },
