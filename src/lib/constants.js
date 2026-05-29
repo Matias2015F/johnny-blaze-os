@@ -67,6 +67,7 @@ export const ESTADO_LABEL = {
   finalizada: "Listo para cobrar",
   listo_para_emitir: "Listo para emitir",
   entregada: "Pagado",
+  cobrado_pendiente_retiro: "Cobrado — pendiente de retiro",
   cerrado_emitido: "Cerrado",
 };
 
@@ -78,5 +79,6 @@ export const ESTADO_CSS = {
   finalizada: "bg-green-600 text-white",
   listo_para_emitir: "bg-emerald-600 text-white",
   entregada: "bg-emerald-700 text-white",
+  cobrado_pendiente_retiro: "bg-amber-600 text-white",
   cerrado_emitido: "bg-slate-900 text-white",
 };

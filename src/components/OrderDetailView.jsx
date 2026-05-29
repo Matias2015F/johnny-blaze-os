@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Bell, CheckCircle2, ChevronDown, ClipboardList, DollarSign, Edit2, FileText, Play, Search, Send, ShieldCheck, ThumbsUp, Trash2, Truck, Wrench, X } from "lucide-react";
+import { ArrowLeft, Bell, CheckCircle2, ChevronDown, ClipboardList, Clock, DollarSign, Edit2, FileText, Play, Search, Send, ShieldCheck, ThumbsUp, Trash2, Truck, Wrench, X } from "lucide-react";
 import { LS, buscarRepuestosAutocomplete, crearEntradaHistorial, generateId, guardarRepuestoHistorial } from "../lib/storage.js";
 import { buildProximoControl } from "../lib/proximoControl.js";
 import { CONFIG_DEFAULT, ESTADO_CSS, ESTADO_LABEL, TEXTO_CIERRE_RECHAZO, hoyEstable } from "../lib/constants.js";
@@ -38,6 +38,7 @@ const STEP_UI = [
   { id: "reparacion", label: "En curso", icon: Play },
   { id: "finalizada", label: "Cobro", icon: DollarSign },
   { id: "listo_para_emitir", label: "PDF", icon: Send },
+  { id: "cobrado_pendiente_retiro", label: "Por retirar", icon: Clock },
   { id: "cerrado_emitido", label: "Cerrado", icon: FileText },
 ];
 
@@ -645,9 +646,11 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                 ? saldoPendiente <= 0
                   ? { label: "Emitir comprobante", action: () => setView("prePdf"), className: "bg-orange-600 text-white" }
                   : { label: "Registrar cobro", action: () => setView("pago"), className: "bg-green-600 text-white" }
-                : order.estado === "cerrado_emitido"
-                  ? { label: "Emitir comprobante", action: () => setView("prePdf"), className: "bg-orange-600 text-white" }
-                  : null;
+                : order.estado === "cobrado_pendiente_retiro"
+                  ? { label: "Confirmar retiro del vehículo", action: () => setView("retiro"), className: "bg-emerald-600 text-white" }
+                  : order.estado === "cerrado_emitido"
+                    ? { label: "Emitir comprobante", action: () => setView("prePdf"), className: "bg-orange-600 text-white" }
+                    : null;
 
   const eliminarItem = (lista, index) => {
     if (isLocked) {

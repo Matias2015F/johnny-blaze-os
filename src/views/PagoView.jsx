@@ -58,9 +58,9 @@ export default function PagoView({ ordenId, setView }) {
       hora: new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
       tipo: "pago_final",
     };
-    const entrada = crearEntradaHistorial(orden.estado, "cerrado_emitido");
+    const entrada = crearEntradaHistorial(orden.estado, "cobrado_pendiente_retiro");
     actualizarOrden(ordenId, {
-      estado: "cerrado_emitido",
+      estado: "cobrado_pendiente_retiro",
       pagado_fecha: Date.now(),
       ganancia: gananciaNeta,
       pagos: [...pagosActuales, nuevoPago],

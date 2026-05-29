@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, Download, Share2 } from "lucide-react";
-import { LS, obtenerOrden, actualizarOrden } from "../lib/storage.js";
+import { LS, obtenerOrden, actualizarOrden, crearEntradaHistorial } from "../lib/storage.js";
 import { formatMoney } from "../utils/format.js";
 
 export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
@@ -30,11 +30,17 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
   const fecha = new Date(orden.finalizacion_fecha || orden.updatedAt || Date.now()).toLocaleDateString("es-AR");
 
   const handleClienteRetira = () => {
-    actualizarOrden(ordenId, { retiro_fecha: Date.now() });
+    const entrada = crearEntradaHistorial(orden.estado, "cerrado_emitido");
+    actualizarOrden(ordenId, {
+      retiro_fecha: Date.now(),
+      estado: "cerrado_emitido",
+      historial: [...(orden.historial || []), entrada],
+    });
     setRetirado(true);
   };
 
   const handleVerPDF = () => {
+    if (orden.estado !== "cerrado_emitido") return;
     setView("prePdf");
   };
 
@@ -110,9 +116,17 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
           </div>
         )}
 
+        {orden.estado !== "cerrado_emitido" && (
+          <div className="rounded-[1.75rem] border border-amber-500/30 bg-amber-500/10 p-4 text-center">
+            <p className="text-[10px] font-black uppercase tracking-widest text-amber-400">PDF bloqueado</p>
+            <p className="text-xs text-zinc-400 mt-1">Confirmá el retiro del vehículo para habilitar el comprobante final.</p>
+          </div>
+        )}
+
         <button
           onClick={handleVerPDF}
-          className="w-full flex items-center justify-center gap-2 rounded-[2rem] border border-zinc-700 bg-zinc-900 py-4 text-[11px] font-black uppercase tracking-widest text-zinc-300 active:scale-95 transition-all"
+          disabled={orden.estado !== "cerrado_emitido"}
+          className="w-full flex items-center justify-center gap-2 rounded-[2rem] border border-zinc-700 bg-zinc-900 py-4 text-[11px] font-black uppercase tracking-widest text-zinc-300 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
         >
           <Download size={16} />
           Descargar Orden (PDF)
