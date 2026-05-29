@@ -8,6 +8,25 @@ import { formatMoney } from "../utils/format.js";
 import { generateReceiptToken, crearPublicReceipt } from "../services/receiptVerificationService.js";
 import { mensajeComprobanteVerificable, normalizarTelWA } from "../lib/messages.js";
 
+const LABELS_GARANTIA = {
+  observacionesTecnicas:      "Observaciones técnicas",
+  limitesGarantia:            "Límites de garantía",
+  responsabilidadesMecanico:  "Responsabilidad del mecánico",
+  responsabilidadesCliente:   "Responsabilidad del cliente",
+  repuestosConGarantia:       "Repuestos con garantía",
+  repuestosSinGarantia:       "Repuestos sin garantía",
+  mantenimientoRecomendado:   "Mantenimiento recomendado",
+  proximosServiciosSugeridos: "Próximos servicios sugeridos",
+  advertenciasDeUso:          "Advertencias de uso",
+};
+
+function compilarGarantia(campos) {
+  return Object.entries(campos)
+    .filter(([, v]) => v && String(v).trim())
+    .map(([k, v]) => `${LABELS_GARANTIA[k]}:\n${String(v).trim()}`)
+    .join("\n\n");
+}
+
 function calcularVencimiento(dias) {
   if (Number(dias) <= 0) return "";
   const d = new Date();
@@ -27,6 +46,11 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
     esRechazo ? "" : order.vencimientoGarantia || calcularVencimiento(config.garantiaDias)
   );
   const [diasPersonalizados, setDiasPersonalizados] = useState("");
+  const [garantiaEstructurada, setGarantiaEstructurada] = useState(
+    order.garantiaEstructurada ||
+    config.garantiaEstructurada ||
+    CONFIG_DEFAULT.garantiaEstructurada
+  );
   const [receiptError, setReceiptError] = useState("");
   const [generandoPdf, setGenerandoPdf] = useState(false);
 
@@ -42,7 +66,10 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
     const numeroComprobante = generarNumeroComprobante(order.id);
     const cliente = LS.getDoc("clientes", order.clientId);
     const moto = LS.getDoc("motos", order.bikeId);
-    const garantiaFinal = esRechazo ? (garantia || TEXTO_CIERRE_RECHAZO) : garantia;
+    const garantiaCompilada = compilarGarantia(garantiaEstructurada);
+    const garantiaFinal = esRechazo
+      ? (garantia || TEXTO_CIERRE_RECHAZO)
+      : (garantiaCompilada || garantia || PLANTILLAS_GARANTIA[0].texto);
     const vencimientoFinal = esRechazo ? "" : vencimientoGarantia;
     const orderParaSnapshot = {
       ...order,
@@ -99,6 +126,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
       numeroComprobante,
       fechaComprobante: new Date().toISOString(),
       garantiaFinal,
+      garantiaEstructurada,
       vencimientoGarantia: vencimientoFinal,
       snapshotFinal,
       receiptToken,
@@ -210,30 +238,40 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
           </div>
         )}
 
-        {!esRechazo && (
-        <div>
-          <label className="ml-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">Elegir texto de garantía</label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {PLANTILLAS_GARANTIA.map((p) => (
-              <button key={p.id} onClick={() => setGarantia(p.texto)} className="rounded-xl bg-zinc-100 px-4 py-2 text-[10px] font-black uppercase transition-colors active:bg-orange-500 active:text-white">
-                {p.nombre}
-              </button>
+        {esRechazo ? (
+          <div>
+            <label className="ml-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">
+              Observación del cierre (editable)
+            </label>
+            <textarea
+              value={garantia}
+              onChange={(e) => setGarantia(e.target.value)}
+              rows="5"
+              className="mt-2 w-full rounded-2xl border-2 border-zinc-100 p-4 text-sm font-bold text-zinc-700 outline-none focus:border-orange-500"
+            />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="ml-1 text-[10px] font-black uppercase tracking-widest text-zinc-400">Garantía y observaciones</p>
+            <p className="ml-1 text-[9px] text-zinc-400">Los campos vacíos no aparecen en el comprobante.</p>
+            {Object.keys(LABELS_GARANTIA).map((campo) => (
+              <div key={campo}>
+                <label className="ml-1 text-[9px] font-black uppercase tracking-widest text-zinc-500">
+                  {LABELS_GARANTIA[campo]}
+                </label>
+                <textarea
+                  value={garantiaEstructurada[campo] || ""}
+                  onChange={(e) =>
+                    setGarantiaEstructurada((prev) => ({ ...prev, [campo]: e.target.value }))
+                  }
+                  rows={2}
+                  placeholder="(vacío = no aparece en el PDF)"
+                  className="mt-1 w-full rounded-2xl border-2 border-zinc-100 p-3 text-sm font-bold text-zinc-700 outline-none focus:border-orange-500"
+                />
+              </div>
             ))}
           </div>
-        </div>
         )}
-
-        <div>
-          <label className="ml-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">
-            {esRechazo ? "Observacion del cierre (editable)" : "Texto de garantía (podés editarlo)"}
-          </label>
-          <textarea
-            value={garantia}
-            onChange={(e) => setGarantia(e.target.value)}
-            rows="5"
-            className="mt-2 w-full rounded-2xl border-2 border-zinc-100 p-4 text-sm font-bold text-zinc-700 outline-none focus:border-orange-500"
-          />
-        </div>
 
         {!esRechazo && (
         <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
