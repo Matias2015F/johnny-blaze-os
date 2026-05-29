@@ -66,7 +66,18 @@ export default function RetentionOfferView({ token }) {
         <div className="w-full max-w-sm rounded-[2rem] border border-zinc-800 bg-zinc-950 p-6 text-white space-y-4">
           <p className="text-sm font-black uppercase tracking-widest text-orange-400">Oferta de retención</p>
           <p className="text-sm font-bold text-zinc-300">Iniciá sesión para usar la oferta.</p>
-          <p className="text-xs text-zinc-500">Después de iniciar sesión, volvé a abrir este link.</p>
+          <p className="text-xs text-zinc-500">
+            Tocá el botón para iniciar sesión y volver automáticamente a esta oferta.
+          </p>
+          <a
+            href={`/?oferta=${encodeURIComponent(token)}`}
+            className="inline-flex w-full items-center justify-center rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white"
+          >
+            Iniciar sesión
+          </a>
+          <p className="text-[10px] text-zinc-500">
+            Si no encontrás el correo, revisá <span className="font-bold">Spam</span> o <span className="font-bold">Promociones</span>.
+          </p>
         </div>
       </div>
     );
@@ -128,4 +139,3 @@ export default function RetentionOfferView({ token }) {
     </div>
   );
 }
-

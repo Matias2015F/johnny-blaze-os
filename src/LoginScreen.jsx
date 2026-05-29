@@ -27,6 +27,14 @@ export default function LoginScreen() {
     try {
       if (modo === "login") {
         await signInWithEmailAndPassword(auth, email, password);
+        try {
+          const params = new URLSearchParams(window.location.search || "");
+          const oferta = params.get("oferta");
+          if (oferta) {
+            window.location.href = `/oferta/${encodeURIComponent(oferta)}`;
+            return;
+          }
+        } catch {}
       } else {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         sendEmailVerification(cred.user).catch(() => {});
