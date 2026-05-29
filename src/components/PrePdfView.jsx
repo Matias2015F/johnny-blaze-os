@@ -6,7 +6,7 @@ import { calcularResultadosOrden } from "../lib/calc.js";
 import { trackEvent } from "../lib/telemetry.js";
 import { formatMoney } from "../utils/format.js";
 import { generateReceiptToken, crearPublicReceipt } from "../services/receiptVerificationService.js";
-import { mensajeComprobanteVerificable, normalizarTelWA } from "../lib/messages.js";
+import { mensajeComprobanteVerificable, mensajeSolicitudCalificacion, normalizarTelWA } from "../lib/messages.js";
 
 const LABELS_GARANTIA = {
   observacionesTecnicas:      "Observaciones técnicas",
@@ -389,6 +389,25 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
                 Enviar WA
               </button>
             </div>
+            {!esRechazo && (
+              <button
+                onClick={() => {
+                  const mensaje = mensajeSolicitudCalificacion({
+                    clienteNombre: client?.nombre,
+                    verifyUrl: `https://app.motogestion.ar/verificar/${generatedToken}`,
+                    nombreTaller: config.nombreTaller,
+                  });
+                  const tel = normalizarTelWA(client?.whatsapp || client?.tel || "");
+                  const waUrl = tel
+                    ? `https://wa.me/${tel}?text=${encodeURIComponent(mensaje)}`
+                    : `https://wa.me/?text=${encodeURIComponent(mensaje)}`;
+                  window.open(waUrl, "_blank");
+                }}
+                className="w-full rounded-2xl border border-green-600/40 bg-green-600/10 py-3 text-[10px] font-black uppercase tracking-widest text-green-400 active:scale-95 transition-all"
+              >
+                Pedir calificación por WA
+              </button>
+            )}
             <button
               onClick={() => setView("imprimirOrden")}
               className="w-full rounded-2xl bg-orange-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"

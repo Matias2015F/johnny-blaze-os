@@ -156,6 +156,12 @@ Este registro te sirve como respaldo del mantenimiento realizado y del historial
 ${taller}`;
 }
 
+export function mensajeSolicitudCalificacion({ clienteNombre, verifyUrl, nombreTaller }) {
+  const nombre = clienteNombre || "cliente";
+  const taller = nombreTaller || "el taller";
+  return `Hola ${nombre}, gracias por elegirnos.\n\nSi querés, podés calificar la atención desde este link. Solo te lleva un momento:\n${verifyUrl}\n\nTu opinión nos ayuda a mejorar y es muy valiosa.\n\n${taller}`;
+}
+
 export function abrirWhatsApp(tel, mensaje) {
   const numero = normalizarTelWA(tel);
   const phone = numero ? `phone=${numero}&` : "";
