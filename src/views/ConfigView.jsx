@@ -96,12 +96,22 @@ function formatAdminDate(value, fallback = "Sin dato") {
   return date ? date.toLocaleString("es-AR") : fallback;
 }
 
+const PLAN_LABELS = {
+  base: "Mensual",
+  pro: "Trimestral",
+  full: "Anual",
+};
+
+function getPlanLabel(planKey) {
+  return PLAN_LABELS[planKey] || "Mensual";
+}
+
 function formatRequestedAction(item = {}) {
   if (item.cancelAtPeriodEnd || item.requestedAction === "cancel_plan") {
     return "Cancelar al vencer";
   }
   if (item.requestedAction === "change_plan") {
-    return `Cambiar a ${item.requestedPlanKey === "pro" ? "Trimestral" : "Mensual"}`;
+    return `Cambiar a ${getPlanLabel(item.requestedPlanKey)}`;
   }
   if (item.requestedAction === "pay_plan") {
     return "Pedido de pago";
@@ -496,6 +506,11 @@ function PantallaAdmin({ showToast, scrollRef }) {
     }
   };
 
+  const activarUsuarioConPlan = (item, planKey) => {
+    const dias = Number(settings?.planDurations?.[planKey] || settings?.plans?.[planKey]?.billingDays || 30);
+    return activarUsuario(item, planKey, dias);
+  };
+
   const extenderUsuario = async (item, dias = 30) => {
     try {
       validateExtraDays(dias);
@@ -885,17 +900,24 @@ function PantallaAdmin({ showToast, scrollRef }) {
                       <div className="grid grid-cols-2 gap-2">
                         <button
                           disabled={accionando === item.uid}
-                          onClick={() => activarUsuario(item, "base", 30)}
+                          onClick={() => activarUsuarioConPlan(item, "base")}
                           className="rounded-2xl bg-emerald-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
                         >
-                          {accionando === item.uid ? "..." : "Activar 30d"}
+                          {accionando === item.uid ? "..." : "Activar Mensual"}
                         </button>
                         <button
                           disabled={accionando === item.uid}
-                          onClick={() => activarUsuario(item, "pro", 30)}
+                          onClick={() => activarUsuarioConPlan(item, "pro")}
                           className="rounded-2xl bg-orange-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-50"
                         >
-                          Activar Pro
+                          Activar Trimestral
+                        </button>
+                        <button
+                          disabled={accionando === item.uid}
+                          onClick={() => activarUsuarioConPlan(item, "full")}
+                          className="rounded-2xl bg-zinc-800 py-3 text-[10px] font-black uppercase tracking-widest text-white col-span-2 disabled:opacity-50"
+                        >
+                          Activar Anual
                         </button>
                         <button
                           disabled={accionando === item.uid}
@@ -980,7 +1002,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
                   <p className="text-[9px] font-black text-red-600 uppercase tracking-widest">Pago reciente sin activación</p>
                   <p className="text-sm font-black text-red-900 mt-1">{a.email || a.uid}</p>
                   <p className="text-[10px] font-bold text-red-700">Estado: {a.estado} · Pago: {formatMoney(a.ultimoPago?.monto || 0)}</p>
-                  <button onClick={() => activarUsuario(a, a.currentPlanKey || "base", 30)} disabled={accionando === a.uid} className="mt-2 w-full rounded-2xl bg-emerald-600 py-2 text-[10px] font-black uppercase text-white disabled:opacity-50">
+                  <button onClick={() => activarUsuarioConPlan(a, a.currentPlanKey || a.plan || "base")} disabled={accionando === a.uid} className="mt-2 w-full rounded-2xl bg-emerald-600 py-2 text-[10px] font-black uppercase text-white disabled:opacity-50">
                     {accionando === a.uid ? "Procesando..." : "Activar manualmente"}
                   </button>
                 </div>
@@ -990,7 +1012,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
                   <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest">Vencido con pago reciente</p>
                   <p className="text-sm font-black text-amber-900 mt-1">{a.email || a.uid}</p>
                   <p className="text-[10px] font-bold text-amber-700">Estado: {a.estado} · Último pago: {formatMoney(a.ultimoPago?.monto || 0)}</p>
-                  <button onClick={() => activarUsuario(a, a.currentPlanKey || "base", 30)} disabled={accionando === a.uid} className="mt-2 w-full rounded-2xl bg-orange-600 py-2 text-[10px] font-black uppercase text-white disabled:opacity-50">
+                  <button onClick={() => activarUsuarioConPlan(a, a.currentPlanKey || a.plan || "base")} disabled={accionando === a.uid} className="mt-2 w-full rounded-2xl bg-orange-600 py-2 text-[10px] font-black uppercase text-white disabled:opacity-50">
                     {accionando === a.uid ? "Procesando..." : "Reactivar usuario"}
                   </button>
                 </div>

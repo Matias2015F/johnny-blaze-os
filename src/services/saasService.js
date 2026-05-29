@@ -135,7 +135,7 @@ export function normalizeSaasUser(raw = {}, fallback = {}) {
   if (!estado) {
     if (plan === "trial") estado = "trial";
     else if (plan === "suspendido") estado = "vencido";
-    else if (pagoEstado === "pagado" || plan === "activo" || plan === "base" || plan === "pro") estado = "activo";
+    else if (pagoEstado === "pagado" || plan === "activo" || plan === "base" || plan === "pro" || plan === "full") estado = "activo";
     else estado = "trial";
   }
 

@@ -11,14 +11,22 @@ const {
 const { applyRateLimit } = require("./_ratelimit.js");
 
 const PLAN_BILLING_DAYS = { base: 30, pro: 90, full: 365 };
+const VALID_PLAN_KEYS = new Set(Object.keys(PLAN_BILLING_DAYS));
+
+function normalizePlanKey(plan) {
+  const key = String(plan || "").toLowerCase();
+  return VALID_PLAN_KEYS.has(key) ? key : "";
+}
+
 async function getBillingDays(plan) {
+  const planKey = normalizePlanKey(plan) || "base";
   try {
     const snap = await db.collection("admin_settings").doc("global").get();
-    const days = snap.exists ? Number(snap.data()?.planDurations?.[plan]) : 0;
-    return Number.isFinite(days) && days > 0 ? days : (PLAN_BILLING_DAYS[plan] || 30);
+    const days = snap.exists ? Number(snap.data()?.planDurations?.[planKey]) : 0;
+    return Number.isFinite(days) && days > 0 ? days : (PLAN_BILLING_DAYS[planKey] || 30);
   } catch (err) {
     console.warn("[mp-webhook] No se pudo leer duracion de plan, usando fallback:", err.message);
-    return PLAN_BILLING_DAYS[plan] || 30;
+    return PLAN_BILLING_DAYS[planKey] || 30;
   }
 }
 const ESTADOS_BLOQUEADOS = ["suspendido", "vencido", "trial_vencido"];
@@ -199,8 +207,8 @@ module.exports = async function handler(req, res) {
     }
 
     const estabaBloquado = ESTADOS_BLOQUEADOS.includes(userData.estado);
-    const planAnterior = userData.plan || null;
-    const nuevoPlan = planPagado || planAnterior || "base";
+    const planAnterior = normalizePlanKey(userData.currentPlanKey || userData.plan);
+    const nuevoPlan = normalizePlanKey(planPagado) || planAnterior || "base";
 
     // Extender desde activoHasta si ya tiene período activo (renovación anticipada)
     const baseTime =
@@ -213,6 +221,7 @@ module.exports = async function handler(req, res) {
     const updateData = {
       estado: "activo",
       plan: nuevoPlan,
+      currentPlanKey: nuevoPlan,
       pagoEstado: "pagado",
       activoHasta: nuevoActivoHasta,
       ultimoPago: {
@@ -226,6 +235,7 @@ module.exports = async function handler(req, res) {
     if (userData.requestedAction) {
       updateData.requestedAction = FieldValue.delete();
       updateData.requestedPlan = FieldValue.delete();
+      updateData.requestedPlanKey = FieldValue.delete();
     }
 
     await userRef.set(updateData, { merge: true });
