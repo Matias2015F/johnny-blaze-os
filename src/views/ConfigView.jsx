@@ -2442,12 +2442,12 @@ function PantallaSuscripcion({ showToast }) {
         )}
 
         <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
-          <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Reclamo o consulta</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Reclamo, consulta o sugerencia</p>
           <textarea
             rows="4"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Explicá tu problema con el cobro, el plan o la suscripción."
+            placeholder="Contanos un problema, una duda o una sugerencia de mejora. Tu participación ayuda a que la app sea más eficiente."
             className="mt-3 w-full rounded-2xl border border-zinc-200 p-4 text-xs font-bold text-zinc-700 outline-none resize-none"
           />
           <button
@@ -2455,7 +2455,7 @@ function PantallaSuscripcion({ showToast }) {
             disabled={sending}
             className="mt-3 w-full rounded-2xl bg-emerald-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
           >
-            Enviar reclamo al administrador
+            Enviar mensaje al administrador
           </button>
         </div>
 
