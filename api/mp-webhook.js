@@ -155,6 +155,7 @@ module.exports = async function handler(req, res) {
 
     const uid = payment.metadata?.uid || payment.external_reference;
     const planPagado = payment.metadata?.plan || null;
+    const offerToken = payment.metadata?.offerToken || null;
 
     if (!uid) {
       console.error("UID faltante en pago:", paymentId);
@@ -239,6 +240,19 @@ module.exports = async function handler(req, res) {
     }
 
     await userRef.set(updateData, { merge: true });
+
+    // Mark retention offer as used (best-effort, does not affect activation).
+    if (offerToken) {
+      try {
+        const offerRef = userRef.collection("retentionOffers").doc(String(offerToken));
+        const offerSnap = await offerRef.get();
+        if (offerSnap.exists && offerSnap.data()?.used !== true) {
+          await offerRef.set({ used: true, usedAt: Date.now(), paymentId: String(paymentId) }, { merge: true });
+        }
+      } catch (e) {
+        console.warn("[mp-webhook] no se pudo marcar oferta usada:", e.message);
+      }
+    }
 
     // Registrar en historial de facturas
     await userRef.collection("billingInvoices").add({

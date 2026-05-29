@@ -179,7 +179,7 @@ module.exports = async function handler(req, res) {
   }
   const uid = decoded.uid;
 
-  const { plan } = req.body || {};
+  const { plan, offerToken } = req.body || {};
   if (!plan || !PLANES_FALLBACK[plan]) return res.status(400).json({ error: "plan requerido" });
 
   const token = String(process.env.MP_ACCESS_TOKEN || "").trim();
@@ -196,12 +196,34 @@ module.exports = async function handler(req, res) {
   }
 
   const p = planesConfig[plan] || PLANES_FALLBACK[plan];
+  let unitPrice = p.monto;
+
+  // Retention offer: one-time discounted preference, validated server-side.
+  if (mode === "retention") {
+    const t = String(offerToken || "").trim();
+    if (!t) return res.status(400).json({ error: "offerToken requerido" });
+    try {
+      const offerRef = db.collection("usuarios").doc(uid).collection("retentionOffers").doc(t);
+      const offerSnap = await offerRef.get();
+      const offer = offerSnap.exists ? offerSnap.data() || {} : null;
+      if (!offer) return res.status(404).json({ error: "Oferta no encontrada" });
+      if (offer.uid !== uid) return res.status(403).json({ error: "Oferta inválida" });
+      if (offer.used) return res.status(409).json({ error: "Oferta ya utilizada" });
+      if (offer.expiresAt && Number(offer.expiresAt) < Date.now()) return res.status(410).json({ error: "Oferta vencida" });
+      if (String(offer.planKey || "") !== String(plan)) return res.status(400).json({ error: "La oferta no aplica a este plan" });
+      const pct = Math.max(0, Math.min(90, Number(offer.discountPct || 0)));
+      unitPrice = Math.max(1, Math.round(Number(unitPrice) * (1 - pct / 100)));
+    } catch (e) {
+      console.warn("[mp-pref] no se pudo validar oferta:", e.message);
+      return res.status(500).json({ error: "No se pudo validar la oferta" });
+    }
+  }
 
   const mpPayload = {
     // Mercado Pago solo valida formato de URL: usamos BASE_URL normalizado (https) y mantenemos titulo consistente.
-    items: [{ title: `MotoGestión - ${p.label}`, quantity: 1, unit_price: p.monto, currency_id: p.currency || "ARS" }],
+    items: [{ title: `MotoGestión - ${p.label}`, quantity: 1, unit_price: unitPrice, currency_id: p.currency || "ARS" }],
     external_reference: uid,
-    metadata: { uid, plan },
+    metadata: { uid, plan, offerToken: mode === "retention" ? String(offerToken || "") : "" },
     back_urls: {
       success: `${BASE_URL}/`,
       failure: `${BASE_URL}/`,

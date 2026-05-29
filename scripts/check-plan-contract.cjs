@@ -12,7 +12,9 @@ const checks = [
       'pro:  { label: "Trimestral"',
       'full: { label: "Anual"',
       'PLANES_FALLBACK[plan]',
-      'metadata: { uid, plan }',
+      "metadata",
+      "uid",
+      "plan",
     ],
   },
   {

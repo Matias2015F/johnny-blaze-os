@@ -1929,6 +1929,10 @@ function PantallaSuscripcion({ showToast }) {
   const [note, setNote] = React.useState("");
   const [sending, setSending] = React.useState(false);
   const [checkoutPlanKey, setCheckoutPlanKey] = React.useState(null);
+  const [cancelOpen, setCancelOpen] = React.useState(false);
+  const [cancelReasonCode, setCancelReasonCode] = React.useState("caro");
+  const [cancelReasonText, setCancelReasonText] = React.useState("");
+  const [cancelComment, setCancelComment] = React.useState("");
   const uid = auth.currentUser?.uid;
 
   const cargar = async () => {
@@ -2117,6 +2121,32 @@ function PantallaSuscripcion({ showToast }) {
     } catch (error) {
       console.error(error);
       showToast("No se pudo guardar el pedido");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const cancelarConFeedback = async () => {
+    try {
+      setSending(true);
+      const idToken = await auth.currentUser.getIdToken();
+      const res = await fetch("/api/cancel-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({
+          reasonCode: cancelReasonCode,
+          reasonText: cancelReasonText,
+          comment: cancelComment,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo cancelar");
+      setCancelOpen(false);
+      showToast("Cancelación registrada. Te enviamos un correo con una opción para reactivar.");
+      await cargar();
+    } catch (e) {
+      console.error(e);
+      showToast(e.message || "No se pudo cancelar");
     } finally {
       setSending(false);
     }
@@ -2320,7 +2350,7 @@ function PantallaSuscripcion({ showToast }) {
 
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => guardarPedido({ cancelAtPeriodEnd: true, requestedAction: "cancel_plan" }, "Cancelación pedida al cierre del período")}
+            onClick={() => setCancelOpen(true)}
             disabled={sending}
             className="rounded-2xl bg-red-50 border border-red-100 py-4 text-[10px] font-black uppercase tracking-widest text-red-600 active:scale-95 disabled:opacity-50"
           >
@@ -2334,6 +2364,82 @@ function PantallaSuscripcion({ showToast }) {
             Volver al plan anterior
           </button>
         </div>
+
+        {cancelOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/75 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-[420px] overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-2xl">
+              <div className="px-5 pt-5 pb-4 border-b border-zinc-100">
+                <p className="text-[9px] font-black uppercase tracking-widest text-red-600">Cancelar al vencer</p>
+                <h3 className="mt-1 text-lg font-black text-zinc-900">Ayudanos a mejorar</h3>
+                <p className="mt-1 text-xs font-bold text-zinc-500">
+                  Esto no cancela ahora. Solo marca tu plan para que no se renueve al vencer.
+                </p>
+              </div>
+
+              <div className="px-5 py-4 space-y-3">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Motivo principal</p>
+                  <select
+                    value={cancelReasonCode}
+                    onChange={(e) => setCancelReasonCode(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm font-black text-zinc-800 outline-none focus:border-orange-500"
+                  >
+                    <option value="caro">Está caro</option>
+                    <option value="no_uso">No lo estoy usando</option>
+                    <option value="funciones">Le faltan funciones</option>
+                    <option value="errores">Tuve errores/problemas</option>
+                    <option value="competencia">Me paso a otra app</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Detalle (opcional)</p>
+                  <input
+                    value={cancelReasonText}
+                    onChange={(e) => setCancelReasonText(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-xs font-bold text-zinc-800 outline-none focus:border-orange-500"
+                    placeholder="Ej: necesito multiusuario, integración, etc."
+                    maxLength={120}
+                  />
+                </div>
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Comentario (opcional)</p>
+                  <textarea
+                    rows={3}
+                    value={cancelComment}
+                    onChange={(e) => setCancelComment(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-xs font-bold text-zinc-800 outline-none resize-none focus:border-orange-500"
+                    placeholder="Contanos qué pasó y qué te haría volver."
+                    maxLength={800}
+                  />
+                </div>
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-amber-700">Oferta por única vez</p>
+                  <p className="mt-1 text-[11px] font-bold text-amber-800 leading-relaxed">
+                    Al confirmar te enviamos un mail con un link de reactivación con descuento (válido por 72hs).
+                  </p>
+                </div>
+              </div>
+
+              <div className="px-5 pb-5 pt-3 border-t border-zinc-100 grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setCancelOpen(false)}
+                  disabled={sending}
+                  className="rounded-2xl bg-zinc-100 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-700 active:scale-95 disabled:opacity-50"
+                >
+                  Volver
+                </button>
+                <button
+                  onClick={cancelarConFeedback}
+                  disabled={sending}
+                  className="rounded-2xl bg-red-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
+                >
+                  {sending ? "Procesando..." : "Confirmar cancelación"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
           <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">Reclamo o consulta</p>

@@ -271,6 +271,32 @@ function templateCambioPlan({ planAnterior, planNuevo, activoHasta }) {
   return { subject, html };
 }
 
+function templateCancelPlanOffer({ plan, discountPct, expiresAt, verifyUrl }) {
+  const subject = "Antes de que te vayas — oferta por única vez";
+  const untilStr = expiresAt ? new Date(expiresAt).toLocaleString("es-AR") : "";
+  const pct = Number(discountPct || 0) || 0;
+  const html = wrapTemplate(`
+    <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">¿Te vas? Te dejamos una opción</h2>
+    <p style="margin:0 0 18px;font-size:14px;color:#6b7280;">
+      Registramos tu cancelación al vencimiento del plan <strong>${planLabel(plan)}</strong>.
+    </p>
+
+    ${alertBox("amber", `Oferta de retención: <strong>${pct}% de descuento</strong> por única vez.`)}
+
+    <p style="margin:0 0 10px;font-size:14px;color:#374151;">
+      Si querés seguir usando MotoGestión, podés reactivar desde este link:
+    </p>
+
+    <p style="margin:0 0 18px;text-align:center;">${btnPrimario("Usar descuento y pagar →", verifyUrl)}</p>
+
+    ${untilStr ? `<p style="margin:0;font-size:12px;color:#9ca3af;">Válido hasta ${untilStr}.</p>` : ""}
+    <p style="margin:18px 0 0;font-size:12px;color:#9ca3af;">
+      Si tenés un problema o sugerencia, respondé este correo y contanos qué mejorar.
+    </p>
+  `);
+  return { subject, html };
+}
+
 function buildResetEmail({ email, link }) {
   return wrapTemplate(`
     <h2 style="margin:0 0 6px;font-size:22px;color:#111827;font-weight:900;">Restablecer contraseña</h2>
@@ -304,4 +330,5 @@ module.exports = {
   templateSuspendido,
   templateReactivado,
   templateCambioPlan,
+  templateCancelPlanOffer,
 };
