@@ -199,7 +199,9 @@ const PRICES_FALLBACK = {
 };
 
 async function handlePublicPrices(req, res) {
-  res.setHeader("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600");
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0");
+  res.setHeader("CDN-Cache-Control", "no-store");
+  res.setHeader("Vercel-CDN-Cache-Control", "no-store");
   try {
     const snap = await db.collection("admin_settings").doc("global").get();
     const data = snap.exists ? snap.data() || {} : {};
