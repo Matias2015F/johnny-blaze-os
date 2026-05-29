@@ -1,5 +1,5 @@
 ## ID y Estado
-mp-create-preference — En diagnóstico (back_urls invalid, 2026-05-28)
+mp-create-preference — Estable (validado 2026-05-29)
 
 ## Objetivo principal
 Crear una preferencia de pago en MercadoPago y devolver `preferenceId` + `url`
@@ -35,13 +35,12 @@ al cliente para iniciar el checkout.
 - Claves de plan `"base"/"pro"/"full"` NO cambiar — están en Firestore
 - `notification_url` fue removida temporalmente para diagnóstico (2026-05-28)
 
-## Estado del diagnóstico activo (2026-05-28)
-- Error: MP 400: back_urls invalid. Wrong format
-- Hipótesis descartada: query params en back_urls (removidos, error persiste)
-- Hipótesis activa: dominio `app.motogestion.ar` no registrado en cuenta MP
-- Hipótesis alternativa: notification_url con dominio diferente al registrado
-- Próximo paso: el usuario debe testear con deploy 7183765 y reportar mpBody completo
-- Si sigue fallando: cambiar back_urls a `https://johnny-blaze-os.vercel.app` (dominio original que funcionó)
+## Solución aplicada a back_urls (cerrado 2026-05-29)
+- Problema original: MP 400 back_urls invalid — causado por URLs sin scheme o con formato incorrecto
+- Solución: función `normalizePublicBaseUrl()` fuerza https://, elimina trailing slashes, valida formato
+- Fallback: `getBaseUrlFromRequest(req)` usa el host del request cuando `PUBLIC_APP_URL` no está configurado
+- Hardcode final: `"https://app.motogestion.ar"` como último fallback
+- Resultado: back_urls siempre son `https://app.motogestion.ar/` — validadas por MP
 
 ## Historial de cambios
 | Fecha | Commit | Cambio |

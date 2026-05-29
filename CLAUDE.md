@@ -10,6 +10,35 @@ PWA de gestión operativa para taller mecánico de motos (MotoGestión). Usuario
 
 ---
 
+## Ecosistema MotoGestión
+
+MotoGestión no es una app aislada. Es un ecosistema de dos piezas conectadas:
+
+- **App** (`app.motogestion.ar`) — operación interna del taller: clientes, motos, diagnósticos, presupuestos, comprobantes, PDF, garantías, historial, trazabilidad.
+- **Landing** (`motogestion.ar`) — reputación pública: presenta el sistema, capta talleres, muestra calificaciones, certifica talleres, puede incluir mapa y ranking.
+
+La app genera documentación y datos reales del servicio.
+La landing transforma esa trazabilidad en reputación pública y captación de clientes.
+
+### Regla de ecosistema
+
+Antes de modificar landing o app, considerar el impacto sobre el sistema completo.
+Toda mejora debe fortalecer el circuito:
+uso de la app → documentación del trabajo → reputación pública → captación de clientes.
+
+No tratar los dos proyectos como repositorios aislados.
+
+### Dominios — no confundir
+
+| Dominio | Proyecto | Repositorio |
+|---|---|---|
+| `motogestion.ar` | Landing pública | github.com/Matias2015F/motogestion-landing |
+| `app.motogestion.ar` | App operativa | github.com/Matias2015F/johnny-blaze-os |
+
+Cualquier cambio de DNS, Vercel alias o dominio debe verificar que afecta el proyecto correcto antes de ejecutar.
+
+---
+
 ## Comandos disponibles
 
 Ver [.clou/COMANDOS.md](.clou/COMANDOS.md) para el set completo de comandos slash del proyecto.
@@ -65,6 +94,32 @@ No escribir código hasta que el usuario apruebe la directiva.
 5. Cirugía mínima: solo las líneas necesarias, sin refactoring adyacente.
 6. `npm run build` para verificar compilación.
 
+### Regla de mejora incremental
+
+El código actual es la base estable. Todo cambio futuro es una mejora incremental, no una reconstrucción.
+
+1. Lo que hoy está hecho funciona.
+2. La app ya es usable.
+3. La estructura actual cumple su objetivo.
+4. No se debe romper ningún flujo existente.
+5. No se debe reescribir código funcional solo por preferencia estética o técnica.
+6. Toda mejora debe ser mínima, justificada y reversible.
+7. Antes de tocar código: ejecutar `/respaldo`, luego `/seguro`, luego `/mejora`.
+8. Si no hay 90% de certeza de que el cambio no rompe dependencias, no se toca código.
+9. Si una mejora implica riesgo, primero presentar opciones con pros y contras.
+10. Si algo funciona, no cambiarlo salvo que haya una razón concreta.
+
+### Regla de contexto
+
+No depender del historial de conversación para instrucciones importantes. Toda regla permanente debe estar en un archivo. Si una instrucción es crítica para seguridad, pagos, acceso SaaS, datos o deploy, debe quedar escrita antes de implementar en:
+- `CLAUDE.md` o `~/.claude/CLAUDE.md`
+- `.clou/COMANDOS.md`
+- `.clou/directives/nombre-feature.md`
+
+### Regla de features sin directiva
+
+Los archivos `api/cancel-plan.js`, `api/retention-offer.js` y las vistas/libs agregados en mayo 2026 (`RetentionOfferView`, `cloudBackup`, `integrity`, `telemetry`, `timer`, `theme`, `priceLearning`, `receiptVerificationService`) no tienen directiva en `.clou/directives/`. Antes de modificar cualquiera de ellos, crear la directiva correspondiente con estado actual, criterio de éxito y zona protegida.
+
 ---
 
 ## Archivos críticos (Baseline de Oro)
@@ -79,7 +134,11 @@ Modificar cualquiera de estos archivos sin instrucción explícita está prohibi
 | `src/services/saasService.js` | Claves de plan (`base`/`pro`/`full`) guardadas en Firestore en producción. `resolveSaasAccess` es fuente de verdad del acceso. |
 | `src/services/counterService.js` | Transacciones Firestore garantizan secuencialidad OT/PRE. No hay forma de recuperar un número salteado. |
 | `api/mp-webhook.js` | Flujo de cobro en producción. Error = dinero perdido o no acreditado. |
-| `api/mp-create-preference.js` | Generación de preferencias MP. Incluye lógica de diagnose. |
+| `api/mp-create-preference.js` | Generación de preferencias MP + modo retention (oferta de descuento). |
+| `api/cancel-plan.js` | Cancelación + oferta retención. Escribe en `retentionOffers` y `soporteTickets`. |
+| `api/retention-offer.js` | Valida token de oferta antes de aplicar descuento. Consumido por `mp-create-preference?mode=retention`. |
+| `api/send-welcome.js` | Email bienvenida (idempotente) + password reset. Dos modos, distintos niveles de auth. |
+| `api/verify-document.js` | Puente app↔landing: talleres públicos, publicación de perfil, leads, verificación de comprobantes. |
 | `api/_firebase-admin.js` | Inicialización Admin SDK. No tocar la inicialización. |
 | `firestore.rules` | `noModificaCamposSuscripcion()` bloquea autopromociones de plan. Si se rompe, cualquier usuario puede escalar su plan. |
 | `src/utils/calc.js` | Cálculos financieros de OTs. No tocar sin tests manuales contra casos reales. |
