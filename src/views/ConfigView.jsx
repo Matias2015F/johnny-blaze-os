@@ -1540,6 +1540,50 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
         </div>
       </Card>
 
+      {/* Descuento por Calificación */}
+      <Card>
+        <SectionTitle>Descuento por Calificación</SectionTitle>
+        <p className="text-[10px] text-zinc-400 font-bold mb-4">
+          El cliente recibe este beneficio al calificar una atención. Se aplica automáticamente en la próxima atención del mismo vehículo.
+        </p>
+        <div>
+          <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-2">
+            Porcentaje de descuento
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              inputMode="numeric"
+              min="0"
+              max="50"
+              value={cfg.descuentoCalificacionPct ?? 15}
+              onChange={e => {
+                const v = Math.max(0, Math.min(50, Number(e.target.value) || 0));
+                setCfg({ ...cfg, descuentoCalificacionPct: v });
+              }}
+              className="w-28 border-2 border-zinc-100 rounded-2xl px-4 py-3 text-2xl font-black text-orange-600 text-center outline-none focus:border-orange-500 transition-colors bg-zinc-50"
+            />
+            <span className="text-2xl font-black text-zinc-400">%</span>
+            <span className="text-xs text-zinc-400 leading-tight">sobre el total<br/>del trabajo</span>
+          </div>
+          <div className="flex gap-2 mt-3">
+            {[5, 10, 15, 20, 25].map(v => (
+              <button
+                key={v}
+                onClick={() => setCfg({ ...cfg, descuentoCalificacionPct: v })}
+                className={`flex-1 py-2 rounded-xl text-xs font-black uppercase transition-all active:scale-95 ${
+                  (cfg.descuentoCalificacionPct ?? 15) === v
+                    ? "bg-orange-600 text-white"
+                    : "bg-zinc-100 text-zinc-500"
+                }`}
+              >
+                {v}%
+              </button>
+            ))}
+          </div>
+        </div>
+      </Card>
+
       <button
         onClick={guardar}
         className="w-full bg-orange-600 text-white py-4 rounded-3xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"

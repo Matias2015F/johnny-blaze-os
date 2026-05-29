@@ -18,6 +18,7 @@ export const CONFIG_DEFAULT = {
   direccionTaller: "",
   garantiaDias: 7,
   garantiaKm: 500,
+  descuentoCalificacionPct: 15,
   garantiaDefault: PLANTILLAS_GARANTIA[0].texto,
   garantiaEstructurada: {
     observacionesTecnicas:      "",

@@ -86,9 +86,49 @@ module.exports = async function handler(req, res) {
       createdAt: now,
     });
 
+    if (normalizedDecision === "aprobar") {
+      const ratingData = snap.data() || {};
+      crearBeneficioCalificacion({
+        uidTaller: ratingData.uidTaller || "",
+        token: ratingData.token || "",
+        ordenOrigen: ratingData.numeroOrden || "",
+        ratingId: id,
+      }).catch((e) => console.warn("[moderate-rating] beneficio no creado:", e.message));
+    }
+
     return res.status(200).json({ ok: true, ratingId: id, status, reputationWeight });
   } catch (error) {
     console.error("moderate-rating error:", error);
     return res.status(500).json({ error: error.message || "No se pudo moderar la calificacion" });
   }
 };
+
+async function crearBeneficioCalificacion({ uidTaller, token, ordenOrigen, ratingId }) {
+  if (!uidTaller || !token) return;
+
+  const receiptSnap = await db.collection("publicReceipts").doc(token).get();
+  if (!receiptSnap.exists) return;
+  const receipt = receiptSnap.data() || {};
+
+  const patente = String(receipt.bikePatente || "").trim().toUpperCase().replace(/\s+/g, "");
+  if (!patente) return;
+
+  const configSnap = await db.collection("users").doc(uidTaller).collection("config").doc("global").get();
+  const discountPct = Number((configSnap.exists ? configSnap.data() : {}).descuentoCalificacionPct ?? 15);
+
+  const beneficioRef = db.collection("users").doc(uidTaller).collection("clienteBeneficios").doc(patente);
+  const snap = await beneficioRef.get();
+  if (snap.exists && snap.data().estado === "activo") return;
+
+  await beneficioRef.set({
+    patente,
+    bikeId: receipt.bikeId || "",
+    ordenOrigen: ordenOrigen || receipt.numeroOrden || "",
+    ratingId: ratingId || "",
+    discountPct,
+    estado: "activo",
+    creadoEn: Date.now(),
+    usadoEn: null,
+    ordenUsada: null,
+  });
+}

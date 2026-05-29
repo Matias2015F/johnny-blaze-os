@@ -33,6 +33,8 @@ export async function crearPublicReceipt({ order, token, hash, numeroComprobante
     token,
     uidTaller: uid,
     orderId: order.id,
+    bikeId: order.bikeId || "",
+    bikePatente: moto?.patente || moto?.patenteNormalizada || "",
     numeroOrden: order.numeroTrabajo || order.id,
     numeroComprobante,
     hash,

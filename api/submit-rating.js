@@ -176,10 +176,27 @@ module.exports = async function handler(req, res) {
         validatedAt: now,
       });
 
-      return { ratingId: ratingRef.id };
+      return {
+        ratingId: ratingRef.id,
+        autoAprobado: rating.status === "aprobado",
+        uidTaller: receipt.uidTaller || "",
+        bikePatente: receipt.bikePatente || "",
+        bikeId: receipt.bikeId || "",
+        numeroOrden: receipt.numeroOrden || "",
+      };
     });
 
-    return res.status(200).json({ ok: true, ...result });
+    if (result.autoAprobado) {
+      crearBeneficioCalificacion({
+        uidTaller: result.uidTaller,
+        patente: result.bikePatente,
+        bikeId: result.bikeId,
+        ordenOrigen: result.numeroOrden,
+        ratingId: result.ratingId,
+      }).catch((e) => console.warn("[submit-rating] beneficio no creado:", e.message));
+    }
+
+    return res.status(200).json({ ok: true, ratingId: result.ratingId });
   } catch (error) {
     const status = error.status || 500;
     return res.status(status).json({
@@ -188,3 +205,28 @@ module.exports = async function handler(req, res) {
     });
   }
 };
+
+async function crearBeneficioCalificacion({ uidTaller, patente, bikeId, ordenOrigen, ratingId }) {
+  if (!uidTaller || !patente) return;
+  const patenteNorm = String(patente).trim().toUpperCase().replace(/\s+/g, "");
+  if (!patenteNorm) return;
+
+  const configSnap = await db.collection("users").doc(uidTaller).collection("config").doc("global").get();
+  const discountPct = Number((configSnap.exists ? configSnap.data() : {}).descuentoCalificacionPct ?? 15);
+
+  const beneficioRef = db.collection("users").doc(uidTaller).collection("clienteBeneficios").doc(patenteNorm);
+  const snap = await beneficioRef.get();
+  if (snap.exists && snap.data().estado === "activo") return;
+
+  await beneficioRef.set({
+    patente: patenteNorm,
+    bikeId: bikeId || "",
+    ordenOrigen: ordenOrigen || "",
+    ratingId: ratingId || "",
+    discountPct,
+    estado: "activo",
+    creadoEn: Date.now(),
+    usadoEn: null,
+    ordenUsada: null,
+  });
+}
