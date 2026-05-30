@@ -21,7 +21,13 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
-  const { pathname } = new URL(event.request.url);
+  const url = new URL(event.request.url);
+
+  // Importante: no interceptar requests cross-origin (ej: tiles de mapas, MP, etc).
+  // Si el SW responde con "/" como fallback, rompe imágenes/tiles silenciosamente.
+  if (url.origin !== self.location.origin) return;
+
+  const { pathname } = url;
 
   // Never cache these files — always network so version checks get fresh data
   if (pathname === "/version.json" || pathname === "/index.html") {
