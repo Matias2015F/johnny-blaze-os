@@ -33,6 +33,7 @@ export default function MapaPicker({ lat, lng, onChange, height = 220 }) {
   const divRef    = useRef(null);
   const mapRef    = useRef(null);
   const markerRef = useRef(null);
+  const tilesRef  = useRef(null);
   const [listo, setListo] = useState(false);
 
   function r6(n) { return Math.round(n * 1e6) / 1e6; }
@@ -59,10 +60,36 @@ export default function MapaPicker({ lat, lng, onChange, height = 220 }) {
 
     const map = L.map(divRef.current, { center, zoom });
 
+    // Nota: algunos dispositivos/redes bloquean tiles de OSM. Usamos Carto (más estable)
+    // y fallback automático a OSM si hay errores de carga.
+    const CARTO = "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+    const OSM = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+    const baseOpts = {
+      attribution: "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a>",
+      maxZoom: 19,
+      crossOrigin: true,
+    };
+
+    let tileErrors = 0;
+    const tiles = L.tileLayer(CARTO, { ...baseOpts, subdomains: "abcd" }).addTo(map);
+    tilesRef.current = tiles;
+    tiles.on("tileerror", () => {
+      tileErrors += 1;
+      if (tileErrors === 3) {
+        try {
+          map.removeLayer(tiles);
+          tilesRef.current = L.tileLayer(OSM, { ...baseOpts, subdomains: "abc" }).addTo(map);
+        } catch {
+          // ignore
+        }
+      }
+    });
+
     L.tileLayer(
       "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       { attribution: "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a>", subdomains: "abc", maxZoom: 19 }
-    ).addTo(map);
+    ); // legacy tiles disabled (Carto + fallback arriba)
 
     if (lat && lng) addOrMoveMarker(map, lat, lng);
 
