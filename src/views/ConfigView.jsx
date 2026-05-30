@@ -17,6 +17,7 @@ import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_E
 import { logAdminAction } from "../services/adminAuditService.js";
 import { validateAdminSettings, validateExtraDays, validatePlanKey } from "../services/adminValidationService.js";
 import { formatMoney } from "../utils/format.js";
+import MapaPicker from "../components/MapaPicker.jsx";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
 import { runIntegrityCheckFromCache } from "../lib/integrityTest.js";
@@ -1266,111 +1267,6 @@ function PantallaResumen({ orders, caja }) {
 }
 
 // PANTALLA: Taller
-// ── Mapa Leaflet para elegir ubicación del taller ────────────────────────────
-function MapaPicker({ lat, lng, onChange }) {
-  const wrapRef = React.useRef(null);
-  const divRef  = React.useRef(null);
-  const mapRef  = React.useRef(null);
-  const markerRef = React.useRef(null);
-  const [listo, setListo] = React.useState(false);
-
-  function round6(n) { return Math.round(n * 1e6) / 1e6; }
-
-  React.useEffect(() => {
-    let vivo = true;
-
-    function buildMarker(L, map, la, lo) {
-      const m = L.marker([la, lo], { draggable: true }).addTo(map);
-      m.on('dragend', (e) => {
-        const p = e.target.getLatLng();
-        onChange(round6(p.lat), round6(p.lng));
-      });
-      return m;
-    }
-
-    function iniciar() {
-      if (!vivo || !divRef.current || mapRef.current) return;
-      const L = window.L;
-      const center = (lat && lng) ? [lat, lng] : [-38.5, -64.0];
-      const map = L.map(divRef.current, { center, zoom: lat ? 14 : 4 });
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a>',
-        maxZoom: 19,
-      }).addTo(map);
-
-      if (lat && lng) markerRef.current = buildMarker(L, map, lat, lng);
-
-      map.on('click', (e) => {
-        const la = round6(e.latlng.lat);
-        const lo = round6(e.latlng.lng);
-        if (markerRef.current) {
-          markerRef.current.setLatLng([la, lo]);
-        } else {
-          markerRef.current = buildMarker(L, map, la, lo);
-        }
-        onChange(la, lo);
-      });
-
-      mapRef.current = map;
-      if (vivo) setListo(true);
-    }
-
-    function cargarLeaflet() {
-      if (window.L) { iniciar(); return; }
-      if (!document.getElementById('lf-css')) {
-        const link = document.createElement('link');
-        link.id = 'lf-css';
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        document.head.appendChild(link);
-      }
-      if (!document.getElementById('lf-js')) {
-        const s = document.createElement('script');
-        s.id = 'lf-js';
-        s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        s.onload = () => { if (vivo) iniciar(); };
-        document.head.appendChild(s);
-      } else {
-        const t = setInterval(() => { if (window.L) { clearInterval(t); if (vivo) iniciar(); } }, 100);
-      }
-    }
-
-    cargarLeaflet();
-
-    return () => {
-      vivo = false;
-      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; markerRef.current = null; }
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Sync cuando el lat/lng cambia externamente (botón GPS)
-  React.useEffect(() => {
-    if (!mapRef.current || !window.L || !lat || !lng) return;
-    const L = window.L;
-    if (markerRef.current) {
-      markerRef.current.setLatLng([lat, lng]);
-    } else {
-      markerRef.current = L.marker([lat, lng], { draggable: true }).addTo(mapRef.current);
-      markerRef.current.on('dragend', (e) => {
-        const p = e.target.getLatLng();
-        onChange(round6(p.lat), round6(p.lng));
-      });
-    }
-    mapRef.current.setView([lat, lng], Math.max(mapRef.current.getZoom(), 14));
-  }, [lat, lng]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return (
-    <div ref={wrapRef} style={{ position: 'relative', height: 220, borderRadius: '1rem', overflow: 'hidden', background: '#18181b' }}>
-      {!listo && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-          Cargando mapa…
-        </div>
-      )}
-      <div ref={divRef} style={{ height: '100%', width: '100%' }} />
-    </div>
-  );
-}
-
 function PantallaTaller({ cfg, setCfg, showToast }) {
   const margen = cfg.margenPolitica ?? 25;
   const horaCliente = Math.round((cfg.valorHoraInterno || 0) * (1 + margen / 100));
