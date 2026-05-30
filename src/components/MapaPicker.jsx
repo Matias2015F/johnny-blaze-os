@@ -60,8 +60,8 @@ export default function MapaPicker({ lat, lng, onChange, height = 220 }) {
     const map = L.map(divRef.current, { center, zoom });
 
     L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-      { attribution: "© OpenStreetMap © CARTO", subdomains: "abcd", maxZoom: 19 }
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      { attribution: "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a>", subdomains: "abc", maxZoom: 19 }
     ).addTo(map);
 
     if (lat && lng) addOrMoveMarker(map, lat, lng);
