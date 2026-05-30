@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { db, auth } from "../firebase.js";
+import { getDoc, updateDoc, doc } from "firebase/firestore";
 import {
   ArrowLeft, CheckCircle2, ClipboardList, MessageCircle, Pause, Play,
   Plus, ThumbsDown, ThumbsUp, Trash2, Wrench, X,
@@ -359,7 +361,19 @@ export default function PresupuestoDetailView({
 }) {
   const [confirm, setConfirm] = useState(null);
   const [showRechazoModal, setShowRechazoModal] = useState(false);
+  const [beneficio, setBeneficio] = useState(null);
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
+
+  useEffect(() => {
+    const patente = String(bike?.patente || "").trim().toUpperCase().replace(/\s+/g, "");
+    const uid = auth.currentUser?.uid;
+    const estadoActual = presupuesto?.estado;
+    const finalizado = estadoActual === "convertido" || estadoActual === "rechazado";
+    if (!uid || !patente || finalizado || !presupuesto) { setBeneficio(null); return; }
+    getDoc(doc(db, "users", uid, "clienteBeneficios", patente))
+      .then(snap => setBeneficio(snap.exists() && snap.data()?.estado === "activo" ? snap.data() : null))
+      .catch(() => setBeneficio(null));
+  }, [bike?.patente, presupuesto?.estado]);
 
   if (!presupuesto) return null;
 
@@ -493,6 +507,23 @@ export default function PresupuestoDetailView({
     }
   };
 
+  const marcarBeneficioUsado = async () => {
+    if (!beneficio) return;
+    const patente = String(bike?.patente || "").trim().toUpperCase().replace(/\s+/g, "");
+    const uid = auth.currentUser?.uid;
+    if (!uid || !patente) return;
+    try {
+      await updateDoc(doc(db, "users", uid, "clienteBeneficios", patente), {
+        estado: "usado",
+        usadoEn: Date.now(),
+        ordenUsada: id,
+      });
+      setBeneficio(null);
+    } catch (e) {
+      console.warn("[beneficio] no se pudo marcar como usado:", e.message);
+    }
+  };
+
   const compartirWhatsApp = () => {
     const tel = client?.whatsapp || client?.tel || client?.telefono || "";
     const telNorm = normalizarTelWA(tel);
@@ -511,12 +542,14 @@ export default function PresupuestoDetailView({
       adelantoPct: presupuestoConfig.adelantoPct || 0,
       incluirDatos, datosCobro,
       nombreTaller: config.nombreTaller || "",
+      beneficioCalificacion: beneficio,
     });
 
     abrirWhatsApp(telNorm, msg);
     if (estado === "borrador") {
       LS.updateDoc("presupuestos", id, { estado: "enviado", updatedAt: Date.now() });
     }
+    if (beneficio) marcarBeneficioUsado();
   };
 
   const confirmar = (mensaje, onOk) => setConfirm({ mensaje, onOk });
@@ -698,6 +731,28 @@ export default function PresupuestoDetailView({
           </p>
         )}
       </div>
+
+      {/* Beneficio por calificación */}
+      {beneficio && !yaFinalizado && (
+        <div className="rounded-[2rem] border border-green-500/30 bg-green-500/10 p-5 space-y-2">
+          <p className="text-[10px] font-black uppercase tracking-widest text-green-400">Beneficio por calificación anterior</p>
+          <div className="space-y-1">
+            <div className="flex justify-between">
+              <span className="text-xs text-zinc-400">Total original</span>
+              <span className="text-xs font-black text-white">{formatMoney(total)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-xs text-zinc-400">Descuento {beneficio.discountPct}%</span>
+              <span className="text-xs font-black text-green-400">-{formatMoney(Math.round(total * beneficio.discountPct / 100))}</span>
+            </div>
+            <div className="flex justify-between pt-1 border-t border-green-500/20">
+              <span className="text-xs font-black text-white uppercase tracking-wider">Total con descuento</span>
+              <span className="text-sm font-black text-green-400">{formatMoney(total - Math.round(total * beneficio.discountPct / 100))}</span>
+            </div>
+          </div>
+          <p className="text-[9px] text-zinc-500">Se incluirá en el mensaje de WhatsApp. Al enviar, el beneficio queda utilizado.</p>
+        </div>
+      )}
 
       {/* Acciones por estado */}
       {!yaFinalizado && (

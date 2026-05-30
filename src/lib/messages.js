@@ -44,7 +44,7 @@ export function mensajeFinalizado({ bike, client, total }) {
   return `Hola ${client.nombre || "cliente"},\n\nTu moto ${bike.patente || "---"} está lista para retirar.\n\nTotal: ${fmtARS(total)}\n\nPodés pasar cuando quieras. ¡Gracias!`;
 }
 
-export function generarMensajePresupuestoConDatos({ client, bike, tareas = [], repuestos = [], total, min, max, nivel, adelantoPct, incluirDatos, datosCobro, nombreTaller }) {
+export function generarMensajePresupuestoConDatos({ client, bike, tareas = [], repuestos = [], total, min, max, nivel, adelantoPct, incluirDatos, datosCobro, nombreTaller, beneficioCalificacion = null }) {
   const nombre = client?.nombre || "cliente";
   const moto = `${bike?.marca || ""} ${bike?.modelo || ""}`.trim() || "tu moto";
   const esAbierto = nivel !== "bajo";
@@ -81,6 +81,14 @@ export function generarMensajePresupuestoConDatos({ client, bike, tareas = [], r
       msg += `\n\nDatos para transferencia:\n${lineas.join("\n")}`;
       msg += "\n\nUna vez realizada la transferencia enviar comprobante por este medio.";
     }
+  }
+
+  if (beneficioCalificacion && Number(beneficioCalificacion.discountPct) > 0) {
+    const pct = Number(beneficioCalificacion.discountPct);
+    const base = total || 0;
+    const descuento = Math.round(base * pct / 100);
+    const totalFinal = base - descuento;
+    msg += `\n\nBeneficio por tu calificación anterior:\n- Descuento ${pct}%: -${fmtARS(descuento)}\n- Total con descuento: ${fmtARS(totalFinal)}`;
   }
 
   msg += `\n\n${nombreTaller || "Moto Gestión - Servicio Técnico de Motocicletas"}`;

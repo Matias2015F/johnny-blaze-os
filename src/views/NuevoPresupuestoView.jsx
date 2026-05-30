@@ -1,4 +1,6 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { db, auth } from "../firebase.js";
+import { getDoc, doc } from "firebase/firestore";
 import { ArrowLeft, Info, Mic, MicOff } from "lucide-react";
 
 function normalizar(value = "") {
@@ -18,6 +20,17 @@ export default function NuevoPresupuestoView({ onCrear, setView, bikes = [], cli
     validezDias: 7,
   });
   const [ignorarSugerencia, setIgnorarSugerencia] = useState(false);
+  const [beneficio, setBeneficio] = useState(null);
+
+  useEffect(() => {
+    if (!coincidenciaMoto) { setBeneficio(null); return; }
+    const patente = normalizar(f.patente);
+    const uid = auth.currentUser?.uid;
+    if (!uid || !patente) { setBeneficio(null); return; }
+    getDoc(doc(db, "users", uid, "clienteBeneficios", patente))
+      .then(snap => setBeneficio(snap.exists() && snap.data()?.estado === "activo" ? snap.data() : null))
+      .catch(() => setBeneficio(null));
+  }, [coincidenciaMoto, f.patente]);
   const [dictando, setDictando] = useState(false);
   const recognitionRef = useRef(null);
 
@@ -82,6 +95,14 @@ export default function NuevoPresupuestoView({ onCrear, setView, bikes = [], cli
         <h1 className="text-3xl font-black text-white tracking-tighter uppercase">Nuevo Presupuesto</h1>
       </div>
       <div className="bg-[#141414] p-8 rounded-[2.5rem] space-y-4 border border-white/5 shadow-2xl">
+        {beneficio && coincidenciaMoto && (
+          <div className="bg-green-500/10 border border-green-500/30 rounded-[2rem] p-4 space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-green-400">Beneficio disponible</p>
+            <p className="text-sm font-black text-white">{beneficio.discountPct}% de descuento por calificación anterior</p>
+            <p className="text-[10px] font-bold text-zinc-400">Se mostrará en el presupuesto y en el mensaje de WhatsApp.</p>
+          </div>
+        )}
+
         {coincidenciaMoto && !ignorarSugerencia && (
           <div className="bg-orange-500/10 border border-orange-500/30 rounded-[2rem] p-4 space-y-3">
             <div className="flex items-start gap-3">
