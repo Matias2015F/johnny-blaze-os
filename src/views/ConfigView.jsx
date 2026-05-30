@@ -1384,10 +1384,59 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
           </div>
         </div>
         <MapaPicker
-          lat={cfg.lat}
-          lng={cfg.lng}
-          onChange={(la, lo) => setCfg(prev => ({ ...prev, lat: la, lng: lo }))}
+          lat={draftLatLng.lat}
+          lng={draftLatLng.lng}
+          editable={editUbicacion}
+          onChange={(la, lo) => setDraftLatLng({ lat: la, lng: lo })}
         />
+
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {editUbicacion ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setCfg((prev) => {
+                    const next = { ...prev, lat: draftLatLng.lat ?? null, lng: draftLatLng.lng ?? null };
+                    // Si el usuario no completó Dirección, usamos ciudad/provincia como default seguro.
+                    if (!String(next.direccionTaller || "").trim()) {
+                      const c = String(next.ciudadTaller || "").trim();
+                      const p = String(next.provinciaTaller || "").trim();
+                      if (c || p) next.direccionTaller = [c, p].filter(Boolean).join(", ");
+                    }
+                    return next;
+                  });
+                  setEditUbicacion(false);
+                  showToast("Ubicación guardada");
+                }}
+                className="w-full rounded-2xl bg-zinc-900 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+              >
+                Guardar pin
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDraftLatLng({ lat: cfg.lat ?? null, lng: cfg.lng ?? null });
+                  setEditUbicacion(false);
+                  showToast("Cambios descartados");
+                }}
+                className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-600 active:scale-95 transition-all"
+              >
+                Cancelar
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setEditUbicacion(true)}
+                className="col-span-2 w-full rounded-2xl border border-zinc-200 bg-white py-3 text-[10px] font-black uppercase tracking-widest text-zinc-900 active:scale-95 transition-all"
+              >
+                Cambiar ubicación
+              </button>
+            </>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => {
@@ -1396,7 +1445,8 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
               (pos) => {
                 const la = Math.round(pos.coords.latitude  * 1e6) / 1e6;
                 const lo = Math.round(pos.coords.longitude * 1e6) / 1e6;
-                setCfg(prev => ({ ...prev, lat: la, lng: lo }));
+                setEditUbicacion(true);
+                setDraftLatLng({ lat: la, lng: lo });
                 showToast("Ubicación detectada");
               },
               () => showToast("No se pudo obtener la ubicación. Activá el GPS o tocá el mapa directamente.")
@@ -1406,9 +1456,9 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
         >
           Usar mi ubicación actual (GPS)
         </button>
-        {cfg.lat && cfg.lng && (
+        {draftLatLng.lat && draftLatLng.lng && (
           <p className="text-[10px] text-zinc-400 font-bold mt-2 ml-1">
-            Pin: {Number(cfg.lat).toFixed(5)}, {Number(cfg.lng).toFixed(5)}
+            Pin: {Number(draftLatLng.lat).toFixed(5)}, {Number(draftLatLng.lng).toFixed(5)} {editUbicacion ? "(sin guardar)" : ""}
           </p>
         )}
       </Card>
@@ -3405,6 +3455,11 @@ function PantallaReputacion() {
 export default function ConfigView({ setView, showToast, orders = [], bikes = [], clients = [], handleLogout, loadDemoData, clearAllData }) {
   const [activeTab, setActiveTab] = useState(() => window.localStorage.getItem("jbos_config_tab") || "resumen");
   const [cfg, setCfg] = useState(() => LS.getDoc("config", "global") || CONFIG_DEFAULT);
+  const [editUbicacion, setEditUbicacion] = useState(false);
+  const [draftLatLng, setDraftLatLng] = useState(() => ({
+    lat: (LS.getDoc("config", "global") || CONFIG_DEFAULT)?.lat ?? null,
+    lng: (LS.getDoc("config", "global") || CONFIG_DEFAULT)?.lng ?? null,
+  }));
   const [bkpEstado, setBkpEstado] = useState(() => estadoBackup());
   const fileInputRef = useRef(null);
   const scrollRef = useRef(null);
@@ -3426,6 +3481,12 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
     window.localStorage.setItem("jbos_config_tab", activeTab);
     scrollRef.current?.scrollTo({ top: 0 });
   }, [activeTab]);
+
+  // Si no estamos editando el pin, mantenemos el draft alineado al valor guardado.
+  useEffect(() => {
+    if (editUbicacion) return;
+    setDraftLatLng({ lat: cfg.lat ?? null, lng: cfg.lng ?? null });
+  }, [cfg.lat, cfg.lng, editUbicacion]);
 
   const handleRestaurarArchivo = (e) => {
     const file = e.target.files?.[0];

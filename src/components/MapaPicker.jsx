@@ -29,7 +29,7 @@ function createPinIcon() {
  *   onChange — callback(lat, lng)
  *   height   — alto del mapa en px (default: 220)
  */
-export default function MapaPicker({ lat, lng, onChange, height = 220 }) {
+export default function MapaPicker({ lat, lng, onChange, editable = true, height = 220 }) {
   const divRef    = useRef(null);
   const mapRef    = useRef(null);
   const markerRef = useRef(null);
@@ -42,11 +42,13 @@ export default function MapaPicker({ lat, lng, onChange, height = 220 }) {
     if (markerRef.current) {
       markerRef.current.setLatLng([la, lo]);
     } else {
-      const m = L.marker([la, lo], { icon: createPinIcon(), draggable: true }).addTo(map);
-      m.on("dragend", (e) => {
-        const p = e.target.getLatLng();
-        onChange(r6(p.lat), r6(p.lng));
-      });
+      const m = L.marker([la, lo], { icon: createPinIcon(), draggable: !!editable }).addTo(map);
+      if (editable) {
+        m.on("dragend", (e) => {
+          const p = e.target.getLatLng();
+          onChange(r6(p.lat), r6(p.lng));
+        });
+      }
       markerRef.current = m;
     }
   }
@@ -93,12 +95,14 @@ export default function MapaPicker({ lat, lng, onChange, height = 220 }) {
 
     if (lat && lng) addOrMoveMarker(map, lat, lng);
 
-    map.on("click", (e) => {
-      const la = r6(e.latlng.lat);
-      const lo = r6(e.latlng.lng);
-      addOrMoveMarker(map, la, lo);
-      onChange(la, lo);
-    });
+    if (editable) {
+      map.on("click", (e) => {
+        const la = r6(e.latlng.lat);
+        const lo = r6(e.latlng.lng);
+        addOrMoveMarker(map, la, lo);
+        onChange(la, lo);
+      });
+    }
 
     mapRef.current = map;
     // invalidateSize: necesario si el contenedor estaba oculto al montar
@@ -118,6 +122,13 @@ export default function MapaPicker({ lat, lng, onChange, height = 220 }) {
     addOrMoveMarker(mapRef.current, lat, lng);
     mapRef.current.setView([lat, lng], Math.max(mapRef.current.getZoom(), 14));
   }, [lat, lng]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Si cambia el modo editable, ajustamos drag del marker existente.
+  useEffect(() => {
+    if (!markerRef.current) return;
+    if (editable) markerRef.current.dragging?.enable?.();
+    else markerRef.current.dragging?.disable?.();
+  }, [editable]);
 
   return (
     <div style={{ position: "relative", height, borderRadius: "1rem", overflow: "hidden", background: "#18181b" }}>
