@@ -1266,6 +1266,111 @@ function PantallaResumen({ orders, caja }) {
 }
 
 // PANTALLA: Taller
+// ── Mapa Leaflet para elegir ubicación del taller ────────────────────────────
+function MapaPicker({ lat, lng, onChange }) {
+  const wrapRef = React.useRef(null);
+  const divRef  = React.useRef(null);
+  const mapRef  = React.useRef(null);
+  const markerRef = React.useRef(null);
+  const [listo, setListo] = React.useState(false);
+
+  function round6(n) { return Math.round(n * 1e6) / 1e6; }
+
+  React.useEffect(() => {
+    let vivo = true;
+
+    function buildMarker(L, map, la, lo) {
+      const m = L.marker([la, lo], { draggable: true }).addTo(map);
+      m.on('dragend', (e) => {
+        const p = e.target.getLatLng();
+        onChange(round6(p.lat), round6(p.lng));
+      });
+      return m;
+    }
+
+    function iniciar() {
+      if (!vivo || !divRef.current || mapRef.current) return;
+      const L = window.L;
+      const center = (lat && lng) ? [lat, lng] : [-38.5, -64.0];
+      const map = L.map(divRef.current, { center, zoom: lat ? 14 : 4 });
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+        maxZoom: 19,
+      }).addTo(map);
+
+      if (lat && lng) markerRef.current = buildMarker(L, map, lat, lng);
+
+      map.on('click', (e) => {
+        const la = round6(e.latlng.lat);
+        const lo = round6(e.latlng.lng);
+        if (markerRef.current) {
+          markerRef.current.setLatLng([la, lo]);
+        } else {
+          markerRef.current = buildMarker(L, map, la, lo);
+        }
+        onChange(la, lo);
+      });
+
+      mapRef.current = map;
+      if (vivo) setListo(true);
+    }
+
+    function cargarLeaflet() {
+      if (window.L) { iniciar(); return; }
+      if (!document.getElementById('lf-css')) {
+        const link = document.createElement('link');
+        link.id = 'lf-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
+      if (!document.getElementById('lf-js')) {
+        const s = document.createElement('script');
+        s.id = 'lf-js';
+        s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        s.onload = () => { if (vivo) iniciar(); };
+        document.head.appendChild(s);
+      } else {
+        const t = setInterval(() => { if (window.L) { clearInterval(t); if (vivo) iniciar(); } }, 100);
+      }
+    }
+
+    cargarLeaflet();
+
+    return () => {
+      vivo = false;
+      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; markerRef.current = null; }
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync cuando el lat/lng cambia externamente (botón GPS)
+  React.useEffect(() => {
+    if (!mapRef.current || !window.L || !lat || !lng) return;
+    const L = window.L;
+    if (markerRef.current) {
+      markerRef.current.setLatLng([lat, lng]);
+    } else {
+      markerRef.current = L.marker([lat, lng], { draggable: true }).addTo(mapRef.current);
+      markerRef.current.on('dragend', (e) => {
+        const p = e.target.getLatLng();
+        onChange(round6(p.lat), round6(p.lng));
+      });
+    }
+    mapRef.current.setView([lat, lng], Math.max(mapRef.current.getZoom(), 14));
+  }, [lat, lng]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', height: 220, borderRadius: '1rem', overflow: 'hidden', background: '#18181b' }}>
+      {!listo && (
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#71717a', fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          Cargando mapa…
+        </div>
+      )}
+      <div ref={divRef} style={{ height: '100%', width: '100%' }} />
+    </div>
+  );
+}
+
 function PantallaTaller({ cfg, setCfg, showToast }) {
   const margen = cfg.margenPolitica ?? 25;
   const horaCliente = Math.round((cfg.valorHoraInterno || 0) * (1 + margen / 100));
@@ -1352,6 +1457,64 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
             </p>
           </div>
         </div>
+      </Card>
+
+      {/* Ubicacion del taller — ciudad, provincia y pin en mapa */}
+      <Card>
+        <SectionTitle>Ubicación del taller</SectionTitle>
+        <p className="text-[10px] text-zinc-400 font-bold mb-4">
+          Tocá el mapa para colocar el pin o arrastralo. Esta posición aparece en el mapa público de MotoGestión.
+        </p>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Ciudad</label>
+            <input
+              type="text"
+              value={cfg.ciudadTaller ?? ""}
+              onChange={e => setCfg({ ...cfg, ciudadTaller: e.target.value })}
+              placeholder="Ej: Gualeguaychú"
+              className="w-full border-2 border-zinc-100 rounded-2xl px-4 py-3 font-bold text-zinc-800 outline-none focus:border-orange-500 transition-colors bg-zinc-50"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Provincia</label>
+            <input
+              type="text"
+              value={cfg.provinciaTaller ?? ""}
+              onChange={e => setCfg({ ...cfg, provinciaTaller: e.target.value })}
+              placeholder="Ej: Entre Ríos"
+              className="w-full border-2 border-zinc-100 rounded-2xl px-4 py-3 font-bold text-zinc-800 outline-none focus:border-orange-500 transition-colors bg-zinc-50"
+            />
+          </div>
+        </div>
+        <MapaPicker
+          lat={cfg.lat}
+          lng={cfg.lng}
+          onChange={(la, lo) => setCfg(prev => ({ ...prev, lat: la, lng: lo }))}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            if (!navigator.geolocation) { showToast("Geolocalización no disponible en este dispositivo"); return; }
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                const la = Math.round(pos.coords.latitude  * 1e6) / 1e6;
+                const lo = Math.round(pos.coords.longitude * 1e6) / 1e6;
+                setCfg(prev => ({ ...prev, lat: la, lng: lo }));
+                showToast("Ubicación detectada");
+              },
+              () => showToast("No se pudo obtener la ubicación. Activá el GPS o tocá el mapa directamente.")
+            );
+          }}
+          className="mt-3 w-full rounded-2xl border border-zinc-200 bg-zinc-50 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-600 active:scale-95 transition-all"
+        >
+          Usar mi ubicación actual (GPS)
+        </button>
+        {cfg.lat && cfg.lng && (
+          <p className="text-[10px] text-zinc-400 font-bold mt-2 ml-1">
+            Pin: {Number(cfg.lat).toFixed(5)}, {Number(cfg.lng).toFixed(5)}
+          </p>
+        )}
       </Card>
 
       {/* Mano de obra — card unificada con cadena de cálculo */}
