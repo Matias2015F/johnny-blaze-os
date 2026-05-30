@@ -1,12 +1,32 @@
 import { useEffect, useRef, useState } from "react";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+
+// El marker por defecto de Leaflet tiene paths rotos con Vite — usamos DivIcon
+function createPinIcon() {
+  return L.divIcon({
+    className: "",
+    html: `<div style="
+      width:22px;height:22px;
+      background:#ea580c;
+      border:3px solid #fff;
+      border-radius:50% 50% 50% 0;
+      transform:rotate(-45deg);
+      box-shadow:0 2px 8px rgba(0,0,0,0.5);
+    "></div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 22],
+    popupAnchor: [0, -24],
+  });
+}
 
 /**
- * MapaPicker — elige lat/lng con click en el mapa o GPS.
+ * MapaPicker — selecciona lat/lng con click o GPS.
  *
  * Props:
  *   lat      — latitud actual (number | null)
  *   lng      — longitud actual (number | null)
- *   onChange — callback(lat, lng) cuando cambia la posición
+ *   onChange — callback(lat, lng)
  *   height   — alto del mapa en px (default: 220)
  */
 export default function MapaPicker({ lat, lng, onChange, height = 220 }) {
@@ -17,100 +37,58 @@ export default function MapaPicker({ lat, lng, onChange, height = 220 }) {
 
   function r6(n) { return Math.round(n * 1e6) / 1e6; }
 
-  function buildMarker(L, map, la, lo) {
-    const m = L.marker([la, lo], { draggable: true }).addTo(map);
-    m.on("dragend", (e) => {
-      const p = e.target.getLatLng();
-      onChange(r6(p.lat), r6(p.lng));
-    });
-    return m;
+  function addOrMoveMarker(map, la, lo) {
+    if (markerRef.current) {
+      markerRef.current.setLatLng([la, lo]);
+    } else {
+      const m = L.marker([la, lo], { icon: createPinIcon(), draggable: true }).addTo(map);
+      m.on("dragend", (e) => {
+        const p = e.target.getLatLng();
+        onChange(r6(p.lat), r6(p.lng));
+      });
+      markerRef.current = m;
+    }
   }
 
-  // Inicializar mapa una sola vez al montar
+  // Inicializar mapa una sola vez
   useEffect(() => {
-    let vivo = true;
+    if (!divRef.current || mapRef.current) return;
 
-    function iniciar() {
-      if (!vivo || !divRef.current || mapRef.current) return;
-      const L = window.L;
-      const center = lat && lng ? [lat, lng] : [-38.5, -64.0];
-      const zoom   = lat && lng ? 14 : 4;
+    const center = lat && lng ? [lat, lng] : [-38.5, -64.0];
+    const zoom   = lat && lng ? 14 : 4;
 
-      const map = L.map(divRef.current, { center, zoom });
+    const map = L.map(divRef.current, { center, zoom });
 
-      // CartoDB Voyager — mismo tile que MOTOENLACE, sin necesitar API key
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-        { attribution: "© OpenStreetMap © CARTO", subdomains: "abcd", maxZoom: 19 }
-      ).addTo(map);
+    L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+      { attribution: "© OpenStreetMap © CARTO", subdomains: "abcd", maxZoom: 19 }
+    ).addTo(map);
 
-      if (lat && lng) {
-        markerRef.current = buildMarker(L, map, lat, lng);
-      }
+    if (lat && lng) addOrMoveMarker(map, lat, lng);
 
-      map.on("click", (e) => {
-        const la = r6(e.latlng.lat);
-        const lo = r6(e.latlng.lng);
-        if (markerRef.current) {
-          markerRef.current.setLatLng([la, lo]);
-        } else {
-          markerRef.current = buildMarker(L, map, la, lo);
-        }
-        onChange(la, lo);
-      });
+    map.on("click", (e) => {
+      const la = r6(e.latlng.lat);
+      const lo = r6(e.latlng.lng);
+      addOrMoveMarker(map, la, lo);
+      onChange(la, lo);
+    });
 
-      mapRef.current = map;
-      // invalidateSize: necesario cuando el contenedor estaba oculto al montar
-      setTimeout(() => { if (vivo && mapRef.current) mapRef.current.invalidateSize(); }, 120);
-      if (vivo) setListo(true);
-    }
-
-    function cargar() {
-      if (window.L) { iniciar(); return; }
-
-      if (!document.getElementById("lf-css")) {
-        const link = document.createElement("link");
-        link.id = "lf-css";
-        link.rel = "stylesheet";
-        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-        document.head.appendChild(link);
-      }
-
-      if (!document.getElementById("lf-js")) {
-        const s  = document.createElement("script");
-        s.id     = "lf-js";
-        s.src    = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-        s.onload = () => { if (vivo) iniciar(); };
-        document.head.appendChild(s);
-      } else {
-        const t = setInterval(() => {
-          if (window.L) { clearInterval(t); if (vivo) iniciar(); }
-        }, 80);
-      }
-    }
-
-    cargar();
+    mapRef.current = map;
+    // invalidateSize: necesario si el contenedor estaba oculto al montar
+    setTimeout(() => mapRef.current?.invalidateSize(), 150);
+    setListo(true);
 
     return () => {
-      vivo = false;
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current  = null;
-        markerRef.current = null;
-        setListo(false);
-      }
+      map.remove();
+      mapRef.current  = null;
+      markerRef.current = null;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sincronizar cuando lat/lng cambia externamente (botón GPS)
   useEffect(() => {
-    if (!mapRef.current || !window.L || !lat || !lng) return;
-    const L = window.L;
-    if (markerRef.current) {
-      markerRef.current.setLatLng([lat, lng]);
-    } else {
-      markerRef.current = buildMarker(L, mapRef.current, lat, lng);
-    }
+    if (!mapRef.current || !lat || !lng) return;
+    addOrMoveMarker(mapRef.current, lat, lng);
     mapRef.current.setView([lat, lng], Math.max(mapRef.current.getZoom(), 14));
   }, [lat, lng]); // eslint-disable-line react-hooks/exhaustive-deps
 
