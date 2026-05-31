@@ -125,12 +125,15 @@ async function handlePublishWorkshop(req, res) {
     const configSnap = await db.collection("users").doc(uid).collection("config").doc("global").get();
     const cfg = configSnap.exists ? configSnap.data() : {};
 
-    const ratingsSnap = await db.collection("ratings")
-      .where("uidTaller", "==", uid)
-      .where("status", "==", "aprobado")
-      .get();
+    // Status contract: frontend/admin usa "aprobada" (femenino).
+    // Aceptamos también "aprobado" por compatibilidad con datos viejos.
+    const ratingsQuery = db.collection("ratings").where("uidTaller", "==", uid);
+    const [snapAprobada, snapAprobado] = await Promise.all([
+      ratingsQuery.where("status", "==", "aprobada").get(),
+      ratingsQuery.where("status", "==", "aprobado").get(),
+    ]);
 
-    const aprobados = ratingsSnap.docs.map((d) => d.data());
+    const aprobados = [...snapAprobada.docs, ...snapAprobado.docs].map((d) => d.data());
     if (aprobados.length === 0) {
       return res.status(400).json({ ok: false, error: "Necesitas al menos una calificación verificada para publicar el perfil." });
     }
