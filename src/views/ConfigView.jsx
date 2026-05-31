@@ -1270,6 +1270,17 @@ function PantallaResumen({ orders, caja }) {
 function PantallaTaller({ cfg, setCfg, showToast }) {
   const margen = cfg.margenPolitica ?? 25;
   const horaCliente = Math.round((cfg.valorHoraInterno || 0) * (1 + margen / 100));
+  const [editUbicacion, setEditUbicacion] = React.useState(false);
+  const [draftLatLng, setDraftLatLng] = React.useState(() => ({
+    lat: cfg.lat ?? null,
+    lng: cfg.lng ?? null,
+  }));
+
+  // Si no estamos editando el pin, mantenemos el draft alineado al valor guardado.
+  React.useEffect(() => {
+    if (editUbicacion) return;
+    setDraftLatLng({ lat: cfg.lat ?? null, lng: cfg.lng ?? null });
+  }, [cfg.lat, cfg.lng, editUbicacion]);
 
   // Auto-relleno: si el campo email está vacío, usar el mail de login
   React.useEffect(() => {
@@ -3455,11 +3466,6 @@ function PantallaReputacion() {
 export default function ConfigView({ setView, showToast, orders = [], bikes = [], clients = [], handleLogout, loadDemoData, clearAllData }) {
   const [activeTab, setActiveTab] = useState(() => window.localStorage.getItem("jbos_config_tab") || "resumen");
   const [cfg, setCfg] = useState(() => LS.getDoc("config", "global") || CONFIG_DEFAULT);
-  const [editUbicacion, setEditUbicacion] = useState(false);
-  const [draftLatLng, setDraftLatLng] = useState(() => ({
-    lat: (LS.getDoc("config", "global") || CONFIG_DEFAULT)?.lat ?? null,
-    lng: (LS.getDoc("config", "global") || CONFIG_DEFAULT)?.lng ?? null,
-  }));
   const [bkpEstado, setBkpEstado] = useState(() => estadoBackup());
   const fileInputRef = useRef(null);
   const scrollRef = useRef(null);
@@ -3481,12 +3487,6 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
     window.localStorage.setItem("jbos_config_tab", activeTab);
     scrollRef.current?.scrollTo({ top: 0 });
   }, [activeTab]);
-
-  // Si no estamos editando el pin, mantenemos el draft alineado al valor guardado.
-  useEffect(() => {
-    if (editUbicacion) return;
-    setDraftLatLng({ lat: cfg.lat ?? null, lng: cfg.lng ?? null });
-  }, [cfg.lat, cfg.lng, editUbicacion]);
 
   const handleRestaurarArchivo = (e) => {
     const file = e.target.files?.[0];
