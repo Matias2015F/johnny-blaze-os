@@ -639,10 +639,18 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     showToast(`Estado: ${ESTADO_LABEL[nuevo]} OK`);
   };
 
+  const irAEnviarPresupuesto = () => {
+    // UX: unificamos "pasar a presupuesto" + "enviar por WhatsApp" en un solo CTA.
+    if (!isLocked && order.estado === "diagnostico") {
+      cambiarEstado("presupuesto");
+    }
+    abrirSheet();
+  };
+
   const accionPrincipal = isLocked
     ? { label: "Ver / reimprimir comprobante", action: () => setView("imprimirOrden"), className: "bg-zinc-700 text-white" }
     : order.estado === "diagnostico"
-      ? { label: "Pasar a presupuesto", action: () => cambiarEstado("presupuesto"), className: "bg-violet-600 text-white" }
+      ? { label: "Enviar presupuesto", action: irAEnviarPresupuesto, className: "bg-amber-400 text-zinc-950" }
       : order.estado === "presupuesto"
         ? presupuestoSent
           ? { label: "Presupuesto enviado", action: abrirSheet, className: "bg-emerald-600 text-white" }
@@ -1029,15 +1037,6 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
           </button>
         )}
 
-        {accionPrincipal && (
-          <button
-            onClick={accionPrincipal.action}
-            className={`w-full rounded-[1.75rem] py-4 text-[11px] font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 ${accionPrincipal.className}`}
-          >
-            {accionPrincipal.label}
-          </button>
-        )}
-
         {res.total > 0 && (
           <section className="rounded-[2rem] border border-orange-500/25 bg-zinc-900/95 p-4 shadow-2xl">
             <div className="mb-4 flex items-start justify-between gap-3">
@@ -1312,6 +1311,15 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               </div>
             )}
           </section>
+        )}
+
+        {accionPrincipal && (
+          <button
+            onClick={accionPrincipal.action}
+            className={`w-full rounded-[1.75rem] py-4 text-[11px] font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 ${accionPrincipal.className}`}
+          >
+            {accionPrincipal.label}
+          </button>
         )}
       </div>
 
