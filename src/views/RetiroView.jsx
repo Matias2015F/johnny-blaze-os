@@ -18,6 +18,7 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
     setCliente(LS.getDoc("clientes", o.clientId) || {});
     setMoto(LS.getDoc("motos", o.bikeId) || {});
     setGarantia(o.garantiaFinal || "");
+    setRetirado(o.estado === "cerrado_emitido" || !!o.retiro_fecha);
   }, [ordenId]);
 
   if (!orden) {
@@ -32,7 +33,7 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
   const totalManoObra = (orden.tareas || []).reduce((s, t) => s + (t.monto || 0), 0);
   const fecha = new Date(orden.finalizacion_fecha || orden.updatedAt || Date.now()).toLocaleDateString("es-AR");
 
-  const handleClienteRetira = () => {
+  const handleClienteRetira = async () => {
     const now = Date.now();
     const entrada = crearEntradaHistorial(orden.estado, "cerrado_emitido");
     const patch = {
@@ -40,9 +41,11 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
       estado: "cerrado_emitido",
       historial: [...(orden.historial || []), entrada],
     };
-    actualizarOrden(ordenId, patch);
-    // Importante: reflejarlo en UI al instante (sin esperar re-render por storage).
-    setOrden((prev) => ({ ...(prev || {}), ...patch }));
+    await Promise.resolve(actualizarOrden(ordenId, patch));
+    // Releer la orden desde storage para evitar estado stale y habilitar el PDF sin recargar.
+    const fresh = obtenerOrden(ordenId);
+    if (fresh) setOrden(fresh);
+    else setOrden((prev) => ({ ...(prev || {}), ...patch }));
     setRetirado(true);
   };
 
