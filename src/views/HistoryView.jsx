@@ -302,9 +302,19 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
     }
   };
 
+  const obtenerFechaOrden = (order) => {
+    // Preferimos la fecha de ingreso (historial real). Fallbacks por compatibilidad.
+    return (
+      order?.fechaIngreso ||
+      order?.fechaComprobante?.slice?.(0, 10) ||
+      order?.fecha ||
+      order?.createdAt ||
+      ""
+    );
+  };
+
   const results = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return [];
 
     const byBike = new Map();
 
@@ -317,6 +327,7 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
       const numeroComprobante = order?.numeroComprobante || "";
 
       const match =
+        !q ||
         patente.toLowerCase().includes(q) ||
         cliente.toLowerCase().includes(q) ||
         numeroTrabajo.toLowerCase().includes(q) ||
@@ -342,13 +353,33 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
       current.repuestos += (order.repuestos || []).length;
       current.gastos += (order.insumos || []).length + (order.fletes || []).length;
       current.totalCobrado += order.total || 0;
-      current.ultimaFecha = [current.ultimaFecha, order.fecha].filter(Boolean).sort().at(-1) || current.ultimaFecha;
+      const f = obtenerFechaOrden(order);
+      current.ultimaFecha = [current.ultimaFecha, f].filter(Boolean).sort().at(-1) || current.ultimaFecha;
 
       byBike.set(bike.id, current);
     });
 
     return Array.from(byBike.values()).sort((a, b) => (b.ultimaFecha || "").localeCompare(a.ultimaFecha || ""));
   }, [search, orders, bikes, clients]);
+
+  const resultsGrouped = useMemo(() => {
+    // Agrupamos por AAAA-MM, usando la ultimaFecha de cada moto.
+    const groups = new Map();
+    results.forEach((item) => {
+      const key = (item.ultimaFecha || "").toString().slice(0, 7) || "Sin fecha";
+      const arr = groups.get(key) || [];
+      arr.push(item);
+      groups.set(key, arr);
+    });
+
+    const keys = Array.from(groups.keys()).sort((a, b) => {
+      if (a === "Sin fecha") return 1;
+      if (b === "Sin fecha") return -1;
+      return b.localeCompare(a);
+    });
+
+    return keys.map((k) => ({ key: k, items: groups.get(k) || [] }));
+  }, [results]);
 
   const resumen = useMemo(() => {
     return results.reduce(
@@ -558,72 +589,87 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
 
           <div className="space-y-4">
             {results.length > 0 ? (
-              results.map((item) => (
-                <button
-                  key={item.bike.id}
-                  onClick={() => {
-                    setSelectedBikeId(item.bike.id);
-                    setView("perfilMoto");
-                  }}
-                  className="w-full rounded-[2.5rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-[0.98]"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-3xl font-black leading-none text-white">{item.bike.patente}</p>
-                      <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                        {item.bike.marca} {item.bike.modelo} {item.bike.cilindrada ? `· ${item.bike.cilindrada}cc` : ""}
+              (search.trim() ? [{ key: "Resultados", items: results }] : resultsGrouped).map((group) => (
+                <div key={group.key} className="space-y-3">
+                  {!search.trim() && (
+                    <div className="flex items-center justify-between px-2">
+                      <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">
+                        {group.key === "Sin fecha" ? "Sin fecha" : group.key.replace("-", " / ")}
                       </p>
-                      <div className="mt-3 flex items-center gap-2 text-[11px] font-black text-zinc-300">
-                        <User size={14} className="text-zinc-500" />
-                        <span className="truncate uppercase">{item.client?.nombre || "Cliente sin nombre"}</span>
-                      </div>
-                    </div>
-                    <ChevronRight size={24} className="shrink-0 text-zinc-600" />
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <div className="rounded-[1.25rem] border border-white/5 bg-black/20 px-3 py-3">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Trabajos</p>
-                      <p className="mt-1 text-lg font-black text-white">{item.trabajos}</p>
-                    </div>
-                    <div className="rounded-[1.25rem] border border-white/5 bg-black/20 px-3 py-3">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Comprobantes</p>
-                      <p className="mt-1 text-lg font-black text-white">{item.comprobantes}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 space-y-2 rounded-[1.5rem] border border-white/5 bg-black/20 p-3">
-                    <div className="flex items-center justify-between text-[11px] font-black">
-                      <span className="flex items-center gap-2 text-zinc-400">
-                        <Wrench size={14} className="text-orange-400" />
-                        Repuestos usados
-                      </span>
-                      <span className="text-white">{item.repuestos}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] font-black">
-                      <span className="flex items-center gap-2 text-zinc-400">
-                        <FileText size={14} className="text-orange-400" />
-                        Gastos e insumos
-                      </span>
-                      <span className="text-white">{item.gastos}</span>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-white/10 pt-2 text-[11px] font-black">
-                      <span className="text-zinc-400">Total histórico</span>
-                      <span className="text-white">{formatMoney(item.totalCobrado)}</span>
-                    </div>
-                  </div>
-
-                  {item.orders[0] && (
-                    <div className="mt-3 rounded-[1.5rem] border border-orange-500/20 bg-orange-500/10 px-3 py-3">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-orange-300">Último movimiento</p>
-                      <p className="mt-1 text-[11px] font-black uppercase text-white">
-                        {item.orders[0].numeroComprobante
-                          ? `Comprobante ${item.orders[0].numeroComprobante}`
-                          : item.orders[0].numeroTrabajo || "Trabajo sin número"}
+                      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">
+                        {group.items.length} moto{group.items.length === 1 ? "" : "s"}
                       </p>
                     </div>
                   )}
-                </button>
+
+                  {group.items.map((item) => (
+                    <button
+                      key={item.bike.id}
+                      onClick={() => {
+                        setSelectedBikeId(item.bike.id);
+                        setView("perfilMoto");
+                      }}
+                      className="w-full rounded-[2.5rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-[0.98]"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-3xl font-black leading-none text-white">{item.bike.patente}</p>
+                          <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                            {item.bike.marca} {item.bike.modelo} {item.bike.cilindrada ? `· ${item.bike.cilindrada}cc` : ""}
+                          </p>
+                          <div className="mt-3 flex items-center gap-2 text-[11px] font-black text-zinc-300">
+                            <User size={14} className="text-zinc-500" />
+                            <span className="truncate uppercase">{item.client?.nombre || "Cliente sin nombre"}</span>
+                          </div>
+                        </div>
+                        <ChevronRight size={24} className="shrink-0 text-zinc-600" />
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <div className="rounded-[1.25rem] border border-white/5 bg-black/20 px-3 py-3">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Trabajos</p>
+                          <p className="mt-1 text-lg font-black text-white">{item.trabajos}</p>
+                        </div>
+                        <div className="rounded-[1.25rem] border border-white/5 bg-black/20 px-3 py-3">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Comprobantes</p>
+                          <p className="mt-1 text-lg font-black text-white">{item.comprobantes}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 space-y-2 rounded-[1.5rem] border border-white/5 bg-black/20 p-3">
+                        <div className="flex items-center justify-between text-[11px] font-black">
+                          <span className="flex items-center gap-2 text-zinc-400">
+                            <Wrench size={14} className="text-orange-400" />
+                            Repuestos usados
+                          </span>
+                          <span className="text-white">{item.repuestos}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[11px] font-black">
+                          <span className="flex items-center gap-2 text-zinc-400">
+                            <FileText size={14} className="text-orange-400" />
+                            Gastos e insumos
+                          </span>
+                          <span className="text-white">{item.gastos}</span>
+                        </div>
+                        <div className="flex items-center justify-between border-t border-white/10 pt-2 text-[11px] font-black">
+                          <span className="text-zinc-400">Total histórico</span>
+                          <span className="text-white">{formatMoney(item.totalCobrado)}</span>
+                        </div>
+                      </div>
+
+                      {item.orders[0] && (
+                        <div className="mt-3 rounded-[1.5rem] border border-orange-500/20 bg-orange-500/10 px-3 py-3">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-orange-300">Último movimiento</p>
+                          <p className="mt-1 text-[11px] font-black uppercase text-white">
+                            {item.orders[0].numeroComprobante
+                              ? `Comprobante ${item.orders[0].numeroComprobante}`
+                              : item.orders[0].numeroTrabajo || "Trabajo sin número"}
+                          </p>
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
               ))
             ) : (
               <div className="rounded-[2.5rem] border border-dashed border-zinc-700 bg-zinc-900 px-6 py-16 text-center shadow-xl">
