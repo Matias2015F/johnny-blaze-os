@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Bell, CheckCircle2, ChevronDown, ClipboardList, Clock, DollarSign, Edit2, FileText, Play, Search, Send, ShieldCheck, ThumbsUp, Trash2, Truck, Wrench, X } from "lucide-react";
 import { LS, buscarRepuestosAutocomplete, crearEntradaHistorial, generateId, guardarRepuestoHistorial } from "../lib/storage.js";
 import { buildProximoControl } from "../lib/proximoControl.js";
