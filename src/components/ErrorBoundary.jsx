@@ -33,7 +33,22 @@ export default class ErrorBoundary extends React.Component {
               Reintentar
             </button>
             <button
-              onClick={() => window.location.reload()}
+              onClick={async () => {
+                try {
+                  // Fuerza actualización real (PWA): desregistrar SW + limpiar caches.
+                  if ("serviceWorker" in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(regs.map((r) => r.unregister().catch(() => null)));
+                  }
+                  if ("caches" in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map((k) => caches.delete(k).catch(() => null)));
+                  }
+                } catch {
+                  // ignore
+                }
+                window.location.reload();
+              }}
               className="w-full rounded-2xl bg-zinc-900 border border-zinc-700 py-4 text-[11px] font-black uppercase tracking-widest text-zinc-400 active:scale-95 transition-transform"
             >
               Recargar app
