@@ -10,7 +10,6 @@ export default function FinalizacionView({ ordenId, setView }) {
   const [moto, setMoto] = useState(null);
   const [costosAdicionales, setCostosAdicionales] = useState(0);
   const [motivoAdicional, setMotivoAdicional] = useState("");
-  const [kmEntrega, setKmEntrega] = useState("");
   const [whatsappEnviado, setWhatsappEnviado] = useState(false);
 
   useEffect(() => {
@@ -21,7 +20,6 @@ export default function FinalizacionView({ ordenId, setView }) {
     setMoto(LS.getDoc("motos", o.bikeId) || {});
     setCostosAdicionales(o.costosAdicionales || 0);
     setMotivoAdicional(o.motivoAdicional || "");
-    setKmEntrega(String(o.kmEntrega || o.kmIngreso || o.km || ""));
   }, [ordenId]);
 
   if (!orden) {
@@ -55,12 +53,10 @@ export default function FinalizacionView({ ordenId, setView }) {
 
   const handleIrAPago = () => {
     const entrada = crearEntradaHistorial(orden.estado, "listo_para_emitir");
-    const kmNum = Number(kmEntrega) || null;
     actualizarOrden(ordenId, {
       costosAdicionales: Number(costosAdicionales || 0),
       motivoAdicional,
       costoFinal,
-      kmEntrega: kmNum,
       estado: "listo_para_emitir",
       historial: [...(orden.historial || []), entrada],
     });
@@ -116,18 +112,6 @@ export default function FinalizacionView({ ordenId, setView }) {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-1">Km al momento de entrega</p>
-          <input
-            type="text"
-            inputMode="numeric"
-            className="w-full bg-zinc-900 border border-white/5 rounded-2xl p-4 text-white font-black outline-none focus:border-orange-600"
-            placeholder={`Ej: ${(Number(orden.kmIngreso || orden.km || 0) + 100).toLocaleString("es-AR")}`}
-            value={kmEntrega}
-            onChange={(e) => setKmEntrega(e.target.value.replace(/\D/g, ""))}
-          />
-        </div>
-
         <div className="space-y-3">
           <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 px-1">Costos adicionales</p>
           <input
@@ -181,4 +165,3 @@ export default function FinalizacionView({ ordenId, setView }) {
     </div>
   );
 }
-
