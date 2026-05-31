@@ -212,7 +212,13 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
                       <p className="text-xs font-bold italic text-orange-900">"{order.observacionesProxima}"</p>
                     </div>
                   )}
-                  {(order.numeroComprobante || order.pdfEntregado) && (
+                  {!!(
+                    order.numeroComprobante ||
+                    order.pdfEntregado ||
+                    order.snapshotFinal?.hash ||
+                    order.fechaComprobante ||
+                    order.estado === "cerrado_emitido"
+                  ) && (
                     <button
                       onClick={() => {
                         setSelectedOrderId(order.id);
