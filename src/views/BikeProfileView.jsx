@@ -212,7 +212,7 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
                       <p className="text-xs font-bold italic text-orange-900">"{order.observacionesProxima}"</p>
                     </div>
                   )}
-                  {order.pdfEntregado && order.numeroComprobante && (
+                  {(order.numeroComprobante || order.pdfEntregado) && (
                     <button
                       onClick={() => {
                         setSelectedOrderId(order.id);
@@ -221,7 +221,7 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
                       }}
                       className="flex w-full items-center justify-center gap-2 rounded-2xl bg-zinc-900 py-3 text-[11px] font-black uppercase text-white active:scale-95 transition-all"
                     >
-                      <Printer size={14} /> Reimprimir comprobante {order.numeroComprobante}
+                      <Printer size={14} /> Abrir / Reimprimir comprobante {order.numeroComprobante || ""}
                     </button>
                   )}
                 </div>
@@ -233,4 +233,3 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
     </div>
   );
 }
-
