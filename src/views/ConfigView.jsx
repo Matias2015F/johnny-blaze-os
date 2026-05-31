@@ -3197,6 +3197,7 @@ function PublicarRedCard({ aprobados }) {
   const [publicando, setPublicando] = React.useState(false);
   const [resultado, setResultado] = React.useState(null);
   const [err, setErr] = React.useState("");
+  const [showDisclaimer, setShowDisclaimer] = React.useState(false);
 
   const uid = auth.currentUser?.uid;
   const perfilUrl = uid ? `https://app.motogestion.ar/taller/${uid}` : null;
@@ -3204,6 +3205,7 @@ function PublicarRedCard({ aprobados }) {
   const publicar = async () => {
     if (publicando) return;
     setPublicando(true);
+    setShowDisclaimer(false);
     setErr("");
     setResultado(null);
     try {
@@ -3223,54 +3225,80 @@ function PublicarRedCard({ aprobados }) {
   };
 
   return (
-    <div className="rounded-[2rem] bg-zinc-900 border border-zinc-800 p-5 space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-600 text-[10px] font-black text-white">MG</div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-orange-500">Red MotoGestión</p>
-          <p className="text-sm font-black text-white">Publicar perfil público del taller</p>
+    <>
+      {/* Modal disclaimer */}
+      {showDisclaimer && (
+        <div className="fixed inset-0 z-[300] flex items-end justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-zinc-700 bg-zinc-900 p-6 space-y-4">
+            <p className="text-[10px] font-black uppercase tracking-widest text-orange-500">Antes de publicar — leé esto</p>
+            <p className="text-sm font-black text-white leading-snug">Tu taller aparecerá públicamente en motogestion.ar y puede ser indexado por Google.</p>
+            <div className="space-y-2 text-xs text-zinc-400 leading-relaxed">
+              <p>• Las calificaciones de clientes son generadas por terceros. MotoGestión no las edita ni garantiza su veracidad.</p>
+              <p>• MotoGestión no se responsabiliza por comentarios negativos, reputación baja ni por las consecuencias de tu presencia pública en internet.</p>
+              <p>• Si considerás que una calificación es injusta o falsa, podés reportarla al soporte para que sea revisada por el equipo.</p>
+              <p>• Podés despublicar tu perfil en cualquier momento desde esta sección.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                onClick={() => setShowDisclaimer(false)}
+                className="rounded-2xl border border-zinc-700 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-400 active:scale-95"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={publicar}
+                className="rounded-2xl bg-orange-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
+              >
+                Acepto y publico
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      {aprobados.length === 0 ? (
-        <div className="space-y-2">
+      <div className="rounded-[2rem] bg-zinc-900 border border-zinc-800 p-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-600 text-[10px] font-black text-white">MG</div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-orange-500">Red MotoGestión</p>
+            <p className="text-sm font-black text-white">Publicar perfil público del taller</p>
+          </div>
+        </div>
+
+        {aprobados.length === 0 ? (
           <p className="text-xs text-zinc-400 leading-relaxed">
-            Para aparecer en la red necesitás al menos una calificación de un cliente real.
+            Podés publicar tu taller en la red aunque todavía no tengas calificaciones. Aparecerás en el mapa y los clientes podrán encontrarte. Las calificaciones se van sumando a medida que emitís comprobantes y tus clientes califican.
           </p>
-          <p className="text-xs text-zinc-500 leading-relaxed">
-            Paso a paso: emitís un comprobante, el cliente escanea el QR del PDF, verifica el trabajo y lo califica. Esa calificación habilita tu perfil público.
+        ) : (
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            Publicá tu perfil con {aprobados.length} calificación{aprobados.length !== 1 ? "es" : ""} verificada{aprobados.length !== 1 ? "s" : ""}. Tu taller aparece en el mapa y en la red pública de MotoGestión.
           </p>
-        </div>
-      ) : (
-        <p className="text-xs text-zinc-400 leading-relaxed">
-          Publicá tu perfil con las {aprobados.length} calificación{aprobados.length !== 1 ? "es" : ""} verificada{aprobados.length !== 1 ? "s" : ""}.
-          Tu taller aparece en el mapa y en la red pública de MotoGestión.
-        </p>
-      )}
+        )}
 
-      {resultado && (
-        <div className="rounded-2xl border border-green-800 bg-green-900/30 p-3 space-y-1">
-          <p className="text-[10px] font-black uppercase tracking-widest text-green-400">Perfil publicado</p>
-          <p className="text-xs text-zinc-300 break-all">{perfilUrl}</p>
-          <button
-            onClick={() => { if (perfilUrl) navigator.clipboard?.writeText(perfilUrl); }}
-            className="text-[10px] font-black uppercase text-orange-400 active:scale-95 transition-all"
-          >
-            Copiar enlace
-          </button>
-        </div>
-      )}
+        {resultado && (
+          <div className="rounded-2xl border border-green-800 bg-green-900/30 p-3 space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-green-400">Perfil publicado</p>
+            <p className="text-xs text-zinc-300 break-all">{perfilUrl}</p>
+            <button
+              onClick={() => { if (perfilUrl) navigator.clipboard?.writeText(perfilUrl); }}
+              className="text-[10px] font-black uppercase text-orange-400 active:scale-95 transition-all"
+            >
+              Copiar enlace
+            </button>
+          </div>
+        )}
 
-      {err && <p className="text-xs font-bold text-red-400">{err}</p>}
+        {err && <p className="text-xs font-bold text-red-400">{err}</p>}
 
-      <button
-        onClick={publicar}
-        disabled={publicando || aprobados.length === 0}
-        className="w-full rounded-2xl bg-orange-600 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-40"
-      >
-        {publicando ? "Publicando..." : resultado ? "Actualizar perfil" : "Publicar en la red"}
-      </button>
-    </div>
+        <button
+          onClick={() => setShowDisclaimer(true)}
+          disabled={publicando}
+          className="w-full rounded-2xl bg-orange-600 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-40"
+        >
+          {publicando ? "Publicando..." : resultado ? "Actualizar perfil" : "Publicar en la red"}
+        </button>
+      </div>
+    </>
   );
 }
 
