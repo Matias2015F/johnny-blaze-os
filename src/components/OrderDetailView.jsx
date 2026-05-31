@@ -231,6 +231,17 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   );
 
   const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
+  const kmPresets = useMemo(() => {
+    const raw = Array.isArray(config?.proximoServiceKmPresets)
+      ? config.proximoServiceKmPresets
+      : [2500, 5000, 7500, 10000];
+    // Sanitizar: enteros positivos, unicos, ordenados asc.
+    const nums = raw
+      .map((n) => (typeof n === "string" ? parseInt(n, 10) : n))
+      .filter((n) => Number.isFinite(n) && n > 0)
+      .map((n) => Math.round(n));
+    return Array.from(new Set(nums)).sort((a, b) => a - b).slice(0, 10);
+  }, [config?.proximoServiceKmPresets]);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -767,7 +778,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     let pc;
     if (unidadProximo === "km") {
       const kmObj = parseInt(kmProximoStr, 10);
-      const kmBase = order.kmIngreso || order.km || 0;
+      const kmBase = order.kmIngreso || bike.kilometrajeActual || bike.km || order.km || 0;
       if (!kmObj || kmObj <= kmBase) return;
       pc = buildProximoControl({ tipo: "service", descripcion: "Service general", unidad: "km", valorObjetivo: kmObj - kmBase, kmBase });
     } else {
@@ -1201,7 +1212,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                     <p className="text-[9px] font-bold text-zinc-500">
                       Km al ingreso:{" "}
                       <span className="text-zinc-300 font-black">
-                        {(order.kmIngreso || order.km || 0).toLocaleString("es-AR")} km
+                        {(order.kmIngreso || bike.kilometrajeActual || bike.km || order.km || 0).toLocaleString("es-AR")} km
                       </span>
                     </p>
                     <div className="flex items-center gap-2">
@@ -1218,16 +1229,38 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                       </div>
                       <button
                         onClick={guardarProximoControl}
-                        disabled={!kmProximoStr || parseInt(kmProximoStr, 10) <= (order.kmIngreso || order.km || 0)}
+                        disabled={!kmProximoStr || parseInt(kmProximoStr, 10) <= (order.kmIngreso || bike.kilometrajeActual || bike.km || order.km || 0)}
                         className="rounded-2xl bg-yellow-600 px-4 py-2.5 text-[10px] font-black uppercase text-white active:scale-95 transition-all disabled:opacity-40"
                       >
                         Guardar
                       </button>
                     </div>
-                    {kmProximoStr && parseInt(kmProximoStr, 10) > (order.kmIngreso || order.km || 0) && (
+                    <div className="flex gap-1.5 flex-wrap">
+                      {kmPresets.map((delta) => (
+                        <button
+                          key={delta}
+                          type="button"
+                          onClick={() => {
+                            const kmBase = order.kmIngreso || bike.kilometrajeActual || bike.km || order.km || 0;
+                            setKmProximoStr(String(kmBase + delta));
+                          }}
+                          className="px-2.5 py-1 rounded-xl bg-zinc-800 text-[9px] font-black text-zinc-400 active:bg-yellow-600 active:text-white transition-all"
+                        >
+                          +{delta.toLocaleString("es-AR")}km
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setKmProximoStr("")}
+                        className="px-2.5 py-1 rounded-xl bg-zinc-800 text-[9px] font-black text-zinc-400 active:bg-yellow-600 active:text-white transition-all"
+                      >
+                        Personalizado
+                      </button>
+                    </div>
+                    {kmProximoStr && parseInt(kmProximoStr, 10) > (order.kmIngreso || bike.kilometrajeActual || bike.km || order.km || 0) && (
                       <p className="text-[9px] font-bold text-yellow-400/80">
                         Intervalo:{" "}
-                        {(parseInt(kmProximoStr, 10) - (order.kmIngreso || order.km || 0)).toLocaleString("es-AR")} km
+                        {(parseInt(kmProximoStr, 10) - (order.kmIngreso || bike.kilometrajeActual || bike.km || order.km || 0)).toLocaleString("es-AR")} km
                         {" · "}Aviso a {(parseInt(kmProximoStr, 10) - 500).toLocaleString("es-AR")} km
                       </p>
                     )}
