@@ -33,12 +33,16 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
   const fecha = new Date(orden.finalizacion_fecha || orden.updatedAt || Date.now()).toLocaleDateString("es-AR");
 
   const handleClienteRetira = () => {
+    const now = Date.now();
     const entrada = crearEntradaHistorial(orden.estado, "cerrado_emitido");
-    actualizarOrden(ordenId, {
-      retiro_fecha: Date.now(),
+    const patch = {
+      retiro_fecha: now,
       estado: "cerrado_emitido",
       historial: [...(orden.historial || []), entrada],
-    });
+    };
+    actualizarOrden(ordenId, patch);
+    // Importante: reflejarlo en UI al instante (sin esperar re-render por storage).
+    setOrden((prev) => ({ ...(prev || {}), ...patch }));
     setRetirado(true);
   };
 
@@ -195,4 +199,3 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
     </div>
   );
 }
-
