@@ -369,7 +369,23 @@ function PantallaAdmin({ showToast, scrollRef }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "No se pudo importar el pago");
-      showToast(data.created > 0 ? "Pago importado y registrado." : "No se importó (duplicado/no aprobado/sin uid).");
+
+      const first = Array.isArray(data?.imported) ? data.imported[0] : null;
+      const reason = String(first?.reason || "").trim();
+      const reasonLabel = reason
+        ? ({
+            missing_uid: "sin UID",
+            duplicate: "ya estaba importado (duplicado)",
+            not_approved: "no está aprobado",
+            dry_run: "modo prueba (dry run)",
+          }[reason] || reason)
+        : "";
+
+      showToast(
+        data.created > 0
+          ? "Pago importado y registrado."
+          : `No se importó${reasonLabel ? `: ${reasonLabel}` : " (duplicado/no aprobado/sin uid)."}`
+      );
       setMpPaymentId("");
       setMpUidOverride("");
       setMpPaymentDiag(null);
