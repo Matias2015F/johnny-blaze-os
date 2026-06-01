@@ -56,8 +56,9 @@ module.exports = async function handler(req, res) {
   try {
     const [usuariosSnap, invoicesSnap, ticketsSnap, ratingsSnap, settingsSnap] = await Promise.all([
       db.collection("usuarios").get(),
-      // No traemos TODAS las facturas: limita a las mas recientes para evitar timeouts y datos incompletos.
-      db.collectionGroup("billingInvoices").orderBy("fecha", "desc").limit(1000).get(),
+      // No usamos orderBy en collectionGroup para evitar requerir un índice (COLLECTION_GROUP_DESC).
+      // Ordenamos en memoria por `fecha`/`paidAt` al devolver la respuesta.
+      db.collectionGroup("billingInvoices").limit(1000).get(),
       db.collection("soporteTickets").get(),
       db.collection("ratings").orderBy("createdAt", "desc").limit(100).get(),
       db.collection("admin_settings").doc("global").get(),
@@ -72,6 +73,10 @@ module.exports = async function handler(req, res) {
         path: doc.ref.path,
         ...doc.data(),
       });
+    }).sort((a, b) => {
+      const ta = Number(a?.fecha || a?.paidAt || a?.createdAt || a?.updatedAt || 0);
+      const tb = Number(b?.fecha || b?.paidAt || b?.createdAt || b?.updatedAt || 0);
+      return tb - ta;
     });
     const tickets = ticketsSnap.docs.map((doc) => serializeFirestoreValue({ id: doc.id, ...doc.data() }));
     const ratings = ratingsSnap.docs.map((doc) => serializeFirestoreValue({ id: doc.id, ...doc.data() }));
