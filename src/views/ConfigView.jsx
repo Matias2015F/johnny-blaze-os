@@ -257,6 +257,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
   const [ratings, setRatings] = React.useState([]);
   const [filterRating, setFilterRating] = React.useState("pendiente_validacion");
   const [mpPaymentId, setMpPaymentId] = React.useState("");
+  const [mpUidOverride, setMpUidOverride] = React.useState("");
   const user = auth.currentUser;
   const isPlatformAdmin =
     PLATFORM_ADMIN_EMAILS.includes((user?.email || "").toLowerCase()) ||
@@ -355,18 +356,21 @@ function PantallaAdmin({ showToast, scrollRef }) {
     try {
       const pid = String(mpPaymentId || "").trim();
       if (!pid) { showToast("Ingresá el N° de operación de Mercado Pago."); return; }
+      const uidOverride = String(mpUidOverride || "").trim();
+      if (uidOverride && uidOverride.length < 10) { showToast("El UID parece incompleto."); return; }
       const idToken = await auth.currentUser?.getIdToken?.();
       if (!idToken) throw new Error("No hay sesión");
 
       const res = await fetch("/api/mp-reconcile", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ source: "payment_id", paymentId: pid }),
+        body: JSON.stringify({ source: "payment_id", paymentId: pid, uidOverride: uidOverride || "" }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "No se pudo importar el pago");
       showToast(data.created > 0 ? "Pago importado y registrado." : "No se importó (duplicado/no aprobado/sin uid).");
       setMpPaymentId("");
+      setMpUidOverride("");
       cargar();
     } catch (e) {
       showToast(`No se pudo importar: ${e?.message || String(e)}`);
@@ -727,6 +731,12 @@ function PantallaAdmin({ showToast, scrollRef }) {
                       Importar
                     </button>
                   </div>
+                  <input
+                    value={mpUidOverride}
+                    onChange={(e) => setMpUidOverride(e.target.value)}
+                    placeholder="UID (solo si MP no lo trae)"
+                    className="mt-2 w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-[11px] font-bold text-zinc-800 outline-none focus:border-emerald-500"
+                  />
                   <p className="mt-2 text-[10px] font-bold text-emerald-800/70">
                     Usalo cuando el pago fue aprobado pero no aparece en “Cobros”.
                   </p>

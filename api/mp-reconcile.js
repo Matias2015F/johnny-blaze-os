@@ -178,7 +178,8 @@ module.exports = async function handler(req, res) {
             continue;
           }
 
-          const uid = String(p?.metadata?.uid || p?.external_reference || "").trim();
+          const uidOverride = String(req.body?.uidOverride || "").trim();
+          const uid = String(p?.metadata?.uid || p?.external_reference || uidOverride || "").trim();
           if (!uid) {
             skipped += 1;
             imported.push({ paymentId: pid, status: p?.status || null, imported: false, reason: "missing_uid" });
