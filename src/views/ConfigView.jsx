@@ -258,6 +258,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
   const [filterRating, setFilterRating] = React.useState("pendiente_validacion");
   const [mpPaymentId, setMpPaymentId] = React.useState("");
   const [mpUidOverride, setMpUidOverride] = React.useState("");
+  const [mpPaymentDiag, setMpPaymentDiag] = React.useState(null);
   const user = auth.currentUser;
   const isPlatformAdmin =
     PLATFORM_ADMIN_EMAILS.includes((user?.email || "").toLowerCase()) ||
@@ -371,9 +372,42 @@ function PantallaAdmin({ showToast, scrollRef }) {
       showToast(data.created > 0 ? "Pago importado y registrado." : "No se importó (duplicado/no aprobado/sin uid).");
       setMpPaymentId("");
       setMpUidOverride("");
+      setMpPaymentDiag(null);
       cargar();
     } catch (e) {
       showToast(`No se pudo importar: ${e?.message || String(e)}`);
+    }
+  };
+
+  const diagnosticarPagoPorOperacion = async () => {
+    try {
+      const pid = String(mpPaymentId || "").trim();
+      if (!pid) { showToast("Ingresá el N° de operación de Mercado Pago."); return; }
+      const uidOverride = String(mpUidOverride || "").trim();
+      if (uidOverride && uidOverride.length < 10) { showToast("El UID parece incompleto."); return; }
+      const idToken = await auth.currentUser?.getIdToken?.();
+      if (!idToken) throw new Error("No hay sesión");
+
+      setMpPaymentDiag({ loading: true });
+      const res = await fetch("/api/mp-reconcile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ source: "payment_id_diagnose", paymentId: pid, uidOverride: uidOverride || "" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "No se pudo diagnosticar el pago");
+      setMpPaymentDiag({ loading: false, data });
+
+      // Resumen corto en toast para no llenar pantalla
+      const short = [
+        data?.isApproved ? "aprobado" : String(data?.status || "sin estado"),
+        data?.hasUidInMP ? "con uid" : "sin uid",
+        data?.existingInvoicesCount ? `ya existe (${data.existingInvoicesCount})` : "no existe",
+      ].join(" · ");
+      showToast(`Diagnóstico MP: ${short}`);
+    } catch (e) {
+      setMpPaymentDiag(null);
+      showToast(`No se pudo diagnosticar: ${e?.message || String(e)}`);
     }
   };
 
@@ -723,13 +757,22 @@ function PantallaAdmin({ showToast, scrollRef }) {
                       placeholder="Ej: 160809033407"
                       className="flex-1 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold text-zinc-900 outline-none focus:border-emerald-500"
                     />
-                    <button
-                      type="button"
-                      onClick={importarPagoPorOperacion}
-                      className="shrink-0 rounded-2xl bg-emerald-700 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
-                    >
-                      Importar
-                    </button>
+                    <div className="shrink-0 flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={importarPagoPorOperacion}
+                        className="rounded-2xl bg-emerald-700 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+                      >
+                        Importar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={diagnosticarPagoPorOperacion}
+                        className="rounded-2xl bg-zinc-900 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+                      >
+                        Diagnosticar
+                      </button>
+                    </div>
                   </div>
                   <input
                     value={mpUidOverride}
@@ -737,6 +780,47 @@ function PantallaAdmin({ showToast, scrollRef }) {
                     placeholder="UID (solo si MP no lo trae)"
                     className="mt-2 w-full rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-[11px] font-bold text-zinc-800 outline-none focus:border-emerald-500"
                   />
+
+                  {mpPaymentDiag?.loading && (
+                    <div className="mt-2 rounded-2xl border border-emerald-200 bg-white/80 p-3">
+                      <p className="text-[10px] font-black text-emerald-800/80 uppercase tracking-widest">Diagnóstico</p>
+                      <p className="mt-1 text-xs font-bold text-zinc-700">Consultando Mercado Pago...</p>
+                    </div>
+                  )}
+
+                  {!mpPaymentDiag?.loading && mpPaymentDiag?.data && (
+                    <div className="mt-2 rounded-2xl border border-emerald-200 bg-white/80 p-3 space-y-2">
+                      <p className="text-[10px] font-black text-emerald-800/80 uppercase tracking-widest">Diagnóstico</p>
+                      <div className="text-[11px] font-bold text-zinc-800 space-y-1">
+                        <p>Estado MP: <span className="font-black">{mpPaymentDiag.data.status || "?"}</span>{mpPaymentDiag.data.statusDetail ? ` (${mpPaymentDiag.data.statusDetail})` : ""}</p>
+                        <p>UID en MP: <span className="font-black">{mpPaymentDiag.data.hasUidInMP ? "sí" : "no"}</span></p>
+                        <p>external_reference: <span className="font-mono">{mpPaymentDiag.data.mpExternalReference || "—"}</span></p>
+                        <p>metadata.uid: <span className="font-mono">{mpPaymentDiag.data.mpUid || "—"}</span></p>
+                        <p>UID candidato: <span className="font-mono">{mpPaymentDiag.data.candidateUid || "—"}</span></p>
+                        <p>¿Ya existe en Firestore?: <span className="font-black">{mpPaymentDiag.data.existingInvoicesCount ? `sí (${mpPaymentDiag.data.existingInvoicesCount})` : "no"}</span></p>
+                      </div>
+                      {Array.isArray(mpPaymentDiag.data.existingInvoices) && mpPaymentDiag.data.existingInvoices.length > 0 && (
+                        <div className="rounded-xl border border-zinc-200 bg-white p-3">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Coincidencias encontradas</p>
+                          <div className="space-y-2">
+                            {mpPaymentDiag.data.existingInvoices.map((inv, idx) => (
+                              <div key={idx} className="text-[11px] font-bold text-zinc-800">
+                                <p>UID: <span className="font-mono">{inv.uid || "?"}</span></p>
+                                <p>Monto: <span className="font-black">ARS {new Intl.NumberFormat("es-AR").format(Number(inv.monto || 0))}</span> · Plan: <span className="font-black">{inv.plan || "?"}</span></p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setMpPaymentDiag(null)}
+                        className="w-full rounded-2xl bg-zinc-100 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-700 active:scale-95 transition-all"
+                      >
+                        Cerrar diagnóstico
+                      </button>
+                    </div>
+                  )}
                   <p className="mt-2 text-[10px] font-bold text-emerald-800/70">
                     Usalo cuando el pago fue aprobado pero no aparece en “Cobros”.
                   </p>

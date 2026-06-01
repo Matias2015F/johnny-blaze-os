@@ -160,6 +160,7 @@ module.exports = async function handler(req, res) {
       let skipped = 0;
       let errors = 0;
       const imported = [];
+      const dryRun = req.body?.dryRun === true || String(req.query?.dryRun || "").toLowerCase() === "true";
 
       for (const pid of paymentIds) {
         try {
@@ -172,9 +173,11 @@ module.exports = async function handler(req, res) {
           }
           const p = await mpRes.json().catch(() => ({}));
           const status = String(p?.status || "").toLowerCase();
+          const mpUid = String(p?.metadata?.uid || "").trim();
+          const mpExt = String(p?.external_reference || "").trim();
           if (status !== "approved") {
             skipped += 1;
-            imported.push({ paymentId: pid, status: p?.status || null, imported: false, reason: "not_approved" });
+            imported.push({ paymentId: pid, status: p?.status || null, mpUid, mpExt, imported: false, reason: "not_approved" });
             continue;
           }
 
@@ -182,7 +185,7 @@ module.exports = async function handler(req, res) {
           const uid = String(p?.metadata?.uid || p?.external_reference || uidOverride || "").trim();
           if (!uid) {
             skipped += 1;
-            imported.push({ paymentId: pid, status: p?.status || null, imported: false, reason: "missing_uid" });
+            imported.push({ paymentId: pid, status: p?.status || null, mpUid, mpExt, imported: false, reason: "missing_uid" });
             continue;
           }
 
@@ -190,13 +193,18 @@ module.exports = async function handler(req, res) {
           const dupSnap = await userRef.collection("billingInvoices").where("paymentId", "==", String(p?.id || pid)).limit(1).get();
           if (!dupSnap.empty) {
             skipped += 1;
-            imported.push({ paymentId: pid, uid, status: p?.status || null, imported: false, reason: "duplicate" });
+            imported.push({ paymentId: pid, uid, status: p?.status || null, mpUid, mpExt, imported: false, reason: "duplicate" });
             continue;
           }
 
           const plan = String(p?.metadata?.plan || "base").toLowerCase();
           const monto = Number(p?.transaction_amount || 0);
           const paidAt = p?.date_approved ? new Date(p.date_approved).getTime() : Date.now();
+
+          if (dryRun) {
+            imported.push({ paymentId: pid, uid, monto, status: p?.status || null, mpUid, mpExt, imported: false, reason: "dry_run" });
+            continue;
+          }
 
           await userRef.collection("billingInvoices").add({
             uid,
@@ -220,13 +228,99 @@ module.exports = async function handler(req, res) {
           });
 
           created += 1;
-          imported.push({ paymentId: pid, uid, monto, imported: true });
+          imported.push({ paymentId: pid, uid, monto, mpUid, mpExt, imported: true });
         } catch (e) {
           errors += 1;
         }
       }
 
-      return res.status(200).json({ ok: true, source: "payment_id", paymentIds, created, skipped, errors, imported });
+      return res.status(200).json({ ok: true, source: "payment_id", dryRun, paymentIds, created, skipped, errors, imported });
+    }
+
+    if (source === "payment_id_diagnose") {
+      const token = String(process.env.MP_ACCESS_TOKEN || "").trim();
+      if (!token) return res.status(500).json({ error: "Falta MP_ACCESS_TOKEN en el servidor" });
+
+      const pid = String(req.body?.paymentId || "").trim();
+      if (!pid) return res.status(400).json({ error: "Falta paymentId" });
+
+      const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(pid)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!mpRes.ok) {
+        return res.status(502).json({ error: `Mercado Pago respondió ${mpRes.status}` });
+      }
+      const p = await mpRes.json().catch(() => ({}));
+      const status = String(p?.status || "").toLowerCase();
+      const mpUid = String(p?.metadata?.uid || "").trim();
+      const mpExt = String(p?.external_reference || "").trim();
+      const uidOverride = String(req.body?.uidOverride || "").trim();
+      const candidateUid = String(mpUid || mpExt || uidOverride || "").trim();
+
+      // Detectar si ya existe un billingInvoice con este paymentId en cualquier usuario.
+      // Esto diferencia "no importó porque ya está" vs "no está asociado a nadie".
+      let existingInvoices = [];
+      try {
+        const cg = await db
+          .collectionGroup("billingInvoices")
+          .where("paymentId", "==", String(p?.id || pid))
+          .limit(5)
+          .get();
+        existingInvoices = cg.docs.map((d) => ({ id: d.id, ...((d.data && d.data()) || {}) }));
+      } catch (e) {
+        existingInvoices = [];
+      }
+
+      // Si tenemos UID candidato, chequeamos duplicado dentro de ese usuario.
+      let existsInCandidateUser = false;
+      try {
+        if (candidateUid) {
+          const userRef = db.collection("usuarios").doc(candidateUid);
+          const dupSnap = await userRef
+            .collection("billingInvoices")
+            .where("paymentId", "==", String(p?.id || pid))
+            .limit(1)
+            .get();
+          existsInCandidateUser = !dupSnap.empty;
+        }
+      } catch (e) {
+        existsInCandidateUser = false;
+      }
+
+      return res.status(200).json({
+        ok: true,
+        source: "payment_id_diagnose",
+        paymentId: String(p?.id || pid),
+        status: p?.status || null,
+        statusDetail: p?.status_detail || null,
+        isApproved: status === "approved",
+        mpUid,
+        mpExternalReference: mpExt,
+        hasUidInMP: !!(mpUid || mpExt),
+        uidOverride: uidOverride || "",
+        candidateUid: candidateUid || "",
+        existsInCandidateUser,
+        existingInvoicesCount: existingInvoices.length,
+        existingInvoices: existingInvoices.slice(0, 5).map((inv) => ({
+          uid: inv.uid || "",
+          plan: inv.plan || "",
+          monto: inv.monto || 0,
+          status: inv.status || inv.mpStatus || "",
+          fecha: inv.fecha || inv.paidAt || null,
+          source: inv.source || "",
+          paymentId: inv.paymentId || "",
+        })),
+        mp: {
+          preferenceId: p?.preference_id || null,
+          dateApproved: p?.date_approved || null,
+          dateCreated: p?.date_created || null,
+          transactionAmount: p?.transaction_amount || 0,
+          currencyId: p?.currency_id || null,
+          paymentTypeId: p?.payment_type_id || null,
+          payerEmail: p?.payer?.email || null,
+          metadata: p?.metadata || {},
+        },
+      });
     }
 
     const eventsSnap = await db
