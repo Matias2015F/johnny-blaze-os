@@ -140,6 +140,94 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, source: "mp", uids, days, created, skipped, errors, scanned });
     }
 
+    if (source === "payment_id") {
+      const token = String(process.env.MP_ACCESS_TOKEN || "").trim();
+      if (!token) return res.status(500).json({ error: "Falta MP_ACCESS_TOKEN en el servidor" });
+
+      const rawIds = Array.isArray(req.body?.paymentIds) ? req.body.paymentIds : [req.body?.paymentId];
+      const paymentIds = [];
+      const seenIds = new Set();
+      for (const v of rawIds) {
+        const s = String(v || "").trim();
+        if (!s || seenIds.has(s)) continue;
+        seenIds.add(s);
+        paymentIds.push(s);
+        if (paymentIds.length >= 20) break;
+      }
+      if (!paymentIds.length) return res.status(400).json({ error: "Falta paymentId/paymentIds" });
+
+      let created = 0;
+      let skipped = 0;
+      let errors = 0;
+      const imported = [];
+
+      for (const pid of paymentIds) {
+        try {
+          const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(pid)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!mpRes.ok) {
+            errors += 1;
+            continue;
+          }
+          const p = await mpRes.json().catch(() => ({}));
+          const status = String(p?.status || "").toLowerCase();
+          if (status !== "approved") {
+            skipped += 1;
+            imported.push({ paymentId: pid, status: p?.status || null, imported: false, reason: "not_approved" });
+            continue;
+          }
+
+          const uid = String(p?.metadata?.uid || p?.external_reference || "").trim();
+          if (!uid) {
+            skipped += 1;
+            imported.push({ paymentId: pid, status: p?.status || null, imported: false, reason: "missing_uid" });
+            continue;
+          }
+
+          const userRef = db.collection("usuarios").doc(uid);
+          const dupSnap = await userRef.collection("billingInvoices").where("paymentId", "==", String(p?.id || pid)).limit(1).get();
+          if (!dupSnap.empty) {
+            skipped += 1;
+            imported.push({ paymentId: pid, uid, status: p?.status || null, imported: false, reason: "duplicate" });
+            continue;
+          }
+
+          const plan = String(p?.metadata?.plan || "base").toLowerCase();
+          const monto = Number(p?.transaction_amount || 0);
+          const paidAt = p?.date_approved ? new Date(p.date_approved).getTime() : Date.now();
+
+          await userRef.collection("billingInvoices").add({
+            uid,
+            paymentId: String(p?.id || pid),
+            provider: "mercadopago",
+            source: "mp_payment_import",
+            status: "approved",
+            mpStatus: "approved",
+            mpStatusDetail: String(p?.status_detail || ""),
+            preferenceId: p?.preference_id || null,
+            externalReference: String(p?.external_reference || uid),
+            payerEmail: p?.payer?.email || null,
+            plan,
+            monto,
+            metodoPago: p?.payment_type_id || null,
+            fecha: paidAt,
+            paidAt,
+            activoHasta: null,
+            billingDays: null,
+            reconciledAt: Date.now(),
+          });
+
+          created += 1;
+          imported.push({ paymentId: pid, uid, monto, imported: true });
+        } catch (e) {
+          errors += 1;
+        }
+      }
+
+      return res.status(200).json({ ok: true, source: "payment_id", paymentIds, created, skipped, errors, imported });
+    }
+
     const eventsSnap = await db
       .collection("billingEvents")
       .where("type", "==", "payment_approved")

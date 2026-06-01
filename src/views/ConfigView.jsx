@@ -256,6 +256,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
   const [settingsConfirmOpen, setSettingsConfirmOpen] = React.useState(false);
   const [ratings, setRatings] = React.useState([]);
   const [filterRating, setFilterRating] = React.useState("pendiente_validacion");
+  const [mpPaymentId, setMpPaymentId] = React.useState("");
   const user = auth.currentUser;
   const isPlatformAdmin =
     PLATFORM_ADMIN_EMAILS.includes((user?.email || "").toLowerCase()) ||
@@ -347,6 +348,28 @@ function PantallaAdmin({ showToast, scrollRef }) {
       cargar();
     } catch (e) {
       showToast(`No se pudo reconciliar con MP: ${e?.message || String(e)}`);
+    }
+  };
+
+  const importarPagoPorOperacion = async () => {
+    try {
+      const pid = String(mpPaymentId || "").trim();
+      if (!pid) { showToast("Ingresá el N° de operación de Mercado Pago."); return; }
+      const idToken = await auth.currentUser?.getIdToken?.();
+      if (!idToken) throw new Error("No hay sesión");
+
+      const res = await fetch("/api/mp-reconcile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ source: "payment_id", paymentId: pid }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "No se pudo importar el pago");
+      showToast(data.created > 0 ? "Pago importado y registrado." : "No se importó (duplicado/no aprobado/sin uid).");
+      setMpPaymentId("");
+      cargar();
+    } catch (e) {
+      showToast(`No se pudo importar: ${e?.message || String(e)}`);
     }
   };
 
@@ -686,6 +709,28 @@ function PantallaAdmin({ showToast, scrollRef }) {
                 >
                   Buscar pagos en MP (fallback)
                 </button>
+                <div className="mt-3 rounded-2xl border border-emerald-200 bg-white/80 p-3">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-emerald-700 mb-2">Importar por N° de operación</p>
+                  <div className="flex gap-2">
+                    <input
+                      value={mpPaymentId}
+                      onChange={(e) => setMpPaymentId(e.target.value)}
+                      inputMode="numeric"
+                      placeholder="Ej: 160809033407"
+                      className="flex-1 rounded-2xl border border-emerald-200 bg-white px-4 py-3 text-sm font-bold text-zinc-900 outline-none focus:border-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={importarPagoPorOperacion}
+                      className="shrink-0 rounded-2xl bg-emerald-700 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+                    >
+                      Importar
+                    </button>
+                  </div>
+                  <p className="mt-2 text-[10px] font-bold text-emerald-800/70">
+                    Usalo cuando el pago fue aprobado pero no aparece en “Cobros”.
+                  </p>
+                </div>
               </div>
               <StatBox label="Total cobrado" value={<MoneyValue amount={stats.totalCobrado} />} />
               <StatBox label="Tiempo promedio a pagar" value={stats.promDias !== null ? `${stats.promDias} días` : "—"} />
