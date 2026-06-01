@@ -336,10 +336,10 @@ function PantallaAdmin({ showToast, scrollRef }) {
         return;
       }
 
-      const res = await fetch("/api/mp-reconcile-mp", {
+      const res = await fetch("/api/mp-reconcile", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({ uids, days: 180 }),
+        body: JSON.stringify({ source: "mp", uids, days: 180 }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "No se pudo reconciliar con MP");

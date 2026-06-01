@@ -43,11 +43,103 @@ module.exports = async function handler(req, res) {
     return res.status(err.status || 401).json({ error: err.message || "No autorizado" });
   }
 
-  const days = Math.max(1, Math.min(180, Number(req.body?.days || 60)));
+  const source = String(req.body?.source || req.query?.source || "events").toLowerCase();
+  const days = Math.max(1, Math.min(365, Number(req.body?.days || 60)));
   const limit = Math.max(10, Math.min(500, Number(req.body?.limit || 200)));
   const since = Date.now() - days * 24 * 60 * 60 * 1000;
 
   try {
+    if (source === "mp") {
+      const token = String(process.env.MP_ACCESS_TOKEN || "").trim();
+      if (!token) return res.status(500).json({ error: "Falta MP_ACCESS_TOKEN en el servidor" });
+
+      const uidsRaw = Array.isArray(req.body?.uids) ? req.body.uids : [req.body?.uid];
+      const uids = [];
+      const seen = new Set();
+      for (const v of uidsRaw) {
+        const s = String(v || "").trim();
+        if (!s || seen.has(s)) continue;
+        seen.add(s);
+        uids.push(s);
+        if (uids.length >= 50) break;
+      }
+      if (!uids.length) return res.status(400).json({ error: "Falta uid/uids" });
+
+      let created = 0;
+      let skipped = 0;
+      let errors = 0;
+      let scanned = 0;
+
+      for (const uid of uids) {
+        try {
+          const searchUrl = new URL("https://api.mercadopago.com/v1/payments/search");
+          searchUrl.searchParams.set("external_reference", uid);
+          searchUrl.searchParams.set("sort", "date_created");
+          searchUrl.searchParams.set("criteria", "desc");
+          searchUrl.searchParams.set("limit", "50");
+          const end = new Date();
+          const begin = new Date(Date.now() - Math.max(1, days) * 24 * 60 * 60 * 1000);
+          searchUrl.searchParams.set("begin_date", begin.toISOString());
+          searchUrl.searchParams.set("end_date", end.toISOString());
+
+          const mpRes = await fetch(searchUrl.toString(), { headers: { Authorization: `Bearer ${token}` } });
+          if (!mpRes.ok) throw new Error(`MP ${mpRes.status}`);
+          const body = await mpRes.json().catch(() => ({}));
+          const payments = Array.isArray(body?.results) ? body.results : [];
+          scanned += payments.length;
+
+          const approved = payments.filter((p) => String(p?.status || "").toLowerCase() === "approved");
+          for (const p of approved) {
+            const paymentId = String(p?.id || "").trim();
+            if (!paymentId) {
+              skipped += 1;
+              continue;
+            }
+            try {
+              const userRef = db.collection("usuarios").doc(uid);
+              const dupSnap = await userRef.collection("billingInvoices").where("paymentId", "==", paymentId).limit(1).get();
+              if (!dupSnap.empty) {
+                skipped += 1;
+                continue;
+              }
+
+              const plan = String(p?.metadata?.plan || "base").toLowerCase();
+              const monto = Number(p?.transaction_amount || 0);
+              const paidAt = p?.date_approved ? new Date(p.date_approved).getTime() : Date.now();
+
+              await userRef.collection("billingInvoices").add({
+                uid,
+                paymentId,
+                provider: "mercadopago",
+                source: "mp_reconcile",
+                status: "approved",
+                mpStatus: "approved",
+                mpStatusDetail: String(p?.status_detail || ""),
+                preferenceId: p?.preference_id || null,
+                externalReference: String(p?.external_reference || uid),
+                payerEmail: p?.payer?.email || null,
+                plan,
+                monto,
+                metodoPago: p?.payment_type_id || null,
+                fecha: paidAt,
+                paidAt,
+                activoHasta: null,
+                billingDays: null,
+                reconciledAt: Date.now(),
+              });
+              created += 1;
+            } catch (e) {
+              errors += 1;
+            }
+          }
+        } catch (e) {
+          errors += 1;
+        }
+      }
+
+      return res.status(200).json({ ok: true, source: "mp", uids, days, created, skipped, errors, scanned });
+    }
+
     const eventsSnap = await db
       .collection("billingEvents")
       .where("type", "==", "payment_approved")
@@ -112,10 +204,9 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    return res.status(200).json({ ok: true, created, skipped, errors, scanned: eventsSnap.size });
+    return res.status(200).json({ ok: true, source: "events", created, skipped, errors, scanned: eventsSnap.size });
   } catch (err) {
     console.error("mp-reconcile error:", err);
     return res.status(500).json({ error: err.message || "No se pudo reconciliar" });
   }
 };
-
