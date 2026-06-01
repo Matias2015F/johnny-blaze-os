@@ -3235,9 +3235,16 @@ function PublicarRedCard({ aprobados }) {
     setResultado(null);
     try {
       const token = await auth.currentUser.getIdToken();
+      const cfgActual = LS.getDoc("config", "global") || {};
       const res = await fetch("/api/publish-workshop", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ciudadTaller:    cfgActual.ciudadTaller    || "",
+          provinciaTaller: cfgActual.provinciaTaller || "",
+          lat: typeof cfgActual.lat === "number" ? cfgActual.lat : null,
+          lng: typeof cfgActual.lng === "number" ? cfgActual.lng : null,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo publicar.");

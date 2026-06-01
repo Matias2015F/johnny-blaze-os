@@ -122,8 +122,16 @@ async function handlePublishWorkshop(req, res) {
   }
 
   try {
+    const body = req.body || {};
     const configSnap = await db.collection("users").doc(uid).collection("config").doc("global").get();
     const cfg = configSnap.exists ? configSnap.data() : {};
+
+    // Ubicación: el frontend puede enviar valores frescos en el body para evitar
+    // race conditions con el sync async de LS.setDoc a Firestore.
+    const ciudadFinal    = String(body.ciudadTaller    ?? cfg.ciudadTaller    ?? "").trim();
+    const provinciaFinal = String(body.provinciaTaller ?? cfg.provinciaTaller ?? "").trim();
+    const latFinal = typeof body.lat === "number" ? body.lat : (typeof cfg.lat === "number" ? cfg.lat : null);
+    const lngFinal = typeof body.lng === "number" ? body.lng : (typeof cfg.lng === "number" ? cfg.lng : null);
 
     // Status contract: frontend/admin usa "aprobada" (femenino).
     // Aceptamos también "aprobado" por compatibilidad con datos viejos.
@@ -134,9 +142,6 @@ async function handlePublishWorkshop(req, res) {
     ]);
 
     const aprobados = [...snapAprobada.docs, ...snapAprobado.docs].map((d) => d.data());
-    if (aprobados.length === 0) {
-      return res.status(400).json({ ok: false, error: "Necesitas al menos una calificación verificada para publicar el perfil." });
-    }
 
     const scoreKeys = ["scoreAtencion", "scoreClaridad", "scoreTrabajo", "scoreCumplimiento"];
     const avgKey = (key) => {
@@ -167,10 +172,10 @@ async function handlePublishWorkshop(req, res) {
     await db.collection("publicWorkshops").doc(uid).set({
       uid,
       nombreTaller: cfg.nombreTaller || "Taller",
-      ciudad: cfg.ciudadTaller || "",
-      provincia: cfg.provinciaTaller || "",
-      lat: typeof cfg.lat === "number" ? cfg.lat : null,
-      lng: typeof cfg.lng === "number" ? cfg.lng : null,
+      ciudad: ciudadFinal,
+      provincia: provinciaFinal,
+      lat: latFinal,
+      lng: lngFinal,
       publicProfileEnabled: true,
       nivel: rep.nivel,
       ratingAvg,
