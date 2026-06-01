@@ -56,7 +56,8 @@ module.exports = async function handler(req, res) {
   try {
     const [usuariosSnap, invoicesSnap, ticketsSnap, ratingsSnap, settingsSnap] = await Promise.all([
       db.collection("usuarios").get(),
-      db.collectionGroup("billingInvoices").get(),
+      // No traemos TODAS las facturas: limita a las mas recientes para evitar timeouts y datos incompletos.
+      db.collectionGroup("billingInvoices").orderBy("fecha", "desc").limit(1000).get(),
       db.collection("soporteTickets").get(),
       db.collection("ratings").orderBy("createdAt", "desc").limit(100).get(),
       db.collection("admin_settings").doc("global").get(),

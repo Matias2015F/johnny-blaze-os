@@ -304,6 +304,24 @@ function PantallaAdmin({ showToast, scrollRef }) {
 
   React.useEffect(() => { cargar(); }, []);
 
+  const reconciliarCobros = async () => {
+    try {
+      const idToken = await auth.currentUser?.getIdToken?.();
+      if (!idToken) throw new Error("No hay sesión");
+      const res = await fetch("/api/mp-reconcile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ days: 120, limit: 300 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "No se pudo reconciliar");
+      showToast(`Reconciliación MP: +${data.created} facturas (skip ${data.skipped}).`);
+      cargar();
+    } catch (e) {
+      showToast(`No se pudo reconciliar: ${e?.message || String(e)}`);
+    }
+  };
+
   // Métricas calculadas
   const stats = React.useMemo(() => {
     const now = Date.now();
@@ -626,6 +644,13 @@ function PantallaAdmin({ showToast, scrollRef }) {
                 <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Cobrado este mes</p>
                 <MoneyValue amount={stats.cobradoMes} />
                 <p className="text-[10px] font-bold text-emerald-500 mt-1">{stats.pagosEsteMes} {stats.pagosEsteMes === 1 ? "pago" : "pagos"} recibidos</p>
+                <button
+                  type="button"
+                  onClick={reconciliarCobros}
+                  className="mt-3 w-full rounded-2xl bg-emerald-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+                >
+                  Reconciliar cobros MP
+                </button>
               </div>
               <StatBox label="Total cobrado" value={<MoneyValue amount={stats.totalCobrado} />} />
               <StatBox label="Tiempo promedio a pagar" value={stats.promDias !== null ? `${stats.promDias} días` : "—"} />
