@@ -63,6 +63,32 @@ El backup copia los 13 archivos del Baseline de Oro a `backups/YYYY-MM-DD_HHMM/`
 
 Ver SOP completo en `.clou/skills/backup.md`.
 
+### Protocolo de commit y deploy — OBLIGATORIO antes de declarar cualquier tarea terminada
+
+Ningún cambio se considera completo hasta haber ejecutado estos 8 pasos en orden. Sin excepciones.
+
+1. `npm run build` — debe pasar sin errores
+2. `git diff` — verificar que solo se tocaron los archivos necesarios, nada más
+3. Probar el flujo funcional afectado (no solo que compila — el dato tiene que aparecer en la pantalla)
+4. Commit separado por fase o tema: `git commit -m "descripcion concisa"`
+5. Push a GitHub: `git push origin main`
+6. Deploy en Vercel: `npx vercel --prod --scope matias2015fs-projects`
+7. Verificar en produccion: `https://app.motogestion.ar/version.json` debe mostrar el nuevo build
+8. Informe final: qué se hizo, qué se probó, qué queda pendiente
+
+**Si algún paso no se puede completar, la tarea NO está terminada.** No declarar "listo" sin commit + push + deploy + verificación.
+
+### Protocolo de skills — MotoGestión
+
+Antes de cualquier tarea en este proyecto, usar proactivamente los skills del proyecto sin que el usuario los pida:
+
+- `/respaldo` — antes de cambios grandes
+- `/seguro` — antes de tocar código sensible (auth, pagos, storage)
+- `/revision` — antes de cualquier commit (build, lint, archivos tocados)
+- `/deploy` — para gestionar deploys, logs y rollback en Vercel
+
+Los skills están definidos en `.clou/COMANDOS.md`. Leerlos al inicio de cada sesión.
+
 ### Regla del 90%
 
 No escribir ni modificar ninguna línea de código hasta tener 90% de certeza de que el cambio no rompe dependencias existentes. Si la certeza es menor: grep el productor, grep el consumidor, leer ambos archivos completos, y luego decidir.

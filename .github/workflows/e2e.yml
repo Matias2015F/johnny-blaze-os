@@ -1,0 +1,49 @@
+name: E2E — app.motogestion.ar
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: Playwright smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Esperar a que Vercel termine de deployar tras el push
+      - name: Esperar deploy de Vercel (3 min)
+        if: github.event_name == 'push'
+        run: sleep 180
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependencias
+        working-directory: e2e
+        run: npm install
+
+      - name: Instalar Chromium
+        working-directory: e2e
+        run: npx playwright install chromium --with-deps
+
+      - name: Correr tests E2E
+        working-directory: e2e
+        env:
+          TEST_URL:      ${{ secrets.TEST_URL }}
+          TEST_EMAIL:    ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        run: node test.js
+
+      - name: Subir screenshots como artefacto
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots-${{ github.run_number }}
+          path: e2e/screenshots/
+          retention-days: 14

@@ -1,0 +1,10 @@
+{
+  "name": "motogestion-e2e",
+  "private": true,
+  "scripts": {
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "playwright": "^1.60.0"
+  }
+}
