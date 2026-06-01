@@ -322,6 +322,34 @@ function PantallaAdmin({ showToast, scrollRef }) {
     }
   };
 
+  const reconciliarCobrosDesdeMP = async () => {
+    try {
+      const idToken = await auth.currentUser?.getIdToken?.();
+      if (!idToken) throw new Error("No hay sesión");
+      const uids = [
+        ...stats.billingAlerts.activoSinFactura.map((a) => a.uid),
+        ...stats.billingAlerts.pagoSinActivacion.map((a) => a.uid),
+        ...stats.billingAlerts.vencidoConPagoReciente.map((a) => a.uid),
+      ].filter(Boolean);
+      if (!uids.length) {
+        showToast("No hay cuentas para reconciliar desde Mercado Pago.");
+        return;
+      }
+
+      const res = await fetch("/api/mp-reconcile-mp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ uids, days: 180 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "No se pudo reconciliar con MP");
+      showToast(`MP: +${data.created} facturas (scan ${data.scanned}).`);
+      cargar();
+    } catch (e) {
+      showToast(`No se pudo reconciliar con MP: ${e?.message || String(e)}`);
+    }
+  };
+
   // Métricas calculadas
   const stats = React.useMemo(() => {
     const now = Date.now();
@@ -650,6 +678,13 @@ function PantallaAdmin({ showToast, scrollRef }) {
                   className="mt-3 w-full rounded-2xl bg-emerald-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
                 >
                   Reconciliar cobros MP
+                </button>
+                <button
+                  type="button"
+                  onClick={reconciliarCobrosDesdeMP}
+                  className="mt-2 w-full rounded-2xl bg-zinc-900 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+                >
+                  Buscar pagos en MP (fallback)
                 </button>
               </div>
               <StatBox label="Total cobrado" value={<MoneyValue amount={stats.totalCobrado} />} />
