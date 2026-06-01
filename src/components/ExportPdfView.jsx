@@ -70,6 +70,10 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
   const vencimientoLabel = vencimientoRaw
     ? new Date(vencimientoRaw + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })
     : null;
+  const retiroMs = Number(order.retiro_fecha || order.fechaEntrega || 0) || null;
+  const entregaLabel = retiroMs
+    ? new Date(retiroMs).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : null;
 
   const printRootRef = useRef(null);
   const [generating, setGenerating] = useState(false);
@@ -307,12 +311,13 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                   ? "Cliente rechaza o pospone la reparacion presupuestada. Se cobra solo el cierre acordado."
                   : "Documento de entrega y detalle del trabajo realizado"}
               </p>
-              <div className="mt-4 space-y-1 text-[10px] leading-relaxed text-zinc-700">
-                <p><span className="font-black">Técnico:</span> {config.mecanicoResponsable}</p>
-                {config.direccionTaller && <p><span className="font-black">Ubicado en:</span> {config.direccionTaller}</p>}
-                <p><span className="font-black">WhatsApp:</span> {config.telefonoTaller}</p>
-                <p><span className="font-black">Mail:</span> {config.emailNotificacion || "---"}</p>
-              </div>
+                <div className="mt-4 space-y-1 text-[10px] leading-relaxed text-zinc-700">
+                  <p><span className="font-black">Técnico:</span> {config.mecanicoResponsable}</p>
+                  {config.direccionTaller && <p><span className="font-black">Ubicado en:</span> {config.direccionTaller}</p>}
+                  {entregaLabel && <p><span className="font-black">Entrega:</span> {entregaLabel}</p>}
+                  <p><span className="font-black">WhatsApp:</span> {config.telefonoTaller}</p>
+                  <p><span className="font-black">Mail:</span> {config.emailNotificacion || "---"}</p>
+                </div>
             </div>
 
             <div className="flex flex-col items-start gap-4" style={bloqueCompletoStyle}>
@@ -343,7 +348,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                     bgColor="#FFFFFF"
                   />
                   <p className="mt-2 max-w-[168px] text-left text-[7px] font-bold leading-tight text-zinc-700">
-                    Escaneá para verificar el trabajo realizado y calificar el servicio.
+                    Verificá este comprobante online. (El link es mas comodo que escanear el QR desde el mismo PDF.)
                   </p>
                 </div>
               )}
@@ -495,7 +500,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
               {!esRechazo && vencimientoLabel && (
                 <div className="mt-2 inline-block rounded bg-zinc-900 print:bg-transparent print:border print:border-zinc-700 px-2 py-1">
                   <p className="text-[9px] font-black uppercase tracking-wide text-white print:text-zinc-800">
-                    Válido hasta: {vencimientoLabel}
+                    Vence: {vencimientoLabel}{entregaLabel ? ` (entrega: ${entregaLabel})` : ""}
                   </p>
                 </div>
               )}
@@ -525,9 +530,17 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                   <p className="mt-1 text-sm font-black leading-tight text-green-700">{formatMoney(totalPagado)}</p>
                 </div>
               )}
-              <div className={`mt-2 rounded px-3 py-2 text-xs font-black text-white ${saldo <= 0 ? "bg-green-600" : "bg-zinc-900"} text-center whitespace-nowrap`}>
-                <p>{saldo <= 0 ? "PAGADO" : "SALDO"}</p>
-                <p className="mt-1 leading-tight">{formatMoney(Math.max(saldo, 0))}</p>
+              <div className="mt-2 rounded border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-black text-zinc-900">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-zinc-600">Saldo pendiente:</span>
+                  <span className="text-zinc-900">{formatMoney(Math.max(saldo, 0))}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-3">
+                  <span className="text-zinc-600">Estado:</span>
+                  <span className={`rounded px-2 py-1 text-[11px] font-black text-white ${saldo <= 0 ? "bg-green-600" : "bg-zinc-900"}`}>
+                    {saldo <= 0 ? "PAGADO" : "PENDIENTE"}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -586,6 +599,20 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
                   ? "La recepción de este documento deja constancia del diagnóstico/revisión realizado, el presupuesto informado y la decisión del cliente de no proceder. El taller no se responsabiliza por daños derivados de no realizar los trabajos recomendados."
                   : "La recepción de este documento implica conformidad con el trabajo detallado, los pagos registrados y la garantía informada."}
               </p>
+              <div className="mt-3 grid grid-cols-3 gap-3" style={bloqueCompletoStyle}>
+                <div className="border border-zinc-300 rounded p-2">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Firma cliente</p>
+                  <div className="mt-5 border-t border-zinc-300" />
+                </div>
+                <div className="border border-zinc-300 rounded p-2">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Aclaración</p>
+                  <div className="mt-5 border-t border-zinc-300" />
+                </div>
+                <div className="border border-zinc-300 rounded p-2">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">DNI</p>
+                  <div className="mt-5 border-t border-zinc-300" />
+                </div>
+              </div>
             </div>
             <div className="shrink-0 text-right">
               <p className="text-[8px] text-zinc-500">
