@@ -133,15 +133,12 @@ async function handlePublishWorkshop(req, res) {
     const latFinal = typeof body.lat === "number" ? body.lat : (typeof cfg.lat === "number" ? cfg.lat : null);
     const lngFinal = typeof body.lng === "number" ? body.lng : (typeof cfg.lng === "number" ? cfg.lng : null);
 
-    // Status contract: frontend/admin usa "aprobada" (femenino).
-    // Aceptamos también "aprobado" por compatibilidad con datos viejos.
+    // Status contract: el unico valor valido es "aprobado".
+    // submit-rating.js y moderate-rating.js siempre escriben "aprobado".
     const ratingsQuery = db.collection("ratings").where("uidTaller", "==", uid);
-    const [snapAprobada, snapAprobado] = await Promise.all([
-      ratingsQuery.where("status", "==", "aprobada").get(),
-      ratingsQuery.where("status", "==", "aprobado").get(),
-    ]);
+    const snapAprobado = await ratingsQuery.where("status", "==", "aprobado").get();
 
-    const aprobados = [...snapAprobada.docs, ...snapAprobado.docs].map((d) => d.data());
+    const aprobados = snapAprobado.docs.map((d) => d.data());
 
     const scoreKeys = ["scoreAtencion", "scoreClaridad", "scoreTrabajo", "scoreCumplimiento"];
     const avgKey = (key) => {

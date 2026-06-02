@@ -5,7 +5,7 @@ try {
   console.error("ERROR al inicializar Firebase Admin:", initError.message);
 }
 
-const ADMIN_EMAILS = String(process.env.PLATFORM_ADMIN_EMAILS || "matias4604@gmail.com,fefe@gmail.com")
+const ADMIN_EMAILS = String(process.env.PLATFORM_ADMIN_EMAILS || "matias4604@gmail.com")
   .split(",")
   .map((email) => email.trim().toLowerCase())
   .filter(Boolean);

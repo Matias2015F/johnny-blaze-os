@@ -3,13 +3,18 @@ const path = require('path');
 const fs = require('fs');
 
 const BASE_URL       = process.env.TEST_URL            || 'https://app.motogestion.ar';
-const EMAIL          = process.env.TEST_EMAIL          || 'aerovision.dji@gmail.com';
-const PASSWORD       = process.env.TEST_PASSWORD       || '123456789';
+const EMAIL          = process.env.TEST_EMAIL          || '';
+const PASSWORD       = process.env.TEST_PASSWORD       || '';
 const ADMIN_EMAIL    = process.env.TEST_ADMIN_EMAIL    || '';
 const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || '';
 const SS_DIR = path.join(__dirname, 'screenshots');
 
 if (!fs.existsSync(SS_DIR)) fs.mkdirSync(SS_DIR, { recursive: true });
+
+if (!EMAIL || !PASSWORD) {
+  console.error('ERROR: TEST_EMAIL y TEST_PASSWORD son requeridos. Usá variables de entorno.');
+  process.exit(1);
+}
 
 let stepIndex = 0;
 async function shot(page, label) {
