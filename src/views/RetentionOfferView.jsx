@@ -70,7 +70,7 @@ export default function RetentionOfferView({ token }) {
             Tocá el botón para iniciar sesión y volver automáticamente a esta oferta.
           </p>
           <a
-            href={`/?oferta=${encodeURIComponent(token)}`}
+            href={`/login?redirect=${encodeURIComponent(`/oferta/${token}`)}`}
             className="inline-flex w-full items-center justify-center rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white"
           >
             Iniciar sesión

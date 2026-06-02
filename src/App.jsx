@@ -360,6 +360,12 @@ export default function App() {
     return <TallerPublicView uid={matchTaller[1]} />;
   }
 
+  const matchLogin = window.location.pathname === "/login";
+  if (matchLogin) {
+    const params = new URLSearchParams(window.location.search || "");
+    return <LoginScreen redirectTo={params.get("redirect") || ""} />;
+  }
+
   if (estado === "loading") {
     return (
       <div className="min-h-screen bg-[#0b0b0b] flex items-center justify-center text-white font-black uppercase text-[10px]">
