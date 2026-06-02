@@ -11,7 +11,7 @@ export function pausarCronometro(orden) {
 
 export function detenerCronometro(orden) {
   const pausada = pausarCronometro(orden);
-  return { ...pausada, cronometroActivo: false, inicioCronometro: null, tiempoReal: 0 };
+  return { ...pausada, cronometroActivo: false, inicioCronometro: null };
 }
 
 export function trabajarSinCronometro(orden) {
