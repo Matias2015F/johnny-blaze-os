@@ -517,7 +517,7 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
                 {order.maxAutorizado > 0 && (
                   <div className="text-right">
                     <p className="text-[9px] font-black uppercase text-zinc-500">Acumulado</p>
-                    <p className="text-sm font-black text-white">{formatMoney(order.costoActual)}</p>
+                    <p className="text-sm font-black text-white">{formatMoneyShort(order.costoActual)}</p>
                   </div>
                 )}
               </button>

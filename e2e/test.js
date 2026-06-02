@@ -2,9 +2,11 @@ const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 
-const BASE_URL = process.env.TEST_URL      || 'https://app.motogestion.ar';
-const EMAIL    = process.env.TEST_EMAIL    || 'aerovision.dji@gmail.com';
-const PASSWORD = process.env.TEST_PASSWORD || '123456789';
+const BASE_URL       = process.env.TEST_URL            || 'https://app.motogestion.ar';
+const EMAIL          = process.env.TEST_EMAIL          || 'aerovision.dji@gmail.com';
+const PASSWORD       = process.env.TEST_PASSWORD       || '123456789';
+const ADMIN_EMAIL    = process.env.TEST_ADMIN_EMAIL    || '';
+const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || '';
 const SS_DIR = path.join(__dirname, 'screenshots');
 
 if (!fs.existsSync(SS_DIR)) fs.mkdirSync(SS_DIR, { recursive: true });
@@ -53,6 +55,28 @@ async function tapNav(page, label) {
     return true;
   }
   return false;
+}
+
+// Cierra sesion y espera pantalla de login
+async function doLogout(page) {
+  const salir = page.locator('button, a').filter({ hasText: /^salir$/i }).first();
+  if (await salir.count() > 0) await salir.click();
+  else await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(
+    () => /ingresar al taller/i.test(document.body.innerText),
+    { timeout: 12000 }
+  );
+}
+
+// Inicia sesion y espera el home
+async function doLoginAs(page, email, pwd) {
+  await fillReact(page.locator('input[type="email"]').first(), email);
+  await fillReact(page.locator('input[type="password"]').first(), pwd);
+  const ev = await page.locator('input[type="email"]').first().inputValue();
+  const pv = await page.locator('input[type="password"]').first().inputValue();
+  if (!ev || !pv) throw new Error(`Campos vacios al hacer login como ${email}`);
+  await page.locator('button').filter({ hasText: /ingresar/i }).first().click();
+  await waitForHome(page, 18000);
 }
 
 async function run() {
@@ -607,34 +631,62 @@ async function run() {
         record('Tab REPUT. abre y muestra calificaciones', false, 'tab reput no encontrado');
       }
 
-      // Panel ADMIN (solo uid TNwwuKJsIXN29zJg8HWfORawdFm1) — aprobar rating reciente
-      const adminTab = page.locator('button').filter({ hasText: /^admin$/i }).first();
-      if (await adminTab.count() > 0) {
-        await adminTab.click();
-        await page.waitForTimeout(800);
-        const calificTab = page.locator('button').filter({ hasText: /calificac/i }).first();
-        if (await calificTab.count() > 0) {
-          await calificTab.click();
-          await page.waitForTimeout(1500);
-          await shot(page, 'admin-calificaciones');
-          const adminText = await page.locator('body').innerText();
-          record('Panel admin calificaciones accesible', /pendiente|aprobad|rechazad/i.test(adminText));
+      // ── Login como admin para aprobar la calificacion ────────────────────
+      // Requiere TEST_ADMIN_EMAIL + TEST_ADMIN_PASSWORD en el entorno.
+      // moderate-rating.js crea clienteBeneficios/{patente} al aprobar (15% descuento)
+      try {
+        if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+          record('Login admin exitoso', false, 'TEST_ADMIN_EMAIL / TEST_ADMIN_PASSWORD no configuradas — omitido');
+          record('Panel admin calificaciones accesible', false, '');
+          record('Calificacion aprobada desde admin', false, '');
+          throw new Error('skip');
+        }
+        await doLogout(page);
+        await shot(page, 'admin-00-logout');
+        await doLoginAs(page, ADMIN_EMAIL, ADMIN_PASSWORD);
+        await shot(page, 'admin-01-home');
+        record('Login admin exitoso', /trabajos activos/i.test(await page.locator('body').innerText()), ADMIN_EMAIL);
 
-          const aprobarBtn = page.locator('button').filter({ hasText: /aprobar/i }).first();
-          if (await aprobarBtn.count() > 0) {
-            await aprobarBtn.click();
+        await tapNav(page, NAV.MAS);
+        await page.waitForTimeout(1000);
+        const adminTabBtn = page.locator('button').filter({ hasText: /^admin$/i }).first();
+        if (await adminTabBtn.count() > 0) {
+          await adminTabBtn.click();
+          await page.waitForTimeout(800);
+          const calificTab = page.locator('button').filter({ hasText: /calificac/i }).first();
+          if (await calificTab.count() > 0) {
+            await calificTab.click();
             await page.waitForTimeout(2000);
-            await shot(page, 'admin-aprobacion');
-            record('Calificacion aprobada desde admin', /aprobad/i.test(await page.locator('body').innerText()));
+            await shot(page, 'admin-02-calificaciones');
+            const adminText = await page.locator('body').innerText();
+            record('Panel admin calificaciones accesible', /pendiente|aprobad|rechazad/i.test(adminText));
+            const aprobarBtn = page.locator('button').filter({ hasText: /aprobar/i }).first();
+            if (await aprobarBtn.count() > 0) {
+              await aprobarBtn.click();
+              await page.waitForTimeout(3000); // crearBeneficioCalificacion es async
+              await shot(page, 'admin-03-aprobacion');
+              record('Calificacion aprobada desde admin', true);
+            } else {
+              record('Calificacion aprobada desde admin', false, 'sin ratings pendientes (ya aprobados o sin calificaciones)');
+            }
           } else {
-            record('Calificacion aprobada desde admin', false, 'boton aprobar no visible (no hay pendientes o ya aprobada)');
+            record('Panel admin calificaciones accesible', false, 'tab Calificac. no encontrado');
+            record('Calificacion aprobada desde admin', false, '');
           }
         } else {
-          record('Panel admin calificaciones accesible', false, 'tab calificac no encontrado en admin');
+          record('Panel admin calificaciones accesible', false, 'tab Admin no visible en Config');
+          record('Calificacion aprobada desde admin', false, '');
         }
-      } else {
-        record('Panel admin calificaciones accesible', false, 'tab admin no visible (cuenta no es platform admin — esperado en cuenta de prueba)');
-        record('Calificacion aprobada desde admin', false, 'se requiere cuenta admin — paso manual');
+        // Volver a aerovision
+        await doLogout(page);
+        await doLoginAs(page, EMAIL, PASSWORD);
+        await shot(page, 'admin-04-back-aerovision');
+      } catch (adminErr) {
+        record('Login admin exitoso', false, adminErr.message.split('\n')[0].slice(0, 60));
+        record('Panel admin calificaciones accesible', false, '');
+        record('Calificacion aprobada desde admin', false, '');
+        // Restaurar sesion aerovision
+        try { await doLoginAs(page, EMAIL, PASSWORD); } catch (_) {}
       }
     } catch (e) {
       await shot(page, 'admin-error').catch(() => {});

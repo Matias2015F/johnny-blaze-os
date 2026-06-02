@@ -199,10 +199,10 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true, ratingId: result.ratingId });
   } catch (error) {
     const status = error.status || 500;
-    return res.status(status).json({
-      ok: false,
-      error: error.message || "No pudimos guardar la calificacion.",
-    });
+    const msg = typeof error.message === 'string'
+      ? error.message
+      : (error.message ? JSON.stringify(error.message) : "No pudimos guardar la calificacion.");
+    return res.status(status).json({ ok: false, error: msg });
   }
 };
 

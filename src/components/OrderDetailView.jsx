@@ -302,6 +302,15 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     setUltimoAviso(minutosActuales);
   }, [config, order, tiempoActual, ultimoAviso]);
 
+  // Sincronizar datos del cliente cuando cambia (debe ir antes del guard)
+  useEffect(() => {
+    if (!order) return;
+    const c = clients.find((x) => x.id === order.clientId) || {};
+    if (c.nombre) setClientNombre(c.nombre);
+    const telefono = c.tel || c.telefono || c.whatsapp || "";
+    if (telefono) setClientTel(telefono);
+  }, [order?.clientId]);
+
   if (!order) return null;
 
   const bike = bikes.find((x) => x.id === order.bikeId) || {};
@@ -420,12 +429,6 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     });
   };
 
-  // Sincronizar datos del cliente cuando cambia
-  useEffect(() => {
-    if (client?.nombre) setClientNombre(client.nombre);
-    const telefono = client?.tel || client?.telefono || client?.whatsapp || "";
-    if (telefono) setClientTel(telefono);
-  }, [client?.id]);
   const currentStepIndex = Math.max(STEP_UI.findIndex((step) => step.id === order.estado), 0);
 
   const dificultades = (order.tareas || []).map((t) => t.dificultad || "normal");
