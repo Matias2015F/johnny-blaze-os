@@ -232,10 +232,85 @@ async function handlePublicPrices(req, res) {
   }
 }
 
+function cleanReceiptToken(value) {
+  return String(value || "").trim().slice(0, 80);
+}
+
+function normalizeDiscountPct(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(50, Math.round(n)));
+}
+
+function buildReceiptIncentive(discountPct) {
+  if (discountPct <= 0) {
+    return {
+      enabled: false,
+      type: "",
+      discountPct: 0,
+      title: "",
+      description: "",
+      automatic: false,
+    };
+  }
+
+  return {
+    enabled: true,
+    type: "discount_pct_next_visit",
+    discountPct,
+    title: `${discountPct}% de descuento en tu proxima visita`,
+    description: "El beneficio queda registrado automaticamente para esta moto si la calificacion queda validada.",
+    automatic: true,
+    appliesTo: "next_workshop_visit",
+  };
+}
+
+async function handleReceiptIncentive(req, res) {
+  if (req.method !== "GET") return res.status(405).json({ ok: false, error: "GET requerido" });
+  if (applyRateLimit(req, res, "receipt-incentive")) return;
+  res.setHeader("Cache-Control", "private, max-age=60");
+
+  const token = cleanReceiptToken(req.query?.token);
+  if (!/^r[a-f0-9]{32}$/i.test(token)) {
+    return res.status(400).json({ ok: false, error: "Token invalido." });
+  }
+
+  try {
+    const receiptSnap = await db.collection("publicReceipts").doc(token).get();
+    if (!receiptSnap.exists) {
+      return res.status(404).json({ ok: false, error: "Comprobante no encontrado." });
+    }
+
+    const receipt = receiptSnap.data() || {};
+    const receiptPct = normalizeDiscountPct(receipt.incentive?.discountPct);
+    if (receipt.incentive?.enabled && receiptPct > 0) {
+      return res.status(200).json({ ok: true, incentive: buildReceiptIncentive(receiptPct) });
+    }
+
+    const uidTaller = String(receipt.uidTaller || "").trim().slice(0, 160);
+    if (!uidTaller) {
+      return res.status(200).json({ ok: true, incentive: buildReceiptIncentive(0) });
+    }
+
+    const configSnap = await db.collection("users").doc(uidTaller).collection("config").doc("global").get();
+    const config = configSnap.exists ? configSnap.data() : {};
+    const configPct = normalizeDiscountPct(config.descuentoCalificacionPct ?? 15);
+
+    return res.status(200).json({ ok: true, incentive: buildReceiptIncentive(configPct) });
+  } catch (error) {
+    console.error("[receipt-incentive]", error);
+    return res.status(500).json({ ok: false, error: "No se pudo leer el beneficio." });
+  }
+}
+
 module.exports = async function handler(req, res) {
   setCors(req, res);
 
   if (req.method === "OPTIONS") return res.status(200).end();
+
+  if (req.query?.mode === "receipt-incentive") {
+    return handleReceiptIncentive(req, res);
+  }
 
   if (req.query?.mode === "public-prices") {
     return handlePublicPrices(req, res);

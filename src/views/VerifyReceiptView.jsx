@@ -154,7 +154,7 @@ export default function VerifyReceiptView({ token }) {
     if (!token || !receipt || ratingIncentive) return;
 
     let cancelled = false;
-    fetch(`/api/receipt-incentive?token=${encodeURIComponent(token)}`)
+    fetch(`/api/verify-document?mode=receipt-incentive&token=${encodeURIComponent(token)}`)
       .then((response) => response.json().catch(() => ({})))
       .then((data) => {
         if (!cancelled && data?.ok) setRatingIncentive(normalizeIncentive(data.incentive));
