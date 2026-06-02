@@ -15,6 +15,40 @@ export async function hashPhoneLast4(last4, token) {
     .slice(0, 32);
 }
 
+function normalizeDiscountPct(config = {}) {
+  const value = Number(config.descuentoCalificacionPct ?? 15);
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(50, Math.round(value)));
+}
+
+function buildRatingIncentive(config = {}) {
+  const discountPct = normalizeDiscountPct(config);
+  if (discountPct <= 0) {
+    return {
+      enabled: false,
+      type: "",
+      discountPct: 0,
+      title: "",
+      description: "",
+      expiresAt: null,
+      redeemed: false,
+      automatic: false,
+    };
+  }
+
+  return {
+    enabled: true,
+    type: "discount_pct_next_visit",
+    discountPct,
+    title: `${discountPct}% de descuento en tu proxima visita`,
+    description: "Se registra automaticamente para esta moto cuando la calificacion queda validada.",
+    expiresAt: null,
+    redeemed: false,
+    automatic: true,
+    appliesTo: "next_workshop_visit",
+  };
+}
+
 export async function crearPublicReceipt({ order, token, hash, numeroComprobante, config, moto, phoneLast4 }) {
   const uid = auth.currentUser?.uid;
   if (!uid) throw new Error("No hay usuario autenticado para emitir el comprobante verificable.");
@@ -77,14 +111,7 @@ export async function crearPublicReceipt({ order, token, hash, numeroComprobante
     pdfUrl: null,
     pdfStoragePath: null,
     pdfGeneratedAt: null,
-    incentive: {
-      enabled: false,
-      type: "",
-      title: "",
-      description: "",
-      expiresAt: null,
-      redeemed: false,
-    },
+    incentive: buildRatingIncentive(config),
   });
 
   if (phoneHash) {

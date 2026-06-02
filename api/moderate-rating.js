@@ -35,6 +35,12 @@ function safeString(value, max = 500) {
   return String(value || "").trim().slice(0, max);
 }
 
+function normalizeDiscountPct(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(50, Math.round(n)));
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Metodo no permitido" });
   if (!db) return res.status(500).json({ error: "Servidor sin base de datos" });
@@ -93,6 +99,7 @@ module.exports = async function handler(req, res) {
         token: ratingData.token || "",
         ordenOrigen: ratingData.numeroOrden || "",
         ratingId: id,
+        discountPct: ratingData.incentiveDiscountPct,
       }).catch((e) => console.warn("[moderate-rating] beneficio no creado:", e.message));
     }
 
@@ -103,7 +110,7 @@ module.exports = async function handler(req, res) {
   }
 };
 
-async function crearBeneficioCalificacion({ uidTaller, token, ordenOrigen, ratingId }) {
+async function crearBeneficioCalificacion({ uidTaller, token, ordenOrigen, ratingId, discountPct }) {
   if (!uidTaller || !token) return;
 
   const receiptSnap = await db.collection("publicReceipts").doc(token).get();
@@ -114,7 +121,10 @@ async function crearBeneficioCalificacion({ uidTaller, token, ordenOrigen, ratin
   if (!patente) return;
 
   const configSnap = await db.collection("users").doc(uidTaller).collection("config").doc("global").get();
-  const discountPct = Number((configSnap.exists ? configSnap.data() : {}).descuentoCalificacionPct ?? 15);
+  const configPct = normalizeDiscountPct((configSnap.exists ? configSnap.data() : {}).descuentoCalificacionPct ?? 15);
+  const receiptPct = normalizeDiscountPct(receipt.incentive?.discountPct);
+  const finalDiscountPct = normalizeDiscountPct(discountPct) || receiptPct || configPct;
+  if (finalDiscountPct <= 0) return;
 
   const beneficioRef = db.collection("users").doc(uidTaller).collection("clienteBeneficios").doc(patente);
   const snap = await beneficioRef.get();
@@ -125,7 +135,7 @@ async function crearBeneficioCalificacion({ uidTaller, token, ordenOrigen, ratin
     bikeId: receipt.bikeId || "",
     ordenOrigen: ordenOrigen || receipt.numeroOrden || "",
     ratingId: ratingId || "",
-    discountPct,
+    discountPct: finalDiscountPct,
     estado: "activo",
     creadoEn: Date.now(),
     usadoEn: null,

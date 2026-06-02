@@ -10,6 +10,7 @@ const LIMITS = {
   "send-welcome":         { max: 5,   windowMs: 60 * 60 * 1000 },
   "push-subscribe":       { max: 20,  windowMs: 60 * 60 * 1000 },
   "submit-rating":        { max: 12,  windowMs:       60 * 1000 },
+  "receipt-incentive":    { max: 30,  windowMs:       60 * 1000 },
   "mp-diagnose":          { max: 5,   windowMs:       60 * 1000 },
   "mp-webhook":           { max: 200, windowMs:       60 * 1000 },
   "public-workshops":     { max: 30,  windowMs:       60 * 1000 },

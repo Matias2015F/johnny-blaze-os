@@ -53,6 +53,12 @@ function ipHash(req, token) {
   return createHash("sha256").update(`${clientIp(req)}:${token}`).digest("hex").slice(0, 24);
 }
 
+function normalizeDiscountPct(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(50, Math.round(n)));
+}
+
 module.exports = async function handler(req, res) {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
 
@@ -163,6 +169,7 @@ module.exports = async function handler(req, res) {
         documentType: receipt.documentType || "servicio_realizado",
         incentiveOffered: !!(receipt.incentive && receipt.incentive.enabled),
         incentiveType: (receipt.incentive && receipt.incentive.type) || "",
+        incentiveDiscountPct: normalizeDiscountPct(receipt.incentive?.discountPct),
         ipHash: ipHash(req, token),
         createdAt: now,
       };
@@ -183,6 +190,7 @@ module.exports = async function handler(req, res) {
         bikePatente: receipt.bikePatente || "",
         bikeId: receipt.bikeId || "",
         numeroOrden: receipt.numeroOrden || "",
+        incentiveDiscountPct: normalizeDiscountPct(receipt.incentive?.discountPct),
       };
     });
 
@@ -193,6 +201,7 @@ module.exports = async function handler(req, res) {
         bikeId: result.bikeId,
         ordenOrigen: result.numeroOrden,
         ratingId: result.ratingId,
+        discountPct: result.incentiveDiscountPct,
       }).catch((e) => console.warn("[submit-rating] beneficio no creado:", e.message));
     }
 
@@ -206,13 +215,15 @@ module.exports = async function handler(req, res) {
   }
 };
 
-async function crearBeneficioCalificacion({ uidTaller, patente, bikeId, ordenOrigen, ratingId }) {
+async function crearBeneficioCalificacion({ uidTaller, patente, bikeId, ordenOrigen, ratingId, discountPct }) {
   if (!uidTaller || !patente) return;
   const patenteNorm = String(patente).trim().toUpperCase().replace(/\s+/g, "");
   if (!patenteNorm) return;
 
   const configSnap = await db.collection("users").doc(uidTaller).collection("config").doc("global").get();
-  const discountPct = Number((configSnap.exists ? configSnap.data() : {}).descuentoCalificacionPct ?? 15);
+  const configPct = normalizeDiscountPct((configSnap.exists ? configSnap.data() : {}).descuentoCalificacionPct ?? 15);
+  const finalDiscountPct = normalizeDiscountPct(discountPct) || configPct;
+  if (finalDiscountPct <= 0) return;
 
   const beneficioRef = db.collection("users").doc(uidTaller).collection("clienteBeneficios").doc(patenteNorm);
   const snap = await beneficioRef.get();
@@ -223,7 +234,7 @@ async function crearBeneficioCalificacion({ uidTaller, patente, bikeId, ordenOri
     bikeId: bikeId || "",
     ordenOrigen: ordenOrigen || "",
     ratingId: ratingId || "",
-    discountPct,
+    discountPct: finalDiscountPct,
     estado: "activo",
     creadoEn: Date.now(),
     usadoEn: null,

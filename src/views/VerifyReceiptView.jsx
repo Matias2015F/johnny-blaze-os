@@ -46,6 +46,44 @@ function ErrorCard({ title, text, icon = "!" }) {
   );
 }
 
+function normalizeDiscountPct(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(50, Math.round(n)));
+}
+
+function normalizeIncentive(incentive) {
+  const discountPct = normalizeDiscountPct(incentive?.discountPct);
+  if (!incentive?.enabled || discountPct <= 0) return null;
+  return {
+    ...incentive,
+    discountPct,
+    title: incentive.title || `${discountPct}% de descuento en tu proxima visita`,
+    description: incentive.description || "El beneficio queda registrado automaticamente para esta moto si la calificacion queda validada.",
+  };
+}
+
+function LoyaltyRewardCard({ incentive, compact = false }) {
+  if (!incentive) return null;
+
+  return (
+    <div className="rounded-3xl border border-green-200 bg-green-50 p-4 text-left">
+      <p className="text-[9px] font-black uppercase tracking-widest text-green-700">Premio por tu tiempo</p>
+      <p className="mt-1 text-lg font-black text-green-900">
+        {incentive.discountPct}% de descuento en tu proxima visita
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-green-800">
+        Si completas la validacion y la calificacion, MotoGestion registra automaticamente este beneficio para esta moto.
+      </p>
+      {!compact && (
+        <p className="mt-2 text-xs leading-relaxed text-green-700">
+          En el proximo presupuesto, la app le avisa al taller y descuenta el {incentive.discountPct}% como cliente fiel. No depende de que el mecanico se acuerde.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function getScoreLabels(documentType) {
   if (documentType === "diagnostico_presupuesto_cerrado") {
     return [
@@ -75,6 +113,7 @@ export default function VerifyReceiptView({ token }) {
   const [comentario, setComentario] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState("");
+  const [ratingIncentive, setRatingIncentive] = useState(null);
 
   useEffect(() => {
     if (!token) {
@@ -91,6 +130,7 @@ export default function VerifyReceiptView({ token }) {
 
         const data = snap.data();
         setReceipt(data);
+        setRatingIncentive(normalizeIncentive(data.incentive));
         if (data.estado === "anulado") {
           setEstado("anulado");
           return;
@@ -109,6 +149,22 @@ export default function VerifyReceiptView({ token }) {
       })
       .catch(() => setEstado("no_encontrado"));
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !receipt || ratingIncentive) return;
+
+    let cancelled = false;
+    fetch(`/api/receipt-incentive?token=${encodeURIComponent(token)}`)
+      .then((response) => response.json().catch(() => ({})))
+      .then((data) => {
+        if (!cancelled && data?.ok) setRatingIncentive(normalizeIncentive(data.incentive));
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token, receipt, ratingIncentive]);
 
   const verificarTelefono = () => {
     if (phoneLast4.replace(/\D/g, "").length !== 4) {
@@ -462,6 +518,8 @@ export default function VerifyReceiptView({ token }) {
                   <p className="mt-1 text-sm text-zinc-500">Tu calificación queda vinculada a este comprobante real y no puede editarse.</p>
                 </div>
 
+                <LoyaltyRewardCard incentive={ratingIncentive} />
+
                 {getScoreLabels(receipt.documentType).map(({ key, label }) => (
                   <StarSelector
                     key={key}
@@ -533,15 +591,7 @@ export default function VerifyReceiptView({ token }) {
                     Podés guardarlo como respaldo del mantenimiento realizado.
                   </p>
                 </div>
-                {receipt.incentive?.enabled && receipt.incentive?.title && (
-                  <div className="rounded-2xl border border-green-300 bg-green-50 p-4 text-left">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-green-600">Beneficio del taller</p>
-                    <p className="mt-1 font-black text-zinc-900">{receipt.incentive.title}</p>
-                    {receipt.incentive.description && (
-                      <p className="mt-1 text-sm text-zinc-500">{receipt.incentive.description}</p>
-                    )}
-                  </div>
-                )}
+                <LoyaltyRewardCard incentive={ratingIncentive} compact />
                 <div className="flex flex-col gap-2 pt-2">
                   <button
                     onClick={() => {
