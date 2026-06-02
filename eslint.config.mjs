@@ -18,6 +18,8 @@ export default [
         Date: "readonly", Promise: "readonly", URLSearchParams: "readonly",
         Blob: "readonly", URL: "readonly", FileReader: "readonly",
         CustomEvent: "readonly", Buffer: "readonly", navigator: "readonly",
+        caches: "readonly", requestAnimationFrame: "readonly", File: "readonly",
+        crypto: "readonly", TextEncoder: "readonly", Image: "readonly",
       },
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
