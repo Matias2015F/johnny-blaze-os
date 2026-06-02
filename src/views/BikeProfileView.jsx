@@ -23,7 +23,7 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
     .filter(r => r.motoId === bikeId && (r.estado === "pendiente" || r.estado === "avisado"))
     .map(r => ({ ...r, estadoAlerta: evaluarEstadoRecordatorio(r, kmActual) }))
     .filter(r => r.estadoAlerta !== "normal")
-    .sort((a, b) => (a.estadoAlerta === "service_vencido" ? -1 : 1));
+    .sort((a, _b) => (a.estadoAlerta === "service_vencido" ? -1 : 1));
 
   if (!b) return null;
 

@@ -9,7 +9,6 @@ import {
   Bike,
   Trash2,
   Pencil,
-  Calendar as CalendarIcon,
   CheckCircle2,
   X,
 } from "lucide-react";
@@ -613,4 +612,3 @@ export default function AgendaView({ setView }) {
     </div>
   );
 }
-

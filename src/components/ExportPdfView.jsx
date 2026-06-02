@@ -78,10 +78,6 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
   const printRootRef = useRef(null);
   const [generating, setGenerating] = useState(false);
 
-  const isIosStandalone =
-    window.navigator.standalone === true ||
-    (window.matchMedia("(display-mode: standalone)").matches &&
-      /iPhone|iPad|iPod/i.test(navigator.userAgent));
   const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const isStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
   const shouldGeneratePdfFile = isMobileDevice || isStandalone;

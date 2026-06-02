@@ -55,7 +55,7 @@ export async function subscribeToPush(uid) {
   }
 }
 
-export async function unsubscribeFromPush(uid) {
+export async function unsubscribeFromPush(_uid) {
   if (!isPushSupported()) return;
   try {
     const reg = await navigator.serviceWorker.ready;
