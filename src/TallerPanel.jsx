@@ -643,7 +643,7 @@ export default function TallerPanel({ modoLectura = false }) {
       {view === "ejecucion" && selectedOrderId && <EjecucionView ordenId={selectedOrderId} setView={setView} />}
       {view === "finalizacion" && selectedOrderId && <FinalizacionView ordenId={selectedOrderId} setView={setView} />}
       {view === "pago" && selectedOrderId && <PagoView ordenId={selectedOrderId} setView={setView} />}
-      {view === "retiro" && selectedOrderId && <RetiroView ordenId={selectedOrderId} setView={setView} />}
+      {view === "retiro" && selectedOrderId && <RetiroView ordenId={selectedOrderId} setView={setView} setSelectedOrderId={setSelectedOrderId} />}
       {view === "historial" && <HistoryView orders={orders} bikes={bikes} clients={clients} setView={setView} setSelectedBikeId={setSelectedBikeId} />}
       {view === "perfilMoto" && <BikeProfileView bikeId={selectedBikeId} orders={orders} bikes={bikes} clients={clients} setView={setView} handleStartNewService={handleStartNewService} setSelectedOrderId={setSelectedOrderId} setFinalPdfData={setFinalPdfData} />}
       {view === "presupuestos" && <PresupuestosView presupuestos={presupuestos} bikes={bikes} clients={clients} setSelectedPresupuestoId={setSelectedPresupuestoId} setView={setView} />}

@@ -33,7 +33,9 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
   const totalManoObra = (orden.tareas || []).reduce((s, t) => s + (t.monto || 0), 0);
   const fecha = new Date(orden.finalizacion_fecha || orden.updatedAt || Date.now()).toLocaleDateString("es-AR");
 
-  const handleClienteRetira = async () => {
+  const registrarRetiroSiHaceFalta = async () => {
+    if (orden.estado === "cerrado_emitido" || orden.retiro_fecha) return orden;
+
     const now = Date.now();
     const entrada = crearEntradaHistorial(orden.estado, "cerrado_emitido");
     const patch = {
@@ -44,19 +46,24 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
     await Promise.resolve(actualizarOrden(ordenId, patch));
     // Releer la orden desde storage para evitar estado stale y habilitar el PDF sin recargar.
     const fresh = obtenerOrden(ordenId);
-    if (fresh) setOrden(fresh);
-    else setOrden((prev) => ({ ...(prev || {}), ...patch }));
+    const next = fresh || { ...(orden || {}), ...patch };
+    setOrden(next);
     setRetirado(true);
+    return next;
   };
 
-  const handleVerPDF = () => {
-    if (orden.estado !== "cerrado_emitido") return;
+  const handleClienteRetira = async () => {
+    await registrarRetiroSiHaceFalta();
+  };
+
+  const handleVerPDF = async () => {
+    await registrarRetiroSiHaceFalta();
     setView("prePdf");
   };
 
-  const handleAbrirParaEnviar = () => {
-    if (orden.estado !== "cerrado_emitido") return;
-    setSelectedOrderId(orden.id);
+  const handleAbrirParaEnviar = async () => {
+    const next = await registrarRetiroSiHaceFalta();
+    setSelectedOrderId?.(next?.id || orden.id);
     setView("imprimirOrden");
   };
 
@@ -166,18 +173,17 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
         )}
 
         {orden.estado !== "cerrado_emitido" && (
-          <div className="rounded-[1.75rem] border border-amber-500/30 bg-amber-500/10 p-4 text-center">
-            <p className="text-[10px] font-black uppercase tracking-widest text-amber-400">PDF bloqueado</p>
+          <div className="rounded-[1.75rem] border border-emerald-500/30 bg-emerald-500/10 p-4 text-center">
+            <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Comprobante listo</p>
             <p className="text-xs text-zinc-400 mt-1">
-              Confirma el retiro del vehiculo para habilitar el comprobante final.
+              Al descargar o enviar, se registra el retiro y se habilita el comprobante final.
             </p>
           </div>
         )}
 
         <button
           onClick={handleVerPDF}
-          disabled={orden.estado !== "cerrado_emitido"}
-          className="w-full flex items-center justify-center gap-2 rounded-[2rem] border border-zinc-700 bg-zinc-900 py-4 text-[11px] font-black uppercase tracking-widest text-zinc-300 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 rounded-[2rem] border border-zinc-700 bg-zinc-900 py-4 text-[11px] font-black uppercase tracking-widest text-zinc-300 active:scale-95 transition-all"
         >
           <Download size={16} />
           Descargar orden (PDF)
@@ -185,8 +191,7 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
 
         <button
           onClick={handleAbrirParaEnviar}
-          disabled={orden.estado !== "cerrado_emitido"}
-          className="w-full flex items-center justify-center gap-2 rounded-[2rem] bg-emerald-600 py-4 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 rounded-[2rem] bg-emerald-600 py-4 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
         >
           <Share2 size={16} />
           Abrir / enviar comprobante (WhatsApp)
