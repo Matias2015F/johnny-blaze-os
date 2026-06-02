@@ -750,7 +750,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
     const insumos   = apAll(order.insumos);
     const nTotal = calcularNuevoTotal(tareas, repuestos, fletes, insumos);
     LS.updateDoc("trabajos", order.id, { tareas, repuestos, fletes, insumos, total: nTotal });
-    showToast("Todo aprobado ✓");
+    showToast("Todo aprobado OK");
   };
 
   const handleDiagStart = () => LS.updateDoc("trabajos", order.id, iniciarDiag(order));
@@ -815,6 +815,12 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       return;
     }
     if (idx === currentStepIndex || idx === currentStepIndex + 1) {
+      // UX: tocar el paso "Aprobado" no debe iniciar la reparacion.
+      // Sirve solo para confirmar la aprobacion del presupuesto.
+      if (pasoId === "aprobacion" && idx === currentStepIndex) {
+        confirmarAprobacion();
+        return;
+      }
       if (!accionPrincipal) return;
       accionPrincipal.action();
       return;
