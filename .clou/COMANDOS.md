@@ -22,4 +22,4 @@
 /datos — Diseñar o revisar schemas Firestore, colecciones, campos y retrocompatibilidad.
 
 ## Agentes
-/agents — Invocar un sub-agente especializado del equipo virtual. Agentes disponibles en .clou/agents/: backend-auditor (audita api/ contra el Baseline de Oro), growth-specialist (leads y propuestas comerciales), mcp-orchestrator (integraciones externas sin contaminar contexto de programacion).
+/agents — Invocar un sub-agente especializado del equipo virtual. Agentes disponibles en .clou/agents/: backend-auditor (audita api/ contra el Baseline de Oro), growth-specialist (leads y propuestas comerciales), mcp-orchestrator (integraciones externas sin contaminar contexto de programacion), programacion-mentor (mentor bilingue que explica arquitectura y ensenanza antes de escribir codigo).
