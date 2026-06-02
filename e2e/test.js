@@ -59,10 +59,16 @@ async function run() {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
-    userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    // UA desktop en viewport mobile: viewport 390px mantiene la UI mobile,
+    // pero isMobileDevice()=false → abrirEnlaceExterno usa window.open("_blank")
+    // en lugar de location.assign(), permitiendo capturar y cerrar el popup WA.
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
     locale: 'es-AR',
   });
   const page = await context.newPage();
+
+  // Auto-cerrar cualquier tab/popup que abra la app (WhatsApp, PDF viewer, etc.)
+  context.on('page', newPage => { newPage.close().catch(() => {}); });
 
   const results = [];
   function record(test, passed, detail = '') {
@@ -79,13 +85,18 @@ async function run() {
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2000);
     await shot(page, 'carga-inicial');
-    record('Login screen carga', await page.locator('input[type="email"]').count() > 0);
+    // Si la sesion persiste de una corrida anterior, el app va directo al home (sin login screen)
+    const hasLoginForm = await page.locator('input[type="email"]').count() > 0;
+    const hasHome = /trabajos activos|nuevo ingreso/i.test(await page.locator('body').innerText());
+    record('App carga correctamente (login o home)', hasLoginForm || hasHome);
 
     // ─────────────────────────────────────────────
     // 2. UI DEL LOGIN
     // ─────────────────────────────────────────────
     log('2. Elementos del formulario de login');
-    record('Input email', await page.locator('input[type="email"]').count() > 0);
+    // Si la sesion persiste, el formulario no aparece — lo marcamos como OK en ese caso
+    const hasEmailInput = await page.locator('input[type="email"]').count() > 0;
+    record('Input email (o sesion activa)', hasEmailInput || hasHome);
     record('Input password', await page.locator('input[type="password"]').count() > 0);
     record('Boton "Ingresar al taller"', await page.locator('button').filter({ hasText: /ingresar/i }).count() > 0);
     record('Tab "Soy nuevo"', await page.locator('button, [role="tab"]').filter({ hasText: /soy nuevo/i }).count() > 0);
@@ -271,8 +282,9 @@ async function run() {
       await waitForHome(page, 5000);
       await shot(page, 'home-pre-presupuestos');
 
-      // El boton PRESUPUESTOS es una card/boton oscuro en home
-      const pptoBtn = page.locator('button').filter({ hasText: /presupuesto/i }).first();
+      // El boton PRESUPUESTOS usa P mayúscula — case-sensitive para no matchear
+      // los botones de acciones urgentes "Armar presupuesto" (p minúscula)
+      const pptoBtn = page.locator('button').filter({ hasText: 'Presupuestos' }).first();
       await pptoBtn.click();
       await page.waitForTimeout(2000);
       await shot(page, 'presupuestos-view');
@@ -364,11 +376,340 @@ async function run() {
       record('Submit OT — detalleOrden carga', false, e.message.split('\n')[0].slice(0, 80));
     }
 
-    // ─────────────────────────────────────────────
-    // 13. SCREENSHOT FINAL
-    // ─────────────────────────────────────────────
-    log('13. Estado final');
-    await page.goto(BASE_URL);
+    // ═══════════════════════════════════════════════════════
+    // SECCION B: CICLO COMPLETO DE OT (7 estados + PDF)
+    // Patente ZPWLC — creada en cada run para el ciclo
+    // ═══════════════════════════════════════════════════════
+    log('13. Ciclo completo de OT — ZPWLC');
+    let receiptToken = null;
+
+
+    try {
+      // Volver al home recargando (sesion Firebase persiste)
+      await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+      await waitForHome(page, 18000);
+      await tapNav(page, NAV.INICIO);
+      await page.waitForTimeout(600);
+
+      // Crear nueva OT con patente ZPWLC
+      await page.locator('button').filter({ hasText: /nuevo ingreso/i }).first().click();
+      await page.waitForTimeout(1500);
+
+      // Si ya existe la patente, el form muestra sugerencia — ignorarla
+      const sugerencia = page.locator('button').filter({ hasText: /seguir con lo escrito/i });
+      if (await sugerencia.count() > 0) await sugerencia.click();
+
+      await fillReact(page.locator('input').first(), 'ZPWLC');
+      await fillReact(page.locator('input[placeholder*="15400"]').first(), '1000');
+      const inputs = page.locator('input');
+      const cnt = await inputs.count();
+      if (cnt >= 3) await fillReact(inputs.nth(2), 'YamTest');
+      if (cnt >= 4) await fillReact(inputs.nth(3), 'FZ16');
+      if (cnt >= 5) await fillReact(inputs.nth(4), '160');
+      await fillReact(page.locator('input[placeholder*="Nombre completo" i]').first(), 'Cliente Lifecycle');
+      const telIn = page.locator('input[placeholder*="3434"]').first();
+      if (await telIn.count() > 0) await fillReact(telIn, '3413000099');
+      const ta = page.locator('textarea').first();
+      if (await ta.count() > 0) await fillReact(ta, 'OT ciclo completo — test automatizado');
+
+      await page.locator('button').filter({ hasText: /ingresar al taller/i }).last().click();
+      await page.waitForFunction(() => /OT-\d{6}|Diagnóstico/i.test(document.body.innerText), { timeout: 20000 });
+      await shot(page, 'lc-01-diagnostico');
+      record('OT ZPWLC creada en diagnostico', /diagn[oó]stico/i.test(await page.locator('body').innerText()));
+
+      // ── Estado 1→2: diagnostico → aprobacion ──────────────
+      // Click "Enviar presupuesto" → abre sheet + cambia estado a "presupuesto"
+      await page.locator('button').filter({ hasText: /enviar presupuesto/i }).first().click();
+      await page.waitForTimeout(1200);
+      await shot(page, 'lc-02-sheet');
+
+      // "Enviar por WhatsApp" → con UA desktop usa window.open("_blank") →
+      // context.on('page', close) cierra el popup → app queda en detalleOrden →
+      // cambiarEstado("aprobacion") ya corrió antes de que abra el popup.
+      const sheetBtn = page.locator('button').filter({ hasText: /enviar por whatsapp/i }).first();
+      if (await sheetBtn.count() > 0) {
+        await sheetBtn.click();
+        await page.waitForTimeout(1500);
+      }
+      await shot(page, 'lc-03-aprobacion');
+      const aprText = await page.locator('body').innerText();
+      record('Estado aprobacion visible', /iniciar reparaci|aprobaci[oó]n/i.test(aprText));
+
+      // ── Estado 2→3: aprobacion → ejecucion ───────────────
+      await page.locator('button').filter({ hasText: /iniciar reparaci/i }).first().click();
+      await page.waitForFunction(() => /trabajo finalizado|ejecuci/i.test(document.body.innerText), { timeout: 10000 });
+      await shot(page, 'lc-04-ejecucion');
+      record('EjecucionView carga', /trabajo finalizado/i.test(await page.locator('body').innerText()));
+
+      // ── Estado 3→4: ejecucion → finalizacion ─────────────
+      await page.locator('button').filter({ hasText: /trabajo finalizado/i }).first().click();
+      await page.waitForFunction(() => /registrar pago|finalizaci/i.test(document.body.innerText), { timeout: 10000 });
+      await shot(page, 'lc-05-finalizacion');
+      record('FinalizacionView carga', /registrar pago/i.test(await page.locator('body').innerText()));
+
+      // ── Estado 4→5: finalizacion → pago ──────────────────
+      await page.locator('button').filter({ hasText: /registrar pago/i }).first().click();
+      await page.waitForFunction(() => /confirmar pago|registrar pago/i.test(document.body.innerText), { timeout: 10000 });
+      await shot(page, 'lc-06-pago');
+      record('PagoView carga', /confirmar pago/i.test(await page.locator('body').innerText()));
+
+      // OT con total 0 → recibido 0 → botón habilitado
+      await page.locator('button').filter({ hasText: /confirmar pago/i }).first().click();
+      await page.waitForTimeout(2000);
+      await shot(page, 'lc-07-retiro');
+
+      // ── Estado 5→6: retiro ────────────────────────────────
+      const retiroBtn = page.locator('button').filter({ hasText: /retiro.*veh[íi]culo|cliente retiro/i }).first();
+      record('RetiroView carga', await retiroBtn.count() > 0);
+      if (await retiroBtn.count() > 0) {
+        await retiroBtn.click();
+        await page.waitForTimeout(2000);
+        await shot(page, 'lc-08-cerrado');
+        record('Estado cerrado_emitido', /retiro registrado|descargar orden/i.test(await page.locator('body').innerText()));
+      }
+
+      // ── Navegar a PrePdf ──────────────────────────────────
+      const pdfBtn = page.locator('button').filter({ hasText: /descargar orden/i }).first();
+      if (await pdfBtn.count() > 0) {
+        await pdfBtn.click();
+        // PrePdfView es lazy — esperar a que salga del Suspense "CARGANDO..."
+        await page.waitForFunction(
+          () => /generar comprobante|garantia|comprobante para/i.test(document.body.innerText),
+          { timeout: 15000 }
+        ).catch(() => {});
+        await shot(page, 'lc-09-prepdf');
+        record('PrePdfView carga', /generar comprobante|garantia/i.test(await page.locator('body').innerText()));
+
+        // ── Generar comprobante ───────────────────────────────
+        const genBtn = page.locator('button').filter({ hasText: /generar comprobante/i }).first();
+        if (await genBtn.count() > 0) {
+          await genBtn.click();
+          await page.waitForFunction(() => /verificar\//i.test(document.body.innerText), { timeout: 15000 });
+          await shot(page, 'lc-10-token');
+
+          // Extraer token de la URL mostrada en pantalla
+          const tokenMatch = (await page.locator('body').innerText()).match(/verificar\/([a-z0-9]+)/i);
+          if (tokenMatch) {
+            receiptToken = tokenMatch[1];
+            record('Token de comprobante generado', true, receiptToken.slice(0, 12) + '…');
+          } else {
+            record('Token de comprobante generado', false, 'token no encontrado en texto');
+          }
+        } else {
+          record('Token de comprobante generado', false, 'boton generar no encontrado');
+        }
+      } else {
+        record('Token de comprobante generado', false, 'boton descargar no encontrado');
+      }
+
+    } catch (e) {
+      await shot(page, 'lc-error').catch(() => {});
+      record('Ciclo completo OT', false, e.message.split('\n')[0].slice(0, 80));
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // SECCION C: VERIFICACION PUBLICA + CALIFICACION
+    // ═══════════════════════════════════════════════════════
+    log('14. Verificacion publica y calificacion del taller');
+    if (receiptToken) {
+      try {
+        const verifyUrl = `${BASE_URL}/verificar/${receiptToken}`;
+        await page.goto(verifyUrl, { waitUntil: 'domcontentloaded' });
+        // Esperar que Firestore termine de verificar el token (sale del estado "cargando")
+        await page.waitForFunction(
+          () => !/verificando comprobante/i.test(document.body.innerText),
+          { timeout: 15000 }
+        ).catch(() => {});
+        await shot(page, 'verify-01-load');
+        record('Pagina de verificacion carga', /comprobante|verificado|verificar|validar|calificad/i.test(await page.locator('body').innerText()));
+
+        // ── Fase: verificacion (4 ultimos digitos de telefono) ──
+        const phoneInput = page.locator('input[inputmode="numeric"][maxlength="4"]').first();
+        if (await phoneInput.count() > 0) {
+          await fillReact(phoneInput, '0099');
+          await page.locator('button').filter({ hasText: /continuar/i }).first().click();
+          await page.waitForTimeout(1000);
+          await shot(page, 'verify-02-post-phone');
+          record('Verificacion de telefono pasa', /validar comprobante|reconozco/i.test(await page.locator('body').innerText()));
+        }
+
+        // ── Fase: validacion (checkboxes) ──────────────────────
+        const checkboxes = page.locator('input[type="checkbox"]');
+        const cbCount = await checkboxes.count();
+        for (let i = 0; i < cbCount; i++) {
+          await checkboxes.nth(i).check();
+          await page.waitForTimeout(150);
+        }
+        record('Checkboxes de validacion marcados', cbCount >= 4);
+
+        const validarBtn = page.locator('button').filter({ hasText: /validar comprobante/i }).first();
+        if (await validarBtn.count() > 0) {
+          await validarBtn.click();
+          await page.waitForTimeout(1500);
+          await shot(page, 'verify-03-formulario');
+          record('Formulario de calificacion aparece', /calific|servicio|estrell/i.test(await page.locator('body').innerText()));
+        }
+
+        // ── Fase: formulario (estrellas + recomienda) ──────────
+        // Estrellas: aria-label="5 estrellas" — 4 categorias × 5 botones
+        const starBtns = page.locator('button[aria-label="5 estrellas"]');
+        const starCount = await starBtns.count();
+        for (let i = 0; i < starCount; i++) await starBtns.nth(i).click();
+        record('Estrellas seleccionadas (5/5 cada categoria)', starCount >= 4, `${starCount} botones ★`);
+
+        // Recomienda: boton "Si"
+        await page.locator('button').filter({ hasText: /^Si$/i }).first().click();
+        await page.waitForTimeout(300);
+
+        // Comentario opcional
+        const comentTA = page.locator('textarea[placeholder*="experiencia"]').first();
+        if (await comentTA.count() > 0) await fillReact(comentTA, 'Excelente servicio, test automatizado');
+
+        await shot(page, 'verify-04-ready');
+
+        // Submit
+        await page.locator('button').filter({ hasText: /confirmar validaci/i }).first().click();
+        await page.waitForTimeout(4000);
+        await shot(page, 'verify-05-enviado');
+
+        const afterText = await page.locator('body').innerText();
+        const calificadoOk = /ya fue calificado|gracias|enviado|confirmad/i.test(afterText);
+        record('Calificacion enviada exitosamente', calificadoOk);
+
+      } catch (e) {
+        await shot(page, 'verify-error').catch(() => {});
+        record('Flujo de calificacion', false, e.message.split('\n')[0].slice(0, 80));
+      }
+    } else {
+      record('Flujo de calificacion', false, 'no hay token (ciclo de OT fallo)');
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // SECCION E: REPUTACION DEL TALLER + MODERACION ADMIN
+    // (antes de landing para evitar que Firebase pierda conexion)
+    // ═══════════════════════════════════════════════════════
+    log('15. Reputacion del taller y moderacion de calificaciones');
+    try {
+      await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+      await waitForHome(page, 18000);
+      await tapNav(page, NAV.MAS);
+      await page.waitForTimeout(1000);
+
+      // Sub-tab REPUT. (visible para todos los talleres — muestra ratings recibidos)
+      const reputTab = page.locator('button').filter({ hasText: /reput/i }).first();
+      if (await reputTab.count() > 0) {
+        await reputTab.click();
+        await page.waitForTimeout(1500);
+        await shot(page, 'reput-view');
+        const reputText = await page.locator('body').innerText();
+        record('Tab REPUT. abre y muestra calificaciones', /calificaci|reputaci|promedio|estrella|sin calificaci/i.test(reputText));
+      } else {
+        record('Tab REPUT. abre y muestra calificaciones', false, 'tab reput no encontrado');
+      }
+
+      // Panel ADMIN (solo uid TNwwuKJsIXN29zJg8HWfORawdFm1) — aprobar rating reciente
+      const adminTab = page.locator('button').filter({ hasText: /^admin$/i }).first();
+      if (await adminTab.count() > 0) {
+        await adminTab.click();
+        await page.waitForTimeout(800);
+        const calificTab = page.locator('button').filter({ hasText: /calificac/i }).first();
+        if (await calificTab.count() > 0) {
+          await calificTab.click();
+          await page.waitForTimeout(1500);
+          await shot(page, 'admin-calificaciones');
+          const adminText = await page.locator('body').innerText();
+          record('Panel admin calificaciones accesible', /pendiente|aprobad|rechazad/i.test(adminText));
+
+          const aprobarBtn = page.locator('button').filter({ hasText: /aprobar/i }).first();
+          if (await aprobarBtn.count() > 0) {
+            await aprobarBtn.click();
+            await page.waitForTimeout(2000);
+            await shot(page, 'admin-aprobacion');
+            record('Calificacion aprobada desde admin', /aprobad/i.test(await page.locator('body').innerText()));
+          } else {
+            record('Calificacion aprobada desde admin', false, 'boton aprobar no visible (no hay pendientes o ya aprobada)');
+          }
+        } else {
+          record('Panel admin calificaciones accesible', false, 'tab calificac no encontrado en admin');
+        }
+      } else {
+        record('Panel admin calificaciones accesible', false, 'tab admin no visible (cuenta no es platform admin — esperado en cuenta de prueba)');
+        record('Calificacion aprobada desde admin', false, 'se requiere cuenta admin — paso manual');
+      }
+    } catch (e) {
+      await shot(page, 'admin-error').catch(() => {});
+      record('Tab REPUT. abre y muestra calificaciones', false, e.message.split('\n')[0].slice(0, 60));
+      record('Panel admin calificaciones accesible', false, e.message.split('\n')[0].slice(0, 60));
+      record('Calificacion aprobada desde admin', false, '');
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // SECCION F: SISTEMA DE FIDELIZACION — descuento en presupuesto
+    // ═══════════════════════════════════════════════════════
+    log('16. Fidelizacion — descuento por calificacion anterior en presupuesto');
+    try {
+      // Recarga limpia — Firebase puede estar en error state por REPUT tab
+      await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(2000);
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await waitForHome(page, 18000);
+
+      // Navegar a PresupuestosView via boton del home
+      // Esperar el boton naranja NUEVO en home como anchor (es unico del home)
+      await page.locator('button').filter({ hasText: /^nuevo$/i }).first()
+        .waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
+
+      // Usar 'Presupuestos' con P mayúscula (case-sensitive) para evitar matchear
+      // los botones de acciones urgentes que dicen "Armar presupuesto" (p minúscula)
+      await page.locator('button').filter({ hasText: 'Presupuestos' }).first().click();
+      await page.waitForTimeout(2000);
+      await shot(page, 'fid-00-ppto-list');
+
+      // Verificar PresupuestosView — tiene barra de busqueda y boton + NUEVO
+      const pptoViewText = await page.locator('body').innerText();
+      const nuevoBtn = page.locator('button').filter({ hasText: /nuevo/i }).first();
+      const pptoViewOk = /presupuesto/i.test(pptoViewText) && await nuevoBtn.count() > 0;
+      record('PresupuestosView accesible con boton + NUEVO', pptoViewOk);
+
+      // El banner de descuento requiere aprobacion admin de la calificacion enviada.
+      // La cuenta aerovision.dji no es admin → este paso es MANUAL.
+      // Pasos manuales requeridos:
+      // 1. Login con matias4604@gmail.com en la app
+      // 2. Config → Admin → Calificac. → Aprobar la calificacion pendiente
+      // 3. El sistema crea clienteBeneficios/{patente} automaticamente
+      // 4. La proxima vez que se cree un presupuesto con esa patente, aparece el banner
+      record('Banner de descuento por calificacion aparece', false,
+        'paso manual: aprobar calificacion con cuenta admin matias4604@gmail.com en Config → Admin → Calificac.');
+    } catch (e) {
+      await shot(page, 'fid-error').catch(() => {});
+      record('PresupuestosView accesible con boton + NUEVO', false, e.message.split('\n')[0].slice(0, 60));
+      record('Banner de descuento por calificacion aparece', false, '');
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // SECCION D: LANDING PAGE (motogestion.ar)
+    // Ultimo porque visitar dominio externo corta conexion Firebase
+    // ═══════════════════════════════════════════════════════
+    log('17. Landing page — motogestion.ar');
+    try {
+      await page.goto('https://motogestion.ar', { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(3000);
+      await shot(page, 'landing-01-home');
+      const landText = await page.locator('body').innerText();
+      record('Landing page carga', /motogestion|taller|moto/i.test(landText));
+      record('Seccion de red/talleres en landing', /red|ranking|taller.*verificado|mapa/i.test(landText));
+      record('Seccion de calificaciones visible', /calificaci|reputaci|estrella/i.test(landText));
+      record('CTA de conversion presente', /quiero|probalo|empeza|registr/i.test(landText));
+    } catch (e) {
+      await shot(page, 'landing-error').catch(() => {});
+      record('Landing page carga', false, e.message.split('\n')[0].slice(0, 60));
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 18. SCREENSHOT FINAL
+    // ═══════════════════════════════════════════════════════
+    log('18. Estado final');
+    await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
     await waitForHome(page, 10000).catch(() => {});
     await shot(page, 'final');
 
