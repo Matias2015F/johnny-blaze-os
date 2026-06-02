@@ -63,18 +63,37 @@ El backup copia los 13 archivos del Baseline de Oro a `backups/YYYY-MM-DD_HHMM/`
 
 Ver SOP completo en `.clou/skills/backup.md`.
 
+### Cadena de trabajo obligatoria
+
+Todo cambio debe seguir este orden completo. Si falta un paso, la tarea no está terminada:
+
+```
+Idea
+→ contrato de datos (qué guarda, dónde, quién lee, quién escribe, qué pasa si falla)
+→ implementación mínima
+→ npm run build
+→ npm run lint
+→ prueba funcional real
+→ commit
+→ push
+→ deploy
+→ verificación en producción
+```
+
 ### Protocolo de commit y deploy — OBLIGATORIO antes de declarar cualquier tarea terminada
 
-Ningún cambio se considera completo hasta haber ejecutado estos 8 pasos en orden. Sin excepciones.
+Ningún cambio se considera completo hasta haber ejecutado estos 10 pasos en orden. Sin excepciones.
 
+0. `git status` — verificar repo limpio. Si hay archivos modificados sin explicar, detenerse.
 1. `npm run build` — debe pasar sin errores
-2. `git diff` — verificar que solo se tocaron los archivos necesarios, nada más
-3. Probar el flujo funcional afectado (no solo que compila — el dato tiene que aparecer en la pantalla)
-4. Commit separado por fase o tema: `git commit -m "descripcion concisa"`
-5. Push a GitHub: `git push origin main`
-6. Deploy en Vercel: `npx vercel --prod --scope matias2015fs-projects`
-7. Verificar en produccion: `https://app.motogestion.ar/version.json` debe mostrar el nuevo build
-8. Informe final: qué se hizo, qué se probó, qué queda pendiente
+2. `npm run lint` — no debe introducir errores nuevos respecto al estado anterior
+3. `git diff` — verificar que solo se tocaron los archivos necesarios, nada más
+4. Probar el flujo funcional afectado (no solo que compila — el dato tiene que aparecer en la pantalla)
+5. Commit separado por fase o tema: `git commit -m "descripcion concisa"`
+6. Push a GitHub: `git push origin main`
+7. Deploy en Vercel: `npx vercel --prod --scope matias2015fs-projects`
+8. Verificar en produccion: `https://app.motogestion.ar/version.json` debe mostrar el nuevo build
+9. Informe final: qué se hizo, qué se probó, qué queda pendiente
 
 **Si algún paso no se puede completar, la tarea NO está terminada.** No declarar "listo" sin commit + push + deploy + verificación.
 
@@ -88,6 +107,33 @@ Antes de cualquier tarea en este proyecto, usar proactivamente los skills del pr
 - `/deploy` — para gestionar deploys, logs y rollback en Vercel
 
 Los skills están definidos en `.clou/COMANDOS.md`. Leerlos al inicio de cada sesión.
+
+### Regla de repo limpio antes de empezar
+
+Antes de tocar cualquier archivo: ejecutar `git status`. Si hay modificaciones sin commit no relacionadas con la tarea actual, resolver o stashear antes de continuar. No acumular cambios de tareas distintas en el mismo estado de trabajo.
+
+### Regla de contrato antes de código
+
+Para cada función nueva o dato nuevo definir antes de implementar:
+- Qué dato guarda
+- Dónde lo guarda (colección Firestore, localStorage, Firestore global)
+- Quién lo lee (frontend, API, landing)
+- Quién puede escribirlo (usuario, admin, webhook)
+- Qué pasa si falla
+
+Si no está definido, no se implementa.
+
+### Regla de archivos grandes
+
+`ConfigView.jsx` (3500+ líneas) y `OrderDetailView.jsx` (1600+ líneas) son zonas de alto riesgo. Antes de modificar cualquiera de ellos:
+1. Grep del símbolo exacto que se va a tocar.
+2. Leer el bloque completo donde está el símbolo.
+3. Confirmar que no hay otro lugar que lo referencia.
+No refactorizar estos archivos "de paso" durante otro fix.
+
+### Regla de features completas
+
+No publicar pantallas con datos falsos, mocks, números inventados o botones que no hacen nada. Si una feature no tiene el flujo completo funcionando (crear → guardar → leer → mostrar), no va a producción.
 
 ### Regla del 90%
 
@@ -119,6 +165,7 @@ No escribir código hasta que el usuario apruebe la directiva.
 4. Esperar aprobación si el cambio toca un archivo crítico.
 5. Cirugía mínima: solo las líneas necesarias, sin refactoring adyacente.
 6. `npm run build` para verificar compilación.
+7. `npm run lint` para verificar que no se introdujeron errores nuevos.
 
 ### Regla de mejora incremental
 
