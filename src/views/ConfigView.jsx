@@ -16,6 +16,7 @@ import { subscribeToPush, unsubscribeFromPush, getPushStatus, isPushSupported } 
 import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS, actualizarSuscripcionUsuario, crearTicketSoporte, guardarAdminSettings, isPlatformAdminUser, leerAdminSettings, leerUsuarioSaas, normalizeAdminSettings, normalizeDateMs, normalizeSaasUser } from "../services/saasService.js";
 import { logAdminAction } from "../services/adminAuditService.js";
 import { validateAdminSettings, validateExtraDays, validatePlanKey } from "../services/adminValidationService.js";
+import { FREE_PLAN_LIMITS, getFreeUsageStatus } from "../services/usageLimitService.js";
 import { formatMoney } from "../utils/format.js";
 import MapaPicker from "../components/MapaPicker.jsx";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
@@ -256,6 +257,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
   const [settingsConfirmOpen, setSettingsConfirmOpen] = React.useState(false);
   const [ratings, setRatings] = React.useState([]);
   const [filterRating, setFilterRating] = React.useState("pendiente_validacion");
+  const [usageSnapshots, setUsageSnapshots] = React.useState([]);
   const [mpPaymentId, setMpPaymentId] = React.useState("");
   const [mpUidOverride, setMpUidOverride] = React.useState("");
   const [mpPaymentDiag, setMpPaymentDiag] = React.useState(null);
@@ -290,6 +292,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
       setAccounts(normalizedAccounts);
       setInvoices(sortByDateDesc(adminData.invoices || [], "paidAt", "fecha", "createdAt", "updatedAt"));
       setTickets(sortByDateDesc(adminData.tickets || [], "createdAt", "updatedAt"));
+      setUsageSnapshots(adminData.usageSnapshots || []);
       setSettings(normalizeAdminSettings(adminData.settings || DEFAULT_ADMIN_SETTINGS));
       const ratingSnap = await getDocsFromServer(
         query(collection(db, "ratings"), orderBy("createdAt", "desc"), limit(200))
@@ -506,6 +509,25 @@ function PantallaAdmin({ showToast, scrollRef }) {
     const reclamosPendientes = tickets.filter(t => t.estado !== "resuelto").length;
     const conversionRate = total > 0 ? Math.round(activos / total * 100) : 0;
 
+    const latestUsageByUid = new Map();
+    for (const snapshot of usageSnapshots) {
+      const uid = snapshot.uid || snapshot.accountId || "";
+      if (!uid) continue;
+      const t = normalizeDateMs(snapshot.updatedAt || snapshot.createdAt) || new Date(snapshot.fecha || 0).getTime() || 0;
+      const prev = latestUsageByUid.get(uid);
+      const prevT = prev ? (normalizeDateMs(prev.updatedAt || prev.createdAt) || new Date(prev.fecha || 0).getTime() || 0) : 0;
+      if (!prev || t >= prevT) latestUsageByUid.set(uid, snapshot);
+    }
+    const latestUsage = [...latestUsageByUid.values()];
+    const freeUsageAlerts = latestUsage
+      .map((snapshot) => {
+        const account = accountByUid.get(snapshot.uid || snapshot.accountId || "");
+        return { account, snapshot, status: getFreeUsageStatus(account, snapshot) };
+      })
+      .filter((item) => item.status.blocked || item.status.warnings.length > 0)
+      .sort((a, b) => b.status.maxPercent - a.status.maxPercent);
+    const estimatedInitialReads = latestUsage.reduce((sum, snapshot) => sum + Number(snapshot.estimatedInitialReads || 0), 0);
+
     // Billing alerts — computed from existing data (no extra Firestore reads)
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
     const pagoSinActivacion = accounts.filter(a => {
@@ -538,9 +560,10 @@ function PantallaAdmin({ showToast, scrollRef }) {
       todosPagos, totalCobrado, cobradoMes, pagosEsteMes,
       promDias, trialsPorVencer, pedidosPendientes, reclamosPendientes,
       conversionRate, billingAlerts, totalBillingAlerts,
+      latestUsage, freeUsageAlerts, estimatedInitialReads,
       lastPayment, lastTicket, lastUser,
     };
-  }, [accounts, invoices, tickets]);
+  }, [accounts, invoices, tickets, usageSnapshots]);
 
   const guardarSettings = async () => {
     try {
@@ -858,6 +881,31 @@ function PantallaAdmin({ showToast, scrollRef }) {
               <StatBox label="En prueba" value={stats.trial} color="text-amber-600" />
               <StatBox label="Vencidos" value={stats.vencidos} color="text-red-600" />
             </div>
+          </Card>
+
+          <Card>
+            <SectionTitle>Uso real y limites free</SectionTitle>
+            <div className="grid grid-cols-2 gap-3">
+              <StatBox label="Usuarios medidos" value={stats.latestUsage.length} />
+              <StatBox label="Lecturas inicio est." value={stats.estimatedInitialReads} color="text-orange-600" />
+              <StatBox label="Free en alerta" value={stats.freeUsageAlerts.length} color={stats.freeUsageAlerts.length ? "text-red-600" : "text-emerald-600"} />
+              <StatBox label="Limite trabajos" value={FREE_PLAN_LIMITS.trabajosTotal} />
+            </div>
+            <p className="mt-3 text-[10px] font-bold leading-relaxed text-zinc-400">
+              Estimacion basada en documentos reales del taller. Sirve para controlar Firestore antes de abrir mas usuarios.
+            </p>
+            {stats.freeUsageAlerts.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {stats.freeUsageAlerts.slice(0, 5).map(({ account: usageAccount, snapshot, status }) => (
+                  <div key={snapshot.id || snapshot.uid} className="rounded-2xl border border-amber-100 bg-amber-50 p-3">
+                    <p className="text-xs font-black text-amber-900 truncate">{usageAccount?.email || snapshot.email || snapshot.uid}</p>
+                    <p className="mt-1 text-[10px] font-bold text-amber-700">
+                      {status.blocked ? "Bloqueado por limite free" : "Cerca del limite free"} · {status.maxPercent}%
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
 
           {/* Alertas operativas */}

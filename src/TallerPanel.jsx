@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from "react";
+import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { Wrench, Clock, History, Settings, DollarSign, HelpCircle, RefreshCw, WifiOff } from "lucide-react";
@@ -11,6 +11,7 @@ import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, fetchRem
 import { ensureAccountProfile, trackEvent } from "./lib/telemetry.js";
 import { upsertClienteYMoto } from "./services/clienteMotoService.js";
 import { nextNumeroOT, nextNumeroPRE } from "./services/counterService.js";
+import { buildUsageSnapshot, canUseFreeResource, persistUsageSnapshot } from "./services/usageLimitService.js";
 
 // HomeView se carga de forma eager � es la pantalla inicial
 import HomeView from "./views/HomeView.jsx";
@@ -173,7 +174,7 @@ function getInstallGuide() {
   };
 }
 
-export default function TallerPanel({ modoLectura = false }) {
+export default function TallerPanel({ modoLectura = false, account = null }) {
   const [view, setViewRaw] = useState("home");
   const [selectedOrderId, setSelectedOrderId] = useState(null);
   const [selectedBikeId, setSelectedBikeId] = useState(null);
@@ -200,11 +201,23 @@ export default function TallerPanel({ modoLectura = false }) {
   useCollection("repuestosHistorial");
 
   const syncStatus = useSyncStatus();
+  const usageSnapshot = useMemo(() => buildUsageSnapshot({
+    account,
+    orders,
+    bikes,
+    clients,
+    presupuestos,
+  }), [account, orders, bikes, clients, presupuestos]);
 
   const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(null), 2500); };
   const setView = (v) => {
     if (modoLectura && (v === "nuevaOrden" || v === "nuevoPresupuesto")) {
       showToast("Plan vencido. Renova tu suscripcion para crear nuevas ordenes.");
+      return;
+    }
+    const check = canUseFreeResource(account, usageSnapshot, v);
+    if (!check.ok) {
+      showToast(check.message);
       return;
     }
     setViewRaw(v);
@@ -302,8 +315,18 @@ export default function TallerPanel({ modoLectura = false }) {
     autoCloudBackup(uid).catch(console.error);
   }, []);
 
+  useEffect(() => {
+    persistUsageSnapshot(usageSnapshot).catch(console.error);
+  }, [usageSnapshot]);
+
   // -- Crear orden nueva ------------------------------------------------------
   const handleCreateOrder = async (payload) => {
+    const check = canUseFreeResource(account, usageSnapshot, "nuevaOrden");
+    if (!check.ok) {
+      showToast(check.message);
+      setView("config");
+      return;
+    }
     const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
     const { clientId, bikeId, kmActual } = upsertClienteYMoto(
       payload,
@@ -364,6 +387,12 @@ export default function TallerPanel({ modoLectura = false }) {
 
   // -- Presupuestos -----------------------------------------------------------
   const handleCreatePresupuesto = async (payload) => {
+    const check = canUseFreeResource(account, usageSnapshot, "nuevoPresupuesto");
+    if (!check.ok) {
+      showToast(check.message);
+      setView("config");
+      return;
+    }
     const { clientId, bikeId, kmActual } = upsertClienteYMoto(
       payload,
       { clients, bikes, titularidades },

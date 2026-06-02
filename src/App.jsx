@@ -430,7 +430,7 @@ export default function App() {
         </div>
       )}
 
-      <TallerPanel modoLectura={modoLectura} />
+      <TallerPanel modoLectura={modoLectura} account={account} />
 
       {pagoResult === "ok" && (
         <PagoOkSheet account={account} onClose={() => setPagoResult(null)} />
