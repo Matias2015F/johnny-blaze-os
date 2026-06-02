@@ -144,8 +144,8 @@ export default function VerifyReceiptView({ token }) {
           return;
         }
         setEstado("verificado");
-        // Start at checklist validation unless the receipt requires phone verification first.
-        setFase(data.hasPhoneVerification ? "verificacion" : "validacion");
+        // Si hay telefono, primero confirma identidad; despues valida y califica en una sola pantalla.
+        setFase(data.hasPhoneVerification ? "verificacion" : "formulario");
       })
       .catch(() => setEstado("no_encontrado"));
   }, [token]);
@@ -172,7 +172,7 @@ export default function VerifyReceiptView({ token }) {
       return;
     }
     setPhoneError("");
-    setFase("validacion");
+    setFase("formulario");
   };
 
   const checksValidos = checks.every(Boolean);
@@ -182,7 +182,8 @@ export default function VerifyReceiptView({ token }) {
     scores.claridad > 0 &&
     scores.trabajo > 0 &&
     scores.cumplimiento > 0 &&
-    recomienda !== null;
+    recomienda !== null &&
+    checksValidos;
 
   const enviarCalificacion = async () => {
     if (!formValido || enviando) return;
@@ -449,7 +450,7 @@ export default function VerifyReceiptView({ token }) {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setFase("validacion")}
+                    onClick={() => setFase("formulario")}
                     className="w-full rounded-2xl bg-orange-600 py-4 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
                   >
                     Continuar
@@ -512,10 +513,41 @@ export default function VerifyReceiptView({ token }) {
                 <div>
                   <p className="text-lg font-black text-zinc-900">
                     {receipt.documentType === "diagnostico_presupuesto_cerrado"
-                      ? "Calificá la atención y el presupuesto"
-                      : "Calificá el servicio realizado"}
+                      ? "Validá y calificá la atención"
+                      : "Validá y calificá el servicio"}
                   </p>
-                  <p className="mt-1 text-sm text-zinc-500">Tu calificación queda vinculada a este comprobante real y no puede editarse.</p>
+                  <p className="mt-1 text-sm text-zinc-500">Confirmá recepción y calificá en una sola pantalla.</p>
+                </div>
+
+                <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Confirmación rápida</p>
+                  <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                    Marcá estos puntos y completá la calificación sin cambiar de pantalla.
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    {[
+                      "Reconozco esta moto como propia o vinculada a mí.",
+                      "Recibí este comprobante del taller.",
+                      "Los datos principales coinciden con lo informado.",
+                      receipt.documentType === "diagnostico_presupuesto_cerrado"
+                        ? "Entiendo la condición de cierre indicada."
+                        : "Entiendo la condición de garantía indicada.",
+                    ].map((texto, i) => (
+                      <label key={i} className="flex cursor-pointer items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={checks[i] || false}
+                          onChange={(e) => {
+                            const next = [...checks];
+                            next[i] = e.target.checked;
+                            setChecks(next);
+                          }}
+                          className="mt-0.5 h-5 w-5 rounded accent-orange-500"
+                        />
+                        <span className="text-sm leading-relaxed text-zinc-700">{texto}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
 
                 <LoyaltyRewardCard incentive={ratingIncentive} />
@@ -572,11 +604,11 @@ export default function VerifyReceiptView({ token }) {
                   disabled={!formValido || enviando}
                   className="w-full rounded-2xl bg-orange-600 py-4 text-sm font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-40"
                 >
-                  {enviando ? "Enviando..." : "Confirmar validación"}
+                  {enviando ? "Enviando..." : "Validar y enviar calificación"}
                 </button>
 
                 <p className="text-center text-[10px] leading-relaxed text-zinc-400">
-                  Una vez enviada, la validación queda registrada como parte del historial del vehículo.
+                  La validación y la calificación quedan asociadas al comprobante real.
                 </p>
               </div>
             )}
