@@ -18,7 +18,7 @@ service cloud.firestore {
       );
     }
 
-    // Campos de suscripción: solo el Admin SDK (webhook) puede modificarlos.
+    // Campos de suscripcion: solo el Admin SDK (webhook) puede modificarlos.
     // El cliente nunca puede autopromover su plan, extender activoHasta ni cambiar su rol.
     function noModificaCamposSuscripcion() {
       let protegidos = ['estado', 'activoHasta', 'plan', 'pagoEstado', 'rol',
@@ -86,7 +86,7 @@ service cloud.firestore {
       allow update, delete: if isPlatformAdmin();
     }
 
-    // Datos del taller por usuario — aislados completamente.
+    // Datos del taller por usuario - aislados completamente.
     // El wildcard {document=**} cubre todas las colecciones del taller:
     // trabajos, presupuestos, clientes, motos, caja, config, catalogoTareas,
     // titularidades, precioHistorial, recordatorios, agendaTurnos, repuestosHistorial.
@@ -94,18 +94,18 @@ service cloud.firestore {
       allow read, write: if isOwner(uid) || isPlatformAdmin();
     }
 
-    // Presupuestos: regla explícita para documentar la colección.
-    // Cubierta por el wildcard anterior; se repite aquí por claridad.
+    // Presupuestos: regla explicita para documentar la coleccion.
+    // Cubierta por el wildcard anterior; se repite aqui por claridad.
     match /users/{uid}/presupuestos/{presId} {
       allow read, write: if isOwner(uid) || isPlatformAdmin();
     }
 
     // Perfil SaaS del usuario:
-    // — Crear: el propio usuario puede crear su perfil inicial (estado trial).
-    // — Actualizar: el usuario solo puede tocar campos no sensibles.
-    //   Los campos de suscripción (estado, plan, activoHasta, etc.)
+    // - Crear: el propio usuario puede crear su perfil inicial (estado trial).
+    // - Actualizar: el usuario solo puede tocar campos no sensibles.
+    //   Los campos de suscripcion (estado, plan, activoHasta, etc.)
     //   solo los escribe el Admin SDK (webhook mp-webhook.js) desde el servidor.
-    // — Eliminar: el usuario puede eliminar su propia cuenta.
+    // - Eliminar: el usuario puede eliminar su propia cuenta.
     match /usuarios/{uid} {
       allow read: if isOwner(uid) || isPlatformAdmin();
       allow create: if perfilUsuarioInicialSeguro(uid) || isPlatformAdmin();
@@ -118,7 +118,7 @@ service cloud.firestore {
       allow create, update, delete: if isPlatformAdmin();
     }
 
-    // Comprobantes públicos verificables
+    // Comprobantes publicos verificables
     match /publicReceipts/{token} {
       allow read: if true;
       allow create: if signedIn() && request.resource.data.uidTaller == request.auth.uid;
@@ -140,7 +140,7 @@ service cloud.firestore {
       allow update, delete: if isPlatformAdmin();
     }
 
-    // Perfiles publicos de talleres — lectura publica, escritura solo Admin SDK
+    // Perfiles publicos de talleres - lectura publica, escritura solo Admin SDK
     match /publicWorkshops/{workshopId} {
       allow read: if true;
       allow write: if isPlatformAdmin();
