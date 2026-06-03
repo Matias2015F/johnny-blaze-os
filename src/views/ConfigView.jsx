@@ -2453,8 +2453,8 @@ function PantallaSuscripcion({ showToast }) {
     const invoiceAt = Number(latestInvoiceAttempt.at || 0);
     return invoiceAt >= localAt ? latestInvoiceAttempt : lastAttempt;
   }, [lastAttempt, latestInvoiceAttempt]);
-  const checkoutPlan = checkoutPlanKey ? settings.plans?.[checkoutPlanKey] : null;
-  const checkoutPrice = checkoutPlan?.price ?? settings.precios?.[checkoutPlanKey] ?? 0;
+  const checkoutPlan = checkoutPlanKey ? (settings.plans?.[checkoutPlanKey] ?? { label: PLAN_LABELS[checkoutPlanKey] || checkoutPlanKey }) : null;
+  const checkoutPrice = settings.plans?.[checkoutPlanKey]?.price ?? settings.precios?.[checkoutPlanKey] ?? 0;
 
   const persistPaymentAttempt = (attempt) => {
     if (!attempt?.invoiceId && !attempt?.preferenceId) return;
