@@ -2757,21 +2757,21 @@ function PantallaSuscripcion({ showToast }) {
             disabled={sending}
             className="rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
           >
-            {sending ? "Procesando..." : `Pagar ${settings?.plans?.base?.label || "Base"} ${formatMoney(settings.precios?.base || 0)}`}
+            {sending ? "Procesando..." : `${planKey === "base" ? "Renovar" : "Cambiar a"} ${PLAN_LABELS.base} ${formatMoney(settings.precios?.base || 0)}`}
           </button>
           <button
             onClick={() => abrirConfirmacionPago("pro")}
             disabled={sending}
             className="rounded-2xl bg-zinc-900 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
           >
-            {sending ? "Procesando..." : `Cambiar a ${settings?.plans?.pro?.label || "Pro"} ${formatMoney(settings.precios?.pro || 0)}`}
+            {sending ? "Procesando..." : `${planKey === "pro" ? "Renovar" : "Cambiar a"} ${PLAN_LABELS.pro} ${formatMoney(settings.precios?.pro || 0)}`}
           </button>
           <button
             onClick={() => abrirConfirmacionPago("full")}
             disabled={sending}
             className="col-span-2 rounded-2xl bg-zinc-800 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
           >
-            {sending ? "Procesando..." : `Cambiar a ${settings?.plans?.full?.label || "Full"} ${formatMoney(settings.precios?.full || 0)}`}
+            {sending ? "Procesando..." : `${planKey === "full" ? "Renovar" : "Cambiar a"} ${PLAN_LABELS.full} ${formatMoney(settings.precios?.full || 0)}`}
           </button>
         </div>
 
