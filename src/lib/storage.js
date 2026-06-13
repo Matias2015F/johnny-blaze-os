@@ -6,16 +6,25 @@ import {
   onSnapshot, writeBatch,
 } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
+import { generateId } from "../shared/utils/id.js";
+import { generarHashSimple } from "../shared/utils/hash.js";
+
+export { generateId } from "../shared/utils/id.js";
 
 // In-memory cache — updated by onSnapshot listeners
 const _cache = {};
 
-export const generateId = () =>
-  Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
-
 const getUid  = () => auth.currentUser?.uid ?? null;
-const userCol = (col) => collection(db, "users", getUid(), col);
-const userDoc = (col, id) => doc(db, "users", getUid(), col, id);
+const userCol = (col) => {
+  const uid = getUid();
+  if (!uid) return null;
+  return collection(db, "users", uid, col);
+};
+const userDoc = (col, id) => {
+  const uid = getUid();
+  if (!uid) return null;
+  return doc(db, "users", uid, col, id);
+};
 
 // ── Sync status ────────────────────────────────────────────────────────────────
 let _pending = 0;
@@ -76,6 +85,7 @@ export const LS = {
   getDoc: (col, id) => (_cache[col] ?? []).find((d) => d.id === id) ?? null,
 
   setDoc: (col, id, data) => {
+    if (!getUid()) return { id };
     const entry = { id, ...data };
     _cache[col] = [...(_cache[col] ?? []).filter((d) => d.id !== id), entry];
     notifyCollection(col);
@@ -84,6 +94,7 @@ export const LS = {
   },
 
   addDoc: (col, data) => {
+    if (!getUid()) return { id: null };
     const id = generateId();
     const entry = { id, ...data };
     _cache[col] = [...(_cache[col] ?? []), entry];
@@ -93,12 +104,14 @@ export const LS = {
   },
 
   updateDoc: (col, id, patch) => {
+    if (!getUid()) return;
     _cache[col] = (_cache[col] ?? []).map((d) => (d.id === id ? { ...d, ...patch } : d));
     notifyCollection(col);
     fsWrite(() => fsSetDoc(userDoc(col, id), patch, { merge: true }));
   },
 
   deleteDoc: (col, id) => {
+    if (!getUid()) return;
     _cache[col] = (_cache[col] ?? []).filter((d) => d.id !== id);
     notifyCollection(col);
     fsWrite(() => fsDeleteDoc(userDoc(col, id)));
@@ -121,8 +134,14 @@ export function useCollection(col) {
 
     const subscribe = () => {
       if (cancelled) return;
+      const ref = userCol(col);
+      if (!ref) {
+        _cache[col] = [];
+        setData([]);
+        return;
+      }
       unsub = onSnapshot(
-        userCol(col),
+        ref,
         (snap) => {
           if (cancelled) return;
           const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -391,19 +410,6 @@ export function generarNumeroComprobante(orderId) {
  * @param {string} str - String a hashear
  * @returns {string} Hash hexadecimal de 8 caracteres
  */
-function generarHashSimple(str) {
-  let hash = 0;
-  if (str.length === 0) return '00000000';
-
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-
-  return Math.abs(hash).toString(16).padStart(8, '0');
-}
-
 /**
  * Crea snapshot verificable y inmutable de orden
  * @param {object} order - Orden completa

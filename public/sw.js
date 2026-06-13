@@ -1,10 +1,57 @@
 const SW_VERSION = new URL(self.location.href).searchParams.get("v") || "dev";
-const CACHE_NAME = `jbos-static-${SW_VERSION}`;
-const APP_SHELL = ["/", "/manifest.json", "/favicon.ico", "/brand/motogestion-banner.png", "/brand/motogestion-icon.png"];
+const STATIC_CACHE_NAME = `jbos-static-${SW_VERSION}`;
+const RUNTIME_CACHE_NAME = `jbos-runtime-${SW_VERSION}`;
+const APP_SHELL = [
+  "/",
+  "/index.html",
+  "/manifest.json",
+  "/favicon.ico",
+  "/brand/motogestion-banner.png",
+  "/brand/motogestion-icon.png",
+];
+const STATIC_EXTENSIONS = [".js", ".mjs", ".css", ".png", ".jpg", ".jpeg", ".webp", ".svg", ".ico", ".woff", ".woff2", ".ttf", ".otf"];
+
+function isStaticAsset(pathname) {
+  return pathname.startsWith("/assets/") || pathname.startsWith("/brand/") || STATIC_EXTENSIONS.some((ext) => pathname.endsWith(ext));
+}
+
+function isNavigationRequest(request) {
+  const accept = request.headers.get("accept") || "";
+  return request.mode === "navigate" || accept.includes("text/html");
+}
+
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+
+  const response = await fetch(request);
+  if (response.ok) {
+    const clone = response.clone();
+    caches.open(STATIC_CACHE_NAME).then((cache) => cache.put(request, clone)).catch(() => null);
+  }
+  return response;
+}
+
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      const clone = response.clone();
+      caches.open(RUNTIME_CACHE_NAME).then((cache) => cache.put(request, clone)).catch(() => null);
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    const fallback = await caches.match("/");
+    if (fallback) return fallback;
+    throw new Error("SW networkFirst fallback unavailable");
+  }
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).catch(() => null),
+    caches.open(STATIC_CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).catch(() => null),
   );
   self.skipWaiting();
 });
@@ -12,7 +59,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))),
+      Promise.all(keys.filter((key) => key !== STATIC_CACHE_NAME && key !== RUNTIME_CACHE_NAME).map((key) => caches.delete(key))),
     ),
   );
   self.clients.claim();
@@ -29,22 +76,21 @@ self.addEventListener("fetch", (event) => {
 
   const { pathname } = url;
 
-  // Never cache these files — always network so version checks get fresh data
-  if (pathname === "/version.json" || pathname === "/index.html") {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request)),
-    );
+  if (pathname.startsWith("/api/")) return;
+
+  // Version check y navegación principal deben leer red primero para no quedar ancladas.
+  if (pathname === "/version.json" || isNavigationRequest(event.request) || pathname === "/index.html") {
+    event.respondWith(networkFirst(event.request));
+    return;
+  }
+
+  if (isStaticAsset(pathname)) {
+    event.respondWith(cacheFirst(event.request));
     return;
   }
 
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)).catch(() => null);
-        return response;
-      })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/"))),
+    networkFirst(event.request),
   );
 });
 

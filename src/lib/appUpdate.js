@@ -4,6 +4,10 @@ export async function fetchRemoteVersion() {
     headers: { "Cache-Control": "no-cache" },
   });
   if (!res.ok) throw new Error("No se pudo consultar la version");
+  const contentType = res.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    throw new Error("La version remota no devolvio JSON");
+  }
   return res.json();
 }
 

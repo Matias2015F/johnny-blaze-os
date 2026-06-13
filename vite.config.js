@@ -40,6 +40,46 @@ export default defineConfig({
   plugins: [
     react(),
     {
+      name: "jbos-dev-api",
+      configureServer(server) {
+        server.middlewares.use(async (req, res, next) => {
+          const url = new URL(req.url || "/", "http://localhost");
+          const pathname = url.pathname;
+          if (pathname === "/version.json") {
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(JSON.stringify(appBuild, null, 2));
+            return;
+          }
+          if (!pathname.startsWith("/api/")) return next();
+
+          if (
+            pathname === "/api/onboard-user" ||
+            pathname === "/api/send-password-reset" ||
+            pathname === "/api/admin-dashboard" ||
+            pathname === "/api/mp-reconcile" ||
+            pathname === "/api/moderate-rating" ||
+            pathname === "/api/mp-create-preference" ||
+            pathname === "/api/send-welcome"
+          ) {
+            res.statusCode = 200;
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(
+              JSON.stringify({
+                ok: true,
+                dev: true,
+                path: pathname,
+                message: "Dev API stub: ruta disponible solo en desarrollo local.",
+              }),
+            );
+            return;
+          }
+
+          next();
+        });
+      },
+    },
+    {
       name: "jbos-version-asset",
       generateBundle() {
         this.emitFile({

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
@@ -9,12 +9,11 @@ import { LS } from "./lib/storage.js";
 import { CONFIG_DEFAULT } from "./lib/constants.js";
 import { abrirEnlaceExterno } from "./lib/whatsappService.js";
 import { APP_BUILD } from "./generated/appVersion.js";
+import AppLoadingScreen from "./components/AppLoadingScreen.jsx";
 
-import TallerPanel from "./TallerPanel.jsx";
 import LoginScreen from "./LoginScreen.jsx";
-import VerifyReceiptView from "./views/VerifyReceiptView.jsx";
-import RetentionOfferView from "./views/RetentionOfferView.jsx";
-import TallerPublicView from "./views/TallerPublicView.jsx";
+
+const TallerPanel = lazy(() => import("./TallerPanel.jsx"));
 
 function formatMoney(value) {
   return "ARS " + new Intl.NumberFormat("es-AR", {
@@ -243,6 +242,13 @@ function PantallaBloqueo({ account, settings }) {
   );
 }
 
+const loadingPanel = (
+  <AppLoadingScreen
+    title="MotoGestión"
+    detail="Preparando la pantalla del taller..."
+  />
+);
+
 export default function App() {
   const [estado, setEstado] = useState("loading");
   const [account, setAccount] = useState(null);
@@ -345,21 +351,6 @@ export default function App() {
     };
   }, []);
 
-  const matchVerify = window.location.pathname.match(/^\/verificar\/([^/]+)$/);
-  if (matchVerify) {
-    return <VerifyReceiptView token={matchVerify[1]} />;
-  }
-
-  const matchOffer = window.location.pathname.match(/^\/oferta\/([^/]+)$/);
-  if (matchOffer) {
-    return <RetentionOfferView token={matchOffer[1]} />;
-  }
-
-  const matchTaller = window.location.pathname.match(/^\/taller\/([^/]+)$/);
-  if (matchTaller) {
-    return <TallerPublicView uid={matchTaller[1]} />;
-  }
-
   const matchLogin = window.location.pathname === "/login";
   if (matchLogin) {
     const params = new URLSearchParams(window.location.search || "");
@@ -430,7 +421,9 @@ export default function App() {
         </div>
       )}
 
-      <TallerPanel modoLectura={modoLectura} account={account} />
+      <Suspense fallback={loadingPanel}>
+        <TallerPanel modoLectura={modoLectura} account={account} />
+      </Suspense>
 
       {pagoResult === "ok" && (
         <PagoOkSheet account={account} onClose={() => setPagoResult(null)} />

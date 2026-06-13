@@ -21,6 +21,7 @@ import { abrirWhatsApp, generarMensajePresupuestoConDatos, mensajeBloqueo, mensa
 import { trackEvent } from "../lib/telemetry.js";
 import { MOTIVOS_BLOQUEO } from "../lib/theme.js";
 import { formatMoney, parseMonto } from "../utils/format.js";
+import OrdenShadowReadOnlyBridge from "../modules/ordenes/components/OrdenShadowReadOnlyBridge.jsx";
 
 const UMBRAL_ALERTA = { bajo: 0.9, medio: 0.8, alto: 0.7 };
 const RANGO_FACTOR = { bajo: 1.0, medio: 1.3, alto: 1.5 };
@@ -943,6 +944,8 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       </div>
 
       <div className="mx-auto max-w-[440px] px-4 py-6 space-y-6">
+        <OrdenShadowReadOnlyBridge order={order} />
+
         {/* Cronometro de trabajo / diagnostico */}
         {["diagnostico", "presupuesto"].includes(order.estado) && !isLocked && (
           <div className="rounded-[2rem] border border-violet-500/30 bg-violet-950/40 p-5 shadow-xl">

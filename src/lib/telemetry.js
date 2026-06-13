@@ -1,5 +1,6 @@
 import { auth, db } from "../firebase.js";
-import { LS, generateId } from "./storage.js";
+import { LS } from "./storage.js";
+import { generateId } from "../shared/utils/id.js";
 import { APP_BUILD } from "../generated/appVersion.js";
 import {
   DEFAULT_SAAS_ADMIN_SETTINGS,

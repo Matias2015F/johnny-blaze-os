@@ -1,0 +1,1 @@
+Antes de cualquier tarea, usar la skill $continuidad-proyecto para reconstruir el estado real, detectar trabajo ya completado y diferenciar DECIDED, IMPLEMENTED_IN_DOMAIN, CONNECTED_TO_UI, ENFORCED_IN_RUNTIME y DEPLOYED.
