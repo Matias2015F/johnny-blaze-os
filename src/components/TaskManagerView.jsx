@@ -1,11 +1,20 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Plus, X, Search, Sparkles, Bell } from "lucide-react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { ArrowLeft, Plus, X, Search, Sparkles, Bell, ChevronDown } from "lucide-react";
 import { LS, useCollection, generateId, buscarRepuestosAutocomplete, guardarRepuestoHistorial } from "../lib/storage.js";
 import { CONFIG_DEFAULT, SERVICIOS_DEFAULT } from "../lib/constants.js";
 import { calcularNuevoTotal } from "../lib/calc.js";
 import { obtenerAprendizaje, evaluarConfianza } from "../lib/priceLearning.js";
 import { formatMoney } from "../utils/format.js";
 import { trackEvent } from "../lib/telemetry.js";
+import { buildProximoControl, TIPOS_SERVICIO } from "../lib/proximoControl.js";
+import {
+  TASK_MANAGER_STEPS,
+  buscarServicioAnteriorCompatible,
+  crearBorradorReutilizacion,
+  integrarBorradorReutilizacion,
+  obtenerPasoAnterior,
+  obtenerPasoSiguiente,
+} from "../modules/ordenes/taskManagerRecovery.js";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function norm(v = "") { return String(v).trim().toLowerCase(); }
@@ -23,7 +32,7 @@ function Sheet({ onClose, title, children }) {
         <div className="mx-auto max-w-[440px] p-6 space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">{title}</h3>
-            <button onClick={onClose} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-90 transition-all">
+            <button aria-label="Cerrar" onClick={onClose} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-90 transition-all">
               <X size={18} />
             </button>
           </div>
@@ -34,8 +43,71 @@ function Sheet({ onClose, title, children }) {
   );
 }
 
+function AccordionSection({ title, number, complete, active, summary, onToggle, children }) {
+  return (
+    <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-900/80">
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`flex w-full items-center justify-between gap-3 p-4 text-left transition-colors ${active ? "border-b border-orange-500/25 bg-orange-500/10" : "hover:bg-zinc-800/70"}`}
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black ${complete ? "bg-green-500/15 text-green-300" : "bg-zinc-800 text-zinc-400"}`}>
+            {complete ? "✓" : number}
+          </span>
+          <span className={`truncate text-[10px] font-black uppercase tracking-widest ${active ? "text-orange-300" : "text-zinc-200"}`}>
+            {title}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          {summary && <span className="text-xs font-black text-orange-400">{summary}</span>}
+          <ChevronDown size={16} className={`text-zinc-500 transition-transform ${active ? "rotate-180" : ""}`} />
+        </span>
+      </button>
+      {active && <div className="space-y-4 p-4">{children}</div>}
+    </section>
+  );
+}
+
+function StepActions({ step, onPrevious, onNext }) {
+  const index = TASK_MANAGER_STEPS.indexOf(step);
+  return (
+    <div className="grid grid-cols-2 gap-2 pt-2">
+      <button
+        type="button"
+        onClick={onPrevious}
+        disabled={index <= 0}
+        className="rounded-2xl border border-zinc-700 bg-zinc-800 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-300 disabled:opacity-30"
+      >
+        Anterior
+      </button>
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={index >= TASK_MANAGER_STEPS.length - 1}
+        className="rounded-2xl bg-orange-600 py-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-30"
+      >
+        Siguiente
+      </button>
+    </div>
+  );
+}
+
 // ── Sheet: agregar/editar trabajo ─────────────────────────────────────────────
-function TrabajoSheet({ config, bike, bikes, catalogData, orders, editData, editIdx, onSave, onClose }) {
+function TrabajoSheet({
+  config,
+  bike,
+  bikes,
+  catalogData,
+  orders,
+  currentOrder,
+  editData,
+  editIdx,
+  onSave,
+  onPrepareRecovery,
+  onApplyRecovery,
+  onClose,
+}) {
   const defaultMargen = config.margenPolitica ?? 25;
   const [nombre, setNombre] = useState(editData?.nombre || "");
   const [horasStr, setHorasStr] = useState(String(editData?.horasBase || 1));
@@ -44,6 +116,9 @@ function TrabajoSheet({ config, bike, bikes, catalogData, orders, editData, edit
   const [margenPct, setMargenPct] = useState(editData?.margenPct ?? defaultMargen);
   const [sugerencia, setSugerencia] = useState(null);
   const [mostrarCatalog, setMostrarCatalog] = useState(false);
+  const [recoveryPreview, setRecoveryPreview] = useState(null);
+  const [replaceNextControl, setReplaceNextControl] = useState(false);
+  const [applyingRecovery, setApplyingRecovery] = useState(false);
 
   const servicios = useMemo(() => {
     const map = new Map();
@@ -71,7 +146,16 @@ function TrabajoSheet({ config, bike, bikes, catalogData, orders, editData, edit
     if (s.margenPct) setMargenPct(s.margenPct);
     const apr = obtenerAprendizaje(s.nombre, bike?.cilindrada);
     setSugerencia(apr ? { apr, confianza: evaluarConfianza(apr) } : null);
+    setRecoveryPreview(onPrepareRecovery?.(s.nombre) || null);
+    setReplaceNextControl(false);
     setMostrarCatalog(false);
+  };
+
+  const applyRecovery = () => {
+    if (!recoveryPreview?.ok || applyingRecovery) return;
+    setApplyingRecovery(true);
+    const result = onApplyRecovery?.(recoveryPreview, { replaceNextControl });
+    if (!result?.applied) setApplyingRecovery(false);
   };
 
   useEffect(() => {
@@ -93,7 +177,7 @@ function TrabajoSheet({ config, bike, bikes, catalogData, orders, editData, edit
             className="w-full bg-transparent font-black text-white outline-none placeholder:text-zinc-600"
             placeholder="Buscar o escribir servicio..."
             value={nombre}
-            onChange={e => { setNombre(e.target.value); setMostrarCatalog(true); const apr = obtenerAprendizaje(e.target.value, bike?.cilindrada); setSugerencia(apr ? { apr, confianza: evaluarConfianza(apr) } : null); }}
+            onChange={e => { setNombre(e.target.value); setRecoveryPreview(null); setReplaceNextControl(false); setMostrarCatalog(true); const apr = obtenerAprendizaje(e.target.value, bike?.cilindrada); setSugerencia(apr ? { apr, confianza: evaluarConfianza(apr) } : null); }}
             onFocus={() => setMostrarCatalog(true)}
             onBlur={() => setTimeout(() => setMostrarCatalog(false), 150)}
           />
@@ -120,6 +204,83 @@ function TrabajoSheet({ config, bike, bikes, catalogData, orders, editData, edit
             </p>
             <button onClick={() => setHorasStr(String(Math.round(sugerencia.apr.promedio * 10) / 10))}
               className="text-[9px] font-black text-amber-400 underline">Usar promedio</button>
+          </div>
+        </div>
+      )}
+
+      {recoveryPreview?.ok && (
+        <div data-testid="task-recovery-preview" className="space-y-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4">
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-widest text-cyan-300">Service anterior disponible</p>
+            <p className="mt-1 text-sm font-black text-white">{recoveryPreview.task.nombre}</p>
+            <p className="text-[9px] font-bold text-zinc-400">
+              Vista previa: 1 tarea, {recoveryPreview.repuestos.length} repuesto(s), {recoveryPreview.insumos.length} insumo(s).
+            </p>
+          </div>
+
+          {[...recoveryPreview.repuestos, ...recoveryPreview.insumos].length > 0 && (
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-zinc-400">Materiales asociados a esta tarea</p>
+              {[...recoveryPreview.repuestos, ...recoveryPreview.insumos].map((item) => (
+                <div key={item.previewKey || item.sourceMaterialRef} className="flex justify-between gap-3 py-1 text-[10px] font-bold text-zinc-300">
+                  <span>{item.cantidad || 1}x {item.nombre}</span>
+                  <span className="text-zinc-500">{formatMoney((item.monto || 0) * (item.cantidad || 1))}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {(recoveryPreview.exclusions?.length > 0 || recoveryPreview.conflicts?.length > 0) && (
+            <div className="rounded-xl border border-zinc-700 bg-black/20 p-3">
+              {recoveryPreview.exclusions?.length > 0 && (
+                <p className="text-[9px] font-bold text-zinc-400">
+                  Exclusiones detectadas: {recoveryPreview.exclusions.length}. No se recuperan pagos, PDFs, cierres ni campos operativos historicos.
+                </p>
+              )}
+              {recoveryPreview.conflicts?.length > 0 && (
+                <p className="mt-1 text-[9px] font-bold text-yellow-300">
+                  Conflicto: la orden ya tiene proximo control. Se conserva salvo confirmacion explicita.
+                </p>
+              )}
+            </div>
+          )}
+
+          {recoveryPreview.nextControlDraft && (
+            <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
+              <p className="text-[9px] font-black uppercase tracking-widest text-yellow-300">Proximo control sugerido</p>
+              <p className="mt-1 text-[10px] font-bold text-zinc-300">
+                {recoveryPreview.nextControlDraft.descripcion}: {recoveryPreview.nextControlDraft.valorObjetivo} {recoveryPreview.nextControlDraft.unidad}
+              </p>
+              {currentOrder?.proximoControl && (
+                <label className="mt-3 flex items-start gap-2 text-[9px] font-bold text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={replaceNextControl}
+                    onChange={(event) => setReplaceNextControl(event.target.checked)}
+                    className="mt-0.5"
+                  />
+                  Reemplazar el proximo control actual al confirmar. Si queda desmarcado, se conserva el existente.
+                </label>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => { setRecoveryPreview(null); setReplaceNextControl(false); }}
+              className="rounded-xl border border-zinc-700 bg-zinc-800 py-3 text-[9px] font-black uppercase tracking-widest text-zinc-300"
+            >
+              Cancelar preview
+            </button>
+            <button
+              type="button"
+              onClick={applyRecovery}
+              disabled={applyingRecovery}
+              className="rounded-xl bg-cyan-600 py-3 text-[9px] font-black uppercase tracking-widest text-white disabled:opacity-50"
+            >
+              Reutilizar service
+            </button>
           </div>
         </div>
       )}
@@ -410,6 +571,13 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
 
   const [sheet, setSheet] = useState(null); // { tipo, editIdx, editData }
   const [observaciones, setObservaciones] = useState(order.observacionesProxima || "");
+  const [activeStep, setActiveStep] = useState("trabajo");
+  const [proximoTipo, setProximoTipo] = useState(order.proximoControl?.tipo || "service");
+  const [proximoUnidad, setProximoUnidad] = useState(order.proximoControl?.unidad === "dias" ? "dias" : "km");
+  const [proximoValor, setProximoValor] = useState(String(order.proximoControl?.valorObjetivo || ""));
+  const [proximoDescripcion, setProximoDescripcion] = useState(order.proximoControl?.descripcion || "");
+  const applyingRecoveryKeys = useRef(new Set());
+  const workshopScopeId = order.workshopUid || order.tallerId || order.workshopId || "authenticated-user-storage";
 
   // Abrir sheet si viene con serviceToEdit
   useEffect(() => {
@@ -446,6 +614,111 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
     const i = field === "insumos"   ? lista : insumos;
     const nTotal = calcularNuevoTotal(t, r, f, i);
     LS.updateDoc(coleccion, order.id, { [field]: lista, total: nTotal });
+  };
+
+  const prepareRecovery = (serviceName) => {
+    const candidate = buscarServicioAnteriorCompatible({
+      currentOrder: order,
+      orders,
+      serviceName,
+      workshopScopeId,
+    });
+    if (!candidate) return null;
+    const draft = crearBorradorReutilizacion({
+      candidate,
+      currentOrder: order,
+      currentBike: bike,
+      workshopScopeId,
+    });
+    return draft.ok ? draft : null;
+  };
+
+  const buildCurrentNextControl = (draft) => buildProximoControl({
+    tipo: draft.tipo,
+    descripcion: draft.descripcion,
+    unidad: draft.unidad,
+    valorObjetivo: Number(draft.valorObjetivo),
+    kmBase: bike.kilometrajeActual || bike.km || order.kmIngreso || order.km || 0,
+    origen: "service_anterior",
+  });
+
+  const handleApplyRecovery = (draft, { replaceNextControl = false } = {}) => {
+    if (!draft?.recoveryKey || applyingRecoveryKeys.current.has(draft.recoveryKey)) {
+      return {
+        ok: true,
+        applied: false,
+        code: "RECOVERY_ALREADY_APPLIED",
+        reason: "RECOVERY_ALREADY_APPLIED",
+        addedTasks: 0,
+        addedMaterials: 0,
+        addedAmount: 0,
+      };
+    }
+    applyingRecoveryKeys.current.add(draft.recoveryKey);
+
+    const result = integrarBorradorReutilizacion({
+      currentOrder: order,
+      draft,
+      calculateTotal: calcularNuevoTotal,
+    });
+    if (!result.ok || !result.applied) {
+      if (!result.ok) applyingRecoveryKeys.current.delete(draft.recoveryKey);
+      showToast(result.code === "RECOVERY_ALREADY_APPLIED" ? "Ese service ya fue reutilizado" : "No se pudo reutilizar el service");
+      return result;
+    }
+
+    const patch = { ...result.patch };
+    if (result.nextControlDraft && (!order.proximoControl || replaceNextControl)) {
+      const nextControl = buildCurrentNextControl(result.nextControlDraft);
+      patch.proximoControl = nextControl;
+      patch.notasProximoService = nextControl.descripcion;
+      setProximoTipo(nextControl.tipo);
+      setProximoUnidad(nextControl.unidad);
+      setProximoValor(String(nextControl.valorObjetivo));
+      setProximoDescripcion(nextControl.descripcion);
+    }
+
+    LS.updateDoc(coleccion, order.id, patch);
+    showToast(order.proximoControl && result.nextControlDraft && !replaceNextControl
+      ? "Service reutilizado; se conservo el proximo control actual"
+      : "Service anterior reutilizado ✓");
+    closeSheet();
+    return result;
+  };
+
+  const moveToNextStep = () => {
+    const result = obtenerPasoSiguiente(activeStep, { tareas });
+    if (!result.ok) {
+      showToast(result.message || "Completa este paso antes de continuar");
+      return;
+    }
+    setActiveStep(result.step);
+  };
+
+  const moveToPreviousStep = () => {
+    const result = obtenerPasoAnterior(activeStep);
+    if (result.ok) setActiveStep(result.step);
+  };
+
+  const guardarProximoControl = () => {
+    const value = Number(proximoValor);
+    if (!proximoTipo || !Number.isFinite(value) || value <= 0) {
+      showToast("Indica un intervalo valido para el proximo control");
+      return;
+    }
+    const control = buildProximoControl({
+      tipo: proximoTipo,
+      descripcion: proximoDescripcion.trim() || TIPOS_SERVICIO[proximoTipo] || proximoTipo,
+      unidad: proximoUnidad,
+      valorObjetivo: value,
+      kmBase: bike.kilometrajeActual || bike.km || order.kmIngreso || order.km || 0,
+      origen: "manual",
+    });
+    LS.updateDoc(coleccion, order.id, {
+      proximoControl: control,
+      notasProximoService: control.descripcion,
+    });
+    showToast("Proximo control guardado ✓");
   };
 
   const closeSheet = () => { setSheet(null); setServiceToEdit?.(null); };
@@ -501,6 +774,12 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
     showToast("Notas guardadas ✓");
   };
 
+  const taskNameForMaterial = (material) => {
+    const reference = String(material?._tareaId || "").trim();
+    if (!reference) return "";
+    return tareas.find((task) => String(task.id || "") === reference || norm(task.nombre) === norm(reference))?.nombre || "";
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 pb-40">
 
@@ -522,13 +801,14 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
 
       <div className="mx-auto max-w-[440px] px-4 pt-5 space-y-4">
 
-        {/* TRABAJOS / MANO DE OBRA */}
-        <div className="rounded-[2rem] border border-white/10 bg-zinc-900/80 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-200">🔧 Trabajos / Mano de obra</p>
-            <p className="text-sm font-black text-orange-400">{formatMoney(totalMO)}</p>
-          </div>
-
+        <AccordionSection
+          title="Trabajos / Mano de obra"
+          number="1"
+          complete={tareas.length > 0}
+          active={activeStep === "trabajo"}
+          summary={formatMoney(totalMO)}
+          onToggle={() => setActiveStep("trabajo")}
+        >
           {tareas.length === 0 ? (
             <p className="text-[10px] text-zinc-600 font-bold text-center py-3">Sin trabajos cargados</p>
           ) : (
@@ -542,11 +822,11 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
                     )}
                   </div>
                   <p className="text-xs font-black text-orange-400 shrink-0">{formatMoney(t.monto || 0)}</p>
-                  <button onClick={() => setSheet({ tipo: "trabajo", editIdx: i, editData: t })}
+                  <button aria-label={`Editar trabajo ${t.nombre}`} onClick={() => setSheet({ tipo: "trabajo", editIdx: i, editData: t })}
                     className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 active:text-orange-300 active:scale-90 transition-all shrink-0">
                     <EditIcon />
                   </button>
-                  <button onClick={() => del("tareas", i)}
+                  <button aria-label={`Eliminar trabajo ${t.nombre}`} onClick={() => del("tareas", i)}
                     className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 active:text-red-300 active:scale-90 transition-all shrink-0">
                     <X size={11} />
                   </button>
@@ -555,15 +835,17 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
             </div>
           )}
           <AddBtn label="Agregar trabajo" onClick={() => setSheet({ tipo: "trabajo", editIdx: null, editData: null })} />
-        </div>
+          <StepActions step="trabajo" onPrevious={moveToPreviousStep} onNext={moveToNextStep} />
+        </AccordionSection>
 
-        {/* REPUESTOS */}
-        <div className="rounded-[2rem] border border-white/10 bg-zinc-900/80 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-200">📦 Repuestos</p>
-            <p className="text-sm font-black text-orange-400">{formatMoney(totalRep)}</p>
-          </div>
-
+        <AccordionSection
+          title="Repuestos"
+          number="2"
+          complete={repuestos.length > 0}
+          active={activeStep === "repuestos"}
+          summary={formatMoney(totalRep)}
+          onToggle={() => setActiveStep("repuestos")}
+        >
           {repuestos.length === 0 ? (
             <p className="text-[10px] text-zinc-600 font-bold text-center py-3">Sin repuestos cargados</p>
           ) : (
@@ -573,23 +855,32 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-black uppercase text-zinc-200 leading-tight truncate">{r.nombre}</p>
                     <p className="text-[9px] font-bold text-zinc-500 mt-0.5">Cant. {r.cantidad || 1} · {formatMoney(r.monto || 0)} c/u</p>
+                    {taskNameForMaterial(r) && <p className="mt-0.5 text-[8px] font-black uppercase tracking-widest text-cyan-500">Tarea: {taskNameForMaterial(r)}</p>}
                   </div>
                   <p className="text-xs font-black text-orange-400 shrink-0">{formatMoney((r.monto || 0) * (r.cantidad || 1))}</p>
-                  <button onClick={() => setSheet({ tipo: "repuesto", editIdx: i, editData: r })}
+                  <button aria-label={`Editar repuesto ${r.nombre}`} onClick={() => setSheet({ tipo: "repuesto", editIdx: i, editData: r })}
                     className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 active:text-orange-300 active:scale-90 transition-all shrink-0"><EditIcon /></button>
-                  <button onClick={() => del("repuestos", i)}
+                  <button aria-label={`Eliminar repuesto ${r.nombre}`} onClick={() => del("repuestos", i)}
                     className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 active:text-red-300 active:scale-90 transition-all shrink-0"><X size={11} /></button>
                 </div>
               ))}
             </div>
           )}
           <AddBtn label="Agregar repuesto" onClick={() => setSheet({ tipo: "repuesto", editIdx: null, editData: null })} />
-        </div>
+          <StepActions step="repuestos" onPrevious={moveToPreviousStep} onNext={moveToNextStep} />
+        </AccordionSection>
 
-        {/* INSUMOS + FLETES (2 columnas) */}
-        <div className="grid grid-cols-2 gap-3">
+        <AccordionSection
+          title="Insumos y fletes"
+          number="3"
+          complete={insumos.length > 0 || fletes.length > 0}
+          active={activeStep === "insumos_fletes"}
+          summary={formatMoney(totalIns + totalFle)}
+          onToggle={() => setActiveStep("insumos_fletes")}
+        >
+          <div className="grid grid-cols-2 gap-3">
           {/* Insumos */}
-          <div className="rounded-[2rem] border border-white/10 bg-zinc-900/80 p-4">
+          <div className="border-r border-white/10 pr-3">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[9px] font-black uppercase tracking-widest text-zinc-200">Insumos</p>
               <p className="text-xs font-black text-orange-400">{formatMoney(totalIns)}</p>
@@ -601,11 +892,12 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
                   <div className="flex-1 min-w-0">
                     <p className="text-[9px] font-black text-zinc-300 truncate leading-tight">{item.nombre}</p>
                     <p className="text-[8px] text-zinc-600">x{item.cantidad || 1}</p>
+                    {taskNameForMaterial(item) && <p className="mt-0.5 text-[7px] font-black uppercase tracking-widest text-cyan-500">{taskNameForMaterial(item)}</p>}
                   </div>
                   <p className="text-[9px] font-black text-orange-400 shrink-0">{formatMoney((item.monto || 0) * (item.cantidad || 1))}</p>
                   <div className="flex gap-0.5 shrink-0">
-                    <button onClick={() => setSheet({ tipo: "insumo", editIdx: i, editData: item })} className="p-1 text-zinc-600 active:text-orange-300"><EditIcon /></button>
-                    <button onClick={() => del("insumos", i)} className="p-1 text-zinc-600 active:text-red-300"><X size={10} /></button>
+                    <button aria-label={`Editar insumo ${item.nombre}`} onClick={() => setSheet({ tipo: "insumo", editIdx: i, editData: item })} className="p-1 text-zinc-600 active:text-orange-300"><EditIcon /></button>
+                    <button aria-label={`Eliminar insumo ${item.nombre}`} onClick={() => del("insumos", i)} className="p-1 text-zinc-600 active:text-red-300"><X size={10} /></button>
                   </div>
                 </div>
               ))
@@ -617,7 +909,7 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
           </div>
 
           {/* Fletes */}
-          <div className="rounded-[2rem] border border-white/10 bg-zinc-900/80 p-4">
+          <div className="pl-1">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[9px] font-black uppercase tracking-widest text-zinc-200">Fletes</p>
               <p className="text-xs font-black text-purple-400">{formatMoney(totalFle)}</p>
@@ -629,8 +921,8 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
                   <p className="flex-1 text-[9px] font-black text-zinc-300 truncate min-w-0 leading-tight">{item.nombre || item.descripcion}</p>
                   <p className="text-[9px] font-black text-purple-400 shrink-0">{formatMoney(item.monto || 0)}</p>
                   <div className="flex gap-0.5 shrink-0">
-                    <button onClick={() => setSheet({ tipo: "flete", editIdx: i, editData: item })} className="p-1 text-zinc-600 active:text-orange-300"><EditIcon /></button>
-                    <button onClick={() => del("fletes", i)} className="p-1 text-zinc-600 active:text-red-300"><X size={10} /></button>
+                    <button aria-label={`Editar flete ${item.nombre || item.descripcion}`} onClick={() => setSheet({ tipo: "flete", editIdx: i, editData: item })} className="p-1 text-zinc-600 active:text-orange-300"><EditIcon /></button>
+                    <button aria-label={`Eliminar flete ${item.nombre || item.descripcion}`} onClick={() => del("fletes", i)} className="p-1 text-zinc-600 active:text-red-300"><X size={10} /></button>
                   </div>
                 </div>
               ))
@@ -640,13 +932,20 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
               <Plus size={10} /> Agregar
             </button>
           </div>
-        </div>
+          </div>
+          <StepActions step="insumos_fletes" onPrevious={moveToPreviousStep} onNext={moveToNextStep} />
+        </AccordionSection>
 
-        {/* NOTAS */}
-        <div className="rounded-[2rem] border border-white/10 bg-zinc-900/80 p-4">
+        <AccordionSection
+          title="Notas y proximo control"
+          number="4"
+          complete={Boolean(observaciones.trim() || order.proximoControl)}
+          active={activeStep === "proximo_control"}
+          onToggle={() => setActiveStep("proximo_control")}
+        >
           <div className="flex items-center gap-2 mb-3">
             <Bell size={13} className="text-yellow-500" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-200">Notas / próximo service</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-zinc-200">Notas para la proxima visita</p>
           </div>
           <textarea
             value={observaciones}
@@ -656,11 +955,47 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
             className="w-full rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-3 font-bold text-sm text-white outline-none placeholder:text-zinc-600 focus:border-orange-500 transition-colors resize-none"
             placeholder="Ej: Revisar transmisión en 2000 km, verificar frenos..."
           />
-        </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-2 block text-[9px] font-black uppercase tracking-widest text-zinc-500">Tipo</label>
+              <select value={proximoTipo} onChange={(event) => { setProximoTipo(event.target.value); setProximoDescripcion(TIPOS_SERVICIO[event.target.value] || ""); }}
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-3 text-[10px] font-black text-white outline-none focus:border-orange-500">
+                {Object.entries(TIPOS_SERVICIO).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="mb-2 block text-[9px] font-black uppercase tracking-widest text-zinc-500">Intervalo</label>
+              <div className="flex gap-2">
+                <input value={proximoValor} onChange={(event) => setProximoValor(event.target.value.replace(/\D/g, ""))}
+                  inputMode="numeric" className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-3 text-center text-xs font-black text-white outline-none focus:border-orange-500" placeholder="2500" />
+                <select value={proximoUnidad} onChange={(event) => setProximoUnidad(event.target.value)}
+                  className="rounded-xl border border-zinc-700 bg-zinc-800 px-2 text-[10px] font-black text-white outline-none focus:border-orange-500">
+                  <option value="km">km</option>
+                  <option value="dias">dias</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <input value={proximoDescripcion} onChange={(event) => setProximoDescripcion(event.target.value)}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-3 text-xs font-bold text-white outline-none focus:border-orange-500"
+            placeholder="Descripcion del proximo control" />
+          <button type="button" onClick={guardarProximoControl}
+            className="w-full rounded-2xl border border-yellow-500/30 bg-yellow-500/10 py-3 text-[9px] font-black uppercase tracking-widest text-yellow-300">
+            Guardar proximo control
+          </button>
+          <StepActions step="proximo_control" onPrevious={moveToPreviousStep} onNext={moveToNextStep} />
+        </AccordionSection>
 
-        {/* Resumen de totales */}
-        {total > 0 && (
-          <div className="rounded-[2rem] border border-orange-500/20 bg-orange-500/5 p-4 space-y-2">
+        <AccordionSection
+          title="Resumen"
+          number="5"
+          complete={total > 0}
+          active={activeStep === "resumen"}
+          summary={formatMoney(total)}
+          onToggle={() => setActiveStep("resumen")}
+        >
+          {total > 0 ? (
+          <div className="space-y-2 rounded-2xl border border-orange-500/20 bg-orange-500/5 p-4">
             <div className="flex items-center justify-between">
               <p className="text-[10px] font-black uppercase tracking-widest text-orange-300">Total calculado</p>
               <p className="text-xl font-black text-orange-300">{formatMoney(total)}</p>
@@ -672,7 +1007,9 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
               {totalFle > 0 && <div className="flex justify-between text-[9px] font-bold text-zinc-500"><span>Fletes</span><span>{formatMoney(totalFle)}</span></div>}
             </div>
           </div>
-        )}
+          ) : <p className="py-3 text-center text-[10px] font-bold text-zinc-600">Todavia no hay importes cargados.</p>}
+          <StepActions step="resumen" onPrevious={moveToPreviousStep} onNext={moveToNextStep} />
+        </AccordionSection>
 
       </div>
 
@@ -694,7 +1031,7 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
       </div>
 
       {/* Sheets */}
-      {sheet?.tipo === "trabajo"  && <TrabajoSheet  config={config} bike={bike} bikes={bikes} catalogData={catalogData} orders={orders} editData={sheet.editData} editIdx={sheet.editIdx} onSave={handleSaveTrabajo}  onClose={closeSheet} />}
+      {sheet?.tipo === "trabajo"  && <TrabajoSheet  config={config} bike={bike} bikes={bikes} catalogData={catalogData} orders={orders} currentOrder={order} editData={sheet.editData} editIdx={sheet.editIdx} onSave={handleSaveTrabajo} onPrepareRecovery={prepareRecovery} onApplyRecovery={handleApplyRecovery} onClose={closeSheet} />}
       {sheet?.tipo === "repuesto" && <RepuestoSheet bike={bike} editData={sheet.editData} editIdx={sheet.editIdx} onSave={handleSaveRepuesto} onClose={closeSheet} />}
       {sheet?.tipo === "insumo"   && <InsumoSheet   bike={bike} editData={sheet.editData} editIdx={sheet.editIdx} onSave={handleSaveInsumo}  onClose={closeSheet} />}
       {sheet?.tipo === "flete"    && <FleteSheet    editData={sheet.editData} editIdx={sheet.editIdx} onSave={handleSaveFlete}   onClose={closeSheet} />}
