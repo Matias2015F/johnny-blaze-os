@@ -10,7 +10,12 @@
     "dev": "vite",
     "build": "vite build",
     "check:plans": "node scripts/check-plan-contract.cjs",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "emulators:start": "npx firebase-tools emulators:start --only auth,firestore --project demo-motogestion",
+    "seed:emulator": "node scripts/emulator/seed.cjs",
+    "dev:emulator": "vite --mode emulator",
+    "auth-smoke-test": "node scripts/emulator/smoke-test.cjs",
+    "emulators:stop": "npx firebase-tools emulators:stop"
   },
   "dependencies": {
     "firebase": "^10.7.1",
