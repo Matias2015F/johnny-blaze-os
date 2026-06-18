@@ -52,6 +52,11 @@ const checks = [
       'abrirConfirmacionPago("base")',
       'abrirConfirmacionPago("pro")',
       'abrirConfirmacionPago("full")',
+    ],
+  },
+  {
+    file: "src/views/AdminPanelView.jsx",
+    required: [
       'Activar Anual',
       'full: "Anual"',
     ],
