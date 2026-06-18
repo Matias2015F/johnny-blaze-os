@@ -6,7 +6,7 @@ const { chromium } = require("playwright");
 const path = require("path");
 const fs = require("fs");
 
-const URL = "https://johnny-blaze-os.vercel.app";
+const URL = "https://beta.motogestion.ar";
 const EMAIL = "demo@motogestion.ar";
 const PASSWORD = "MotoDemo2026!";
 const SCREENSHOTS = path.join(__dirname, "..", "e2e", "screenshots-gp");

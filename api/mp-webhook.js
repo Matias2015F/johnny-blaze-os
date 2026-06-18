@@ -239,23 +239,12 @@ module.exports = async function handler(req, res) {
       updateData.requestedPlanKey = FieldValue.delete();
     }
 
-    await userRef.set(updateData, { merge: true });
-
-    // Mark retention offer as used (best-effort, does not affect activation).
-    if (offerToken) {
-      try {
-        const offerRef = userRef.collection("retentionOffers").doc(String(offerToken));
-        const offerSnap = await offerRef.get();
-        if (offerSnap.exists && offerSnap.data()?.used !== true) {
-          await offerRef.set({ used: true, usedAt: Date.now(), paymentId: String(paymentId) }, { merge: true });
-        }
-      } catch (e) {
-        console.warn("[mp-webhook] no se pudo marcar oferta usada:", e.message);
-      }
-    }
-
-    // Registrar en historial de facturas
-    await userRef.collection("billingInvoices").add({
+    // Atomic batch: usuarios activation + billingInvoice in a single commit.
+    // Prevents double-extension of activoHasta if set() succeeds but add() fails
+    // and MP retries the webhook — the dedup check would miss the invoice and
+    // re-process, extending activoHasta a second time.
+    const invoiceRef = userRef.collection("billingInvoices").doc();
+    const invoiceData = {
       uid,
       paymentId: String(paymentId),
       provider: "mercadopago",
@@ -273,9 +262,26 @@ module.exports = async function handler(req, res) {
       paidAt: Date.now(),
       activoHasta: nuevoActivoHasta,
       billingDays,
-    });
+    };
+    const writeBatch = db.batch();
+    writeBatch.set(userRef, updateData, { merge: true });
+    writeBatch.set(invoiceRef, invoiceData);
+    await writeBatch.commit();
 
-    // Register billing event for admin reconciliation
+    // Mark retention offer as used (best-effort, does not affect activation).
+    if (offerToken) {
+      try {
+        const offerRef = userRef.collection("retentionOffers").doc(String(offerToken));
+        const offerSnap = await offerRef.get();
+        if (offerSnap.exists && offerSnap.data()?.used !== true) {
+          await offerRef.set({ used: true, usedAt: Date.now(), paymentId: String(paymentId) }, { merge: true });
+        }
+      } catch (e) {
+        console.warn("[mp-webhook] no se pudo marcar oferta usada:", e.message);
+      }
+    }
+
+    // Register billing event for admin reconciliation (best-effort)
     db.collection("billingEvents").add({ type: "payment_approved", uid, paymentId: String(paymentId), plan: nuevoPlan, monto: Number(payment.transaction_amount || 0), activoHasta: nuevoActivoHasta, createdAt: FieldValue.serverTimestamp() }).catch(() => {});
 
     // Emails — wrapped so failure does not revert activation
