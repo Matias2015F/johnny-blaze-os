@@ -79,6 +79,7 @@ function SectionTitle({ children }) {
 }
 
 import { PantallaAdmin, PLAN_LABELS } from "./AdminPanelView.jsx";
+import { isAdminSurface } from "../lib/surfaces.js";
 function PantallaResumen({ orders, caja }) {
   const mesActual = new Date().toISOString().slice(0, 7);
   const ordenesMes = useMemo(() => orders.filter(o => (o.fechaIngreso || "").startsWith(mesActual)), [orders, mesActual]);
@@ -2365,8 +2366,10 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
   const scrollRef = useRef(null);
   const caja = useCollection("caja");
   const canSeeAdminTab =
-    PLATFORM_ADMIN_EMAILS.includes((auth.currentUser?.email || "").toLowerCase()) ||
-    PLATFORM_ADMIN_UIDS.includes(auth.currentUser?.uid || "");
+    isAdminSurface() && (
+      PLATFORM_ADMIN_EMAILS.includes((auth.currentUser?.email || "").toLowerCase()) ||
+      PLATFORM_ADMIN_UIDS.includes(auth.currentUser?.uid || "")
+    );
   const visibleTabs = canSeeAdminTab ? TABS : TABS.filter((tab) => tab.id !== "admin");
 
   useEffect(() => {

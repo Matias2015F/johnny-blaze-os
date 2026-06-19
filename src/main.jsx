@@ -1,17 +1,36 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import VerifyReceiptView from "./views/VerifyReceiptView.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import "./index.css";
 import { APP_BUILD } from "./generated/appVersion.js";
+import { isAdminSurface } from "./lib/surfaces.js";
+
+const AdminApp = lazy(() => import("./AdminApp.jsx"));
 
 const verifyMatch = window.location.pathname.match(/^\/verificar\/([a-zA-Z0-9_-]{10,})/);
 const VERIFY_TOKEN = verifyMatch ? verifyMatch[1] : null;
 
+function AdminFallback() {
+  return (
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Cargando panel...</p>
+    </div>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <ErrorBoundary>
-    {VERIFY_TOKEN ? <VerifyReceiptView token={VERIFY_TOKEN} /> : <App />}
+    {isAdminSurface() ? (
+      <Suspense fallback={<AdminFallback />}>
+        <AdminApp />
+      </Suspense>
+    ) : VERIFY_TOKEN ? (
+      <VerifyReceiptView token={VERIFY_TOKEN} />
+    ) : (
+      <App />
+    )}
   </ErrorBoundary>
 );
 
