@@ -39,6 +39,8 @@ export default function LoginScreen({ redirectTo = "" }) {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState({ text: "", ok: false });
+  const [termsOk, setTermsOk] = useState(false);
+  const [privacyOk, setPrivacyOk] = useState(false);
 
   const err = (text) => setMsg({ text, ok: false });
   const ok = (text) => setMsg({ text, ok: true });
@@ -68,6 +70,7 @@ export default function LoginScreen({ redirectTo = "" }) {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !password) return err("Completá correo y contraseña.");
     if (password.length < 6) return err("La contraseña debe tener al menos 6 caracteres.");
+    if (modo === "registro" && (!termsOk || !privacyOk)) return err("Debés aceptar los Términos y la Política de Privacidad para crear una cuenta.");
 
     setMsg({ text: "", ok: false });
     setLoading(true);
@@ -202,6 +205,31 @@ export default function LoginScreen({ redirectTo = "" }) {
           </button>
         </div>
 
+        {modo === "registro" && (
+          <div className="space-y-2.5">
+            <ConsentCheck
+              id="terms"
+              checked={termsOk}
+              onChange={(e) => setTermsOk(e.target.checked)}
+            >
+              Acepto los{" "}
+              <a href="https://motogestion.ar/terminos" target="_blank" rel="noopener noreferrer" className="text-orange-400 underline">
+                Términos y Condiciones
+              </a>
+            </ConsentCheck>
+            <ConsentCheck
+              id="privacy"
+              checked={privacyOk}
+              onChange={(e) => setPrivacyOk(e.target.checked)}
+            >
+              Acepto la{" "}
+              <a href="https://motogestion.ar/privacidad" target="_blank" rel="noopener noreferrer" className="text-orange-400 underline">
+                Política de Privacidad
+              </a>
+            </ConsentCheck>
+          </div>
+        )}
+
         <MsgLine msg={msg} />
 
         <PrimaryButton onClick={handleAuth} disabled={loading}>
@@ -312,5 +340,20 @@ function MsgLine({ msg }) {
     <p className={`rounded-2xl px-4 py-3 text-xs font-bold leading-relaxed ${msg.ok ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
       {msg.text}
     </p>
+  );
+}
+
+function ConsentCheck({ id, checked, onChange, children }) {
+  return (
+    <label htmlFor={id} className="flex items-start gap-3 cursor-pointer">
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="mt-0.5 h-4 w-4 shrink-0 accent-orange-600 cursor-pointer"
+      />
+      <span className="text-xs leading-relaxed text-zinc-400">{children}</span>
+    </label>
   );
 }
