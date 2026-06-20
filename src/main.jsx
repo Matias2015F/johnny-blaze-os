@@ -5,12 +5,27 @@ import VerifyReceiptView from "./views/VerifyReceiptView.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import "./index.css";
 import { APP_BUILD } from "./generated/appVersion.js";
+import { applyRemoteUpdate, fetchRemoteVersion, isNewerBuild } from "./lib/appUpdate.js";
 import { isAdminSurface } from "./lib/surfaces.js";
 
 const AdminApp = lazy(() => import("./AdminApp.jsx"));
 
 const verifyMatch = window.location.pathname.match(/^\/verificar\/([a-zA-Z0-9_-]{10,})/);
 const VERIFY_TOKEN = verifyMatch ? verifyMatch[1] : null;
+
+let updateCheckInFlight = false;
+async function checkAndApplyRemoteUpdate() {
+  if (updateCheckInFlight) return;
+  updateCheckInFlight = true;
+  try {
+    const remoteBuild = await fetchRemoteVersion();
+    if (isNewerBuild(APP_BUILD, remoteBuild)) await applyRemoteUpdate(remoteBuild);
+  } catch (e) {
+    console.warn("[app-update]", e.message);
+  } finally {
+    updateCheckInFlight = false;
+  }
+}
 
 function AdminFallback() {
   return (
@@ -38,7 +53,10 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
       .register(`/sw.js?v=${encodeURIComponent(APP_BUILD.version)}`, { updateViaCache: "none" })
-      .then((registration) => registration.update().catch(() => null))
+      .then((registration) => {
+        registration.update().catch(() => null);
+        checkAndApplyRemoteUpdate();
+      })
       .catch((error) => {
         console.error("No se pudo registrar el service worker", error);
       });
@@ -48,3 +66,12 @@ if ("serviceWorker" in navigator) {
     });
   });
 }
+
+window.addEventListener("focus", checkAndApplyRemoteUpdate);
+window.addEventListener("online", checkAndApplyRemoteUpdate);
+window.addEventListener("visibilitychange", () => {
+  if (!document.hidden) checkAndApplyRemoteUpdate();
+});
+window.setInterval(() => {
+  if (!document.hidden) checkAndApplyRemoteUpdate();
+}, 5 * 60 * 1000);

@@ -1,5 +1,5 @@
 import { db } from "../firebase.js";
-import { addDoc, collection, doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, getDocFromServer, setDoc, serverTimestamp } from "firebase/firestore";
 
 export const SAAS_COLLECTIONS = {
   usuarios: "usuarios",
@@ -224,6 +224,19 @@ export async function leerUsuarioSaas(uid) {
   if (newSnap.exists()) return normalizeSaasUser(newSnap.data(), { uid });
 
   return null;
+}
+
+export async function leerUsuarioSaasRawDesdeServidor(uid) {
+  if (!uid) return null;
+  const ref = doc(db, SAAS_COLLECTIONS.usuarios, uid);
+  const snap = await getDocFromServer(ref);
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
+}
+
+export async function leerUsuarioSaasDesdeServidor(uid) {
+  const raw = await leerUsuarioSaasRawDesdeServidor(uid);
+  return raw ? normalizeSaasUser(raw, { uid }) : null;
 }
 
 export async function ensureSaasUserProfile(authUser, extras = {}) {

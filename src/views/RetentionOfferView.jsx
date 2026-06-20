@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { auth } from "../firebase.js";
-import { leerAdminSettings } from "../services/saasService.js";
+import { leerAdminSettings, leerUsuarioSaasRawDesdeServidor, resolveSaasAccess } from "../services/saasService.js";
 import { formatMoney } from "../utils/format.js";
 
 export default function RetentionOfferView({ token }) {
-  const [estado, setEstado] = useState("cargando"); // cargando | login | ok | error
+  const [estado, setEstado] = useState("cargando"); // cargando | login | ok | activa | error
   const [err, setErr] = useState("");
   const [offer, setOffer] = useState(null);
   const [settings, setSettings] = useState(null);
   const [sending, setSending] = useState(false);
+  const [suscripcionActiva, setSuscripcionActiva] = useState(false);
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(async (u) => {
@@ -33,6 +34,17 @@ export default function RetentionOfferView({ token }) {
         setSettings(s);
         setEstado("ok");
       } catch (e) {
+        try {
+          const freshAccount = await leerUsuarioSaasRawDesdeServidor(u.uid);
+          const access = resolveSaasAccess(freshAccount);
+          if (access.acceso === true) {
+            setErr("Tu suscripción ya está activa. La oferta anterior quedó cerrada.");
+            setEstado("activa");
+            return;
+          }
+        } catch (refreshError) {
+          console.warn("[retention-offer] No se pudo verificar suscripción vigente:", refreshError.message);
+        }
         setErr(e.message || "No se pudo cargar la oferta");
         setEstado("error");
       }
@@ -78,6 +90,20 @@ export default function RetentionOfferView({ token }) {
           <p className="text-[10px] text-zinc-500">
             Si no encontrás el correo, revisá <span className="font-bold">Spam</span> o <span className="font-bold">Promociones</span>.
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (estado === "activa") {
+    return (
+      <div className="min-h-screen bg-[#0b0b0b] flex items-center justify-center p-6">
+        <div className="w-full max-w-sm rounded-[2rem] border border-emerald-900/40 bg-zinc-950 p-6 text-white space-y-3">
+          <p className="text-sm font-black uppercase tracking-widest text-emerald-400">Suscripción activa</p>
+          <p className="text-sm font-bold text-zinc-300">{err || "Tu cuenta ya está activa."}</p>
+          <a href="https://app.motogestion.ar" className="inline-flex w-full items-center justify-center rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white">
+            Entrar a MotoGestión
+          </a>
         </div>
       </div>
     );

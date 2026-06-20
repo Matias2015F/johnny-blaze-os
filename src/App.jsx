@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
 import { shouldAutoBackup, exportBackup } from "./lib/backup.js";
 import { DEFAULT_ADMIN_SETTINGS, ensureAccountProfile } from "./lib/telemetry.js";
 import { leerAdminSettings, normalizeDateMs, resolveAccountAccess } from "./services/accessService.js";
+import { leerUsuarioSaasRawDesdeServidor } from "./services/saasService.js";
 import { LS } from "./lib/storage.js";
 import { CONFIG_DEFAULT } from "./lib/constants.js";
 import { abrirEnlaceExterno } from "./lib/whatsappService.js";
@@ -249,6 +250,7 @@ export default function App() {
   const [settings, setSettings] = useState(DEFAULT_ADMIN_SETTINGS);
   const [pagoResult, setPagoResult] = useState(null);
   const autoBackupDone = useRef(false);
+  const lastServerAccountAtRef = useRef(0);
   const [dismissedBannerKey, setDismissedBannerKey] = useState("");
 
   const banner = useMemo(() => buildBannerData(account, settings), [account, settings]);
@@ -272,6 +274,70 @@ export default function App() {
     window.dispatchEvent(new CustomEvent("jbos-open-config"));
   };
 
+  const applyAccountData = useCallback((data, { source = "unknown" } = {}) => {
+    if (!data) return null;
+    const now = Date.now();
+    if (source === "server") lastServerAccountAtRef.current = now;
+    if (source === "cache" && lastServerAccountAtRef.current && now - lastServerAccountAtRef.current < 30000) {
+      return null;
+    }
+    setAccount(data);
+    const access = resolveAccountAccess(data);
+    setEstado(access.acceso === true ? "ok" : access.acceso === "lectura" ? "lectura" : "bloqueado");
+    return access;
+  }, []);
+
+  const refreshAccountFromServer = useCallback(async () => {
+    const user = auth.currentUser;
+    if (!user?.uid) return null;
+    const freshAccount = await leerUsuarioSaasRawDesdeServidor(user.uid);
+    if (!freshAccount) return null;
+    const access = applyAccountData(freshAccount, { source: "server" });
+    return { account: freshAccount, access };
+  }, [applyAccountData]);
+
+  useEffect(() => {
+    const refreshIfVisible = () => {
+      if (document.visibilityState && document.visibilityState !== "visible") return;
+      refreshAccountFromServer().catch((e) => console.warn("[subscription-sync]", e.message));
+    };
+    window.addEventListener("focus", refreshIfVisible);
+    window.addEventListener("online", refreshIfVisible);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    return () => {
+      window.removeEventListener("focus", refreshIfVisible);
+      window.removeEventListener("online", refreshIfVisible);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+    };
+  }, [refreshAccountFromServer]);
+
+  useEffect(() => {
+    if (estado === "login" || estado === "loading") return undefined;
+    let attempts = 0;
+    const run = () => {
+      attempts += 1;
+      refreshAccountFromServer().catch((e) => console.warn("[subscription-sync]", e.message));
+    };
+    run();
+    const id = window.setInterval(() => {
+      if (attempts >= 6) { window.clearInterval(id); return; }
+      run();
+    }, 10000);
+    return () => window.clearInterval(id);
+  }, [estado, refreshAccountFromServer]);
+
+  useEffect(() => {
+    if (pagoResult !== "ok" && pagoResult !== "pending") return undefined;
+    let attempts = 0;
+    const id = window.setInterval(async () => {
+      attempts += 1;
+      const result = await refreshAccountFromServer().catch(() => null);
+      if (result?.access?.acceso === true || attempts >= 24) window.clearInterval(id);
+    }, 5000);
+    refreshAccountFromServer().catch((e) => console.warn("[subscription-sync]", e.message));
+    return () => window.clearInterval(id);
+  }, [pagoResult, refreshAccountFromServer]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const pago = params.get("pago");
@@ -279,7 +345,7 @@ export default function App() {
     window.history.replaceState({}, "", window.location.pathname);
     setPagoResult(pago);
     if (pago !== "ok") setTimeout(() => setPagoResult(null), 5000);
-  }, []);
+  }, [refreshAccountFromServer]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -325,17 +391,15 @@ export default function App() {
 
       const ref = doc(db, "usuarios", u.uid);
       if (unsubAccount) unsubAccount();
-      unsubAccount = onSnapshot(ref, async (snap) => {
+      unsubAccount = onSnapshot(ref, { includeMetadataChanges: true }, async (snap) => {
         if (!snap.exists()) {
-          setEstado("loading");
+          if (!snap.metadata.fromCache) setEstado("loading");
           return;
         }
-
         const data = { id: snap.id, ...snap.data() };
-        setAccount(data);
-        const access = resolveAccountAccess(data);
-        setEstado(access.acceso === true ? "ok" : access.acceso === "lectura" ? "lectura" : "bloqueado");
+        applyAccountData(data, { source: snap.metadata.fromCache ? "cache" : "server" });
       });
+      refreshAccountFromServer().catch((e) => console.warn("[subscription-sync]", e.message));
     });
 
     return () => {
@@ -343,7 +407,8 @@ export default function App() {
       unsubAuth();
       if (unsubAccount) unsubAccount();
     };
-  }, []);
+  }, [applyAccountData, refreshAccountFromServer]);
+
 
   const matchVerify = window.location.pathname.match(/^\/verificar\/([^/]+)$/);
   if (matchVerify) {
