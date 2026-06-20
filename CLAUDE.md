@@ -389,6 +389,7 @@ api/                   — Vercel serverless (CommonJS). LÍMITE: 12 funciones s
   _ratelimit.js        — applyRateLimit(req, res, "nombre") (helper, no cuenta)
   check-expirations.js — cron diario 10:00 UTC
   mp-webhook.js        — webhook MercadoPago HMAC-SHA256
+  mp-reconcile.js      — conciliación manual de pagos MP (no tiene URL pública en vercel.json, invocado directamente)
   mp-create-preference.js — preferencias MP + ?mode=diagnose
   send-welcome.js      — email bienvenida + ?mode=password-reset
   verify-document.js   — ?mode=public-prices|public-workshops|publish-workshop|lead
@@ -590,3 +591,16 @@ Antes de cualquier feature nueva:
 Directivas existentes en `.clou/directives/`: `saas-access.md`, `ratings.md`, `mp-create-preference.md`, `mp-webhook.md`.
 
 > Reglas de cambio seguro detalladas: ver [DIRECTIVES.md](DIRECTIVES.md)
+
+---
+
+## Radar de arquitectura — pendiente próximo ciclo
+
+Items conocidos, intencionalmente no tocados hoy. No son bugs. Son deuda de documentación o mejora planificada.
+
+| Item | Estado | Acción futura | Decisión |
+|---|---|---|---|
+| `api/mp-reconcile.js` | Activo en producción, documentado en mapa de API | Agregar URL pública en `vercel.json` si se expone, o dejarlo como función interna | Por diseño: conciliación manual, sin alias público |
+| `CRON_SECRET` solo en `motogestion-app` | Correcto por diseño | Documentar que `motogestion-admin` no corre cron | El cron de expiraciones (`check-expirations.js`) corre sobre el proyecto base, no sobre admin |
+| `e2e/screenshots-ci/` y `e2e/screenshots-gp/` | Agregados a `.gitignore` en `c503b8c` | Verificar que no queden rastreados si ya fueron staged antes | Carpetas de pruebas locales, no van a producción |
+| Auditoría de acciones críticas (CONSEJO03 P1) | `DECIDED`, no `IMPLEMENTED` | Próximo ciclo: loguear en Firestore uid + fecha + hora + acción + IP para creación/modificación/eliminación/pagos | Prioridad P1 post-validación comercial |
