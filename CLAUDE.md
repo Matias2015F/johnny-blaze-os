@@ -119,12 +119,16 @@ Ningún cambio se considera completo hasta haber ejecutado estos 10 pasos en ord
 
 ### Protocolo de skills — MotoGestión (Plan de Blindaje Operativo)
 
+**Activación conjunta — palabra clave `SKILL C+B`:**
+
+Cuando el usuario escribe `SKILL C+B` (o los skills están activos por contexto), se ejecutan simultáneamente la Opción C y la Opción B. No son opcionales ni separables. `SKILL C+B` es la señal de que el protocolo está corriendo.
+
 **Regla del asistente (Opción C) — OBLIGATORIO:**
 
 Antes de tocar cualquier archivo, el asistente DEBE declarar explícitamente qué skills va a correr y en qué orden. Sin excepción. Formato obligatorio:
 
 ```
-PLAN DE SKILLS:
+SKILL C+B — PLAN DE SKILLS:
 - /respaldo — [motivo]
 - /seguro — [motivo]
 - /revision — [motivo]
@@ -138,11 +142,25 @@ Si el asistente toca un archivo sin haber declarado este bloque primero, es una 
 El usuario incluye el skill directamente en la instrucción:
 
 ```
-"Corré /respaldo y modificá el flujo del PDF"
-"Antes de tocar App.jsx: /seguro, después implementá el cambio"
+"SKILL C+B — modificá el flujo del PDF"
+"SKILL C+B — antes de tocar App.jsx implementá el cambio"
 ```
 
-Si el usuario no menciona skills, el asistente igualmente declara el plan (Opción C) antes de proceder.
+Si el usuario no escribe `SKILL C+B` pero da una instrucción de código, el asistente igualmente ejecuta el bloque de declaración (Opción C) antes de proceder.
+
+**Auditoría de estado previa a la tarea (CONSEJO04) — se activa con SKILL C+B:**
+
+Antes de escribir código, el asistente verifica el estado real de cada feature o cambio usando estos 5 estados:
+
+```
+DECIDED            — existe la decisión/directiva/doc
+IMPLEMENTED        — código escrito en el dominio correcto
+CONNECTED_TO_UI    — la pantalla lo llama y lo muestra
+ENFORCED_RUNTIME   — activo en producción y verificado
+DEPLOYED           — en app.motogestion.ar/version.json
+```
+
+Ningún estado implica el siguiente. "Hay un doc que lo dice" no es IMPLEMENTED. "Compiló" no es DEPLOYED. El asistente debe mapear el estado real antes de decir que algo "ya está hecho". Esto previene confundir worktrees, repos locales, builds y deploys de Vercel.
 
 **Mapa de triggers obligatorios:**
 
