@@ -9,7 +9,6 @@ export default function RetentionOfferView({ token }) {
   const [offer, setOffer] = useState(null);
   const [settings, setSettings] = useState(null);
   const [sending, setSending] = useState(false);
-  const [suscripcionActiva, setSuscripcionActiva] = useState(false);
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(async (u) => {

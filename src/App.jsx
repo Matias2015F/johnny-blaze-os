@@ -345,7 +345,7 @@ export default function App() {
     window.history.replaceState({}, "", window.location.pathname);
     setPagoResult(pago);
     if (pago !== "ok") setTimeout(() => setPagoResult(null), 5000);
-  }, [refreshAccountFromServer]);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
