@@ -4,9 +4,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Filtro MotoGestión — Obligatorio antes de cualquier tarea
+
+Antes de escribir, modificar o agregar código, pasar por estos 3 filtros en orden:
+
+**S1 — Golden Path:** ¿Esto ayuda al mecánico a recibir, diagnosticar, presupuestar, cobrar, entregar o documentar?
+Si NO → no es prioridad. Posponer.
+
+**S2 — Protección del Mecánico:** ¿Qué pérdida evita? (dinero, tiempo, conflictos, garantías, olvidos, responsabilidad legal)
+Si ninguna → posponer.
+
+**S3 — Evidencia Jurídica:** ¿El resultado es demostrable en 6 meses? ¿Queda en Firestore?
+Si NO → agregar evidencia antes que UI.
+
+Aplicar también al cerrar cada tarea:
+**S5 — Persistencia:** Crear → Guardar → F5 → Recuperar → Otro dispositivo. Si falla, no está terminado.
+
+---
+
 ## Propósito
 
 PWA de gestión operativa para taller mecánico de motos (MotoGestión). Usuario real: mecánico con manos sucias, celular, apuro. Velocidad de uso y ergonomía táctil importan más que la perfección arquitectural.
+
+Objetivo actual: 1 taller real usando el sistema diariamente sin pérdida de datos. Después: 10 talleres. Después: escalar.
 
 ---
 
@@ -97,14 +117,39 @@ Ningún cambio se considera completo hasta haber ejecutado estos 10 pasos en ord
 
 **Si algún paso no se puede completar, la tarea NO está terminada.** No declarar "listo" sin commit + push + deploy + verificación.
 
-### Protocolo de skills — MotoGestión
+### Protocolo de skills — MotoGestión (Plan de Blindaje Operativo)
 
-Antes de cualquier tarea en este proyecto, usar proactivamente los skills del proyecto sin que el usuario los pida:
+**Regla del asistente (Opción C) — OBLIGATORIO:**
 
-- `/respaldo` — antes de cambios grandes
-- `/seguro` — antes de tocar código sensible (auth, pagos, storage)
-- `/revision` — antes de cualquier commit (build, lint, archivos tocados)
-- `/deploy` — para gestionar deploys, logs y rollback en Vercel
+Antes de tocar cualquier archivo, el asistente DEBE declarar explícitamente qué skills va a correr y en qué orden. Sin excepción. Formato obligatorio:
+
+```
+PLAN DE SKILLS:
+- /respaldo — [motivo]
+- /seguro — [motivo]
+- /revision — [motivo]
+[continúa con la tarea]
+```
+
+Si el asistente toca un archivo sin haber declarado este bloque primero, es una violación del protocolo. El usuario puede y debe interrumpir.
+
+**Hábito del fundador (Opción B):**
+
+El usuario incluye el skill directamente en la instrucción:
+
+```
+"Corré /respaldo y modificá el flujo del PDF"
+"Antes de tocar App.jsx: /seguro, después implementá el cambio"
+```
+
+Si el usuario no menciona skills, el asistente igualmente declara el plan (Opción C) antes de proceder.
+
+**Mapa de triggers obligatorios:**
+
+- `/respaldo` — antes de modificar cualquier archivo del Baseline de Oro, o antes de cambios que toquen 2+ archivos
+- `/seguro` — antes de tocar `LoginScreen.jsx`, `App.jsx`, `api/mp-*.js`, `api/cancel-plan.js`, `api/retention-offer.js`, `firestore.rules`, `saasService.js`
+- `/revision` — antes de cada `git commit` (build + lint + diff)
+- `/deploy` — para gestionar deploys, verificar version.json, y hacer rollback
 
 Los skills están definidos en `.clou/COMANDOS.md`. Leerlos al inicio de cada sesión.
 
