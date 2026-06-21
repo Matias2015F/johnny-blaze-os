@@ -1,3 +1,4 @@
+import "./firebase.js"; // initialize Firebase before any component mounts
 import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";

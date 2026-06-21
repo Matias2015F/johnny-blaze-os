@@ -24,7 +24,10 @@ if (!getApps().length) {
   if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT_B64 no está definida");
 
   const serviceAccount = JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
-  initializeApp({ credential: cert(serviceAccount) });
+  initializeApp({
+    credential: cert(serviceAccount),
+    storageBucket: "johnny-blaze-taller.firebasestorage.app",
+  });
 }
 
 // Extrae y verifica el Firebase ID Token del header Authorization: Bearer <token>.

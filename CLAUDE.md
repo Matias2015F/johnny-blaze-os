@@ -511,6 +511,7 @@ ratings.status:       "pendiente_validacion" | "aprobado" | "rechazado"
 | `/api/public-workshops` | `verify-document.js` | `public-workshops` |
 | `/api/publish-workshop` | `verify-document.js` | `publish-workshop` |
 | `/api/lead` | `verify-document.js` | `lead` |
+| `/api/download-receipt-pdf` | `verify-document.js` | `download-pdf` |
 
 **Autenticación:** todas las rutas usan `verifyIdToken(req)` de `_firebase-admin.js`, excepto `mp-webhook.js` (HMAC) y los modos públicos de `verify-document.js`.
 
@@ -591,6 +592,47 @@ Antes de cualquier feature nueva:
 Directivas existentes en `.clou/directives/`: `saas-access.md`, `ratings.md`, `mp-create-preference.md`, `mp-webhook.md`.
 
 > Reglas de cambio seguro detalladas: ver [DIRECTIVES.md](DIRECTIVES.md)
+
+---
+
+## /arquitectura-soberana — Protocolo de Aislamiento por Dominio
+
+**Comando:** `/arquitectura-soberana`
+
+**Propósito:** Garantizar que ninguna modificación altere la frontera de datos, UI o configuración entre los tres entornos del monorepo.
+
+**Freno de entrada obligatorio:** Ante cualquier solicitud de cambio, suspender y confirmar:
+
+```
+Filtro de Dominio Activo. Confirmar entorno:
+[1] App Usuario: app.motogestion.ar (operaciones del taller, mecánicos, órdenes)
+[2] App Administración: admin.motogestion.ar (suscripciones, control de pagos, métricas)
+[3] Landing Page: motogestion.ar (captación, red de confianza, pasarela del cliente)
+```
+
+**Reglas del skill:**
+1. Solo tocar archivos que pertenezcan al entorno elegido o a servicios globales compartidos aislados (`firebase.js`, helpers de `api/_*`)
+2. Si el entorno es [2] Admin: verificar que `firebase.js` se importe ANTES del mount de React en `main.jsx` (garantía de init)
+3. Verificar que variables de entorno Firebase estén en AMBOS proyectos Vercel (`motogestion-app` y `motogestion-admin`) antes de cualquier cambio que use el Admin SDK
+4. Bloquear importaciones cruzadas redundantes entre superficies
+
+**Proyectos Vercel por dominio:**
+
+| Dominio | Proyecto Vercel | Project ID |
+|---|---|---|
+| `app.motogestion.ar` | `motogestion-app` | `prj_X415e2TPGQsMXnjvfCBXqgh0m5Fn` |
+| `admin.motogestion.ar` | `motogestion-admin` | `prj_SMj9OfT4md9tZTvBHMfl7b2Ro9ZT` |
+| `motogestion.ar` | `motogestion-landing` | — |
+
+**Deploy por dominio:**
+
+```bash
+# App usuario (default)
+npx vercel --prod --scope matias2015fs-projects
+
+# Admin
+npx vercel --prod --scope matias2015fs-projects --project motogestion-admin
+```
 
 ---
 
