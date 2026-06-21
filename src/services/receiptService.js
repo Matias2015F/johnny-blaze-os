@@ -107,10 +107,11 @@ export async function crearPublicReceipt({ order, token, hash, numeroComprobante
         ? "diagnostico_cerrado"
         : "servicio_realizado",
     },
-    // PDF downloadable (optional). If not implemented yet, keep null and show guidance in the public portal.
     pdfUrl: null,
-    pdfStoragePath: null,
-    pdfGeneratedAt: null,
+    pdfStoragePath: null,       // set in P2 after PDF upload to Storage
+    pdfGeneratedAt: null,       // set in P2 after PDF upload to Storage
+    pdfDownloadUnlocked: false, // set to true by submit-rating after client rates (P3)
+    downloadRequiresRating: true,
     incentive: buildRatingIncentive(config),
   });
 
