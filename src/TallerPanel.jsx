@@ -12,6 +12,7 @@ import { ensureAccountProfile, trackEvent } from "./lib/telemetry.js";
 import { upsertClienteYMoto } from "./services/clienteMotoService.js";
 import { nextNumeroOT, nextNumeroPRE } from "./services/counterService.js";
 import { buildUsageSnapshot, canUseFreeResource, persistUsageSnapshot } from "./services/usageLimitService.js";
+import { logAction } from "./services/auditService.js";
 
 // HomeView se carga de forma eager � es la pantalla inicial
 import HomeView from "./views/HomeView.jsx";
@@ -359,6 +360,12 @@ export default function TallerPanel({ modoLectura = false, account = null }) {
       createdAt: Date.now(),
     });
 
+    logAction("orden_creada", orden.id, "trabajo", {
+      numeroTrabajo,
+      patente: payload.patente?.toUpperCase?.() || "",
+      marca: payload.marca || "",
+      modelo: payload.modelo || "",
+    }).catch(() => {});
     setSelectedOrderId(orden.id);
     setPrefillData(null);
     setView("detalleOrden");
@@ -423,6 +430,9 @@ export default function TallerPanel({ modoLectura = false, account = null }) {
       updatedAt: Date.now(),
     });
 
+    logAction("presupuesto_creado", pres.id, "presupuesto", {
+      numeroPresupuesto,
+    }).catch(() => {});
     setSelectedPresupuestoId(pres.id);
     setView("detallePresupuesto");
     showToast("Presupuesto creado");
@@ -477,6 +487,7 @@ export default function TallerPanel({ modoLectura = false, account = null }) {
 
   const handleEliminarPresupuesto = () => {
     if (!selectedPresupuestoId) return;
+    logAction("presupuesto_eliminado", selectedPresupuestoId, "presupuesto", {}).catch(() => {});
     LS.deleteDoc("presupuestos", selectedPresupuestoId);
     setSelectedPresupuestoId(null);
     setView("presupuestos");

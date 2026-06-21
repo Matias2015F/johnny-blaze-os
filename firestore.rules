@@ -155,5 +155,16 @@ service cloud.firestore {
       allow read: if isPlatformAdmin();
       allow write: if isPlatformAdmin();
     }
+
+    // Log de auditoria de acciones criticas del taller (append-only desde el cliente)
+    // El cliente puede crear sus propios registros pero no modificarlos ni eliminarlos.
+    match /criticalAuditLogs/{logId} {
+      allow create: if signedIn() &&
+        request.resource.data.uid == request.auth.uid;
+      allow read: if isPlatformAdmin() || (
+        signedIn() && resource.data.uid == request.auth.uid
+      );
+      allow update, delete: if isPlatformAdmin();
+    }
   }
 }

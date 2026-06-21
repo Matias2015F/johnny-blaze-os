@@ -6,6 +6,7 @@ import { calcularResultadosOrden } from "../lib/calc.js";
 import { trackEvent } from "../lib/telemetry.js";
 import { formatMoney } from "../utils/format.js";
 import { generateReceiptToken, crearPublicReceipt } from "../services/receiptVerificationService.js";
+import { logAction } from "../services/auditService.js";
 import { mensajeComprobanteVerificable, mensajeSolicitudCalificacion, normalizarTelWA } from "../lib/messages.js";
 
 const LABELS_GARANTIA = {
@@ -139,6 +140,11 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
         comprobante: numeroComprobante,
       },
     });
+    logAction("orden_cerrada", order.id, "trabajo", {
+      numeroComprobante,
+      total: totalOrden,
+      numeroTrabajo: order.numeroTrabajo || "",
+    }).catch(() => {});
 
     const kmEntrega = Number(order.kmEntrega) || 0;
     if (kmEntrega > 0 && order.bikeId) {

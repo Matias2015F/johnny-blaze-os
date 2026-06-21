@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { LS, generateId, obtenerOrden, actualizarOrden, crearEntradaHistorial, crearRecordatorioDeOrden } from "../lib/storage.js";
 import { hoyEstable } from "../lib/constants.js";
 import { formatMoney, formatMoneyParts } from "../utils/format.js";
+import { logAction } from "../services/auditService.js";
 
 const METODOS = [
   { value: "efectivo", label: "Efectivo" },
@@ -74,6 +75,11 @@ export default function PagoView({ ordenId, setView }) {
       metodo: metodoPago,
       comprobante,
     });
+    logAction("pago_registrado", ordenId, "trabajo", {
+      monto: recibido,
+      metodo: metodoPago,
+      numeroTrabajo: orden.numeroTrabajo || "",
+    }).catch(() => {});
     crearRecordatorioDeOrden(orden);
     setView("retiro");
   };
