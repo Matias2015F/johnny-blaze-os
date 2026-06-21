@@ -90,6 +90,10 @@
       "destination": "/api/verify-document?mode=lead"
     },
     {
+      "source": "/api/download-receipt-pdf",
+      "destination": "/api/verify-document?mode=download-pdf"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },

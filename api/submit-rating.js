@@ -181,6 +181,7 @@ module.exports = async function handler(req, res) {
         ratingId: ratingRef.id,
         validationStatus: "validado",
         validatedAt: now,
+        ...(receipt.downloadRequiresRating && { pdfDownloadUnlocked: true }),
       });
 
       return {

@@ -1,6 +1,7 @@
 const { db, verifyIdToken } = require("./_firebase-admin.js");
 const { applyRateLimit } = require("./_ratelimit.js");
 const { sendEmail } = require("./_email.js");
+const { getStorage } = require("firebase-admin/storage");
 
 const ALLOWED_ORIGINS = [
   "https://motogestion.ar",
@@ -300,10 +301,61 @@ async function handleReceiptIncentive(req, res) {
   }
 }
 
+async function handleDownloadPdf(req, res) {
+  if (req.method !== "GET") return res.status(405).json({ ok: false, error: "GET requerido" });
+  if (applyRateLimit(req, res, "download-pdf")) return;
+  res.setHeader("Cache-Control", "no-store");
+
+  const token = cleanReceiptToken(req.query?.token);
+  if (!/^r[a-f0-9]{32}$/i.test(token)) {
+    return res.status(400).json({ ok: false, error: "Token invalido." });
+  }
+
+  try {
+    const receiptSnap = await db.collection("publicReceipts").doc(token).get();
+    if (!receiptSnap.exists) {
+      return res.status(404).json({ ok: false, error: "Comprobante no encontrado." });
+    }
+
+    const receipt = receiptSnap.data();
+
+    if (receipt.estado === "anulado") {
+      return res.status(410).json({ ok: false, error: "Comprobante anulado." });
+    }
+    if (!receipt.ratingUsed) {
+      return res.status(403).json({ ok: false, error: "Califica el servicio para habilitar la descarga." });
+    }
+    if (!receipt.pdfStoragePath) {
+      return res.status(404).json({ ok: false, error: "El PDF no fue generado todavia. Pediselo al taller." });
+    }
+
+    const file = getStorage().bucket("johnny-blaze-taller.firebasestorage.app").file(receipt.pdfStoragePath);
+    const [exists] = await file.exists();
+    if (!exists) {
+      return res.status(404).json({ ok: false, error: "El archivo PDF no se encontro en el servidor." });
+    }
+
+    const [url] = await file.getSignedUrl({
+      action: "read",
+      expires: Date.now() + 15 * 60 * 1000,
+      responseDisposition: `attachment; filename="comprobante-${receipt.numeroComprobante || token.slice(0, 8)}.pdf"`,
+    });
+
+    return res.status(200).json({ ok: true, url, expiresIn: 900 });
+  } catch (error) {
+    console.error("[download-pdf]", error.message);
+    return res.status(500).json({ ok: false, error: "No se pudo generar el enlace de descarga." });
+  }
+}
+
 module.exports = async function handler(req, res) {
   setCors(req, res);
 
   if (req.method === "OPTIONS") return res.status(200).end();
+
+  if (req.query?.mode === "download-pdf") {
+    return handleDownloadPdf(req, res);
+  }
 
   if (req.query?.mode === "receipt-incentive") {
     return handleReceiptIncentive(req, res);

@@ -114,6 +114,8 @@ export default function VerifyReceiptView({ token }) {
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState("");
   const [ratingIncentive, setRatingIncentive] = useState(null);
+  const [descargando, setDescargando] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
 
   useEffect(() => {
     if (!token) {
@@ -184,6 +186,21 @@ export default function VerifyReceiptView({ token }) {
     scores.cumplimiento > 0 &&
     recomienda !== null &&
     checksValidos;
+
+  const descargarPdf = async () => {
+    setDescargando(true);
+    setDownloadError("");
+    try {
+      const resp = await fetch(`/api/download-receipt-pdf?token=${encodeURIComponent(token)}`);
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data.ok) throw new Error(data.error || "No se pudo obtener el enlace.");
+      window.open(data.url, "_blank");
+    } catch (e) {
+      setDownloadError(e.message || "No se pudo descargar. Intentá de nuevo.");
+    } finally {
+      setDescargando(false);
+    }
+  };
 
   const enviarCalificacion = async () => {
     if (!formValido || enviando) return;
@@ -363,7 +380,7 @@ export default function VerifyReceiptView({ token }) {
 
             {estado === "verificado" && (
               <>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -377,32 +394,39 @@ export default function VerifyReceiptView({ token }) {
                   >
                     Guardar o compartir enlace
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (receipt.pdfUrl) window.open(receipt.pdfUrl, "_blank");
-                    }}
-                    disabled={!receipt.pdfUrl}
-                    className={`w-full rounded-2xl py-3 text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all ${
-                      receipt.pdfUrl ? "bg-orange-600 text-white" : "bg-zinc-200 text-zinc-400"
-                    }`}
-                  >
-                    Descargar comprobante PDF
-                  </button>
                 </div>
-                {!receipt.pdfUrl && (
-                  <p className="text-[10px] leading-relaxed text-zinc-400">
-                    El PDF descargable desde este portal aún no está habilitado. Podés pedir el PDF al taller o guardarlo desde WhatsApp.
-                  </p>
+                {receipt.pdfStoragePath && (
+                  <div className="rounded-3xl border border-orange-200 bg-orange-50 p-4">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-orange-700">Comprobante PDF disponible</p>
+                    <p className="mt-1 text-sm font-black text-orange-900">Completá la calificación para activar la descarga</p>
+                    <p className="mt-2 text-xs leading-relaxed text-orange-800">
+                      El comprobante oficial en PDF se desbloquea cuando validás la recepción y calificás el servicio.
+                    </p>
+                  </div>
                 )}
               </>
             )}
 
             {estado === "ya_calificado" && fase !== "enviado" && (
-              <div className="space-y-2 rounded-3xl border border-green-200 bg-green-50 p-6 text-center">
+              <div className="space-y-4 rounded-3xl border border-green-200 bg-green-50 p-6 text-center">
                 <p className="text-2xl">★★★★★</p>
                 <p className="font-black text-green-800">Este comprobante ya fue calificado</p>
                 <p className="text-sm text-green-700">Gracias por tu opinión. La calificación quedó asociada a un trabajo real documentado.</p>
+                {receipt.pdfStoragePath ? (
+                  <div className="flex flex-col gap-2 pt-2">
+                    <button
+                      onClick={descargarPdf}
+                      disabled={descargando}
+                      className="w-full rounded-2xl bg-orange-600 py-3 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all disabled:opacity-60"
+                    >
+                      {descargando ? "Generando enlace..." : "Descargar comprobante PDF"}
+                    </button>
+                    {downloadError && <p className="text-sm font-bold text-red-600">{downloadError}</p>}
+                  </div>
+                ) : (
+                  <p className="text-xs text-green-700">El PDF estará disponible en breve. Si no aparece, pedíselo al taller.</p>
+                )}
+                <LoyaltyRewardCard incentive={ratingIncentive} compact />
               </div>
             )}
 
@@ -637,14 +661,20 @@ export default function VerifyReceiptView({ token }) {
                   >
                     Guardar o compartir enlace
                   </button>
-                  {receipt.pdfUrl && (
-                    <button
-                      type="button"
-                      onClick={() => window.open(receipt.pdfUrl, "_blank")}
-                      className="w-full rounded-2xl bg-orange-600 py-3 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
-                    >
-                      Descargar comprobante PDF
-                    </button>
+                  {receipt.pdfStoragePath ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={descargarPdf}
+                        disabled={descargando}
+                        className="w-full rounded-2xl bg-orange-600 py-3 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all disabled:opacity-60"
+                      >
+                        {descargando ? "Generando enlace..." : "Descargar comprobante PDF"}
+                      </button>
+                      {downloadError && <p className="text-sm font-bold text-red-600">{downloadError}</p>}
+                    </>
+                  ) : (
+                    <p className="text-xs text-zinc-500">El PDF estará disponible en breve. Si no aparece, pedíselo al taller.</p>
                   )}
                 </div>
               </div>
