@@ -122,7 +122,11 @@ service cloud.firestore {
     match /publicReceipts/{token} {
       allow read: if true;
       allow create: if signedIn() && request.resource.data.uidTaller == request.auth.uid;
-      allow update: if isPlatformAdmin();
+      allow update: if isPlatformAdmin() || (
+        signedIn() &&
+        resource.data.uidTaller == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pdfStoragePath', 'pdfGeneratedAt'])
+      );
       allow delete: if isPlatformAdmin();
     }
 

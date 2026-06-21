@@ -5,6 +5,7 @@ import { LS } from "../lib/storage.js";
 import { CONFIG_DEFAULT, TEXTO_CIERRE_RECHAZO } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { formatMoney } from "../utils/format.js";
+import { auth, db, storage } from "../firebase.js";
 
 function labelMetodo(metodo = "") {
   const limpio = String(metodo).trim().toLowerCase();
@@ -198,6 +199,24 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
       }
 
       const blob = pdf.output("blob");
+
+      // P2 — background upload to Storage; unlocks gated PDF download after client rates
+      if (receiptToken) {
+        const uid = auth.currentUser?.uid;
+        if (uid) {
+          Promise.all([import("firebase/storage"), import("firebase/firestore")])
+            .then(async ([{ ref: storageRef, uploadBytes }, { doc, updateDoc }]) => {
+              const path = `receipts/${uid}/${receiptToken}/comprobante.pdf`;
+              await uploadBytes(storageRef(storage, path), blob, { contentType: "application/pdf" });
+              await updateDoc(doc(db, "publicReceipts", receiptToken), {
+                pdfStoragePath: path,
+                pdfGeneratedAt: Date.now(),
+              });
+            })
+            .catch(() => {});
+        }
+      }
+
       const file = new File([blob], `${numeroComprobante}.pdf`, { type: "application/pdf" });
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: numeroComprobante });

@@ -1,0 +1,14 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Comprobantes PDF — el taller puede escribir sus propios archivos.
+    // Lectura deshabilitada: el acceso al PDF va siempre via signed URL del Admin SDK (backend).
+    match /receipts/{uid}/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.uid == uid;
+      allow read: if false;
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
