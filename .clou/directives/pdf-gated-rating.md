@@ -192,3 +192,4 @@ NO:
 | Fecha | Commit | Cambio |
 |---|---|---|
 | 2026-06-20 | — | Directiva creada, pendiente aprobación |
+| 2026-06-20 | 9bb7aa1 | P1 ✅ — campos pdf-gated en receiptService.js, deployed |
