@@ -1,6 +1,7 @@
 # Directiva: PDF Gated por Calificación
 
-**Estado:** DECIDED — pendiente aprobación antes de implementar  
+**Estado:** IMPLEMENTED + DEPLOYED — P1-P5 en producción. P6 pendiente. Firebase rules pendiente deploy manual.
+
 **Fecha:** 2026-06-20  
 **Origen:** CLAUDE 20.txt — Intercambio de valor forzado (gateo de beneficio)
 
@@ -15,11 +16,11 @@
 | `ratingUsed: true` post-calificación | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Incentivo 15% descuento | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Link WhatsApp → portal | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **PDF gated (descarga post-rating)** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| PDF en Firebase Storage privado | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `pdfDownloadUnlocked` field | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Endpoint download-receipt-pdf | ✅ | ❌ | ❌ | ❌ | ❌ |
-| WhatsApp texto actualizado | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **PDF gated (descarga post-rating)** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| PDF en Firebase Storage privado | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `pdfDownloadUnlocked` field | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Endpoint download-receipt-pdf | ✅ | ✅ | ✅ | ✅ | ✅ |
+| WhatsApp texto actualizado (P6) | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 **Lo que ya existe y no se toca:**
 - `publicReceipts/{token}` con `ratingEnabled`, `ratingUsed`, `incentive` — estructura correcta
@@ -193,3 +194,8 @@ NO:
 |---|---|---|
 | 2026-06-20 | — | Directiva creada, pendiente aprobación |
 | 2026-06-20 | 9bb7aa1 | P1 ✅ — campos pdf-gated en receiptService.js, deployed |
+| 2026-06-20 | 4746a14 | P2 ✅ — upload PDF a Storage en ExportPdfView, storage.rules, firestore.rules update, deployed |
+| 2026-06-20 | baedd56 | P3+P4+P5 ✅ — submit-rating desbloquea PDF, endpoint download-pdf, VerifyReceiptView gated UI, deployed |
+| 2026-06-20 | f6bb079 | Firebase init explícita en main.jsx + storageBucket en Admin SDK + /arquitectura-soberana en CLAUDE.md |
+| 2026-06-20 | b8a5ba7 | build:admin script + outputDirectory en vercel.json — admin.motogestion.ar actualizado por primera vez |
+| 2026-06-20 | — | firestore.rules desplegado vía CLI. storage.rules publicado manualmente desde Firebase Console (CLI bloqueado por setup check). Ambas reglas activas. |

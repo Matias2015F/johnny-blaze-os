@@ -144,22 +144,22 @@ export function mensajeComprobanteVerificable({ clienteNombre, verifyUrl, nombre
   const taller = nombreTaller || "el taller";
 
   if (documentType === "diagnostico_presupuesto_cerrado") {
-    return `Hola ${nombre}, tu constancia de diagnóstico/revisión ya está disponible en MotoGestión.
+    return `Hola ${nombre}, tu constancia de diagnóstico/revisión está lista en ${taller}.
 
-Podés revisarla, descargarla, validar la recepción y calificar la atención desde este link:
+Revisala y validá la recepción desde este link:
 ${verifyUrl}
 
-Este documento deja registro del diagnóstico informado y de la decisión tomada al momento del cierre.
+Este documento deja registro del diagnóstico informado y de la decisión tomada.
 
 ${taller}`;
   }
 
-  return `Hola ${nombre}, tu comprobante del servicio ya está disponible en MotoGestión.
+  return `Hola ${nombre}, el comprobante oficial de garantía de tu moto está listo en ${taller}.
 
-Podés revisarlo, descargarlo, validar los datos y calificar la atención desde este link:
+Ingresá al link, calificá la atención y descargá tu garantía digital:
 ${verifyUrl}
 
-Este registro te sirve como respaldo del mantenimiento realizado y del historial de tu moto.
+Al calificar desbloqueás un 15% de descuento en tu próximo mantenimiento.
 
 ${taller}`;
 }
