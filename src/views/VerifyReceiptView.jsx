@@ -398,9 +398,9 @@ export default function VerifyReceiptView({ token }) {
                 {receipt.pdfStoragePath && (
                   <div className="rounded-3xl border border-orange-200 bg-orange-50 p-4">
                     <p className="text-[9px] font-black uppercase tracking-widest text-orange-700">Comprobante PDF disponible</p>
-                    <p className="mt-1 text-sm font-black text-orange-900">Completá la calificación para activar la descarga</p>
+                    <p className="mt-1 text-sm font-black text-orange-900">Calificá para desbloquear la descarga</p>
                     <p className="mt-2 text-xs leading-relaxed text-orange-800">
-                      El comprobante oficial en PDF se desbloquea cuando validás la recepción y calificás el servicio.
+                      Primero validás la recepción y calificás el servicio. Después se habilita la descarga del PDF y el beneficio queda registrado.
                     </p>
                   </div>
                 )}
@@ -540,7 +540,7 @@ export default function VerifyReceiptView({ token }) {
                       ? "Validá y calificá la atención"
                       : "Validá y calificá el servicio"}
                   </p>
-                  <p className="mt-1 text-sm text-zinc-500">Confirmá recepción y calificá en una sola pantalla.</p>
+                  <p className="mt-1 text-sm text-zinc-500">Confirmá recepción, calificá y desbloqueá el comprobante PDF en una sola pantalla.</p>
                 </div>
 
                 <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
@@ -628,7 +628,7 @@ export default function VerifyReceiptView({ token }) {
                   disabled={!formValido || enviando}
                   className="w-full rounded-2xl bg-orange-600 py-4 text-sm font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-40"
                 >
-                  {enviando ? "Enviando..." : "Validar y enviar calificación"}
+                  {enviando ? "Enviando..." : "Validar, calificar y desbloquear PDF"}
                 </button>
 
                 <p className="text-center text-[10px] leading-relaxed text-zinc-400">
@@ -644,7 +644,7 @@ export default function VerifyReceiptView({ token }) {
                   <p className="text-lg font-black text-zinc-900">Comprobante validado</p>
                   <p className="mt-2 text-sm leading-relaxed text-zinc-500">
                     Este registro quedó confirmado dentro del historial verificable de la moto.
-                    Podés guardarlo como respaldo del mantenimiento realizado.
+                    Ya podés descargarlo como respaldo del mantenimiento realizado.
                   </p>
                 </div>
                 <LoyaltyRewardCard incentive={ratingIncentive} compact />

@@ -7,7 +7,7 @@ import { trackEvent } from "../lib/telemetry.js";
 import { formatMoney } from "../utils/format.js";
 import { generateReceiptToken, crearPublicReceipt } from "../services/receiptVerificationService.js";
 import { logAction } from "../services/auditService.js";
-import { mensajeComprobanteVerificable, mensajeSolicitudCalificacion, normalizarTelWA } from "../lib/messages.js";
+import { mensajeComprobanteVerificable, normalizarTelWA } from "../lib/messages.js";
 
 const LABELS_GARANTIA = {
   observacionesTecnicas:      "Observaciones técnicas",
@@ -359,7 +359,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
               Comprobante disponible para el cliente
             </p>
             <p className="text-xs text-zinc-600 leading-relaxed">
-              Tu cliente puede revisar el detalle, validar el trabajo y calificar desde este link.
+              Tu cliente puede validar el trabajo, calificar la atención y descargar el PDF desde este link.
             </p>
             <div className="rounded-2xl bg-white border border-zinc-200 px-4 py-3">
               <p className="font-mono text-xs text-zinc-500 break-all">
@@ -398,10 +398,11 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
             {!esRechazo && (
               <button
                 onClick={() => {
-                  const mensaje = mensajeSolicitudCalificacion({
+                  const mensaje = mensajeComprobanteVerificable({
                     clienteNombre: client?.nombre,
                     verifyUrl: `https://app.motogestion.ar/verificar/${generatedToken}`,
                     nombreTaller: config.nombreTaller,
+                    documentType: "servicio_realizado",
                   });
                   const tel = normalizarTelWA(client?.whatsapp || client?.tel || "");
                   const waUrl = tel
@@ -411,7 +412,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
                 }}
                 className="w-full rounded-2xl border border-green-600/40 bg-green-600/10 py-3 text-[10px] font-black uppercase tracking-widest text-green-400 active:scale-95 transition-all"
               >
-                Pedir calificación por WA
+                Reenviar link de garantía por WA
               </button>
             )}
             <button
