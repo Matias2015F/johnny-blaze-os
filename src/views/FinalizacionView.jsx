@@ -159,7 +159,7 @@ export default function FinalizacionView({ ordenId, setView }) {
           onClick={handleIrAPago}
           className="w-full rounded-[2rem] bg-orange-600 py-5 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
         >
-          Registrar Pago →
+          Registrar cobro del cliente
         </button>
       </div>
     </div>

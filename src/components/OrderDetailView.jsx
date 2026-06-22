@@ -651,27 +651,27 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
   };
 
   const accionPrincipal = isLocked
-    ? { label: "Ver / reimprimir comprobante", action: () => setView("imprimirOrden"), className: "bg-zinc-700 text-white" }
+    ? { label: "Ver o reenviar comprobante", action: () => setView("imprimirOrden"), className: "bg-zinc-700 text-white" }
     : order.estado === "diagnostico"
-      ? { label: "Enviar presupuesto", action: irAEnviarPresupuesto, className: "bg-amber-400 text-zinc-950" }
+      ? { label: "Enviar presupuesto por WhatsApp", action: irAEnviarPresupuesto, className: "bg-amber-400 text-zinc-950" }
       : order.estado === "presupuesto"
         ? presupuestoSent
-          ? { label: "Presupuesto enviado", action: abrirSheet, className: "bg-emerald-600 text-white" }
-          : { label: "Enviar presupuesto", action: abrirSheet, className: "bg-amber-400 text-zinc-950" }
+          ? { label: "Presupuesto enviado - reenviar", action: abrirSheet, className: "bg-emerald-600 text-white" }
+          : { label: "Enviar presupuesto por WhatsApp", action: abrirSheet, className: "bg-amber-400 text-zinc-950" }
         : order.estado === "aprobacion"
-          ? { label: "Iniciar reparación", action: () => setView("ejecucion"), className: "bg-orange-600 text-white" }
+          ? { label: "Iniciar reparacion aprobada", action: () => setView("ejecucion"), className: "bg-orange-600 text-white" }
           : order.estado === "reparacion"
-            ? { label: "Continuar ejecución", action: () => setView("ejecucion"), className: "bg-orange-600 text-white" }
+            ? { label: "Seguir cargando trabajo", action: () => setView("ejecucion"), className: "bg-orange-600 text-white" }
             : order.estado === "finalizada"
-              ? { label: "Finalizar trabajo", action: () => setView("finalizacion"), className: "bg-orange-600 text-white" }
+              ? { label: "Cerrar trabajo y cobrar", action: () => setView("finalizacion"), className: "bg-orange-600 text-white" }
               : order.estado === "listo_para_emitir"
                 ? saldoPendiente <= 0
-                  ? { label: "Emitir comprobante", action: () => setView("prePdf"), className: "bg-orange-600 text-white" }
-                  : { label: "Registrar cobro", action: () => setView("pago"), className: "bg-green-600 text-white" }
+                  ? { label: "Generar garantia para el cliente", action: () => setView("prePdf"), className: "bg-orange-600 text-white" }
+                  : { label: "Registrar cobro del cliente", action: () => setView("pago"), className: "bg-green-600 text-white" }
                 : order.estado === "cobrado_pendiente_retiro"
-                  ? { label: "Confirmar retiro del vehículo", action: () => setView("retiro"), className: "bg-emerald-600 text-white" }
+                  ? { label: "Confirmar que la moto se retiro", action: () => setView("retiro"), className: "bg-emerald-600 text-white" }
                   : order.estado === "cerrado_emitido"
-                    ? { label: "Emitir comprobante", action: () => setView("prePdf"), className: "bg-orange-600 text-white" }
+                    ? { label: "Ver garantia / comprobante", action: () => setView("prePdf"), className: "bg-orange-600 text-white" }
                     : null;
 
   const eliminarItem = (lista, index) => {
@@ -1544,11 +1544,14 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
             <div className="mx-auto max-w-[440px] p-6 space-y-5">
 
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">Enviar Presupuesto</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">Enviar presupuesto al cliente</h3>
                 <button onClick={() => setShowPresupuestoSheet(false)} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 hover:text-white active:scale-90 transition-all">
                   <X size={18} />
                 </button>
               </div>
+              <p className="text-xs font-bold leading-relaxed text-zinc-500">
+                Revisa el monto. Al tocar WhatsApp se abre el mensaje para el cliente. No cobra, no cierra la orden y no genera PDF.
+              </p>
 
               <div className="rounded-2xl bg-zinc-800/50 border border-zinc-700 p-4">
                 <p className="text-sm font-black text-white">{client.nombre || "Cliente"}</p>
@@ -1556,7 +1559,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               </div>
 
               <div className="flex gap-2">
-                {[{ label: "Fijo", val: true }, { label: "Estimado", val: false }].map(({ label, val }) => (
+                {[{ label: "Precio cerrado", val: true }, { label: "Rango estimado", val: false }].map(({ label, val }) => (
                   <button
                     key={label}
                     onClick={() => {
@@ -1576,7 +1579,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
               {sheetTipoFijo ? (
                 <div>
-                  <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">Monto total</p>
+                  <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">Total que va a ver el cliente</p>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1614,7 +1617,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
               )}
 
               <div>
-                <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Adelanto</p>
+                <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-zinc-500">Adelanto que vas a pedir</p>
                 <div className="flex gap-2">
                   {[0, 25, 30, 50, 70].map((pct) => (
                     <button
@@ -1684,13 +1687,13 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   }}
                   className="flex-1 rounded-[1.5rem] border border-zinc-600 bg-zinc-800 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-300 hover:bg-zinc-700 active:scale-95 transition-all"
                 >
-                  {sheetEditando ? "Auto" : "Editar"}
+                  {sheetEditando ? "Texto automatico" : "Editar mensaje"}
                 </button>
                 <button
                   onClick={handleEnviarDesdeSheet}
                   className="flex-[2] rounded-[1.5rem] bg-emerald-600 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl hover:bg-emerald-500 active:scale-95 transition-all"
                 >
-                  Enviar por WhatsApp
+                  Abrir WhatsApp y enviar
                 </button>
               </div>
 

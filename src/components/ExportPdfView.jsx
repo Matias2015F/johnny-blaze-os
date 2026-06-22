@@ -657,9 +657,9 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           {generating ? (
             "Generando PDF..."
           ) : shouldGeneratePdfFile ? (
-            <><Printer size={16} /> Guardar / Compartir PDF</>
+            <><Printer size={16} /> Descargar PDF</>
           ) : (
-            <><Printer size={16} /> Imprimir / PDF</>
+            <><Printer size={16} /> Imprimir o guardar PDF</>
           )}
         </button>
       </div>

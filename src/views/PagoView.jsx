@@ -98,12 +98,12 @@ export default function PagoView({ ordenId, setView }) {
             <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
               {moto?.patente} · {cliente?.nombre}
             </p>
-            <h1 className="text-xl font-black text-white">Registrar Pago</h1>
+            <h1 className="text-xl font-black text-white">Registrar cobro</h1>
           </div>
         </div>
 
         <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900/50 p-5">
-          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Monto a cobrar</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Lo que tiene que pagar el cliente</p>
           {(() => { const { pesos, centavos } = formatMoneyParts(costoFinal); return (
             <p className="leading-none">
               <span className="text-[11px] font-bold text-zinc-500">ARS </span>
@@ -114,7 +114,7 @@ export default function PagoView({ ordenId, setView }) {
         </div>
 
         <div className="space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Monto recibido</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Plata recibida ahora</p>
           <div className="flex items-baseline gap-2 rounded-[1.75rem] border border-zinc-700 bg-zinc-900 px-4 py-4">
             <span className="text-xl font-black text-zinc-500">$</span>
             <input
@@ -128,7 +128,7 @@ export default function PagoView({ ordenId, setView }) {
           </div>
           {diferencia > 0 && (
             <p className="text-xs text-emerald-400 font-black px-2">
-              +{formatMoney(diferencia)} cambio
+              Sobra {formatMoney(diferencia)}. Devolvé cambio o registralo aparte.
             </p>
           )}
           {diferencia < 0 && (
@@ -139,7 +139,7 @@ export default function PagoView({ ordenId, setView }) {
         </div>
 
         <div className="space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Método de pago</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Cómo pagó</p>
           <div className="grid grid-cols-2 gap-2">
             {METODOS.map((m) => (
               <button
@@ -158,18 +158,18 @@ export default function PagoView({ ordenId, setView }) {
         </div>
 
         <div className="space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Comprobante / Referencia</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Número o dato del pago</p>
           <input
             type="text"
             className="w-full bg-zinc-900 border border-white/5 rounded-2xl p-4 text-white text-sm outline-none focus:border-orange-600"
-            placeholder="Nro. de recibo o transacción"
+            placeholder="Ej: transferencia, alias, recibo o nota"
             value={comprobante}
             onChange={(e) => setComprobante(e.target.value)}
           />
         </div>
 
         <div className="rounded-[2rem] border border-emerald-500/20 bg-emerald-500/10 p-5 text-center">
-          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-1">Tu ganancia neta</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-1">Mano de obra para el taller</p>
           {(() => { const { pesos, centavos } = formatMoneyParts(gananciaNeta); return (
             <p className="leading-none">
               <span className="text-[11px] font-bold text-emerald-500/60">ARS </span>
@@ -185,10 +185,12 @@ export default function PagoView({ ordenId, setView }) {
           disabled={recibido < costoFinal}
           className="w-full rounded-[2rem] bg-orange-600 py-5 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          ✓ Confirmar Pago y Finalizar
+          Confirmar cobro y pasar a retiro
         </button>
+        <p className="text-center text-[10px] font-bold leading-relaxed text-zinc-500">
+          Después de confirmar, la orden queda cobrada pero falta entregar la moto.
+        </p>
       </div>
     </div>
   );
 }
-

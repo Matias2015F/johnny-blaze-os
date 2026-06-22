@@ -133,10 +133,10 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
         </button>
         <div>
           <h1 className="text-3xl font-black text-white tracking-tighter uppercase">
-            {prefill ? "Nuevo Service" : "Nuevo Ingreso"}
+            {prefill ? "Nuevo service" : "Nueva moto al taller"}
           </h1>
           <p className="mt-1 text-[10px] font-bold text-zinc-500">
-            {prefill ? "Documentá el estado actual antes de empezar." : "Registrá cómo entra la moto. Evita reclamos."}
+            {prefill ? "Anotá cómo entra hoy. Después cargás trabajos y precio." : "Paso 1: patente, km, cliente y qué le pasa. Esto evita reclamos."}
           </p>
         </div>
       </div>
@@ -237,7 +237,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
         </div>
         <div className="space-y-1">
           <div className="flex items-center justify-between ml-2 mr-1">
-            <label className="text-[10px] font-black uppercase text-zinc-500">Motivo del Ingreso</label>
+            <label className="text-[10px] font-black uppercase text-zinc-500">Qué le pasa / qué pide el cliente</label>
             {SpeechRecognitionAPI && (
               <button
                 type="button"
@@ -261,7 +261,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             rows="2"
             value={f.falla}
             onChange={(e) => setF({ ...f, falla: e.target.value })}
-            placeholder="¿Qué le pasa hoy?"
+            placeholder="Ej: no arranca, pierde aceite, hace ruido al frenar..."
             enterKeyHint="done"
           />
 
@@ -272,7 +272,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
               onClick={() => setListaAbierta(!listaAbierta)}
               className="flex w-full items-center justify-between rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-zinc-400 active:scale-[0.98] transition-all"
             >
-              <span>Seleccionar motivo ({motivosList.length})</span>
+              <span>Tocar para elegir una falla común ({motivosList.length})</span>
               {listaAbierta ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
 
@@ -350,8 +350,11 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
           </div>
         </div>
         <button onClick={() => handleCreateAll(f)} className="w-full bg-orange-600 text-white py-5 rounded-[2.5rem] font-black uppercase shadow-xl shadow-orange-600/20 active:scale-95 transition-all tracking-widest">
-          {prefill ? "Abrir Nueva Orden" : "Ingresar al Taller"}
+          {prefill ? "Abrir service para esta moto" : "Ingresar moto al taller"}
         </button>
+        <p className="text-center text-[10px] font-bold leading-relaxed text-zinc-500">
+          Esto crea la orden. Todavía no cobra, no manda WhatsApp y no genera PDF.
+        </p>
       </div>
     </div>
   );

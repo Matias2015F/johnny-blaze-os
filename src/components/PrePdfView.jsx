@@ -349,7 +349,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
 
         {!generatedToken && (
           <button disabled={saldo > 0 || generandoPdf} onClick={irAlPdf} className={`flex w-full items-center justify-center gap-3 rounded-3xl py-6 font-black uppercase shadow-xl transition-all ${saldo > 0 || generandoPdf ? "bg-zinc-200 text-zinc-400" : "bg-orange-600 text-white active:scale-95"}`}>
-            <FileText size={20} /> {generandoPdf ? "Generando comprobante..." : esRechazo ? "Generar comprobante sin garantia" : "Generar comprobante para el cliente"}
+            <FileText size={20} /> {generandoPdf ? "Generando comprobante..." : esRechazo ? "Generar comprobante sin garantia" : "Crear link de garantia para el cliente"}
           </button>
         )}
 
@@ -374,7 +374,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
                 }}
                 className="rounded-2xl border border-zinc-200 bg-white py-3 text-[10px] font-black uppercase tracking-widest text-zinc-700 active:scale-95 transition-all"
               >
-                Copiar link
+                Copiar link para cliente
               </button>
               <button
                 onClick={() => {
@@ -392,7 +392,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
                 }}
                 className="rounded-2xl bg-green-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
               >
-                Enviar WA
+                Enviar por WhatsApp
               </button>
             </div>
             {!esRechazo && (
@@ -419,7 +419,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
               onClick={() => setView("imprimirOrden")}
               className="w-full rounded-2xl bg-orange-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
             >
-              Ver comprobante completo
+              Abrir comprobante completo
             </button>
           </div>
         )}
