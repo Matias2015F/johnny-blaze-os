@@ -3,7 +3,7 @@ import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { Wrench, Clock, History, Settings, DollarSign, HelpCircle, RefreshCw, WifiOff } from "lucide-react";
 
-import { LS, useCollection, migrateFromLocalStorage, migrateRenamedCollections, clearFirestoreData, useSyncStatus } from "./lib/storage.js";
+import { LS, useCollection, migrateFromLocalStorage, migrateRenamedCollections, clearFirestoreData, useSyncStatus, forceSyncCacheToFirestore, getLastSyncedAt } from "./lib/storage.js";
 import { autoCloudBackup } from "./lib/cloudBackup.js";
 import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
 import { APP_BUILD } from "./generated/appVersion.js";
@@ -202,6 +202,17 @@ export default function TallerPanel({ modoLectura = false, account = null }) {
   useCollection("repuestosHistorial");
 
   const syncStatus = useSyncStatus();
+  const [lastSyncedAt, setLastSyncedAt] = useState(() => getLastSyncedAt());
+  useEffect(() => {
+    if (syncStatus === "synced") setLastSyncedAt(getLastSyncedAt());
+  }, [syncStatus]);
+
+  const handleForceSync = async () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    try { await forceSyncCacheToFirestore(uid); } catch { /* el indicador muestra el resultado */ }
+  };
+
   const usageSnapshot = useMemo(() => buildUsageSnapshot({
     account,
     orders,
@@ -894,11 +905,25 @@ export default function TallerPanel({ modoLectura = false, account = null }) {
 
       {NAV_VIEWS.includes(view) && (
         <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-gradient-to-t from-black/95 via-zinc-950/90 to-zinc-900/50 backdrop-blur-3xl border-t border-white/10 px-2 py-3 flex justify-around items-center z-50 rounded-t-[3rem] shadow-2xl">
-          {/* Indicador de sincronizaci�n */}
-          <div className={`absolute top-2 right-4 flex items-center gap-1 text-[8px] font-black uppercase tracking-widest ${syncStatus === "synced" ? "text-green-500" : syncStatus === "syncing" ? "text-yellow-400" : "text-red-400"}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${syncStatus === "synced" ? "bg-green-500" : syncStatus === "syncing" ? "bg-yellow-400 animate-pulse" : "bg-red-400"}`} />
-            {syncStatus === "synced" ? "Guardado" : syncStatus === "syncing" ? "Guardando..." : "Error al guardar"}
-          </div>
+          {/* Indicador de sincronizacion */}
+          {syncStatus === "error" ? (
+            <button
+              onClick={handleForceSync}
+              className="absolute top-1.5 right-3 flex items-center gap-1.5 rounded-xl bg-red-500/20 border border-red-500/40 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-red-400 animate-pulse active:scale-95 transition-all"
+            >
+              <span className="w-2 h-2 rounded-full bg-red-400" />
+              Error — reintentar
+            </button>
+          ) : (
+            <div className={`absolute top-2 right-4 flex items-center gap-1 text-[8px] font-black uppercase tracking-widest ${syncStatus === "syncing" ? "text-yellow-400" : "text-green-500"}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${syncStatus === "syncing" ? "bg-yellow-400 animate-pulse" : "bg-green-500"}`} />
+              {syncStatus === "syncing"
+                ? "Guardando..."
+                : lastSyncedAt
+                  ? new Date(lastSyncedAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
+                  : "Guardado"}
+            </div>
+          )}
           <button onClick={() => setView("home")} className={`flex flex-col items-center gap-1.5 px-3 py-2 rounded-2xl transition-all ${view === "home" ? "text-orange-400 bg-orange-500/20 scale-105 shadow-lg shadow-orange-500/20" : "text-zinc-500 hover:text-zinc-300"}`}>
             <Wrench size={26} /><span className="text-[10px] font-black uppercase tracking-widest">Inicio</span>
           </button>

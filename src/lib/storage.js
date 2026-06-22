@@ -20,6 +20,7 @@ const userDoc = (col, id) => doc(db, "users", getUid(), col, id);
 // ── Sync status ────────────────────────────────────────────────────────────────
 let _pending = 0;
 let _syncError = false;
+let _lastSyncedAt = null;
 const _syncListeners = new Set();
 
 function notifySync() {
@@ -34,6 +35,10 @@ export function onSyncStatus(fn) {
 
 export function getSyncStatus() {
   return _pending > 0 ? "syncing" : _syncError ? "error" : "synced";
+}
+
+export function getLastSyncedAt() {
+  return _lastSyncedAt;
 }
 
 // Escribe a Firestore con 3 reintentos — falla visible si persiste
@@ -58,6 +63,8 @@ async function fsWrite(op) {
   if (lastErr) {
     _syncError = true;
     console.error("[FS write failed]", lastErr);
+  } else {
+    _lastSyncedAt = Date.now();
   }
   notifySync();
 }

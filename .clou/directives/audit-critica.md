@@ -81,4 +81,4 @@ Son **fire-and-forget** (nunca bloquean la acción del usuario, errores silencio
 
 | Fecha | Commit | Cambio |
 |---|---|---|
-| 2026-06-21 | — | Directiva creada, pendiente aprobación |
+| 2026-06-21 | 76c11f2 | Implementado y deployado — ENFORCED_RUNTIME |
