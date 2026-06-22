@@ -670,7 +670,7 @@ export default function TallerPanel({ modoLectura = false, account = null }) {
       <Suspense fallback={<Cargando />}>
       {view === "home" && <HomeView stats={stats} setView={setView} bikes={bikes} orders={orders} presupuestos={presupuestos} setSelectedOrderId={setSelectedOrderId} handleLogout={handleLogout} modoLectura={modoLectura} />}
       {view === "nuevaOrden" && <NewOrderView handleCreateAll={handleCreateOrder} setView={setView} prefill={prefillData} bikes={bikes} clients={clients} />}
-      {view === "ordenes" && <OrderListView orders={orders} bikes={bikes} clients={clients} setSelectedOrderId={setSelectedOrderId} setView={setView} />}
+      {view === "ordenes" && <OrderListView orders={orders} bikes={bikes} clients={clients} setSelectedOrderId={setSelectedOrderId} setView={setView} showToast={showToast} />}
       {view === "detalleOrden" && selectedOrder && <OrderDetailView order={selectedOrder} clients={clients} bikes={bikes} setView={setView} showToast={showToast} setServiceToEdit={setServiceToEdit} />}
       {view === "gestionarTareas" && selectedOrder && <TaskManagerView order={selectedOrder} setView={setView} showToast={showToast} serviceToEdit={serviceToEdit} setServiceToEdit={setServiceToEdit} />}
       {view === "logistica" && selectedOrder && <LogisticsView order={selectedOrder} setView={setView} showToast={showToast} />}

@@ -1,12 +1,23 @@
 import React from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { ESTADO_LABEL, ESTADO_CSS } from "../lib/constants.js";
 import { formatMoneyShort } from "../utils/format.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
+import { LS } from "../lib/storage.js";
 
-export default function OrderListView({ orders, bikes, clients, setSelectedOrderId, setView }) {
+export default function OrderListView({ orders, bikes, clients, setSelectedOrderId, setView, showToast }) {
   const ESTADOS_CERRADOS = new Set(["entregada", "cerrado_emitido"]);
   const activas = orders.filter((o) => !ESTADOS_CERRADOS.has(o.estado));
+
+  const eliminarOrdenDiagnostico = (event, order) => {
+    event.stopPropagation();
+    if (order.estado !== "diagnostico") return;
+    const ok = window.confirm("Eliminar esta orden en diagnostico? Esta accion no se puede deshacer.");
+    if (!ok) return;
+    LS.deleteDoc("trabajos", order.id);
+    showToast?.("Orden eliminada");
+  };
+
   return (
     <div className="p-4 space-y-4 pb-28 text-left animate-in fade-in duration-500">
       <div className="bg-[#141414] p-5 border border-white/5 flex items-center gap-4 sticky top-0 z-40 mb-4 rounded-[2.5rem]">
@@ -28,7 +39,19 @@ export default function OrderListView({ orders, bikes, clients, setSelectedOrder
                 <div className="min-w-0 flex-1 text-left font-bold">
                   <p className="text-2xl font-black text-white leading-none mb-1 truncate">{b?.patente || "---"}</p>
                   <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest truncate">{c?.nombre || "S/D"}</p>
-                  <span className={`inline-block mt-2 text-[8px] font-black px-2 py-0.5 rounded uppercase ${ESTADO_CSS[o.estado]}`}>{ESTADO_LABEL[o.estado]}</span>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className={`inline-block text-[8px] font-black px-2 py-0.5 rounded uppercase ${ESTADO_CSS[o.estado]}`}>{ESTADO_LABEL[o.estado]}</span>
+                    {o.estado === "diagnostico" && (
+                      <button
+                        type="button"
+                        onClick={(event) => eliminarOrdenDiagnostico(event, o)}
+                        className="inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-500/15 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-red-300 active:scale-95"
+                      >
+                        <Trash2 size={10} />
+                        Eliminar
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-xl font-black leading-none text-white">{formatMoneyShort(totalOrden)}</p>
