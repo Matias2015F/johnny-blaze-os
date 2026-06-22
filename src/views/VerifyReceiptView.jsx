@@ -73,7 +73,7 @@ function LoyaltyRewardCard({ incentive, compact = false }) {
         {incentive.discountPct}% de descuento en tu proxima visita
       </p>
       <p className="mt-2 text-sm leading-relaxed text-green-800">
-        Si completas la validacion y la calificacion, MotoGestion registra automaticamente este beneficio para esta moto.
+        Al descargar, este beneficio queda guardado para esta moto.
       </p>
       {!compact && (
         <p className="mt-2 text-xs leading-relaxed text-green-700">
@@ -84,33 +84,16 @@ function LoyaltyRewardCard({ incentive, compact = false }) {
   );
 }
 
-function getScoreLabels(documentType) {
-  if (documentType === "diagnostico_presupuesto_cerrado") {
-    return [
-      { key: "atencion",     label: "Atención recibida" },
-      { key: "claridad",     label: "Claridad del diagnóstico" },
-      { key: "trabajo",      label: "Claridad del presupuesto" },
-      { key: "cumplimiento", label: "Transparencia del cierre" },
-    ];
-  }
-  return [
-    { key: "atencion",     label: "Atención recibida" },
-    { key: "claridad",     label: "Claridad del presupuesto" },
-    { key: "trabajo",      label: "Calidad del trabajo" },
-    { key: "cumplimiento", label: "Cumplimiento de lo acordado" },
-  ];
-}
-
 export default function VerifyReceiptView({ token }) {
   const [estado, setEstado] = useState("cargando");
   const [receipt, setReceipt] = useState(null);
   const [fase, setFase] = useState("verificacion");
   const [phoneLast4, setPhoneLast4] = useState("");
   const [phoneError, setPhoneError] = useState("");
-  const [checks, setChecks] = useState([false, false, false, false]);
+  const [checks, setChecks] = useState([true, true, true, true]);
   const [scores, setScores] = useState({ atencion: 0, claridad: 0, trabajo: 0, cumplimiento: 0 });
   const [recomienda, setRecomienda] = useState(null);
-  const [comentario, setComentario] = useState("");
+  const [comentario] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [errorEnvio, setErrorEnvio] = useState("");
   const [ratingIncentive, setRatingIncentive] = useState(null);
@@ -184,8 +167,12 @@ export default function VerifyReceiptView({ token }) {
     scores.claridad > 0 &&
     scores.trabajo > 0 &&
     scores.cumplimiento > 0 &&
-    recomienda !== null &&
     checksValidos;
+
+  const setCalificacionRapida = (valor) => {
+    setScores({ atencion: valor, claridad: valor, trabajo: valor, cumplimiento: valor });
+    if (recomienda === null) setRecomienda(valor >= 4);
+  };
 
   const descargarPdf = async () => {
     setDescargando(true);
@@ -218,7 +205,7 @@ export default function VerifyReceiptView({ token }) {
           scoreClaridad: scores.claridad,
           scoreTrabajo: scores.trabajo,
           scoreCumplimiento: scores.cumplimiento,
-          recomienda,
+          recomienda: recomienda ?? scores.atencion >= 4,
           comentario: comentario.trim(),
         }),
       });
@@ -231,6 +218,7 @@ export default function VerifyReceiptView({ token }) {
 
       setFase("enviado");
       setEstado("ya_calificado");
+      if (receipt?.pdfStoragePath) await descargarPdf();
     } catch (error) {
       setErrorEnvio(error.message || "No se pudo enviar la calificación. Intentá de nuevo.");
     } finally {
@@ -241,12 +229,13 @@ export default function VerifyReceiptView({ token }) {
   const fechaLabel = receipt?.fechaEmision
     ? new Date(receipt.fechaEmision).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })
     : null;
+  const mostrarDetalleCompleto = estado !== "verificado" || fase === "enviado";
 
   return (
     <div className="min-h-screen bg-zinc-50 font-sans">
       <nav className="flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3">
         <MgLogo />
-        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Verificación de comprobante</span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Descargar comprobante</span>
       </nav>
 
       <div className="mx-auto max-w-md space-y-4 px-4 py-8">
@@ -283,7 +272,7 @@ export default function VerifyReceiptView({ token }) {
                 </div>
                 <div>
                   <p className={`text-[10px] font-black uppercase tracking-widest ${estado === "verificado" ? "text-green-600" : "text-zinc-400"}`}>
-                    Comprobante verificado
+                    Comprobante listo
                   </p>
                   <p className="text-lg font-black leading-tight text-zinc-900">{receipt.taller?.nombre || "Taller"}</p>
                   {receipt.taller?.ciudad && (
@@ -326,7 +315,7 @@ export default function VerifyReceiptView({ token }) {
                 )}
               </div>
 
-              {receipt.resumen?.trabajos?.length > 0 && (
+              {mostrarDetalleCompleto && receipt.resumen?.trabajos?.length > 0 && (
                 <div className="space-y-1 border-t border-zinc-100 pt-4">
                   <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
                     {receipt.documentType === "diagnostico_presupuesto_cerrado"
@@ -344,7 +333,7 @@ export default function VerifyReceiptView({ token }) {
                 </div>
               )}
 
-              {receipt.resumen?.repuestos?.length > 0 && (
+              {mostrarDetalleCompleto && receipt.resumen?.repuestos?.length > 0 && (
                 <div className="space-y-1 border-t border-zinc-100 pt-4">
                   <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
                     {receipt.documentType === "diagnostico_presupuesto_cerrado"
@@ -362,7 +351,7 @@ export default function VerifyReceiptView({ token }) {
                 </div>
               )}
 
-              {receipt.resumen?.garantia && (
+              {mostrarDetalleCompleto && receipt.resumen?.garantia && (
                 <div className="rounded-2xl bg-zinc-50 border border-zinc-100 p-3">
                   <p className="text-[9px] font-black uppercase tracking-widest text-zinc-400">
                     {receipt.documentType === "diagnostico_presupuesto_cerrado"
@@ -373,13 +362,16 @@ export default function VerifyReceiptView({ token }) {
                 </div>
               )}
 
+              {mostrarDetalleCompleto && (
               <p className="text-[10px] leading-relaxed text-zinc-400">
                 Este comprobante fue generado desde Moto Gestión y está asociado a una orden de trabajo registrada.
               </p>
+              )}
             </div>
 
             {estado === "verificado" && (
               <>
+                {mostrarDetalleCompleto && (
                 <div className="grid grid-cols-1 gap-2">
                   <button
                     type="button"
@@ -395,12 +387,13 @@ export default function VerifyReceiptView({ token }) {
                     Guardar o compartir enlace
                   </button>
                 </div>
+                )}
                 {receipt.pdfStoragePath && (
                   <div className="rounded-3xl border border-orange-200 bg-orange-50 p-4">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-orange-700">Comprobante PDF disponible</p>
-                    <p className="mt-1 text-sm font-black text-orange-900">Calificá para desbloquear la descarga</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-orange-700">PDF disponible</p>
+                    <p className="mt-1 text-sm font-black text-orange-900">Calificá y descargá tu comprobante</p>
                     <p className="mt-2 text-xs leading-relaxed text-orange-800">
-                      Primero validás la recepción y calificás el servicio. Después se habilita la descarga del PDF y el beneficio queda registrado.
+                      Tocá las estrellas y después el botón naranja. Listo.
                     </p>
                   </div>
                 )}
@@ -533,93 +526,19 @@ export default function VerifyReceiptView({ token }) {
             )}
 
             {estado === "verificado" && fase === "formulario" && (
-              <div className="space-y-6 rounded-3xl border border-zinc-200 bg-white p-6">
+              <div className="space-y-5 rounded-3xl border border-zinc-200 bg-white p-6">
                 <div>
-                  <p className="text-lg font-black text-zinc-900">
-                    {receipt.documentType === "diagnostico_presupuesto_cerrado"
-                      ? "Validá y calificá la atención"
-                      : "Validá y calificá el servicio"}
-                  </p>
-                  <p className="mt-1 text-sm text-zinc-500">Confirmá recepción, calificá y desbloqueá el comprobante PDF en una sola pantalla.</p>
+                  <p className="text-lg font-black text-zinc-900">Descargar comprobante del trabajo</p>
+                  <p className="mt-1 text-sm text-zinc-500">Toca una calificacion y descargalo.</p>
                 </div>
 
-                <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-4">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Confirmación rápida</p>
-                  <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                    Marcá estos puntos y completá la calificación sin cambiar de pantalla.
-                  </p>
-                  <div className="mt-3 space-y-2">
-                    {[
-                      "Reconozco esta moto como propia o vinculada a mí.",
-                      "Recibí este comprobante del taller.",
-                      "Los datos principales coinciden con lo informado.",
-                      receipt.documentType === "diagnostico_presupuesto_cerrado"
-                        ? "Entiendo la condición de cierre indicada."
-                        : "Entiendo la condición de garantía indicada.",
-                    ].map((texto, i) => (
-                      <label key={i} className="flex cursor-pointer items-start gap-3">
-                        <input
-                          type="checkbox"
-                          checked={checks[i] || false}
-                          onChange={(e) => {
-                            const next = [...checks];
-                            next[i] = e.target.checked;
-                            setChecks(next);
-                          }}
-                          className="mt-0.5 h-5 w-5 rounded accent-orange-500"
-                        />
-                        <span className="text-sm leading-relaxed text-zinc-700">{texto}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+                <StarSelector
+                  label="Califica la atencion"
+                  value={scores.atencion}
+                  onChange={setCalificacionRapida}
+                />
 
-                <LoyaltyRewardCard incentive={ratingIncentive} />
-
-                {getScoreLabels(receipt.documentType).map(({ key, label }) => (
-                  <StarSelector
-                    key={key}
-                    label={label}
-                    value={scores[key]}
-                    onChange={(v) => setScores((s) => ({ ...s, [key]: v }))}
-                  />
-                ))}
-
-                <div className="space-y-2">
-                  <p className="text-sm font-bold text-zinc-700">¿Recomendarías este taller?</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setRecomienda(true)}
-                      className={`rounded-2xl py-3 text-sm font-black uppercase tracking-widest transition-all active:scale-95 ${
-                        recomienda === true ? "bg-green-500 text-white" : "bg-zinc-100 text-zinc-600"
-                      }`}
-                    >
-                      Si
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRecomienda(false)}
-                      className={`rounded-2xl py-3 text-sm font-black uppercase tracking-widest transition-all active:scale-95 ${
-                        recomienda === false ? "bg-zinc-800 text-white" : "bg-zinc-100 text-zinc-600"
-                      }`}
-                    >
-                      No
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm font-bold text-zinc-700">Comentario <span className="font-normal text-zinc-400">(opcional)</span></p>
-                  <textarea
-                    value={comentario}
-                    onChange={(e) => setComentario(e.target.value)}
-                    rows={3}
-                    maxLength={500}
-                    placeholder="Contanos tu experiencia..."
-                    className="w-full resize-none rounded-2xl border-2 border-zinc-100 p-4 text-sm text-zinc-900 outline-none focus:border-orange-400"
-                  />
-                </div>
+                <LoyaltyRewardCard incentive={ratingIncentive} compact />
 
                 {errorEnvio && <p className="text-sm font-bold text-red-600">{errorEnvio}</p>}
 
@@ -628,11 +547,11 @@ export default function VerifyReceiptView({ token }) {
                   disabled={!formValido || enviando}
                   className="w-full rounded-2xl bg-orange-600 py-4 text-sm font-black uppercase tracking-widest text-white transition-all active:scale-95 disabled:opacity-40"
                 >
-                  {enviando ? "Enviando..." : "Validar, calificar y desbloquear PDF"}
+                  {enviando ? "Preparando descarga..." : "Descargar comprobante del trabajo"}
                 </button>
 
                 <p className="text-center text-[10px] leading-relaxed text-zinc-400">
-                  La validación y la calificación quedan asociadas al comprobante real.
+                  Tu calificacion queda asociada a este trabajo real.
                 </p>
               </div>
             )}
