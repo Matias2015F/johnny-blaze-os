@@ -85,6 +85,12 @@
       "skillPath": "skills/firebase-security-rules-auditor/SKILL.md",
       "computedHash": "42e793406ca8980c47fcdbd309f02838316849bcbf8475001b4ecaa6a67606b8"
     },
+    "threat-model": {
+      "source": "anthropics/defending-code-reference-harness",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/threat-model/SKILL.md",
+      "computedHash": "c4d146d7483a2c32929f46618435bb17d7d1006d737dc41d3e33532cb38958f2"
+    },
     "xcode-project-setup": {
       "source": "firebase/skills",
       "sourceType": "github",
