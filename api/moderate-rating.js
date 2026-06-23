@@ -1,35 +1,11 @@
-let db, verifyIdToken;
+let db, verifyIdToken, assertAdmin;
 try {
-  ({ db, verifyIdToken } = require("./_firebase-admin.js"));
+  ({ db, verifyIdToken, assertAdmin } = require("./_firebase-admin.js"));
 } catch (initError) {
   console.error("ERROR al inicializar Firebase Admin:", initError.message);
 }
 
 const { applyRateLimit } = require("./_ratelimit.js");
-
-const ADMIN_EMAILS = String(process.env.PLATFORM_ADMIN_EMAILS || "matias4604@gmail.com")
-  .split(",")
-  .map((email) => email.trim().toLowerCase())
-  .filter(Boolean);
-
-const ADMIN_UIDS = String(process.env.PLATFORM_ADMIN_UIDS || "TNwwuKJsIXN29zJg8HWfORawdFm1")
-  .split(",")
-  .map((uid) => uid.trim())
-  .filter(Boolean);
-
-async function assertAdmin(decoded) {
-  const uid = decoded?.uid || "";
-  const email = String(decoded?.email || "").toLowerCase();
-  if (ADMIN_UIDS.includes(uid) || ADMIN_EMAILS.includes(email)) return true;
-
-  const snap = await db.collection("usuarios").doc(uid).get();
-  const data = snap.exists ? snap.data() || {} : {};
-  if (data.rol === "admin" || data.isPlatformAdmin === true) return true;
-
-  const err = new Error("No autorizado como administrador");
-  err.status = 403;
-  throw err;
-}
 
 function safeString(value, max = 500) {
   return String(value || "").trim().slice(0, max);
@@ -49,7 +25,7 @@ module.exports = async function handler(req, res) {
   let decoded;
   try {
     decoded = await verifyIdToken(req);
-    await assertAdmin(decoded);
+    assertAdmin(decoded);
   } catch (err) {
     return res.status(err.status || 401).json({ error: err.message || "No autorizado" });
   }

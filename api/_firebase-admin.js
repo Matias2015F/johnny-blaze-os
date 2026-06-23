@@ -42,4 +42,14 @@ async function verifyIdToken(req) {
   return getAuth().verifyIdToken(header.slice(7));
 }
 
-module.exports = { db: getFirestore(), verifyIdToken };
+// Verifica que el token decodificado tenga el custom claim { admin: true }.
+// Lanza con err.status = 403 si no lo tiene.
+function assertAdmin(decoded) {
+  if (decoded?.admin !== true) {
+    const err = new Error("No autorizado como administrador");
+    err.status = 403;
+    throw err;
+  }
+}
+
+module.exports = { db: getFirestore(), verifyIdToken, assertAdmin };
