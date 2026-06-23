@@ -16,11 +16,11 @@
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `2009f2d` — chore: add code review standards to CLAUDE.md
+SHA: `3ceedbf` — chore: update ESTADO.md HEAD to 2009f2d
 
 ## HEAD local
 
-SHA: `2009f2d` — en sync con origin/main.
+SHA: `3ceedbf` — en sync con origin/main.
 
 ---
 
