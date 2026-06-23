@@ -16,11 +16,11 @@
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `3ceedbf` — chore: update ESTADO.md HEAD to 2009f2d
+SHA: `412b506` — chore: install find-skills and threat-model skills
 
 ## HEAD local
 
-SHA: `3ceedbf` — en sync con origin/main.
+SHA: `412b506` — en sync con origin/main.
 
 ---
 
@@ -62,20 +62,15 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 
 ## Ultima sesion
 
-**Fecha:** 2026-06-22
-**IA:** Claude (Sonnet 4.6) + Codex
+**Fecha:** 2026-06-23
+**IA:** Claude (Sonnet 4.6)
 **Trabajo realizado:**
-- Codex: `5783351` - copy mas claro para mecanicos (6 archivos)
-- Codex: `9619003` - VerifyReceiptView simplificado (estrella -> descarga directa)
-- Codex: `1947b2f` - boton eliminar para ordenes en estado `diagnostico`
-- Claude: push de los 3 commits a origin/main
-- Claude: deploy admin.motogestion.ar sincronizado a `1947b2f`
-- Claude: `e8b6c34` - creacion de `.clou/ESTADO.md`
-- Claude/Codex: `d0afcf4` - actualizacion de estado en `origin/main`
-- Codex: normalizacion de `AGENTS.md` como puntero a `CLAUDE.md` y documentacion del mapa canonico de carpetas/proyectos.
-- Codex: `a92493f` - `AGENTS.md` versionado como puntero fino y `.clou/ESTADO.md` actualizado con mapa canonico.
-- Claude: `5ddbb2b` - sync CLAUDE.md + AGENTS.md + ESTADO.md
-- Claude: `2009f2d` - estandares de revision de codigo en CLAUDE.md
+- Claude: configuracion de comportamiento proactivo de skills en `~/.claude/CLAUDE.md`
+- Claude: `b08c4e9` - landing motogestion.ar — CRO + SEO (hero reescrito, CTA, title, meta)
+- Claude: deploy landing a produccion (motogestion.ar)
+- Claude: skill `find-skills` instalado (vercel-labs/skills)
+- Claude: skill `threat-model` instalado (anthropics/defending-code-reference-harness)
+- Claude: `412b506` - commit skills-lock.json + .agents/ a origin/main
 
 ---
 
