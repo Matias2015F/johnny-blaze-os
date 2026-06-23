@@ -16,11 +16,12 @@
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `a92493f` - chore: align Codex instructions with Claude rules
+Verificar con `git rev-parse origin/main` al iniciar sesion.
+Ultimo commit de reglas IA versionadas: `a92493f` - chore: align Codex instructions with Claude rules.
 
 ## HEAD local
 
-SHA: `a92493f` - ultimo commit de coordinacion confirmado en origin/main.
+Verificar con `git rev-parse HEAD` al iniciar sesion.
 
 ---
 
