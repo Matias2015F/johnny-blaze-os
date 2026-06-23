@@ -22,6 +22,14 @@ Aplicar también al cerrar cada tarea:
 
 ---
 
+## Carpeta de trabajo única — Claude y Codex
+
+`C:\Users\Usuario\johnny-blaze-os` es la única carpeta de trabajo real para esta app. Tanto Claude (vía `CLAUDE.md`) como Codex (vía `AGENTS.md`, que apunta a este archivo) operan exclusivamente acá.
+
+Cualquier otra ubicación local (por ejemplo carpetas en OneDrive, copias de preservación, monorepos paralelos) está fuera de uso. No se implementan features, no se corren builds, no se hacen commits ahí. Si una sesión de Claude o Codex arranca parada en otra carpeta, debe detenerse y señalar que la ubicación correcta es esta.
+
+---
+
 ## Propósito
 
 PWA de gestión operativa para taller mecánico de motos (MotoGestión). Usuario real: mecánico con manos sucias, celular, apuro. Velocidad de uso y ergonomía táctil importan más que la perfección arquitectural.

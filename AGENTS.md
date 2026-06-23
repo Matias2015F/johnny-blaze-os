@@ -22,6 +22,6 @@ Do not duplicate project rules in this file. If a rule changes, update `CLAUDE.m
 
 Codex-specific note:
 
-- Use this repository as production app source only when the working directory is `C:\Users\Usuario\johnny-blaze-os`.
-- Do not implement production features in the OneDrive monorepo or preservation repo unless the user explicitly changes the canonical production source.
+- The only working directory for this app, for both Claude and Codex, is `C:\Users\Usuario\johnny-blaze-os`.
+- The OneDrive monorepo (`ANTIGRAVITI_PROYECTOS\Motogestion.ar`) and any preservation copy are out of scope. Do not read, build, or commit there under any circumstance, even if asked ambiguously.
 - Do not add new files under `api/` without checking `.clou/ESTADO.md`; Vercel Hobby is at the serverless function limit.

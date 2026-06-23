@@ -16,12 +16,11 @@
 
 ## HEAD en GitHub (origin/main)
 
-Verificar con `git rev-parse origin/main` al iniciar sesion.
-Ultimo commit de reglas IA versionadas: `a92493f` - chore: align Codex instructions with Claude rules.
+SHA: `dd517b4` — chore: avoid self-referential HEAD in ESTADO
 
 ## HEAD local
 
-Verificar con `git rev-parse HEAD` al iniciar sesion.
+SHA: `dd517b4` — en sync con origin/main.
 
 ---
 
@@ -29,8 +28,8 @@ Verificar con `git rev-parse HEAD` al iniciar sesion.
 
 | Entorno | Ubicacion / Proyecto | Estado |
 |---|---|---|
-| CPU produccion app | `C:\Users\Usuario\johnny-blaze-os` | Produccion real. Implementar aqui. |
-| CPU monorepo nuevo | `C:\Users\Usuario\OneDrive\ANTIGRAVITI_PROYECTOS\Motogestion.ar` | No produccion. No implementar features productivas aqui sin orden explicita. |
+| CPU produccion app | `C:\Users\Usuario\johnny-blaze-os` | Unica carpeta de trabajo real. Claude y Codex implementan unicamente aqui. |
+| CPU monorepo OneDrive | `C:\Users\Usuario\OneDrive\ANTIGRAVITI_PROYECTOS\Motogestion.ar` | Descartada por decision del usuario (2026-06-22). No usar bajo ninguna circunstancia. |
 | CPU preservacion | `C:\Users\Usuario\Proyectos\MotoGestion\repositorio` | Preservacion historica. No produccion activa. |
 | GitHub app | `github.com/Matias2015F/johnny-blaze-os` rama `main` | Fuente remota de la app. |
 | GitHub landing | `github.com/Matias2015F/motogestion-landing` | Fuente remota de landing. |
