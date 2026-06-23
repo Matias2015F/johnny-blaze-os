@@ -3,6 +3,20 @@ const { applyRateLimit } = require("./_ratelimit.js");
 const { sendEmail } = require("./_email.js");
 const { getStorage } = require("firebase-admin/storage");
 
+function escapeHtml(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+const KNOWN_MODES = new Set([
+  "download-pdf", "receipt-incentive", "public-prices",
+  "lead", "publish-workshop", "public-workshops",
+]);
+
 const ALLOWED_ORIGINS = [
   "https://motogestion.ar",
   "https://www.motogestion.ar",
@@ -89,9 +103,9 @@ async function handleLead(req, res) {
   const html = `
     <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#fff;">
       <h2 style="margin:0 0 16px;font-size:18px;color:#111827;font-weight:900;">Nuevo lead — MotoGestión</h2>
-      <p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Taller:</strong> ${nombreTaller}</p>
-      <p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Ciudad:</strong> ${ciudad}</p>
-      <p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Teléfono:</strong> ${telefono}</p>
+      <p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Taller:</strong> ${escapeHtml(nombreTaller)}</p>
+      <p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Ciudad:</strong> ${escapeHtml(ciudad)}</p>
+      <p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Teléfono:</strong> ${escapeHtml(telefono)}</p>
       <p style="margin:24px 0 0;font-size:11px;color:#9ca3af;">Enviado desde motogestion.ar</p>
     </div>
   `;
@@ -353,29 +367,34 @@ module.exports = async function handler(req, res) {
 
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  if (req.query?.mode === "download-pdf") {
+  const mode = req.query?.mode;
+  if (mode !== undefined && !KNOWN_MODES.has(mode)) {
+    return res.status(400).json({ ok: false, error: "Modo no reconocido." });
+  }
+
+  if (mode === "download-pdf") {
     return handleDownloadPdf(req, res);
   }
 
-  if (req.query?.mode === "receipt-incentive") {
+  if (mode === "receipt-incentive") {
     return handleReceiptIncentive(req, res);
   }
 
-  if (req.query?.mode === "public-prices") {
+  if (mode === "public-prices") {
     return handlePublicPrices(req, res);
   }
 
-  if (req.query?.mode === "lead") {
+  if (mode === "lead") {
     return handleLead(req, res);
   }
 
-  if (req.query?.mode === "publish-workshop") {
+  if (mode === "publish-workshop") {
     return handlePublishWorkshop(req, res);
   }
 
   if (req.method !== "GET") return res.status(405).end();
 
-  if (req.query?.mode === "public-workshops") {
+  if (mode === "public-workshops") {
     return handlePublicWorkshops(req, res);
   }
 
