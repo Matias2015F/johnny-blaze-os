@@ -16,11 +16,11 @@
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `412b506` — chore: install find-skills and threat-model skills
+SHA: `8e6ec95` — docs(security): complete threat model — bootstrap-then-interview mode
 
 ## HEAD local
 
-SHA: `412b506` — en sync con origin/main.
+SHA: `8e6ec95` — en sync con origin/main.
 
 ---
 
@@ -71,12 +71,20 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 - Claude: skill `find-skills` instalado (vercel-labs/skills)
 - Claude: skill `threat-model` instalado (anthropics/defending-code-reference-harness)
 - Claude: `412b506` - commit skills-lock.json + .agents/ a origin/main
+- Claude: `d828ed4` - fix(security): quick wins T6/T9/T10 — KNOWN_MODES allowlist, escapeHtml en handleLead, npm audit en CI
+- Claude: `8e6ec95` - docs(security): THREAT_MODEL.md completo — modo bootstrap-then-interview, 6 preguntas cerradas, 6 mitigaciones recomendadas
 
 ---
 
 ## Pendientes documentados
 
-_(vacio - no hay deuda tecnica critica conocida)_
+| Item | Prioridad | Referencia |
+|---|---|---|
+| Runbook de rotación de credenciales (FIREBASE_SERVICE_ACCOUNT_B64, MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET) | Alta | THREAT_MODEL.md sección 8, M1 |
+| Dependabot habilitado en el repo | S | THREAT_MODEL.md sección 8, M4 |
+| Custom Claims para isPlatformAdmin() | M | THREAT_MODEL.md sección 8, M2 |
+| Rate limiter distribuido (Upstash Redis) | M | THREAT_MODEL.md sección 8, M3 |
+| Log Drain de Vercel a destino externo | M | THREAT_MODEL.md sección 8, M6 |
 
 ---
 
