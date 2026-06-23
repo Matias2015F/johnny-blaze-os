@@ -16,11 +16,11 @@
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `d0afcf4` - chore: update ESTADO.md with e8b6c34 HEAD
+SHA: `a92493f` - chore: align Codex instructions with Claude rules
 
 ## HEAD local
 
-SHA: `d0afcf4` - en sync con origin/main al iniciar esta sesion.
+SHA: `a92493f` - ultimo commit de coordinacion confirmado en origin/main.
 
 ---
 
@@ -73,6 +73,7 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 - Claude: `e8b6c34` - creacion de `.clou/ESTADO.md`
 - Claude/Codex: `d0afcf4` - actualizacion de estado en `origin/main`
 - Codex: normalizacion de `AGENTS.md` como puntero a `CLAUDE.md` y documentacion del mapa canonico de carpetas/proyectos.
+- Codex: `a92493f` - `AGENTS.md` versionado como puntero fino y `.clou/ESTADO.md` actualizado con mapa canonico.
 
 ---
 
