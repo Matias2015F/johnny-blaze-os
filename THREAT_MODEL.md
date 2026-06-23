@@ -74,7 +74,7 @@ El modelo de negocio SaaS depende de que los campos de suscripción (`estado`, `
 - **[Resuelto]** PDF client-side vs server-side → 100% client-side confirmado en `ExportPdfView.jsx`
 - **[Resuelto]** CRON_SECRET entropía → generado por Vercel, entropía alta [Owner-states]
 - **[Resuelto]** Actividad anómala en submit-rating → ninguna observada [Owner-states]
-- **[Pendiente — acción requerida]** Sin runbook de rotación para `FIREBASE_SERVICE_ACCOUNT_B64`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`. Afecta T2/T4/T5. Ver sección 8, M1.
+- **[Resuelto]** Runbook de rotación para `FIREBASE_SERVICE_ACCOUNT_B64`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET` → `.clou/runbook-rotacion-credenciales.md` (`e52d1d7`)
 - **[Pendiente — acción requerida]** Logs de Vercel sin persistencia externa (retención ~1-7 días). Si hay un incidente, la ventana forense es corta. Ver sección 8, M6.
 
 ## 7. Provenance
@@ -89,7 +89,7 @@ El modelo de negocio SaaS depende de que los campos de suscripción (`estado`, `
 
 | mitigation | threat_ids | closes_class | effort |
 |---|---|---|---|
-| Documentar runbook de rotación de credenciales: pasos concretos para rotar FIREBASE_SERVICE_ACCOUNT_B64 (nueva SA en Firebase Console + update en Vercel), MP_ACCESS_TOKEN y MP_WEBHOOK_SECRET (regenerar en MP + update en Vercel + test webhook) | T2, T4, T5 | partial | S |
+| ~~Documentar runbook de rotación de credenciales~~ — **DONE** `e52d1d7` → `.clou/runbook-rotacion-credenciales.md` | T2, T4, T5 | partial | S |
 | Migrar admin check a Firebase Custom Claims — elimina la lectura Firestore per-request en `isPlatformAdmin()` y el UID hardcodeado en reglas | T1, T7 | partial | M |
 | Reemplazar rate limiter in-memory por rate limit distribuido (Upstash Redis o Vercel KV) para que el estado persista entre instancias y cold starts | T3 | yes | M |
 | ~~Habilitar Dependabot en el repo para alertas automáticas de vulnerabilidades en dependencias npm~~ — **DONE** `1be3944` | T10 | partial | S |

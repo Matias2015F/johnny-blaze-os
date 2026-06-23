@@ -80,7 +80,7 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 
 | Item | Prioridad | Referencia |
 |---|---|---|
-| Runbook de rotación de credenciales (FIREBASE_SERVICE_ACCOUNT_B64, MP_ACCESS_TOKEN, MP_WEBHOOK_SECRET) | Alta | THREAT_MODEL.md sección 8, M1 |
+| ~~Runbook de rotación de credenciales~~ — DONE `e52d1d7` | Alta | `.clou/runbook-rotacion-credenciales.md` |
 | ~~Dependabot habilitado en el repo~~ — DONE `1be3944` | S | THREAT_MODEL.md sección 8, M4 |
 | Custom Claims para isPlatformAdmin() | M | THREAT_MODEL.md sección 8, M2 |
 | Rate limiter distribuido (Upstash Redis) | M | THREAT_MODEL.md sección 8, M3 |
