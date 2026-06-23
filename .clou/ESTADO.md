@@ -16,11 +16,11 @@
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `dd517b4` — chore: avoid self-referential HEAD in ESTADO
+SHA: `2009f2d` — chore: add code review standards to CLAUDE.md
 
 ## HEAD local
 
-SHA: `dd517b4` — en sync con origin/main.
+SHA: `2009f2d` — en sync con origin/main.
 
 ---
 
@@ -74,6 +74,8 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 - Claude/Codex: `d0afcf4` - actualizacion de estado en `origin/main`
 - Codex: normalizacion de `AGENTS.md` como puntero a `CLAUDE.md` y documentacion del mapa canonico de carpetas/proyectos.
 - Codex: `a92493f` - `AGENTS.md` versionado como puntero fino y `.clou/ESTADO.md` actualizado con mapa canonico.
+- Claude: `5ddbb2b` - sync CLAUDE.md + AGENTS.md + ESTADO.md
+- Claude: `2009f2d` - estandares de revision de codigo en CLAUDE.md
 
 ---
 
