@@ -1,3 +1,11 @@
+# ATENCION — ESTA CARPETA ES PRESERVACION HISTORICA. NO ES PRODUCCION.
+
+La produccion real esta en `C:\Users\Usuario\johnny-blaze-os`.
+Esta carpeta (rama `codex/motogestion-preservacion-20260613`, SHA `9f4fe92`) existe solo como referencia historica.
+**No modificar. No deployar. Si llegaste aqui por error, cerrá esta sesion.**
+
+---
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
