@@ -644,6 +644,20 @@ npx vercel --prod --scope matias2015fs-projects --project motogestion-admin
 
 ---
 
+## Estándares de revisión de código
+
+Después de completar cualquier implementación, revisar el código para:
+
+- Funciones de más de 30 líneas (probablemente haciendo demasiado)
+- Lógica duplicada más de dos veces (extraer a utilidad)
+- Cualquier uso de tipo `any` en TypeScript (reemplazar con tipos reales)
+- Componentes con más de 3 props que podrían agruparse en un objeto
+- Manejo de errores faltante en operaciones asíncronas
+
+Ejecutar `/simplify` antes de presentar el código al usuario.
+
+---
+
 ## Radar de arquitectura — pendiente próximo ciclo
 
 Items conocidos, intencionalmente no tocados hoy. No son bugs. Son deuda de documentación o mejora planificada.
