@@ -12,13 +12,15 @@
 | `app.motogestion.ar` | `motogestion-app` | `1947b2f` | 2026-06-22 |
 | `admin.motogestion.ar` | `motogestion-admin` | `1947b2f` | 2026-06-22 |
 
+> Nota: producción no fue redesployada para e8b6c34 (solo docs, no requiere deploy).
+
 ## HEAD en GitHub (origin/main)
 
-SHA: `1947b2f` — fix: allow deleting diagnostic orders
+SHA: `e8b6c34` — chore: add .clou/ESTADO.md for Claude-Codex session handoff
 
 ## HEAD local
 
-SHA: `1947b2f` — en sync con origin/main y producción.
+SHA: `e8b6c34` — en sync con origin/main.
 
 ---
 
@@ -40,6 +42,7 @@ No agregar ningún archivo nuevo en `api/` sin eliminar otro primero.
 - Codex: `1947b2f` — botón eliminar para órdenes en estado `diagnostico`
 - Claude: push de los 3 commits a origin/main
 - Claude: deploy admin.motogestion.ar sincronizado a `1947b2f`
+- Claude: `e8b6c34` — creación de `.clou/ESTADO.md` (este archivo)
 
 ---
 
