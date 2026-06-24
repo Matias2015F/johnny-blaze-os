@@ -12,7 +12,7 @@ El modelo de negocio SaaS depende de que los campos de suscripción (`estado`, `
 
 | asset | description | sensitivity |
 |---|---|---|
-| Credenciales de admin de plataforma | UID `TNwwuKJsIXN29zJg8HWfORawdFm1` + email `matias4604@gmail.com` — acceso completo a todos los datos y operaciones | critical |
+| Credenciales de admin de plataforma | UID `ERqAgJfizDNXihicDEegT2u5tws2` + email `matias4604@gmail.com` — acceso completo a todos los datos y operaciones | critical |
 | Firebase service account | `FIREBASE_SERVICE_ACCOUNT_B64` en Vercel — Admin SDK con acceso irrestricto a Firestore, Storage y Auth | critical |
 | Estado de suscripción de usuarios | Campos `estado`, `plan`, `activoHasta`, `currentPlanKey` — determinan el acceso al servicio y el revenue | critical |
 | MP_WEBHOOK_SECRET | Verifica autenticidad de pagos entrantes — si se compromete, permite inyectar suscripciones gratis | critical |

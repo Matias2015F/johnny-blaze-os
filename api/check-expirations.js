@@ -36,7 +36,7 @@ module.exports = async function handler(req, res) {
 
       const activoHasta = u.activoHasta || u.trialEndsAt || null;
       const estado = (u.estado || "trial").toLowerCase();
-      const esAdmin = userDoc.id === "TNwwuKJsIXN29zJg8HWfORawdFm1" || u.isPlatformAdmin || u.rol === "admin";
+      const esAdmin = userDoc.id === "ERqAgJfizDNXihicDEegT2u5tws2" || u.isPlatformAdmin || u.rol === "admin";
       if (esAdmin) continue;
 
       // ── 1. Vencimiento próximo (estado activo o trial, con fecha futura) ────

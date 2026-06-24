@@ -557,7 +557,7 @@ Ver `COOKBOOK.md` para patrones completos de UI (inputs, bottom sheets, chips, f
 - Firestore rules: `noModificaCamposSuscripcion()` bloquea autopromociones de plan desde el cliente
 - `ensureSaasUserProfile` solo puede escribir: `email`, `lastSeenAt`, `updatedAt`, `nombreTaller`, `appVersion`
 - Webhook MP: HMAC-SHA256 + timestamp freshness (5 min) + HMAC failure tracker por IP
-- Admin uid: `TNwwuKJsIXN29zJg8HWfORawdFm1`
+- Admin uid: `ERqAgJfizDNXihicDEegT2u5tws2`
 - Firebase Admin SDK se inicializa con `FIREBASE_SERVICE_ACCOUNT_B64` (JSON base64)
 
 ---

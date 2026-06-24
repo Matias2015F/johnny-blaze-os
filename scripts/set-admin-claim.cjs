@@ -16,7 +16,7 @@ const { initializeApp, cert, getApps } = require("firebase-admin/app");
 const { getAuth } = require("firebase-admin/auth");
 const path = require("path");
 
-const ADMIN_UID = "TNwwuKJsIXN29zJg8HWfORawdFm1";
+const ADMIN_UID = "ERqAgJfizDNXihicDEegT2u5tws2";
 
 async function main() {
   let serviceAccount;

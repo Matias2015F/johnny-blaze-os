@@ -123,4 +123,4 @@ Estos archivos existen localmente pero NO estan en git:
 | Deploy admin (swap protocol) | `CLAUDE.md` seccion Deploy |
 | Limite API Vercel | 12 funciones exactas en `api/` |
 | Firebase Storage rules | Editar desde consola web (CLI falla) |
-| Admin UID | `TNwwuKJsIXN29zJg8HWfORawdFm1` |
+| Admin UID | `ERqAgJfizDNXihicDEegT2u5tws2` |
