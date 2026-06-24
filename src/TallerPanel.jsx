@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { auth } from "./firebase.js";
 import { signOut, onAuthStateChanged } from "firebase/auth";
-import { Wrench, Clock, History, Settings, DollarSign, HelpCircle, RefreshCw, WifiOff } from "lucide-react";
+import { AlertTriangle, Wrench, Clock, History, Settings, DollarSign, HelpCircle, RefreshCw, WifiOff } from "lucide-react";
 
 import { LS, useCollection, migrateFromLocalStorage, migrateRenamedCollections, clearFirestoreData, useSyncStatus, forceSyncCacheToFirestore, getLastSyncedAt } from "./lib/storage.js";
 import { autoCloudBackup } from "./lib/cloudBackup.js";
@@ -65,7 +65,7 @@ class ChunkErrorBoundary extends React.Component {
     if (this.state.error) {
       return (
         <div className="min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center p-8 text-center gap-5">
-          <p className="text-4xl select-none">⚠️</p>
+          <AlertTriangle size={40} className="text-yellow-400" />
           <p className="text-white font-black text-sm uppercase tracking-tight">Algo salió mal en esta pantalla</p>
           <p className="text-zinc-500 text-xs">Tus datos están guardados.</p>
           <button
@@ -655,7 +655,7 @@ export default function TallerPanel({ modoLectura = false, account = null }) {
 
   // -- Render -----------------------------------------------------------------
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-[#0A0A0A] relative text-left selection:bg-orange-500 overflow-x-hidden font-bold">
+    <div className="max-w-md mx-auto min-h-[100dvh] bg-[#0A0A0A] relative text-left selection:bg-orange-500 overflow-x-hidden font-bold">
 
       {!isOnline && (
         <div className="fixed top-0 left-0 right-0 z-[300] flex items-center justify-center gap-2 bg-zinc-900/95 border-b border-zinc-700 py-2.5 px-4 backdrop-blur">

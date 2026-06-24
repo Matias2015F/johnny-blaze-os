@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { Bell, Calendar, Clock, ChevronRight, FileText, History, LogOut, MessageCircle, PlusCircle, ReceiptText, Wrench, Zap } from "lucide-react";
+import { AlertTriangle, Bell, Calendar, Clock, ChevronRight, FileText, History, LogOut, MessageCircle, PlusCircle, ReceiptText, User, Wrench, X, Zap } from "lucide-react";
 import { auth } from "../firebase.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { evaluarEstado } from "../lib/calc.js";
@@ -437,9 +437,10 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
                     <p className="text-sm font-black uppercase tracking-tight text-white">
                       {recordatorio.moto?.patente || "---"} · {recordatorio.moto?.marca || ""} {recordatorio.moto?.modelo || ""}
                     </p>
-                    <p className="mt-1 text-xs text-white font-bold">👤 {recordatorio.cliente?.nombre || "Cliente"}</p>
-                    <p className={`mt-2 text-[10px] font-black uppercase ${recordatorio.estado === "service_vencido" ? "text-red-300" : "text-yellow-300"}`}>
-                      {recordatorio.estado === "service_vencido" ? "⚠️ SERVICE VENCIDO" : "🔔 PRÓXIMO SERVICE"} · {recordatorio.descripcion}
+                    <p className="mt-1 flex items-center gap-1 text-xs text-white font-bold"><User size={11} className="shrink-0" /> {recordatorio.cliente?.nombre || "Cliente"}</p>
+                    <p className={`mt-2 flex items-center gap-1 text-[10px] font-black uppercase ${recordatorio.estado === "service_vencido" ? "text-red-300" : "text-yellow-300"}`}>
+                      {recordatorio.estado === "service_vencido" ? <AlertTriangle size={10} className="shrink-0" /> : <Bell size={10} className="shrink-0" />}
+                      {recordatorio.estado === "service_vencido" ? "SERVICE VENCIDO" : "PRÓXIMO SERVICE"} · {recordatorio.descripcion}
                     </p>
                     {recordatorio.kmObjetivo && (
                       <p className="mt-2 text-[9px] text-zinc-200">
@@ -449,10 +450,10 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
                   </div>
                   <button
                     onClick={() => LS.updateDoc("recordatorios", recordatorio.id, { estado: "hecho" })}
-                    className="shrink-0 text-zinc-400 hover:text-red-400 text-2xl font-black active:scale-110 transition-colors"
+                    className="shrink-0 cursor-pointer p-1 text-zinc-400 hover:text-red-400 active:scale-95 transition-colors"
                     title="Cerrar notificación"
                   >
-                    ✕
+                    <X size={16} />
                   </button>
                 </div>
 
