@@ -16,11 +16,11 @@
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `a846c0d` — feat(security): implement Firebase Custom Claims for admin auth
+SHA: `4b56d73` — fix: correct admin UID (ERqAgJfizDNXihicDEegT2u5tws2)
 
 ## HEAD local
 
-SHA: `a846c0d` — en sync con origin/main. Deploy en producción verificado.
+SHA: `4b56d73` — en sync con origin/main. Deploy verificado en app y admin.
 
 ---
 
@@ -73,6 +73,8 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 - Claude: `412b506` - commit skills-lock.json + .agents/ a origin/main
 - Claude: `d828ed4` - fix(security): quick wins T6/T9/T10 — KNOWN_MODES allowlist, escapeHtml en handleLead, npm audit en CI
 - Claude: `8e6ec95` - docs(security): THREAT_MODEL.md completo — modo bootstrap-then-interview, 6 preguntas cerradas, 6 mitigaciones recomendadas
+- Claude: `a846c0d` - feat(security): Custom Claims para isPlatformAdmin — assertAdmin centralizado, Firestore rules simplificadas
+- Claude: `4b56d73` - fix: UID admin corregido (era TNwwuKJsIXN29zJg8HWfORawdFm1 de fefe@gmail.com, real es ERqAgJfizDNXihicDEegT2u5tws2)
 
 ---
 
