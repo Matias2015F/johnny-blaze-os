@@ -85,6 +85,12 @@
       "skillPath": "skills/firebase-security-rules-auditor/SKILL.md",
       "computedHash": "42e793406ca8980c47fcdbd309f02838316849bcbf8475001b4ecaa6a67606b8"
     },
+    "code-reviewer": {
+      "source": "claude-code-templates/development/code-reviewer",
+      "sourceType": "npx",
+      "skillPath": ".claude/skills/code-reviewer/SKILL.md",
+      "computedHash": ""
+    },
     "threat-model": {
       "source": "anthropics/defending-code-reference-harness",
       "sourceType": "github",
