@@ -85,6 +85,12 @@
       "skillPath": "skills/firebase-security-rules-auditor/SKILL.md",
       "computedHash": "42e793406ca8980c47fcdbd309f02838316849bcbf8475001b4ecaa6a67606b8"
     },
+    "mobile-design": {
+      "source": "claude-code-templates/creative-design/mobile-design",
+      "sourceType": "npx",
+      "skillPath": ".claude/skills/mobile-design/SKILL.md",
+      "computedHash": ""
+    },
     "ui-ux-pro-max": {
       "source": "claude-code-templates/creative-design/ui-ux-pro-max",
       "sourceType": "npx",
