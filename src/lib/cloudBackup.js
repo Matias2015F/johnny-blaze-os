@@ -9,6 +9,8 @@ import { buildBackupEnvelope, assertRestorableData, countersFromData } from "./i
 const BACKUP_KEY = "jbos_last_cloud_backup";
 const MAX_BACKUPS = 7;
 const BATCH_SIZE = 400;
+const BACKUP_MAX_BYTES = 900_000;
+const HEAVY_COLS = ["repuestosHistorial", "precioHistorial", "agendaTurnos"];
 
 // ── Helpers de batch ─────────────────────────────────────────────────────────
 
@@ -68,6 +70,18 @@ export async function createCloudBackup(uid, { pruneProtect = null } = {}) {
   const envelope = buildBackupEnvelope(data, { source: "cloud" });
   if (envelope.total === 0) return null;
 
+  // M1: si el JSON supera 900KB, omitir colecciones pesadas no críticas
+  let dataPayload = JSON.stringify(envelope.data);
+  let truncated = null;
+  if (dataPayload.length > BACKUP_MAX_BYTES) {
+    const slim = Object.fromEntries(
+      Object.entries(envelope.data).filter(([k]) => !HEAVY_COLS.includes(k))
+    );
+    slim._truncated = HEAVY_COLS;
+    dataPayload = JSON.stringify(slim);
+    truncated = HEAVY_COLS;
+  }
+
   const id = new Date().toISOString().replace(/[:.]/g, "-");
   await setDoc(doc(db, "users", uid, "snapshots", id), {
     fecha: Date.now(),
@@ -76,18 +90,29 @@ export async function createCloudBackup(uid, { pruneProtect = null } = {}) {
     integrity: envelope.integrity,
     schema: "motogestion-backup",
     v: 3,
-    data: JSON.stringify(envelope.data),
+    data: dataPayload,
+    ...(truncated ? { truncated } : {}),
     createdAt: Date.now(),
   });
 
-  localStorage.setItem(BACKUP_KEY, Date.now().toString());
+  const now = Date.now();
+  localStorage.setItem(BACKUP_KEY, now.toString());
+  // M4: escribir lastBackupAt en Firestore para dedup cross-device
+  setDoc(doc(db, "usuarios", uid), { lastBackupAt: now }, { merge: true }).catch(() => {});
   await pruneOldBackups(uid, pruneProtect);
-  return { id, total: envelope.total };
+  return { id, total: envelope.total, truncated };
 }
 
 export async function autoCloudBackup(uid) {
-  const last = Number(localStorage.getItem(BACKUP_KEY) || 0);
-  if (Date.now() - last < 86400000) return null;
+  // M4: dedup cross-device via Firestore, fallback a localStorage si offline
+  try {
+    const userSnap = await getDoc(doc(db, "usuarios", uid));
+    const lastFs = userSnap.exists() ? (userSnap.data()?.lastBackupAt || 0) : 0;
+    if (Date.now() - lastFs < 86400000) return null;
+  } catch {
+    const last = Number(localStorage.getItem(BACKUP_KEY) || 0);
+    if (Date.now() - last < 86400000) return null;
+  }
   return createCloudBackup(uid);
 }
 

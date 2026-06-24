@@ -1,3 +1,5 @@
+const { FieldValue } = require("firebase-admin/firestore");
+
 let db, verifyIdToken, assertAdmin;
 try {
   ({ db, verifyIdToken, assertAdmin } = require("./_firebase-admin.js"));
@@ -68,8 +70,30 @@ module.exports = async function handler(req, res) {
       createdAt: now,
     });
 
+    // M2: actualizar reputacion pre-calculada en usuarios/{uid}
+    const ratingData = snap.data() || {};
+    const prevStatus = ratingData.status || "pendiente_validacion";
+    const uidTaller = ratingData.uidTaller || "";
+    const score = Number(ratingData.score) || 0;
+    if (uidTaller) {
+      const nowApproved = normalizedDecision === "aprobar";
+      const wasApproved = prevStatus === "aprobado";
+      if (nowApproved && !wasApproved) {
+        db.collection("usuarios").doc(uidTaller).update({
+          "reputacion.aprobados": FieldValue.increment(1),
+          "reputacion.sumaScore": FieldValue.increment(score),
+          "reputacion.updatedAt": Date.now(),
+        }).catch((e) => console.warn("[moderate-rating] reputacion update:", e.message));
+      } else if (!nowApproved && wasApproved) {
+        db.collection("usuarios").doc(uidTaller).update({
+          "reputacion.aprobados": FieldValue.increment(-1),
+          "reputacion.sumaScore": FieldValue.increment(-score),
+          "reputacion.updatedAt": Date.now(),
+        }).catch((e) => console.warn("[moderate-rating] reputacion update:", e.message));
+      }
+    }
+
     if (normalizedDecision === "aprobar") {
-      const ratingData = snap.data() || {};
       crearBeneficioCalificacion({
         uidTaller: ratingData.uidTaller || "",
         token: ratingData.token || "",

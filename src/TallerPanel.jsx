@@ -4,6 +4,7 @@ import { signOut, onAuthStateChanged } from "firebase/auth";
 import { AlertTriangle, Wrench, Clock, History, Settings, DollarSign, HelpCircle, RefreshCw, WifiOff } from "lucide-react";
 
 import { LS, useCollection, migrateFromLocalStorage, migrateRenamedCollections, clearFirestoreData, useSyncStatus, forceSyncCacheToFirestore, getLastSyncedAt } from "./lib/storage.js";
+import { useOfflineRecovery } from "./lib/useOfflineRecovery.js";
 import { autoCloudBackup } from "./lib/cloudBackup.js";
 import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
 import { APP_BUILD } from "./generated/appVersion.js";
@@ -202,6 +203,7 @@ export default function TallerPanel({ modoLectura = false, account = null }) {
   useCollection("repuestosHistorial");
 
   const syncStatus = useSyncStatus();
+  useOfflineRecovery();
   const [lastSyncedAt, setLastSyncedAt] = useState(() => getLastSyncedAt());
   useEffect(() => {
     if (syncStatus === "synced") setLastSyncedAt(getLastSyncedAt());

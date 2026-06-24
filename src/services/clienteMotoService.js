@@ -1,6 +1,13 @@
 import { LS } from "../lib/storage.js";
 import { hoyEstable } from "../lib/constants.js";
 
+function normNombre(s) {
+  return (s || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+}
+function normTel(s) {
+  return (s || "").replace(/\D/g, "").replace(/^0+/, "");
+}
+
 /**
  * Busca o crea cliente + moto, actualiza titularidad si corresponde.
  *
@@ -15,11 +22,10 @@ export function upsertClienteYMoto(
 ) {
   const kmActual = Number(payload.km) || 0;
 
-  // Buscar cliente por nombre + telefono o crear uno nuevo
-  const clienteExistente = clients.find(
-    (c) =>
-      c.nombre?.trim().toLowerCase() === payload.nombre?.trim().toLowerCase() &&
-      c.tel === payload.tel
+  // Buscar cliente por nombre + teléfono — normalizados para evitar duplicados por acentos/prefijos
+  const clienteExistente = clients.find((c) =>
+    normNombre(c.nombre) === normNombre(payload.nombre) &&
+    normTel(c.tel || c.telefono) === normTel(payload.tel)
   );
   const clientId = clienteExistente
     ? clienteExistente.id
