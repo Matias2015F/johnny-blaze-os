@@ -283,7 +283,7 @@ Modificar cualquiera de estos archivos sin instrucción explícita está prohibi
 | `api/retention-offer.js` | Valida token de oferta antes de aplicar descuento. Consumido por `mp-create-preference?mode=retention`. |
 | `api/send-welcome.js` | Email bienvenida (idempotente) + password reset. Dos modos, distintos niveles de auth. |
 | `api/verify-document.js` | Puente app↔landing: talleres públicos, publicación de perfil, leads, verificación de comprobantes. |
-| `api/_firebase-admin.js` | Inicialización Admin SDK. No tocar la inicialización. |
+| `api/_firebase-admin.js` | Inicialización Admin SDK + `verifyIdToken()` + `assertAdmin()`. No tocar la inicialización. |
 | `firestore.rules` | `noModificaCamposSuscripcion()` bloquea autopromociones de plan. Si se rompe, cualquier usuario puede escalar su plan. |
 | `src/utils/calc.js` | Cálculos financieros de OTs. No tocar sin tests manuales contra casos reales. |
 
@@ -392,7 +392,7 @@ src/
     format.js          — formatMoney, formatMoneyShort
 
 api/                   — Vercel serverless (CommonJS). LÍMITE: 12 funciones sin prefijo _
-  _firebase-admin.js   — Admin SDK + verifyIdToken (helper, no cuenta)
+  _firebase-admin.js   — Admin SDK + verifyIdToken + assertAdmin (helper, no cuenta)
   _email.js            — sendEmail via Resend (helper, no cuenta)
   _ratelimit.js        — applyRateLimit(req, res, "nombre") (helper, no cuenta)
   check-expirations.js — cron diario 10:00 UTC
@@ -523,6 +523,10 @@ ratings.status:       "pendiente_validacion" | "aprobado" | "rechazado"
 
 **Autenticación:** todas las rutas usan `verifyIdToken(req)` de `_firebase-admin.js`, excepto `mp-webhook.js` (HMAC) y los modos públicos de `verify-document.js`.
 
+**Admin check:** `assertAdmin(decoded)` en `_firebase-admin.js` — verifica `decoded.admin === true` (Firebase Custom Claim). Sincrónico, sin lectura Firestore. Usado por `admin-dashboard.js`, `moderate-rating.js`, `mp-reconcile.js`. NO duplicar esta lógica en otros archivos.
+
+**verify-document.js modos:** `KNOWN_MODES` Set allowlist. Cualquier `?mode=` no reconocido retorna 400. Modos válidos: `download-pdf`, `receipt-incentive`, `public-prices`, `lead`, `publish-workshop`, `public-workshops`.
+
 ---
 
 ## Capa de copy (`src/copy/`)
@@ -557,8 +561,14 @@ Ver `COOKBOOK.md` para patrones completos de UI (inputs, bottom sheets, chips, f
 - Firestore rules: `noModificaCamposSuscripcion()` bloquea autopromociones de plan desde el cliente
 - `ensureSaasUserProfile` solo puede escribir: `email`, `lastSeenAt`, `updatedAt`, `nombreTaller`, `appVersion`
 - Webhook MP: HMAC-SHA256 + timestamp freshness (5 min) + HMAC failure tracker por IP
-- Admin uid: `ERqAgJfizDNXihicDEegT2u5tws2`
+- Admin uid: `ERqAgJfizDNXihicDEegT2u5tws2` (matias4604@gmail.com) — Custom Claim `{ admin: true }` seteado en Firebase Auth
+- `isPlatformAdmin()` en `firestore.rules`: `request.auth.token.admin == true` — sin lecturas Firestore, sin UID hardcodeado en reglas
+- `assertAdmin(decoded)` en `_firebase-admin.js`: sincrónico, chequea `decoded.admin === true`
 - Firebase Admin SDK se inicializa con `FIREBASE_SERVICE_ACCOUNT_B64` (JSON base64)
+- Runbook de rotación de credenciales: `.clou/runbook-rotacion-credenciales.md`
+- Modelo de amenazas: `THREAT_MODEL.md` (modo bootstrap-then-interview, 2026-06-23)
+- CI: `npm audit --audit-level=high` en `.github/workflows/e2e.yml` antes del job E2E
+- Dependabot: habilitado en `.github/dependabot.yml` — weekly, lunes 9am ART, Firebase major pinneado
 
 ---
 
