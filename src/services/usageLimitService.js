@@ -36,6 +36,7 @@ export function isFreeAccount(account = {}) {
   const estado = String(account?.estado || "").toLowerCase();
   const plan = String(account?.plan || "").toLowerCase();
   if (account?.rol === "admin" || account?.isPlatformAdmin) return false;
+  if (estado === "activo" || estado === "gracia") return false;
   return estado === "trial" || plan === "trial";
 }
 

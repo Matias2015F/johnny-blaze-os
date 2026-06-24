@@ -32,22 +32,26 @@ async function nextContadorConRetry(col) {
   throw lastErr;
 }
 
-export async function nextNumeroOT(fallback = 1) {
+function offlineId() {
+  return Date.now().toString(36).toUpperCase().slice(-5);
+}
+
+export async function nextNumeroOT() {
   try {
     const n = await nextContadorConRetry("trabajos");
     return `OT-${String(n).padStart(6, "0")}`;
   } catch (err) {
-    console.error("[counterService] nextNumeroOT fallback activado:", err?.message);
-    return `OT-${String(fallback).padStart(6, "0")}`;
+    console.error("[counterService] nextNumeroOT offline fallback:", err?.message);
+    return `OT-S${offlineId()}`;
   }
 }
 
-export async function nextNumeroPRE(fallback = 1) {
+export async function nextNumeroPRE() {
   try {
     const n = await nextContadorConRetry("presupuestos");
     return `PRE-${String(n).padStart(6, "0")}`;
   } catch (err) {
-    console.error("[counterService] nextNumeroPRE fallback activado:", err?.message);
-    return `PRE-${String(fallback).padStart(6, "0")}`;
+    console.error("[counterService] nextNumeroPRE offline fallback:", err?.message);
+    return `PRE-S${offlineId()}`;
   }
 }

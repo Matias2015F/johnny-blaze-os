@@ -255,18 +255,21 @@ export async function migrateFromRootCollections(uid) {
   return count;
 }
 
+const FORCE_SYNC_CHUNK = 400;
+
 export async function forceSyncCacheToFirestore(uid) {
   let count = 0;
   for (const col of DATA_COLS) {
-    const items = _cache[col];
-    if (!items?.length) continue;
-    const batch = writeBatch(db);
-    items.forEach((item) => {
-      if (!item.id) return;
-      batch.set(doc(db, "users", uid, col, item.id), item);
-    });
-    await batch.commit();
-    count += items.length;
+    const items = (_cache[col] ?? []).filter((item) => item?.id);
+    if (!items.length) continue;
+    for (let i = 0; i < items.length; i += FORCE_SYNC_CHUNK) {
+      const batch = writeBatch(db);
+      items.slice(i, i + FORCE_SYNC_CHUNK).forEach((item) => {
+        batch.set(doc(db, "users", uid, col, item.id), item);
+      });
+      await batch.commit();
+      count += Math.min(FORCE_SYNC_CHUNK, items.length - i);
+    }
   }
   return count;
 }

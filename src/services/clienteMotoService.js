@@ -33,8 +33,12 @@ export function upsertClienteYMoto(
         createdAt: Date.now(),
       }).id;
 
-  // Buscar moto por patente o crear una nueva
-  const motoExistente = bikes.find((b) => b.patente === payload.patente.toUpperCase());
+  // Buscar moto por patente — normalizar eliminando guiones/espacios para evitar duplicados
+  const patenteInput = payload.patente.toUpperCase().replace(/[-\s]/g, "");
+  const motoExistente = bikes.find((b) => {
+    const norm = (b.patenteNormalizada || b.patente || "").toUpperCase().replace(/[-\s]/g, "");
+    return norm === patenteInput;
+  });
   let bikeId;
   if (motoExistente) {
     bikeId = motoExistente.id;
@@ -50,7 +54,7 @@ export function upsertClienteYMoto(
   } else {
     bikeId = LS.addDoc("motos", {
       patente: payload.patente.toUpperCase(),
-      patenteNormalizada: payload.patente.toUpperCase(),
+      patenteNormalizada: patenteInput,
       marca: payload.marca,
       modelo: payload.modelo,
       cilindrada: Number(payload.cilindrada) || 0,
