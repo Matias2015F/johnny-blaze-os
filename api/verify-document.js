@@ -116,7 +116,7 @@ async function handleLead(req, res) {
       subject: `Lead — ${nombreTaller} (${ciudad})`,
       html,
     });
-    console.log("[lead]", nombreTaller, ciudad, telefono);
+    console.log("[lead]", nombreTaller, ciudad, telefono.slice(0, 3) + "***");
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error("[lead]", err);
