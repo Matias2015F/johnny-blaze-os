@@ -47,7 +47,7 @@ function Stepper({ value, onChange, step = 1, min = 0, max = Infinity, format = 
     <div className="flex items-center gap-3">
       <button
         onClick={() => onChange(Math.max(min, value - step))}
-        className="w-11 h-11 rounded-2xl bg-zinc-100 flex items-center justify-center active:scale-90 transition-all"
+        className="w-11 h-11 rounded-2xl bg-zinc-100 flex items-center justify-center active:scale-90 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400"
       >
         <Minus size={16} className="text-zinc-600" />
       </button>
@@ -57,7 +57,7 @@ function Stepper({ value, onChange, step = 1, min = 0, max = Infinity, format = 
       </div>
       <button
         onClick={() => onChange(Math.min(max, value + step))}
-        className="w-11 h-11 rounded-2xl bg-zinc-900 flex items-center justify-center active:scale-90 transition-all"
+        className="w-11 h-11 rounded-2xl bg-zinc-900 flex items-center justify-center active:scale-90 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400"
       >
         <Plus size={16} className="text-white" />
       </button>
@@ -68,14 +68,19 @@ function Stepper({ value, onChange, step = 1, min = 0, max = Infinity, format = 
 // Section card
 function Card({ children, className = "" }) {
   return (
-    <div className={`bg-white rounded-3xl shadow-sm border border-zinc-100 p-6 ${className}`}>
+    <div className={`bg-white/95 rounded-[1.75rem] shadow-[0_18px_45px_rgba(2,6,23,0.12)] border border-white/70 p-5 ${className}`}>
       {children}
     </div>
   );
 }
 
 function SectionTitle({ children }) {
-  return <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-4">{children}</p>;
+  return (
+    <div className="mb-4 flex items-center gap-2">
+      <span className="h-2 w-2 rounded-full bg-orange-500 shadow-[0_0_0_4px_rgba(249,115,22,0.12)]" />
+      <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.18em]">{children}</p>
+    </div>
+  );
 }
 
 import { PantallaAdmin, PLAN_LABELS } from "./AdminPanelView.jsx";
@@ -90,35 +95,57 @@ function PantallaResumen({ orders, caja }) {
   const balance = useMemo(() => caja.reduce((acc, m) => (m.tipo === "ingreso" ? acc + m.monto : acc - m.monto), 0), [caja]);
 
   const mes = new Date().toLocaleString("es-AR", { month: "long", year: "numeric" });
+  const balancePositivo = balance >= 0;
+  const gananciaPositiva = gananciaMes >= 0;
 
   return (
     <div className="space-y-4">
       {/* Caja */}
-      <Card>
-        <SectionTitle>Caja actual</SectionTitle>
-        <p className={`text-5xl font-black tracking-tighter ${balance >= 0 ? "text-green-500" : "text-red-500"}`}>
+      <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-[#0f2435] via-[#102f46] to-[#071927] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.28)]">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-orange-300">Dinero en caja</p>
+            <p className="mt-1 text-xs font-bold capitalize text-slate-300">{mes}</p>
+          </div>
+          <div className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${balancePositivo ? "bg-emerald-400/15 text-emerald-300" : "bg-rose-400/15 text-rose-300"}`}>
+            {balancePositivo ? "Al día" : "Revisar"}
+          </div>
+        </div>
+
+        <p className={`mt-5 break-words text-[clamp(2.35rem,11vw,4rem)] font-black leading-none tracking-tight ${balancePositivo ? "text-emerald-300" : "text-rose-300"}`}>
           {formatMoney(balance)}
         </p>
-        <p className="text-xs text-zinc-400 font-bold mt-1 capitalize">{mes}</p>
-      </Card>
+        <p className="mt-3 max-w-[20rem] text-sm font-semibold leading-relaxed text-slate-300">
+          Resumen rápido para saber cómo viene el taller hoy.
+        </p>
+      </div>
 
       {/* Stats del mes */}
-      <Card>
+      <Card className="space-y-4">
         <SectionTitle>Este mes</SectionTitle>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="bg-zinc-50 rounded-2xl p-4 text-center border border-zinc-100">
-            <p className="text-3xl font-black text-orange-500">{ordenesMes.length}</p>
-            <p className="text-[9px] font-black text-zinc-400 uppercase mt-1">Trabajos</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-[1.35rem] border border-orange-100 bg-orange-50/90 p-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-orange-600">Trabajos</p>
+            <p className="mt-2 text-4xl font-black leading-none tracking-tight text-slate-900">{ordenesMes.length}</p>
+            <p className="mt-1 text-[11px] font-bold text-slate-500">órdenes del mes</p>
           </div>
-          <div className="bg-zinc-50 rounded-2xl p-4 text-center border border-zinc-100">
-            <p className="text-xl font-black text-zinc-800">{formatMoney(totalMes)}</p>
-            <p className="text-[9px] font-black text-zinc-400 uppercase mt-1">Cobrado</p>
+          <div className="rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Cobrado</p>
+            <p className="mt-2 break-words text-[clamp(1.05rem,5.2vw,1.6rem)] font-black leading-tight text-slate-900">{formatMoney(totalMes)}</p>
+            <p className="mt-1 text-[11px] font-bold text-slate-500">ingresos</p>
           </div>
-          <div className="bg-zinc-50 rounded-2xl p-4 text-center border border-zinc-100">
-            <p className={`text-xl font-black ${gananciaMes >= 0 ? "text-green-500" : "text-red-500"}`}>
-              {formatMoney(gananciaMes)}
-            </p>
-            <p className="text-[9px] font-black text-zinc-400 uppercase mt-1">Ganancia</p>
+          <div className="col-span-2 rounded-[1.35rem] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Ganancia estimada</p>
+                <p className="mt-2 break-words text-[clamp(1.35rem,7vw,2.35rem)] font-black leading-tight text-slate-950">
+                  {formatMoney(gananciaMes)}
+                </p>
+              </div>
+              <span className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${gananciaPositiva ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                {gananciaPositiva ? "Positiva" : "Negativa"}
+              </span>
+            </div>
           </div>
         </div>
       </Card>
@@ -2425,28 +2452,36 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
   };
 
   return (
-    <div className="flex flex-col h-full animate-in slide-in-from-right duration-300">
+    <div className="flex h-full flex-col bg-[#071d2e] animate-in slide-in-from-right duration-300">
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 bg-zinc-950">
-        <h1 className="text-3xl font-black text-white tracking-tighter uppercase">Cuenta</h1>
+      <div className="px-5 pt-6 pb-4 bg-gradient-to-b from-[#08243a] to-[#071d2e]">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-orange-300">MotoGestion</p>
+            <h1 className="mt-1 text-[2rem] font-black leading-none tracking-tight text-white uppercase">Cuenta</h1>
+            <p className="mt-2 text-sm font-semibold text-slate-300">Números, taller y sistema en un solo lugar.</p>
+          </div>
+        </div>
       </div>
 
       {/* Tab bar */}
-      <div className="px-4 pb-3 bg-zinc-950">
-        <div className="flex gap-1 bg-zinc-800 p-1 rounded-2xl">
+      <div className="px-4 pb-3 bg-[#071d2e]">
+        <div className="flex gap-1 overflow-x-auto rounded-[1.35rem] border border-white/10 bg-white/8 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
           {visibleTabs.map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl transition-all ${
+              className={`min-h-[52px] min-w-[72px] flex-1 cursor-pointer rounded-2xl px-2 py-2.5 transition-all focus:outline-none focus:ring-2 focus:ring-orange-300 ${
                 activeTab === id
-                  ? "bg-white shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200"
+                  ? "bg-orange-500 text-slate-950 shadow-[0_10px_24px_rgba(249,115,22,0.32)]"
+                  : "text-slate-300 hover:bg-white/8 hover:text-white"
               }`}
             >
-              <Icon size={15} className={activeTab === id ? "text-zinc-800" : ""} />
-              <span className={`text-[9px] font-black uppercase tracking-wide ${activeTab === id ? "text-zinc-800" : ""}`}>
-                {label}
+              <span className="flex flex-col items-center gap-1">
+                <Icon size={16} strokeWidth={2.4} />
+                <span className="text-[9px] font-black uppercase tracking-[0.12em]">
+                  {label}
+                </span>
               </span>
             </button>
           ))}
@@ -2454,7 +2489,7 @@ export default function ConfigView({ setView, showToast, orders = [], bikes = []
       </div>
 
       {/* Content */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 pb-28 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 pb-28 space-y-4 bg-[#071d2e]">
         {renderContent()}
       </div>
     </div>
