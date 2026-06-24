@@ -95,11 +95,13 @@ export default function RetentionOfferView({ token }) {
   }
 
   if (estado === "activa") {
+    setTimeout(() => { window.location.replace("https://app.motogestion.ar"); }, 2500);
     return (
       <div className="min-h-screen bg-[#0b0b0b] flex items-center justify-center p-6">
         <div className="w-full max-w-sm rounded-[2rem] border border-emerald-900/40 bg-zinc-950 p-6 text-white space-y-3">
           <p className="text-sm font-black uppercase tracking-widest text-emerald-400">Suscripción activa</p>
           <p className="text-sm font-bold text-zinc-300">{err || "Tu cuenta ya está activa."}</p>
+          <p className="text-xs text-zinc-500">Redirigiendo a la app...</p>
           <a href="https://app.motogestion.ar" className="inline-flex w-full items-center justify-center rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white">
             Entrar a MotoGestión
           </a>
