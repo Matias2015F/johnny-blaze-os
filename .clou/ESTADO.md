@@ -16,11 +16,11 @@
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `4b56d73` — fix: correct admin UID (ERqAgJfizDNXihicDEegT2u5tws2)
+SHA: `af58685` — fix(ux): auto-redirect to app when retention offer is already closed
 
 ## HEAD local
 
-SHA: `4b56d73` — en sync con origin/main. Deploy verificado en app y admin.
+SHA: `af58685` — en sync con origin/main. Deploy verificado en app y admin.
 
 ---
 
@@ -75,6 +75,8 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 - Claude: `8e6ec95` - docs(security): THREAT_MODEL.md completo — modo bootstrap-then-interview, 6 preguntas cerradas, 6 mitigaciones recomendadas
 - Claude: `a846c0d` - feat(security): Custom Claims para isPlatformAdmin — assertAdmin centralizado, Firestore rules simplificadas
 - Claude: `4b56d73` - fix: UID admin corregido (era TNwwuKJsIXN29zJg8HWfORawdFm1 de fefe@gmail.com, real es ERqAgJfizDNXihicDEegT2u5tws2)
+- Claude: `769e5a9` - fix(security): M1 UID fallback en check-expirations, M2 redactar teléfono en log de lead
+- Claude: `af58685` - fix(ux): RetentionOfferView auto-redirige a app.motogestion.ar en 2.5s cuando suscripción ya está activa
 
 ---
 
