@@ -9,18 +9,16 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `1947b2f` | 2026-06-22 |
-| `admin.motogestion.ar` | `motogestion-admin` | `1947b2f` | 2026-06-22 |
-
-> Nota: produccion no fue redesployada para commits de documentacion posteriores a `1947b2f`.
+| `app.motogestion.ar` | `motogestion-app` | `a29c5a1` | 2026-06-24 |
+| `admin.motogestion.ar` | `motogestion-admin` | `a29c5a1` | 2026-06-24 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `af58685` — fix(ux): auto-redirect to app when retention offer is already closed
+SHA: `1167b01` — chore: install mobile-design skill
 
 ## HEAD local
 
-SHA: `af58685` — en sync con origin/main. Deploy verificado en app y admin.
+SHA: `1167b01` — en sync con origin/main. Deploy verificado en app y admin (`a29c5a1`).
 
 ---
 
@@ -77,6 +75,10 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 - Claude: `4b56d73` - fix: UID admin corregido (era TNwwuKJsIXN29zJg8HWfORawdFm1 de fefe@gmail.com, real es ERqAgJfizDNXihicDEegT2u5tws2)
 - Claude: `769e5a9` - fix(security): M1 UID fallback en check-expirations, M2 redactar teléfono en log de lead
 - Claude: `af58685` - fix(ux): RetentionOfferView auto-redirige a app.motogestion.ar en 2.5s cuando suscripción ya está activa
+- Claude: `c73102f` - docs: CLAUDE.md actualizado con Custom Claims, assertAdmin, KNOWN_MODES, runbook, Dependabot, threat model
+- Claude: `7183f84` - chore: install ui-ux-pro-max skill
+- Claude: `a29c5a1` - fix(ui): emojis → Lucide icons en HomeView/TallerPanel, min-h-[100dvh], close button UX
+- Claude: `1167b01` - chore: install mobile-design skill
 
 ---
 
