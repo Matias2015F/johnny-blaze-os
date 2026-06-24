@@ -16,11 +16,11 @@
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `8e6ec95` — docs(security): complete threat model — bootstrap-then-interview mode
+SHA: `a846c0d` — feat(security): implement Firebase Custom Claims for admin auth
 
 ## HEAD local
 
-SHA: `8e6ec95` — en sync con origin/main.
+SHA: `a846c0d` — en sync con origin/main. Deploy en producción verificado.
 
 ---
 
@@ -82,7 +82,7 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 |---|---|---|
 | ~~Runbook de rotación de credenciales~~ — DONE `e52d1d7` | Alta | `.clou/runbook-rotacion-credenciales.md` |
 | ~~Dependabot habilitado en el repo~~ — DONE `1be3944` | S | THREAT_MODEL.md sección 8, M4 |
-| Custom Claims para isPlatformAdmin() | M | THREAT_MODEL.md sección 8, M2 |
+| ~~Custom Claims para isPlatformAdmin()~~ — DONE `a846c0d` | M | `api/_firebase-admin.js`, `firestore.rules` |
 | Rate limiter distribuido (Upstash Redis) | M | THREAT_MODEL.md sección 8, M3 |
 | Log Drain de Vercel a destino externo | M | THREAT_MODEL.md sección 8, M6 |
 
