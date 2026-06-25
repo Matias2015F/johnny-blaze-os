@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ArrowLeft, Download, Share2 } from "lucide-react";
 import { LS, actualizarOrden, crearEntradaHistorial, obtenerOrden } from "../lib/storage.js";
 import { formatMoney } from "../utils/format.js";
+import { abrirWhatsApp, mensajeComprobanteVerificable } from "../lib/messages.js";
 
 export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
   const [orden, setOrden] = useState(null);
@@ -32,6 +33,9 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
   const totalPagado = (orden.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
   const totalManoObra = (orden.tareas || []).reduce((s, t) => s + (t.monto || 0), 0);
   const fecha = new Date(orden.finalizacion_fecha || orden.updatedAt || Date.now()).toLocaleDateString("es-AR");
+  const clienteTelefono = cliente?.celular || cliente?.whatsapp || cliente?.tel || cliente?.telefono || orden.clienteTel || "";
+  const receiptToken = orden.receiptToken || orden.tokenComprobante || orden.publicReceiptToken || orden.token || "";
+  const verifyUrl = receiptToken ? `https://app.motogestion.ar/verificar/${receiptToken}` : "";
 
   const registrarRetiroSiHaceFalta = async () => {
     if (orden.estado === "cerrado_emitido" || orden.retiro_fecha) return orden;
@@ -64,6 +68,15 @@ export default function RetiroView({ ordenId, setView, setSelectedOrderId }) {
   const handleAbrirParaEnviar = async () => {
     const next = await registrarRetiroSiHaceFalta();
     setSelectedOrderId?.(next?.id || orden.id);
+    const enlaceVerificacion = next?.receiptToken || receiptToken ? `https://app.motogestion.ar/verificar/${next?.receiptToken || receiptToken}` : verifyUrl;
+    if (enlaceVerificacion) {
+      abrirWhatsApp(clienteTelefono, mensajeComprobanteVerificable({
+        clienteNombre: cliente?.nombre || "cliente",
+        verifyUrl: enlaceVerificacion,
+        nombreTaller: "MotoGestión",
+        documentType: "comprobante_garantia",
+      }));
+    }
     setView("imprimirOrden");
   };
 
