@@ -15,6 +15,11 @@ export default {
           orange:  "#E85A1A",
           "orange-hover": "#C94A14",
           "orange-dim":   "rgba(232,90,26,0.15)",
+          /* Estados de estado de orden */
+          "success": "#10b981",
+          "warning": "#f59e0b",
+          "error":   "#ef4444",
+          "info":    "#3b82f6",
         },
       },
       /* Design System Tokens — Fase 1 Coherencia */
