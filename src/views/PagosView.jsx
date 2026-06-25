@@ -1,92 +1,30 @@
-import React, { useMemo, useState } from "react";
-import { ArrowDownUp, ArrowRight, CheckCircle, CreditCard, ReceiptText } from "lucide-react";
-import { calcularResultadosOrden } from "../lib/calc.js";
+import React from "react";
+import { ArrowDownUp, ArrowRight, CheckCircle, ReceiptText } from "lucide-react";
 import { formatMoney, formatMoneyShort } from "../utils/format.js";
+import { usePagosView } from "../hooks/usePagosView.js";
 
 const FILTROS = [
-  { id: "hoy", label: "Hoy" },
+  { id: "hoy",     label: "Hoy" },
   { id: "periodo", label: "Período" },
-  { id: "todo", label: "Historial completo" },
+  { id: "todo",    label: "Historial completo" },
 ];
 
-function normalizarFecha(value) {
-  if (!value) return "";
-  return String(value).slice(0, 10);
-}
-
-function sinCobrarTotal(orders) {
-  return orders.filter((order) => order.saldo > 0).reduce((sum, order) => sum + order.saldo, 0);
-}
-
 export default function PagosView({ orders, bikes, clients, setSelectedOrderId, setView }) {
-  const hoy = new Date().toLocaleDateString("sv-SE");
-  const [filtro, setFiltro] = useState("hoy");
-  const [desde, setDesde] = useState(hoy);
-  const [hasta, setHasta] = useState(hoy);
-  const [ordenDesc, setOrdenDesc] = useState(true);
-
-  const pendientes = useMemo(() => {
-    return (orders || [])
-      .filter((order) => order.estado !== "cerrado_emitido")
-      .map((order) => {
-        const total = calcularResultadosOrden(order).total;
-        const pagado = (order.pagos || []).reduce((sum, pago) => sum + (pago.monto || 0), 0);
-        const saldo = total - pagado;
-        const bike = bikes?.find((item) => item.id === order.bikeId) || {};
-        const client = clients?.find((item) => item.id === order.clientId) || {};
-        return { ...order, total, pagado, saldo, bike, client };
-      })
-      .filter((order) => order.total > 0)
-      .sort((a, b) => b.saldo - a.saldo);
-  }, [orders, bikes, clients]);
-
-  const historialPagos = useMemo(() => {
-    const pagos = (orders || [])
-      .flatMap((order) => {
-        const bike = bikes?.find((item) => item.id === order.bikeId) || {};
-        const client = clients?.find((item) => item.id === order.clientId) || {};
-        return (order.pagos || []).map((pago) => ({
-          ...pago,
-          orderId: order.id,
-          numeroTrabajo: order.numeroTrabajo || `#${order.id.slice(-4).toUpperCase()}`,
-          clientName: client?.nombre || "Sin cliente",
-          bikePlate: bike?.patente || "---",
-          fechaNormalizada: normalizarFecha(pago.fecha),
-        }));
-      })
-      .sort((a, b) => {
-        const fechaA = `${a.fechaNormalizada || ""} ${a.hora || ""}`;
-        const fechaB = `${b.fechaNormalizada || ""} ${b.hora || ""}`;
-        return ordenDesc ? fechaB.localeCompare(fechaA) : fechaA.localeCompare(fechaB);
-      });
-
-    return pagos.filter((pago) => {
-      if (filtro === "todo") return true;
-      if (filtro === "hoy") return pago.fechaNormalizada === hoy;
-      if (filtro === "periodo") {
-        const fecha = pago.fechaNormalizada;
-        return !!fecha && fecha >= desde && fecha <= hasta;
-      }
-      return true;
-    });
-  }, [orders, bikes, clients, filtro, hoy, desde, hasta, ordenDesc]);
-
-  const cobradoHoy = useMemo(() => {
-    return historialPagos
-      .filter((pago) => pago.fechaNormalizada === hoy)
-      .reduce((sum, pago) => sum + (pago.monto || 0), 0);
-  }, [historialPagos, hoy]);
-
-  const totalHistorialFiltrado = useMemo(() => {
-    return historialPagos.reduce((sum, pago) => sum + (pago.monto || 0), 0);
-  }, [historialPagos]);
-
-  const saldoPendienteTotal = sinCobrarTotal(pendientes);
-  const sinCobrar = pendientes.filter((order) => order.saldo > 0);
-  const pagosCompletos = pendientes.filter((order) => order.saldo <= 0 && order.estado !== "cerrado_emitido");
+  const {
+    sinCobrar,
+    pagosCompletos,
+    historialPagos,
+    stats,
+    filtro,     setFiltro,
+    desde,      setDesde,
+    hasta,      setHasta,
+    ordenDesc,  setOrdenDesc,
+    mostrarRangos,
+  } = usePagosView({ orders, bikes, clients });
 
   return (
     <div className="space-y-5 p-4 pb-28 text-left animate-in fade-in duration-300">
+
       <div className="rounded-[2.5rem] border border-zinc-800 bg-zinc-900 p-6 shadow-xl">
         <p className="mb-1 text-xs font-black uppercase tracking-[0.4em] text-orange-500">Cobros</p>
         <h1 className="mb-4 text-3xl font-black leading-none tracking-tighter text-white">Pagos</h1>
@@ -95,11 +33,11 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
           <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
             <p className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Trabajos con saldo</p>
             <p className="mt-2 text-2xl font-black text-yellow-400">{sinCobrar.length}</p>
-            <p className="mt-1 text-[10px] font-bold text-zinc-500">{formatMoneyShort(saldoPendienteTotal)} pendientes</p>
+            <p className="mt-1 text-[10px] font-bold text-zinc-500">{formatMoneyShort(stats.saldoPendienteTotal)} pendientes</p>
           </div>
           <div className="rounded-2xl border border-white/5 bg-black/40 p-4">
             <p className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Cobrado hoy</p>
-            <p className="mt-2 text-xl font-black leading-none text-emerald-400">{formatMoneyShort(cobradoHoy)}</p>
+            <p className="mt-2 text-xl font-black leading-none text-emerald-400">{formatMoneyShort(stats.cobradoHoy)}</p>
             <p className="mt-1 text-[10px] font-bold text-zinc-500">Ingresos del día</p>
           </div>
         </div>
@@ -111,10 +49,7 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
           {sinCobrar.map((order) => (
             <button
               key={order.id}
-              onClick={() => {
-                setSelectedOrderId(order.id);
-                setView("pagos");
-              }}
+              onClick={() => { setSelectedOrderId(order.id); setView("pagos"); }}
               className="w-full rounded-[2.5rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-[0.98]"
             >
               <div className="flex items-start justify-between gap-3">
@@ -153,10 +88,7 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
           {pagosCompletos.map((order) => (
             <button
               key={order.id}
-              onClick={() => {
-                setSelectedOrderId(order.id);
-                setView("prePdf");
-              }}
+              onClick={() => { setSelectedOrderId(order.id); setView("prePdf"); }}
               className="w-full rounded-[2.5rem] border border-emerald-500/20 bg-emerald-500/10 p-5 text-left transition-all active:scale-[0.98]"
             >
               <div className="flex items-start justify-between gap-3">
@@ -193,7 +125,7 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
           <div className="flex flex-col items-end gap-2">
             <div className="text-right">
               <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Total filtrado</p>
-              <p className="mt-1 text-lg font-black text-white">{formatMoney(totalHistorialFiltrado)}</p>
+              <p className="mt-1 text-lg font-black text-white">{formatMoney(stats.totalFiltrado)}</p>
             </div>
             <button
               onClick={() => setOrdenDesc((v) => !v)}
@@ -221,7 +153,7 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
           ))}
         </div>
 
-        {filtro === "periodo" && (
+        {mostrarRangos && (
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-3">
               <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Desde</p>
@@ -284,4 +216,3 @@ export default function PagosView({ orders, bikes, clients, setSelectedOrderId, 
     </div>
   );
 }
-
