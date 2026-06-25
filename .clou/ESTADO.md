@@ -9,16 +9,16 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `ec70787` | 2026-06-25 |
+| `app.motogestion.ar` | `motogestion-app` | `15f7cae` | 2026-06-25 |
 | `admin.motogestion.ar` | `motogestion-admin` | `ec70787` | 2026-06-25 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `ec70787` — style: modernize account screen mobile UI (Codex)
+SHA: `15f7cae` — fix: send receipt link from retiro view (Codex)
 
 ## HEAD local
 
-SHA: `ec70787` — en sync con origin/main. Deploy verificado en app y admin.
+SHA: `15f7cae` — en sync con origin/main.
 
 ---
 
@@ -84,6 +84,7 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 - Claude: `02b1455` - fix(db): 4 bugs críticos (B1 forceSyncChunk, B2 patente, B4 isFreeAccount, B7 counter offline)
 - Claude: `dd5f20a` - feat(db): M1-M5 mejoras DB/resiliencia (backup size, reputacion, normNombre, cross-device, offline renumber)
 - Codex:  `ec70787` - style: modernize account screen mobile UI (ConfigView.jsx)
+- Codex:  `15f7cae` - fix: send receipt link from retiro view (RetiroView.jsx — botón ahora abre WhatsApp con link verificar/:token)
 
 ---
 
