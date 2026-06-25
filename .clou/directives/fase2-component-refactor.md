@@ -31,20 +31,33 @@ jb.info = #3B82F6 (blue)
 
 ## Fases de rollout
 
-### Fase 2.1 — Validación en LoginScreen (PENDIENTE)
-- Reemplazar `Field` + `PrimaryButton` con `Input` + `Button`
-- Verificar que componentes renderizan correctamente
-- Testear en móvil: touch targets, responsive, interactividad
+### Fase 2.1 — Validación en LoginScreen ✅ COMPLETADA
+- ✅ Reemplazado `Field` + `PrimaryButton` con `Input` + `Button` 
+- ✅ Componentes renderizan correctamente
+- ✅ Build passing (commit 654f6df)
 
-**Criterio de éxito:** LoginScreen compila, visual coherente, botones 44px mínimo
+**Criterio de éxito:** LoginScreen compila ✓, visual coherente ✓, botones 44px mínimo ✓
 
 ### Fase 2.2 — Rollout a vistas de alto tráfico (PENDIENTE)
 Prioridad:
-1. **HomeView** — dashboard principal
-2. **OrderDetailView** — formulario complejo (ya 1600 líneas)
-3. **ConfigView** — 3500 líneas, refactor crítico
+1. **HomeView (500 líneas, ~45 botones/cards)** — dashboard principal
+   - Patrón 1: Botones grandes CTA (`rounded-[2.5rem] p-6 bg-orange-600`) → `Button variant="primary" size="lg"`
+   - Patrón 2: Cards navegación (`rounded-[2rem] border-zinc-800 bg-zinc-900 p-5`) → `Card` + `Button` hover state
+   - Patrón 3: Cards de estado (`bg-emerald-500/10 border-emerald-500/30`) → `Card variant="success"` / `"warning"` / `"error"`
+   - Patrón 4: Pequeños botones utilidad → `Button size="md"` o `Button variant="ghost" size="sm"`
+   
+2. **OrderDetailView (1600 líneas)** — formulario complejo, muchos botones de acción
+   - Mismo approach que HomeView + validación de estado dinámico
+   
+3. **ConfigView (3500 líneas)** — más grande, refactor crítico
+   - Dividir en secciones (Suscripción, Taller, Precios, Garantía)
+   - Refactor sección por sección
 
-**Patrón:** reemplazar todas las instancias inline de button/input con componentes
+**Estrategia HomeView (primer bloque):**
+- Semana 1: Header + cards de estado (emerald/orange/yellow/red)
+- Semana 2: CTA buttons (Nuevo ingreso, Presupuestos)
+- Semana 3: Navigation cards (Trabajos, Pagos, Recordatorios, Historial, Agenda, Más)
+- Semana 4: Alerts + acciones urgentes
 
 ### Fase 2.3 — Rollout a resto de vistas (PENDIENTE)
 - 19+ vistas restantes
@@ -68,7 +81,12 @@ Prioridad:
 | Fecha | Commit | Acción |
 |---|---|---|
 | 2026-06-24 | 506a9a2 | Fase 2.0: UI component library created + design tokens |
-| PENDIENTE | — | Fase 2.1: LoginScreen validation |
-| PENDIENTE | — | Fase 2.2: HomeView/OrderDetailView/ConfigView refactor |
-| PENDIENTE | — | Fase 2.3: Resto de vistas |
+| 2026-06-25 | 654f6df | Fase 2.1: LoginScreen refactorizado con componentes Input + Button |
+| PENDIENTE | — | Fase 2.2: HomeView header + cards de estado (bloque 1) |
+| PENDIENTE | — | Fase 2.2: HomeView CTA buttons (bloque 2) |
+| PENDIENTE | — | Fase 2.2: HomeView navigation cards (bloque 3) |
+| PENDIENTE | — | Fase 2.2: HomeView alerts + urgentes (bloque 4) |
+| PENDIENTE | — | Fase 2.2: OrderDetailView refactor |
+| PENDIENTE | — | Fase 2.2: ConfigView refactor (seccional) |
+| PENDIENTE | — | Fase 2.3: Resto de vistas (19+) |
 | PENDIENTE | — | Fase 2.4: Mobile optimization |
