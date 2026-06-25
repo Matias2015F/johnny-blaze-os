@@ -1,184 +1,40 @@
-import React, { useEffect, useMemo } from "react";
+import React from "react";
 import { AlertTriangle, Bell, Calendar, Clock, ChevronRight, FileText, History, LogOut, MessageCircle, PlusCircle, ReceiptText, User, Wrench, X, Zap } from "lucide-react";
 import { Badge, Button, Card } from "../components/ui/index.js";
-import { auth } from "../firebase.js";
-import { CONFIG_DEFAULT } from "../lib/constants.js";
-import { evaluarEstado } from "../lib/calc.js";
-import { evaluarEstadoRecordatorio, generarMensajeWhatsApp } from "../lib/proximoControl.js";
-import { LS, useCollection } from "../lib/storage.js";
 import { trackEvent } from "../lib/telemetry.js";
-import { obtenerTiempoActual } from "../lib/timer.js";
 import { formatMoneyShort } from "../utils/format.js";
-import { normalizarTelWA } from "../lib/messages.js";
-import { abrirEnlaceExterno } from "../lib/whatsappService.js";
+import { useHomeView } from "../hooks/useHomeView.js";
 
-const ESTADO_BADGE_VARIANT = {
-  NORMAL: "success",
-  ALERTA: "warning",
-  BLOQUEADO: "error",
+// Mapeo de token semantico a clase CSS — responsabilidad de la capa de presentacion
+const URGENCY_COLOR = {
+  ready:    "text-emerald-400",
+  payment:  "text-green-400",
+  document: "text-purple-400",
+  waiting:  "text-yellow-400",
+  blocked:  "text-red-400",
+  neutral:  "text-slate-400",
 };
 
-const ESTADO_LABEL_CRON = {
-  NORMAL: "Normal",
-  ALERTA: "Atención",
-  BLOQUEADO: "Detenido",
+const SEVERITY_CLASSES = {
+  service_vencido: "border-red-500/40 bg-red-500/25",
+  proximo_service: "border-yellow-500/40 bg-yellow-500/20",
 };
 
-const ORDEN_ESTADO = { BLOQUEADO: 0, ALERTA: 1, NORMAL: 2 };
-const ALERTAS_NOTIFICADAS_KEY = "jbos_alertas_notificadas_v1";
-
-function leerAlertasNotificadas() {
-  try {
-    return JSON.parse(localStorage.getItem(ALERTAS_NOTIFICADAS_KEY) || "{}");
-  } catch {
-    return {};
-  }
-}
-
-function guardarAlertaNotificada(id, estado) {
-  const actuales = leerAlertasNotificadas();
-  actuales[id] = estado;
-  localStorage.setItem(ALERTAS_NOTIFICADAS_KEY, JSON.stringify(actuales));
-}
+const SEVERITY_TEXT = {
+  service_vencido: "text-red-300",
+  proximo_service: "text-yellow-300",
+};
 
 export default function HomeView({ setView, bikes, orders, presupuestos = [], setSelectedOrderId, handleLogout, modoLectura = false }) {
-  const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
-  const recordatorios = useCollection("recordatorios");
-  const clients = useCollection("clientes");
-  const user = auth.currentUser;
-  const userLabel = user?.email || user?.phoneNumber || "";
-  const valorHora = config.valorHoraCliente || 15000;
-
-  const ordenesActivas = (orders || [])
-    .filter((order) => order.estado !== "cerrado_emitido")
-    .map((order) => {
-      const tiempoHoras = obtenerTiempoActual(order);
-      const { estadoCron, costoActual } = evaluarEstado({
-        tiempoHoras,
-        valorHora,
-        maxAutorizado: order.maxAutorizado || 0,
-      });
-      return { ...order, estadoCron, costoActual };
-    })
-    .sort((a, b) => ORDEN_ESTADO[a.estadoCron] - ORDEN_ESTADO[b.estadoCron]);
-
-  const alertasService = (recordatorios || [])
-    .filter((recordatorio) => recordatorio.estado === "pendiente" || recordatorio.estado === "avisado")
-    .map((recordatorio) => {
-      const moto = bikes?.find((item) => item.id === recordatorio.motoId);
-      const cliente = clients?.find((item) => item.id === recordatorio.clienteId);
-      const kmActual = moto?.kilometrajeActual || moto?.km;
-      const estado = evaluarEstadoRecordatorio(recordatorio, kmActual);
-      return { ...recordatorio, moto, cliente, estado };
-    })
-    .filter((recordatorio) => recordatorio.estado === "proximo_service" || recordatorio.estado === "service_vencido")
-    .sort((a, b) => (a.estado === "service_vencido" ? -1 : 1));
-
-  useEffect(() => {
-    const habilitadas = config.alertasNavegadorActivas ?? true;
-    if (!habilitadas || typeof window === "undefined" || !("Notification" in window)) return;
-    if (!alertasService.length) return;
-    const NotificationApi = window.Notification;
-
-    const playBeep = () => {
-      try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
-        const ctx = new AudioCtx();
-        [[880, 0], [660, 0.22], [880, 0.44]].forEach(([freq, start]) => {
-          const osc  = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = "sine";
-          osc.frequency.value = freq;
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          const t = ctx.currentTime + start;
-          gain.gain.setValueAtTime(0.001, t);
-          gain.gain.exponentialRampToValueAtTime(0.15, t + 0.02);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-          osc.start(t);
-          osc.stop(t + 0.2);
-        });
-        setTimeout(() => ctx.close().catch(() => {}), 1200);
-      } catch { /* ignorar */ }
-    };
-
-    const lanzar = () => {
-      const yaNotificadas = leerAlertasNotificadas();
-      let hayNuevas = false;
-      alertasService.forEach((recordatorio) => {
-        const claveEstado = `${recordatorio.estado}-${recordatorio.enviado ? "avisado" : "pendiente"}`;
-        if (yaNotificadas[recordatorio.id] === claveEstado) return;
-        hayNuevas = true;
-        const titulo = recordatorio.estado === "service_vencido" ? "Service vencido" : "Próximo service";
-        const cuerpo = `${recordatorio.moto?.patente || "---"} · ${recordatorio.descripcion}`;
-        const notification = new NotificationApi(titulo, { body: cuerpo, silent: false });
-        notification.onclick = () => window.focus();
-        guardarAlertaNotificada(recordatorio.id, claveEstado);
-      });
-      if (hayNuevas) playBeep();
-    };
-
-    if (NotificationApi.permission === "granted") {
-      lanzar();
-      return;
-    }
-
-    if (NotificationApi.permission === "default") {
-      NotificationApi.requestPermission().then((permiso) => {
-        if (permiso === "granted") lanzar();
-      }).catch(() => {});
-    }
-  }, [alertasService, config.alertasNavegadorActivas]);
-
-  const alerta = ordenesActivas.filter((order) => order.estadoCron === "ALERTA").length;
-  const bloqueado = ordenesActivas.filter((order) => order.estadoCron === "BLOQUEADO").length;
-  const totalPendienteCobro = ordenesActivas.reduce((sum, order) => {
-    const totalPagado = (order.pagos || []).reduce((acc, pago) => acc + (pago.monto || 0), 0);
-    const saldo = (order.total || 0) - totalPagado;
-    return sum + Math.max(saldo, 0);
-  }, 0);
-
-  const hoy = new Date().toLocaleDateString("sv-SE");
-  const listasParaEntregar = ordenesActivas.filter(
-    (o) => o.estado === "finalizada" || o.estado === "listo_para_emitir"
-  ).length;
-  const ingresosHoy = (orders || []).filter((o) => {
-    const fecha = o.fechaIngreso || (o.createdAt ? new Date(o.createdAt).toLocaleDateString("sv-SE") : "");
-    return fecha === hoy;
-  }).length;
-  const cobradoHoy = (orders || []).flatMap((o) => o.pagos || []).filter(
-    (p) => (p.fecha || "").slice(0, 10) === hoy
-  ).reduce((s, p) => s + (p.monto || 0), 0);
-
-  const accionesUrgentes = useMemo(() => {
-    const ACCION_MAP = {
-      listo_para_emitir: { label: "Emitir comprobante",   color: "text-emerald-400", urgencia: 1 },
-      presupuesto:       { label: "Enviar presupuesto",   color: "text-purple-400",  urgencia: 3 },
-      aprobacion:        { label: "Reenviar aprobación",  color: "text-yellow-400",  urgencia: 4 },
-      diagnostico:       { label: "Armar presupuesto",    color: "text-slate-400",   urgencia: 6 },
-    };
-    return ordenesActivas
-      .map((order) => {
-        const bike = bikes?.find((b) => b.id === order.bikeId) || {};
-        const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
-        const saldo = (order.total || 0) - totalPagado;
-        let accion = ACCION_MAP[order.estado] ? { ...ACCION_MAP[order.estado] } : null;
-        if (order.estado === "finalizada" && saldo > 0)
-          accion = { label: "Cobrar saldo", color: "text-green-400", urgencia: 2 };
-        if (order.estado === "reparacion" && order.estadoCron === "BLOQUEADO")
-          accion = { label: "Trabajo detenido", color: "text-red-400", urgencia: 5 };
-        if (!accion) return null;
-        return { order, bike, accion };
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.accion.urgencia - b.accion.urgencia)
-      .slice(0, 5);
-  }, [ordenesActivas, bikes]);
-
-  useEffect(() => {
-    trackEvent("open_home", { screen: "home" }).catch(console.error);
-  }, []);
+  const {
+    userLabel,
+    stats,
+    ordenesActivas,
+    alertasService,
+    accionesUrgentes,
+    enviarWhatsAppRecordatorio,
+    descartarRecordatorio,
+  } = useHomeView({ orders, bikes, presupuestos, modoLectura });
 
   return (
     <div className="space-y-5 p-4 pb-28 text-left animate-in fade-in duration-500">
@@ -206,26 +62,26 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
               <p className="text-[9px] font-black uppercase tracking-wider text-emerald-300">Trabajos activos</p>
-              <p className="mt-2 text-2xl font-black text-emerald-400">{ordenesActivas.length}</p>
+              <p className="mt-2 text-2xl font-black text-emerald-400">{stats.totalOrdenes}</p>
               <p className="mt-1 text-[10px] font-bold text-emerald-600">En movimiento hoy</p>
             </div>
             <div className="rounded-2xl border border-orange-500/30 bg-orange-500/10 p-4">
               <p className="text-[9px] font-black uppercase tracking-wider text-orange-300">Pendiente de cobro</p>
-              <p className="mt-2 text-xl font-black leading-none text-orange-400">{formatMoneyShort(totalPendienteCobro)}</p>
+              <p className="mt-2 text-xl font-black leading-none text-orange-400">{formatMoneyShort(stats.totalPendienteCobro)}</p>
               <p className="mt-1 text-[10px] font-bold text-orange-600">Saldo total</p>
             </div>
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4">
-              <p className="text-[9px] font-black uppercase tracking-wider text-yellow-300">Atención</p>
-              <p className="mt-2 text-2xl font-black text-yellow-400">{alerta}</p>
-              <p className="mt-1 text-[10px] font-bold text-yellow-600">Cerca del límite</p>
+              <p className="text-[9px] font-black uppercase tracking-wider text-yellow-300">Atencion</p>
+              <p className="mt-2 text-2xl font-black text-yellow-400">{stats.alerta}</p>
+              <p className="mt-1 text-[10px] font-bold text-yellow-600">Cerca del limite</p>
             </div>
             <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4">
               <p className="text-[9px] font-black uppercase tracking-wider text-red-300">Detenidos</p>
-              <p className="mt-2 text-2xl font-black text-red-400">{bloqueado}</p>
-              <p className="mt-1 text-[10px] font-bold text-red-600">Necesitan acción</p>
+              <p className="mt-2 text-2xl font-black text-red-400">{stats.bloqueado}</p>
+              <p className="mt-1 text-[10px] font-bold text-red-600">Necesitan accion</p>
             </div>
           </div>
         </div>
@@ -234,17 +90,17 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
       <div className="grid grid-cols-3 gap-3">
         <Card className="text-center">
           <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Listas hoy</p>
-          <p className="mt-2 text-2xl font-black text-emerald-400">{listasParaEntregar}</p>
+          <p className="mt-2 text-2xl font-black text-emerald-400">{stats.listasParaEntregar}</p>
           <p className="mt-1 text-[9px] font-bold text-zinc-600">Para entregar</p>
         </Card>
         <Card className="text-center">
           <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Ingresos hoy</p>
-          <p className="mt-2 text-2xl font-black text-orange-400">{ingresosHoy}</p>
+          <p className="mt-2 text-2xl font-black text-orange-400">{stats.ingresosHoy}</p>
           <p className="mt-1 text-[9px] font-bold text-zinc-600">Motos nuevas</p>
         </Card>
         <Card className="text-center">
           <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Cobrado</p>
-          <p className="mt-2 text-base font-black leading-none text-yellow-400">{formatMoneyShort(cobradoHoy)}</p>
+          <p className="mt-2 text-base font-black leading-none text-yellow-400">{formatMoneyShort(stats.cobradoHoy)}</p>
           <p className="mt-1 text-[9px] font-bold text-zinc-600">Hoy</p>
         </Card>
       </div>
@@ -253,23 +109,21 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
         <div className="rounded-[2.5rem] border border-orange-600/30 bg-gradient-to-b from-orange-600/10 to-zinc-900/80 p-5 space-y-3 shadow-xl">
           <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-orange-300">
             <Zap size={13} />
-            {accionesUrgentes.length} acción{accionesUrgentes.length !== 1 ? "es" : ""} urgente{accionesUrgentes.length !== 1 ? "s" : ""}
+            {accionesUrgentes.length} accion{accionesUrgentes.length !== 1 ? "es" : ""} urgente{accionesUrgentes.length !== 1 ? "s" : ""}
           </p>
-          {accionesUrgentes.map(({ order, bike, accion }) => (
+          {accionesUrgentes.map(({ orderId, patente, marca, modelo, accion }) => (
             <button
-              key={order.id}
+              key={orderId}
               onClick={() => {
-                trackEvent("accion_urgente", { screen: "home", entityType: "trabajo", entityId: order.id, metadata: { accion: accion.label } }).catch(console.error);
-                setSelectedOrderId(order.id);
+                trackEvent("accion_urgente", { screen: "home", entityType: "trabajo", entityId: orderId, metadata: { accion: accion.label } }).catch(console.error);
+                setSelectedOrderId(orderId);
                 setView("detalleOrden");
               }}
               className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 text-left transition-all active:scale-[0.98]"
             >
               <div className="min-w-0">
-                <p className="truncate text-xs font-black uppercase text-white">
-                  {bike?.patente || "---"} · {bike?.marca || ""} {bike?.modelo || ""}
-                </p>
-                <p className={`mt-1 text-[10px] font-black uppercase tracking-widest ${accion.color}`}>
+                <p className="truncate text-xs font-black uppercase text-white">{patente} · {marca} {modelo}</p>
+                <p className={`mt-1 text-[10px] font-black uppercase tracking-widest ${URGENCY_COLOR[accion.urgency]}`}>
                   {accion.label}
                 </p>
               </div>
@@ -280,10 +134,13 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => {
-          trackEvent("nuevo_ingreso", { screen: "home" }).catch(console.error);
-          setView("nuevaOrden");
-        }} className={`rounded-[2.5rem] p-6 text-white shadow-xl transition-all active:scale-[0.98] ${modoLectura ? "bg-zinc-700 opacity-60" : "bg-orange-600"}`}>
+        <button
+          onClick={() => {
+            trackEvent("nuevo_ingreso", { screen: "home" }).catch(console.error);
+            setView("nuevaOrden");
+          }}
+          className={`rounded-[2.5rem] p-6 text-white shadow-xl transition-all active:scale-[0.98] ${modoLectura ? "bg-zinc-700 opacity-60" : "bg-orange-600"}`}
+        >
           <div className="flex flex-col items-start gap-3 font-bold">
             <div className={`rounded-3xl p-3 ${modoLectura ? "bg-white/10" : "bg-white/20"}`}><PlusCircle size={26} /></div>
             <div>
@@ -298,8 +155,8 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
             <div>
               <p className="text-lg font-black uppercase leading-tight tracking-tighter">Presupuestos</p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mt-0.5">
-                {presupuestos.filter(p => p.estado === "borrador" || p.estado === "enviado").length > 0
-                  ? `${presupuestos.filter(p => p.estado === "borrador" || p.estado === "enviado").length} activo${presupuestos.filter(p => p.estado === "borrador" || p.estado === "enviado").length !== 1 ? "s" : ""}`
+                {stats.presupuestosActivos > 0
+                  ? `${stats.presupuestosActivos} activo${stats.presupuestosActivos !== 1 ? "s" : ""}`
                   : "Cotizar trabajos"}
               </p>
             </div>
@@ -309,29 +166,21 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
 
       {(orders || []).length === 0 && !modoLectura && (
         <Card className="space-y-4 p-6">
-          <p className="text-[10px] font-black uppercase tracking-widest text-orange-400">Por dónde empezar</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-orange-400">Por donde empezar</p>
           <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-600 text-[10px] font-black text-white">1</span>
-              <div>
-                <p className="text-sm font-black text-white">Configurá tu taller</p>
-                <p className="text-[10px] text-zinc-500">Nombre, logo y datos de garantía en Más → Configuración.</p>
+            {[
+              { num: "1", color: "bg-orange-600", label: "Configura tu taller", desc: "Nombre, logo y datos de garantia en Mas → Configuracion." },
+              { num: "2", color: "bg-zinc-700",   label: "Carga tu primer cliente", desc: "En Nuevo ingreso podes crearlo en el momento." },
+              { num: "3", color: "bg-zinc-700",   label: "Abri tu primera orden", desc: "Desde ahi registras el trabajo y generás el comprobante." },
+            ].map(({ num, color, label, desc }) => (
+              <div key={num} className="flex items-start gap-3">
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${color} text-[10px] font-black text-white`}>{num}</span>
+                <div>
+                  <p className="text-sm font-black text-white">{label}</p>
+                  <p className="text-[10px] text-zinc-500">{desc}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-[10px] font-black text-zinc-300">2</span>
-              <div>
-                <p className="text-sm font-black text-white">Cargá tu primer cliente</p>
-                <p className="text-[10px] text-zinc-500">En Nuevo ingreso podés crearlo en el momento.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-[10px] font-black text-zinc-300">3</span>
-              <div>
-                <p className="text-sm font-black text-white">Abrí tu primera orden</p>
-                <p className="text-[10px] text-zinc-500">Desde ahí registrás el trabajo y generás el comprobante.</p>
-              </div>
-            </div>
+            ))}
           </div>
           <Button variant="primary" size="lg" onClick={() => setView("nuevaOrden")}>
             Empezar primer ingreso
@@ -341,49 +190,34 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
 
       <button onClick={() => setView("agenda")} className="w-full rounded-[2rem] border border-orange-500/20 bg-orange-500/10 p-5 text-left shadow-xl transition-all active:scale-95">
         <div className="flex items-center gap-4">
-          <div className="rounded-2xl bg-orange-600/20 p-3">
-            <Calendar className="text-orange-400" size={24} />
-          </div>
+          <div className="rounded-2xl bg-orange-600/20 p-3"><Calendar className="text-orange-400" size={24} /></div>
           <div>
             <p className="text-sm font-black uppercase tracking-widest text-white">Agenda semanal</p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Ocupación y trabajos por día</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Ocupacion y trabajos por dia</p>
           </div>
         </div>
       </button>
 
       <div className="grid grid-cols-2 gap-4">
-        <button onClick={() => {
-          trackEvent("open_trabajos", { screen: "home" }).catch(console.error);
-          setView("ordenes");
-        }} className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-95">
-          <Clock className="text-orange-400" size={24} />
-          <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Trabajos</p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Ver y seguir trabajos activos</p>
-        </button>
-        <button onClick={() => {
-          trackEvent("open_pagos", { screen: "home" }).catch(console.error);
-          setView("pagosView");
-        }} className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-95">
-          <ReceiptText className="text-emerald-400" size={24} />
-          <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Pagos</p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Cobrar y emitir comprobantes</p>
-        </button>
-        <button onClick={() => {
-          trackEvent("open_historial", { screen: "home" }).catch(console.error);
-          setView("historial");
-        }} className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-95">
-          <History className="text-orange-400" size={24} />
-          <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Historial</p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Buscar patente, cliente o comprobante</p>
-        </button>
-        <button onClick={() => {
-          trackEvent("open_config", { screen: "home" }).catch(console.error);
-          setView("config");
-        }} className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-95">
-          <Wrench className="text-zinc-300" size={24} />
-          <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">Más</p>
-          <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Configuración y herramientas</p>
-        </button>
+        {[
+          { view: "ordenes",   icon: <Clock className="text-orange-400" size={24} />,   label: "Trabajos",  desc: "Ver y seguir trabajos activos",      event: "open_trabajos" },
+          { view: "pagosView", icon: <ReceiptText className="text-emerald-400" size={24} />, label: "Pagos", desc: "Cobrar y emitir comprobantes",       event: "open_pagos" },
+          { view: "historial", icon: <History className="text-orange-400" size={24} />, label: "Historial", desc: "Buscar patente, cliente o comprobante", event: "open_historial" },
+          { view: "config",    icon: <Wrench className="text-zinc-300" size={24} />,    label: "Mas",       desc: "Configuracion y herramientas",        event: "open_config" },
+        ].map(({ view, icon, label, desc, event }) => (
+          <button
+            key={view}
+            onClick={() => {
+              trackEvent(event, { screen: "home" }).catch(console.error);
+              setView(view);
+            }}
+            className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-95"
+          >
+            {icon}
+            <p className="mt-4 text-xs font-black uppercase tracking-widest text-white">{label}</p>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-zinc-500">{desc}</p>
+          </button>
+        ))}
       </div>
 
       <button
@@ -391,15 +225,13 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
         className="w-full rounded-[2rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-95 flex items-center justify-between"
       >
         <div className="flex items-center gap-4">
-          <div className="rounded-2xl bg-yellow-500/15 p-3">
-            <Bell className="text-yellow-400" size={24} />
-          </div>
+          <div className="rounded-2xl bg-yellow-500/15 p-3"><Bell className="text-yellow-400" size={24} /></div>
           <div>
             <p className="text-sm font-black uppercase tracking-widest text-white">Recordatorios</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
               {alertasService.length > 0
                 ? `${alertasService.length} pendiente${alertasService.length !== 1 ? "s" : ""}`
-                : "Próximos controles"}
+                : "Proximos controles"}
             </p>
           </div>
         </div>
@@ -410,7 +242,7 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
         <div className="rounded-[2.5rem] border border-yellow-500/30 bg-gradient-to-br from-yellow-500/15 to-orange-500/10 p-5 shadow-xl backdrop-blur space-y-4">
           <div className="flex items-center justify-between">
             <p className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-yellow-300">
-              <Bell size={16} /> {alertasService.length} Notificación{alertasService.length !== 1 ? 'es' : ''} pendiente{alertasService.length !== 1 ? 's' : ''}
+              <Bell size={16} /> {alertasService.length} Notificacion{alertasService.length !== 1 ? "es" : ""} pendiente{alertasService.length !== 1 ? "s" : ""}
             </p>
             <button
               onClick={() => setView("recordatorios")}
@@ -421,35 +253,33 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
           </div>
 
           <div className="space-y-3">
-            {alertasService.map((recordatorio) => (
-              <div
-                key={recordatorio.id}
-                className={`rounded-2xl border p-4 space-y-3 ${
-                  recordatorio.estado === "service_vencido"
-                    ? "border-red-500/40 bg-red-500/25"
-                    : "border-yellow-500/40 bg-yellow-500/20"
-                }`}
-              >
+            {alertasService.map((rec) => (
+              <div key={rec.id} className={`rounded-2xl border p-4 space-y-3 ${SEVERITY_CLASSES[rec.estado]}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <p className="text-sm font-black uppercase tracking-tight text-white">
-                      {recordatorio.moto?.patente || "---"} · {recordatorio.moto?.marca || ""} {recordatorio.moto?.modelo || ""}
+                      {rec.moto?.patente || "---"} · {rec.moto?.marca || ""} {rec.moto?.modelo || ""}
                     </p>
-                    <p className="mt-1 flex items-center gap-1 text-xs text-white font-bold"><User size={11} className="shrink-0" /> {recordatorio.cliente?.nombre || "Cliente"}</p>
-                    <p className={`mt-2 flex items-center gap-1 text-[10px] font-black uppercase ${recordatorio.estado === "service_vencido" ? "text-red-300" : "text-yellow-300"}`}>
-                      {recordatorio.estado === "service_vencido" ? <AlertTriangle size={10} className="shrink-0" /> : <Bell size={10} className="shrink-0" />}
-                      {recordatorio.estado === "service_vencido" ? "SERVICE VENCIDO" : "PRÓXIMO SERVICE"} · {recordatorio.descripcion}
+                    <p className="mt-1 flex items-center gap-1 text-xs text-white font-bold">
+                      <User size={11} className="shrink-0" /> {rec.cliente?.nombre || "Cliente"}
                     </p>
-                    {recordatorio.kmObjetivo && (
+                    <p className={`mt-2 flex items-center gap-1 text-[10px] font-black uppercase ${SEVERITY_TEXT[rec.estado]}`}>
+                      {rec.estado === "service_vencido"
+                        ? <AlertTriangle size={10} className="shrink-0" />
+                        : <Bell size={10} className="shrink-0" />}
+                      {rec.estado === "service_vencido" ? "SERVICE VENCIDO" : "PROXIMO SERVICE"} · {rec.descripcion}
+                    </p>
+                    {rec.kmObjetivo && (
                       <p className="mt-2 text-[9px] text-zinc-200">
-                        Km actual: <span className="font-black text-white">{(recordatorio.moto?.kilometrajeActual || recordatorio.moto?.km || 0).toLocaleString("es-AR")}</span> / Objetivo: <span className="font-black text-white">{recordatorio.kmObjetivo.toLocaleString("es-AR")} km</span>
+                        Km actual: <span className="font-black text-white">{(rec.moto?.kilometrajeActual || rec.moto?.km || 0).toLocaleString("es-AR")}</span>
+                        {" / "}Objetivo: <span className="font-black text-white">{rec.kmObjetivo.toLocaleString("es-AR")} km</span>
                       </p>
                     )}
                   </div>
                   <button
-                    onClick={() => LS.updateDoc("recordatorios", recordatorio.id, { estado: "hecho" })}
+                    onClick={() => descartarRecordatorio(rec.id)}
                     className="shrink-0 cursor-pointer p-1 text-zinc-400 hover:text-red-400 active:scale-95 transition-colors"
-                    title="Cerrar notificación"
+                    title="Cerrar notificacion"
                   >
                     <X size={16} />
                   </button>
@@ -457,27 +287,16 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
 
                 <div className="grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => {
-                      const msg = generarMensajeWhatsApp(recordatorio.cliente, recordatorio.moto, recordatorio, config);
-                      const tel = recordatorio.cliente?.whatsapp || recordatorio.cliente?.telefono || recordatorio.cliente?.tel || "";
-                      trackEvent("recordatorio_whatsapp", {
-                        screen: "home",
-                        entityType: "recordatorio",
-                        entityId: recordatorio.id,
-                        metadata: { estado: recordatorio.estado, testMode: !!recordatorio.testMode },
-                      }).catch(console.error);
-                      abrirEnlaceExterno(`https://wa.me/${normalizarTelWA(tel)}?text=${encodeURIComponent(msg)}`);
-                      LS.updateDoc("recordatorios", recordatorio.id, { estado: "avisado", enviado: true });
-                    }}
+                    onClick={() => enviarWhatsAppRecordatorio(rec)}
                     className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white py-3 px-3 text-[9px] font-black uppercase active:scale-95 transition-all shadow-lg"
                   >
                     <MessageCircle size={14} /> WhatsApp
                   </button>
                   <button
-                    onClick={() => LS.updateDoc("recordatorios", recordatorio.id, { estado: "hecho" })}
+                    onClick={() => descartarRecordatorio(rec.id)}
                     className="rounded-xl bg-zinc-700 hover:bg-zinc-600 text-zinc-200 py-3 px-3 text-[9px] font-black uppercase active:scale-95 transition-all"
                   >
-                    Marcar leído
+                    Marcar leido
                   </button>
                 </div>
               </div>
@@ -489,39 +308,30 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
       {ordenesActivas.length > 0 && (
         <Card className="space-y-3 p-5 shadow-xl">
           <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Trabajos en curso</p>
-          {ordenesActivas.map((order) => {
-            const bike = bikes?.find((item) => item.id === order.bikeId) || {};
-            return (
-              <button
-                key={order.id}
-                onClick={() => {
-                  trackEvent("open_detalle_trabajo", {
-                    screen: "home",
-                    entityType: "trabajo",
-                    entityId: order.id,
-                  }).catch(console.error);
-                  setSelectedOrderId(order.id);
-                  setView("detalleOrden");
-                }}
-                className="flex w-full items-center justify-between rounded-[1.5rem] border border-white/10 bg-black/20 p-4 text-left transition-all active:scale-[0.98]"
-              >
-                <div>
-                  <p className="text-sm font-black uppercase tracking-tight text-white">
-                    {bike.patente || "---"} · {bike.marca || ""} {bike.modelo || ""}
-                  </p>
-                  <Badge variant={ESTADO_BADGE_VARIANT[order.estadoCron]} className="mt-2">
-                    {ESTADO_LABEL_CRON[order.estadoCron]}
-                  </Badge>
+          {ordenesActivas.map((order) => (
+            <button
+              key={order.id}
+              onClick={() => {
+                trackEvent("open_detalle_trabajo", { screen: "home", entityType: "trabajo", entityId: order.id }).catch(console.error);
+                setSelectedOrderId(order.id);
+                setView("detalleOrden");
+              }}
+              className="flex w-full items-center justify-between rounded-[1.5rem] border border-white/10 bg-black/20 p-4 text-left transition-all active:scale-[0.98]"
+            >
+              <div>
+                <p className="text-sm font-black uppercase tracking-tight text-white">
+                  {order.patente} · {order.marca} {order.modelo}
+                </p>
+                <Badge variant={order.statusVariant} className="mt-2">{order.statusLabel}</Badge>
+              </div>
+              {order.maxAutorizado > 0 && (
+                <div className="text-right">
+                  <p className="text-[9px] font-black uppercase text-zinc-500">Acumulado</p>
+                  <p className="text-sm font-black text-white">{formatMoneyShort(order.costoActual)}</p>
                 </div>
-                {order.maxAutorizado > 0 && (
-                  <div className="text-right">
-                    <p className="text-[9px] font-black uppercase text-zinc-500">Acumulado</p>
-                    <p className="text-sm font-black text-white">{formatMoneyShort(order.costoActual)}</p>
-                  </div>
-                )}
-              </button>
-            );
-          })}
+              )}
+            </button>
+          ))}
         </Card>
       )}
     </div>
