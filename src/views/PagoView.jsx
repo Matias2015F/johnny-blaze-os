@@ -1,36 +1,30 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { ArrowLeft } from "lucide-react";
-import { LS, generateId, obtenerOrden, actualizarOrden, crearEntradaHistorial, crearRecordatorioDeOrden } from "../lib/storage.js";
-import { hoyEstable } from "../lib/constants.js";
 import { formatMoney, formatMoneyParts } from "../utils/format.js";
-import { logAction } from "../services/auditService.js";
+import { usePagoView } from "../hooks/usePagoView.js";
 
 const METODOS = [
-  { value: "efectivo", label: "Efectivo" },
+  { value: "efectivo",      label: "Efectivo" },
   { value: "transferencia", label: "Transferencia" },
-  { value: "tarjeta", label: "Tarjeta" },
-  { value: "cheque", label: "Cheque" },
+  { value: "tarjeta",       label: "Tarjeta" },
+  { value: "cheque",        label: "Cheque" },
 ];
 
 export default function PagoView({ ordenId, setView }) {
-  const [orden, setOrden] = useState(null);
-  const [cliente, setCliente] = useState(null);
-  const [moto, setMoto] = useState(null);
-  const [montoRecibido, setMontoRecibido] = useState("");
-  const [metodoPago, setMetodoPago] = useState("efectivo");
-  const [comprobante, setComprobante] = useState("");
+  const {
+    isLoading,
+    contexto,
+    costoFinal,
+    gananciaNeta,
+    diferencia,
+    puedeConfirmar,
+    montoRecibido,  setMontoRecibido,
+    metodoPago,     setMetodoPago,
+    comprobante,    setComprobante,
+    registrarPago,
+  } = usePagoView({ ordenId });
 
-  useEffect(() => {
-    const o = obtenerOrden(ordenId);
-    if (!o) return;
-    setOrden(o);
-    setCliente(LS.getDoc("clientes", o.clientId) || {});
-    setMoto(LS.getDoc("motos", o.bikeId) || {});
-    const costoFinal = o.costoFinal || o.total || 0;
-    setMontoRecibido(String(costoFinal));
-  }, [ordenId]);
-
-  if (!orden) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-zinc-500 text-xs font-black uppercase">
         Cargando...
@@ -38,51 +32,8 @@ export default function PagoView({ ordenId, setView }) {
     );
   }
 
-  const costoFinal = orden.costoFinal || orden.total || 0;
-  const recibido = Number(montoRecibido) || 0;
-  const diferencia = recibido - costoFinal;
-  const totalManoObra = (orden.tareas || []).reduce((s, t) => s + (t.monto || 0), 0);
-  const totalMateriales =
-    (orden.repuestos || []).reduce((s, r) => s + (r.monto || 0) * (r.cantidad || 1), 0) +
-    (orden.insumos   || []).reduce((s, i) => s + (i.monto || 0) * (i.cantidad || 1), 0) +
-    (orden.fletes    || []).reduce((s, f) => s + (f.monto || 0), 0);
-  const gananciaNeta = totalManoObra;
-
-  const handleRegistrarPago = () => {
-    const pagosActuales = orden.pagos || [];
-    const nuevoPago = {
-      id: generateId(),
-      monto: recibido,
-      metodo: metodoPago,
-      comprobante,
-      fecha: hoyEstable(),
-      hora: new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
-      tipo: "pago_final",
-    };
-    const entrada = crearEntradaHistorial(orden.estado, "cobrado_pendiente_retiro");
-    actualizarOrden(ordenId, {
-      estado: "cobrado_pendiente_retiro",
-      pagado_fecha: Date.now(),
-      ganancia: gananciaNeta,
-      pagos: [...pagosActuales, nuevoPago],
-      historial: [...(orden.historial || []), entrada],
-    });
-    LS.addDoc("caja", {
-      fecha: hoyEstable(),
-      tipo: "ingreso",
-      concepto: `Pago trabajo ${orden.numeroTrabajo || ordenId.slice(-4).toUpperCase()}`,
-      monto: recibido,
-      metodo: metodoPago,
-      comprobante,
-    });
-    logAction("pago_registrado", ordenId, "trabajo", {
-      monto: recibido,
-      metodo: metodoPago,
-      numeroTrabajo: orden.numeroTrabajo || "",
-    }).catch(() => {});
-    crearRecordatorioDeOrden(orden);
-    setView("retiro");
-  };
+  const { pesos: pesosCosto, centavos: centavosCosto } = formatMoneyParts(costoFinal);
+  const { pesos: pesosGanancia, centavos: centavosGanancia } = formatMoneyParts(gananciaNeta);
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] pb-32 text-white animate-in slide-in-from-right duration-300">
@@ -96,7 +47,7 @@ export default function PagoView({ ordenId, setView }) {
           </button>
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
-              {moto?.patente} · {cliente?.nombre}
+              {contexto.patente} · {contexto.clienteNombre}
             </p>
             <h1 className="text-xl font-black text-white">Registrar cobro</h1>
           </div>
@@ -104,13 +55,11 @@ export default function PagoView({ ordenId, setView }) {
 
         <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900/50 p-5">
           <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2">Lo que tiene que pagar el cliente</p>
-          {(() => { const { pesos, centavos } = formatMoneyParts(costoFinal); return (
-            <p className="leading-none">
-              <span className="text-[11px] font-bold text-zinc-500">ARS </span>
-              <span className="text-4xl font-black text-white">{pesos}</span>
-              <span className="text-2xl font-black text-zinc-400">,{centavos}</span>
-            </p>
-          ); })()}
+          <p className="leading-none">
+            <span className="text-[11px] font-bold text-zinc-500">ARS </span>
+            <span className="text-4xl font-black text-white">{pesosCosto}</span>
+            <span className="text-2xl font-black text-zinc-400">,{centavosCosto}</span>
+          </p>
         </div>
 
         <div className="space-y-2">
@@ -139,7 +88,7 @@ export default function PagoView({ ordenId, setView }) {
         </div>
 
         <div className="space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Cómo pagó</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Como pago</p>
           <div className="grid grid-cols-2 gap-2">
             {METODOS.map((m) => (
               <button
@@ -158,7 +107,7 @@ export default function PagoView({ ordenId, setView }) {
         </div>
 
         <div className="space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Número o dato del pago</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Numero o dato del pago</p>
           <input
             type="text"
             className="w-full bg-zinc-900 border border-white/5 rounded-2xl p-4 text-white text-sm outline-none focus:border-orange-600"
@@ -170,25 +119,23 @@ export default function PagoView({ ordenId, setView }) {
 
         <div className="rounded-[2rem] border border-emerald-500/20 bg-emerald-500/10 p-5 text-center">
           <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-1">Mano de obra para el taller</p>
-          {(() => { const { pesos, centavos } = formatMoneyParts(gananciaNeta); return (
-            <p className="leading-none">
-              <span className="text-[11px] font-bold text-emerald-500/60">ARS </span>
-              <span className="text-4xl font-black text-emerald-400">{pesos}</span>
-              <span className="text-2xl font-black text-emerald-400/60">,{centavos}</span>
-            </p>
-          ); })()}
+          <p className="leading-none">
+            <span className="text-[11px] font-bold text-emerald-500/60">ARS </span>
+            <span className="text-4xl font-black text-emerald-400">{pesosGanancia}</span>
+            <span className="text-2xl font-black text-emerald-400/60">,{centavosGanancia}</span>
+          </p>
           <p className="text-[10px] text-zinc-500 mt-1">(mano de obra)</p>
         </div>
 
         <button
-          onClick={handleRegistrarPago}
-          disabled={recibido < costoFinal}
+          onClick={() => { registrarPago(); setView("retiro"); }}
+          disabled={!puedeConfirmar}
           className="w-full rounded-[2rem] bg-orange-600 py-5 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Confirmar cobro y pasar a retiro
         </button>
         <p className="text-center text-[10px] font-bold leading-relaxed text-zinc-500">
-          Después de confirmar, la orden queda cobrada pero falta entregar la moto.
+          Despues de confirmar, la orden queda cobrada pero falta entregar la moto.
         </p>
       </div>
     </div>
