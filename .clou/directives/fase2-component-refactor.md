@@ -38,26 +38,23 @@ jb.info = #3B82F6 (blue)
 
 **Criterio de éxito:** LoginScreen compila ✓, visual coherente ✓, botones 44px mínimo ✓
 
-### Fase 2.2 — Rollout a vistas de alto tráfico (PENDIENTE)
-Prioridad:
-1. **HomeView (500 líneas, ~45 botones/cards)** — dashboard principal
-   - Patrón 1: Botones grandes CTA (`rounded-[2.5rem] p-6 bg-orange-600`) → `Button variant="primary" size="lg"`
-   - Patrón 2: Cards navegación (`rounded-[2rem] border-zinc-800 bg-zinc-900 p-5`) → `Card` + `Button` hover state
-   - Patrón 3: Cards de estado (`bg-emerald-500/10 border-emerald-500/30`) → `Card variant="success"` / `"warning"` / `"error"`
-   - Patrón 4: Pequeños botones utilidad → `Button size="md"` o `Button variant="ghost" size="sm"`
-   
-2. **OrderDetailView (1600 líneas)** — formulario complejo, muchos botones de acción
-   - Mismo approach que HomeView + validación de estado dinámico
-   
-3. **ConfigView (3500 líneas)** — más grande, refactor crítico
-   - Dividir en secciones (Suscripción, Taller, Precios, Garantía)
-   - Refactor sección por sección
+### Fase 2.2 — Rollout a vistas de alto tráfico
 
-**Estrategia HomeView (primer bloque):**
-- Semana 1: Header + cards de estado (emerald/orange/yellow/red)
-- Semana 2: CTA buttons (Nuevo ingreso, Presupuestos)
-- Semana 3: Navigation cards (Trabajos, Pagos, Recordatorios, Historial, Agenda, Más)
-- Semana 4: Alerts + acciones urgentes
+**HomeView — estado real por patrón:**
+
+| Patrón | Descripción | Estado |
+|---|---|---|
+| Mini-stat row (Listas/Ingresos/Cobrado) | 3 divs `rounded-[2rem] bg-zinc-900` | ✅ DONE — `<Card>` (commit 6ef5b19) |
+| ESTADO_BADGE badges | span con clases dinámicas por estadoCron | ✅ DONE — `<Badge variant>` (commit 6ef5b19) |
+| Contenedor "Trabajos en curso" | div `rounded-[2rem] bg-zinc-900` | ✅ DONE — `<Card>` (commit actual) |
+| Contenedor "Por dónde empezar" | div `rounded-[2rem] bg-zinc-900/80` + button CTA interno | ✅ DONE — `<Card>` + `<Button>` (commit actual) |
+| CTA buttons grandes (Nuevo ingreso, Presupuestos) | `<button>` con layout interno icono+título+subtítulo | NO REFACTORIZABLE — layout complejo (icon + dos líneas de texto) no cabe en Button API actual. Quedan como están. |
+| Navigation cards (Trabajos, Pagos, Historial, Más, Agenda) | `<button>` estilizado como card | NO REFACTORIZABLE — son `<button>`, Card es `<div>`. Layout custom con icono. Quedan como están. |
+
+**Decisión documentada:** Los botones-card con layout icono+título+subtítulo no son candidatos para Button/Card sin extender la API del componente. Extender la API introduce complejidad que no está justificada por la directiva actual.
+
+2. **OrderDetailView (1600 líneas)** — siguiente prioridad
+3. **ConfigView (3500 líneas)** — refactor seccional
 
 ### Fase 2.3 — Rollout a resto de vistas (PENDIENTE)
 - 19+ vistas restantes
@@ -82,10 +79,8 @@ Prioridad:
 |---|---|---|
 | 2026-06-24 | 506a9a2 | Fase 2.0: UI component library created + design tokens |
 | 2026-06-25 | 654f6df | Fase 2.1: LoginScreen refactorizado con componentes Input + Button |
-| PENDIENTE | — | Fase 2.2: HomeView header + cards de estado (bloque 1) |
-| PENDIENTE | — | Fase 2.2: HomeView CTA buttons (bloque 2) |
-| PENDIENTE | — | Fase 2.2: HomeView navigation cards (bloque 3) |
-| PENDIENTE | — | Fase 2.2: HomeView alerts + urgentes (bloque 4) |
+| 2026-06-25 | 6ef5b19 | Fase 2.2: HomeView mini-stats → Card, ESTADO_BADGE → Badge |
+| 2026-06-25 | (pendiente commit) | Fase 2.2: HomeView "Trabajos en curso" + "Por dónde empezar" → Card + Button |
 | PENDIENTE | — | Fase 2.2: OrderDetailView refactor |
 | PENDIENTE | — | Fase 2.2: ConfigView refactor (seccional) |
 | PENDIENTE | — | Fase 2.3: Resto de vistas (19+) |

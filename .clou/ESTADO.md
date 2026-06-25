@@ -12,13 +12,15 @@
 | `app.motogestion.ar` | `motogestion-app` | `114b416` | 2026-06-25 |
 | `admin.motogestion.ar` | `motogestion-admin` | `114b416` | 2026-06-25 |
 
+> NOTA: origin/main esta en `6ef5b19`. Los commits e5f8b63..6ef5b19 (Fase 1 + Fase 2.x) estan pusheados pero NO deploados a Vercel.
+
 ## HEAD en GitHub (origin/main)
 
-SHA: `114b416` — chore: update ESTADO.md — HEAD 15f7cae, app en produccion
+SHA: `6ef5b19` — Fase 2.2: HomeView usa Card + Badge del design system
 
 ## HEAD local
 
-SHA: `114b416` — en sync con origin/main. App y admin en sync.
+SHA: `6ef5b19` — en sync con origin/main.
 
 ---
 
@@ -60,31 +62,16 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 
 ## Ultima sesion
 
-**Fecha:** 2026-06-23
+**Fecha:** 2026-06-25
 **IA:** Claude (Sonnet 4.6)
 **Trabajo realizado:**
-- Claude: configuracion de comportamiento proactivo de skills en `~/.claude/CLAUDE.md`
-- Claude: `b08c4e9` - landing motogestion.ar — CRO + SEO (hero reescrito, CTA, title, meta)
-- Claude: deploy landing a produccion (motogestion.ar)
-- Claude: skill `find-skills` instalado (vercel-labs/skills)
-- Claude: skill `threat-model` instalado (anthropics/defending-code-reference-harness)
-- Claude: `412b506` - commit skills-lock.json + .agents/ a origin/main
-- Claude: `d828ed4` - fix(security): quick wins T6/T9/T10 — KNOWN_MODES allowlist, escapeHtml en handleLead, npm audit en CI
-- Claude: `8e6ec95` - docs(security): THREAT_MODEL.md completo — modo bootstrap-then-interview, 6 preguntas cerradas, 6 mitigaciones recomendadas
-- Claude: `a846c0d` - feat(security): Custom Claims para isPlatformAdmin — assertAdmin centralizado, Firestore rules simplificadas
-- Claude: `4b56d73` - fix: UID admin corregido (era TNwwuKJsIXN29zJg8HWfORawdFm1 de fefe@gmail.com, real es ERqAgJfizDNXihicDEegT2u5tws2)
-- Claude: `769e5a9` - fix(security): M1 UID fallback en check-expirations, M2 redactar teléfono en log de lead
-- Claude: `af58685` - fix(ux): RetentionOfferView auto-redirige a app.motogestion.ar en 2.5s cuando suscripción ya está activa
-- Claude: `c73102f` - docs: CLAUDE.md actualizado con Custom Claims, assertAdmin, KNOWN_MODES, runbook, Dependabot, threat model
-- Claude: `7183f84` - chore: install ui-ux-pro-max skill
-- Claude: `a29c5a1` - fix(ui): emojis → Lucide icons en HomeView/TallerPanel, min-h-[100dvh], close button UX
-- Claude: `1167b01` - chore: install mobile-design skill
-- Claude: `c43d3cd` - chore: ESTADO.md actualizado
-- Claude: `61f1a53` - chore: install database-architect agent
-- Claude: `02b1455` - fix(db): 4 bugs críticos (B1 forceSyncChunk, B2 patente, B4 isFreeAccount, B7 counter offline)
-- Claude: `dd5f20a` - feat(db): M1-M5 mejoras DB/resiliencia (backup size, reputacion, normNombre, cross-device, offline renumber)
-- Codex:  `ec70787` - style: modernize account screen mobile UI (ConfigView.jsx)
-- Codex:  `15f7cae` - fix: send receipt link from retiro view (RetiroView.jsx — botón ahora abre WhatsApp con link verificar/:token)
+- Claude: `e5f8b63` - Fase 1: Design System Tokens — gray→zinc global, active:scale-95, colores semánticos en tailwind.config.js
+- Claude: `506a9a2` - Fase 2: UI Component Library — Button/Input/Card/Badge + barrel export index.js
+- Claude: `654f6df` - Fase 2.1: LoginScreen refactorizado con Input + Button (validado en browser)
+- Claude: `28c5461` - Directiva Fase 2: plan detallado de rollout por vista
+- Claude: `6ef5b19` - Fase 2.2: HomeView usa Card (mini-stats) + Badge (ESTADO_BADGE) — Card.jsx alineado con spec CLAUDE.md
+
+**Pendiente de deploy:** commits e5f8b63..6ef5b19 estan en origin/main pero NO deploados a app.motogestion.ar
 
 ---
 

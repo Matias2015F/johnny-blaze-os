@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { AlertTriangle, Bell, Calendar, Clock, ChevronRight, FileText, History, LogOut, MessageCircle, PlusCircle, ReceiptText, User, Wrench, X, Zap } from "lucide-react";
-import { Badge, Card } from "../components/ui/index.js";
+import { Badge, Button, Card } from "../components/ui/index.js";
 import { auth } from "../firebase.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { evaluarEstado } from "../lib/calc.js";
@@ -308,7 +308,7 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
       </div>
 
       {(orders || []).length === 0 && !modoLectura && (
-        <div className="rounded-[2rem] border border-zinc-700 bg-zinc-900/80 p-6 space-y-4">
+        <Card className="space-y-4 p-6">
           <p className="text-[10px] font-black uppercase tracking-widest text-orange-400">Por dónde empezar</p>
           <div className="space-y-3">
             <div className="flex items-start gap-3">
@@ -333,13 +333,10 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
               </div>
             </div>
           </div>
-          <button
-            onClick={() => setView("nuevaOrden")}
-            className="w-full rounded-2xl bg-orange-600 py-3 text-[11px] font-black uppercase tracking-widest text-white transition-all active:scale-95"
-          >
+          <Button variant="primary" size="lg" onClick={() => setView("nuevaOrden")}>
             Empezar primer ingreso
-          </button>
-        </div>
+          </Button>
+        </Card>
       )}
 
       <button onClick={() => setView("agenda")} className="w-full rounded-[2rem] border border-orange-500/20 bg-orange-500/10 p-5 text-left shadow-xl transition-all active:scale-95">
@@ -490,7 +487,7 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
       )}
 
       {ordenesActivas.length > 0 && (
-        <div className="space-y-3 rounded-[2rem] border border-zinc-800 bg-zinc-900 p-5 shadow-xl">
+        <Card className="space-y-3 p-5 shadow-xl">
           <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Trabajos en curso</p>
           {ordenesActivas.map((order) => {
             const bike = bikes?.find((item) => item.id === order.bikeId) || {};
@@ -525,7 +522,7 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
               </button>
             );
           })}
-        </div>
+        </Card>
       )}
     </div>
   );
