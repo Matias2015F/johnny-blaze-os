@@ -130,20 +130,20 @@ export default function LoginScreen({ redirectTo = "" }) {
             </p>
           </div>
 
-          <Field
-            icon={<Mail size={16} />}
+          <Input
             type="email"
-            label="Correo del taller"
             placeholder="tuemail@taller.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            icon={<Mail size={16} />}
+            size="md"
           />
 
           <MsgLine msg={msg} />
 
-          <PrimaryButton onClick={handleRecuperar} disabled={loading}>
+          <Button variant="primary" size="lg" onClick={handleRecuperar} disabled={loading} loading={loading}>
             {loading ? "Enviando..." : "Enviar link de recuperación"}
-          </PrimaryButton>
+          </Button>
 
           <button
             onClick={() => reset("login")}
@@ -177,24 +177,24 @@ export default function LoginScreen({ redirectTo = "" }) {
           </p>
         </div>
 
-        <Field
-          icon={<Mail size={16} />}
+        <Input
           type="email"
-          label="Correo"
           placeholder="tuemail@taller.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          icon={<Mail size={16} />}
+          size="md"
         />
 
         <div className="relative">
-          <Field
-            icon={<LockKeyhole size={16} />}
+          <Input
             type={showPass ? "text" : "password"}
-            label="Contraseña"
             placeholder="Mínimo 6 caracteres"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAuth()}
+            icon={<LockKeyhole size={16} />}
+            size="md"
           />
           <button
             type="button"
@@ -233,13 +233,13 @@ export default function LoginScreen({ redirectTo = "" }) {
 
         <MsgLine msg={msg} />
 
-        <PrimaryButton onClick={handleAuth} disabled={loading}>
+        <Button variant="primary" size="lg" onClick={handleAuth} disabled={loading} loading={loading}>
           {loading
             ? "Procesando..."
             : modo === "login"
               ? "Ingresar a MotoGestión"
               : "Crear mi cuenta"}
-        </PrimaryButton>
+        </Button>
 
         {modo === "login" && (
           <button
@@ -307,33 +307,7 @@ function Tab({ active, onClick, children }) {
   );
 }
 
-function Field({ icon, label, ...props }) {
-  return (
-    <label className="block space-y-1.5">
-      {label && <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{label}</span>}
-      <span className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/60 px-4 py-3.5 transition-all focus-within:border-orange-500/60 focus-within:bg-black">
-        {icon && <span className="text-zinc-500">{icon}</span>}
-        <input
-          {...props}
-          className="w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-700"
-        />
-      </span>
-    </label>
-  );
-}
 
-function PrimaryButton({ onClick, disabled, children }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="w-full rounded-2xl bg-orange-600 py-4 text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-orange-600/20 transition-all active:scale-[0.98] disabled:opacity-50"
-    >
-      {children}
-    </button>
-  );
-}
 
 function MsgLine({ msg }) {
   if (!msg.text) return null;
