@@ -9,16 +9,16 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `15f7cae` | 2026-06-25 |
-| `admin.motogestion.ar` | `motogestion-admin` | `ec70787` | 2026-06-25 |
+| `app.motogestion.ar` | `motogestion-app` | `114b416` | 2026-06-25 |
+| `admin.motogestion.ar` | `motogestion-admin` | `114b416` | 2026-06-25 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `15f7cae` — fix: send receipt link from retiro view (Codex)
+SHA: `114b416` — chore: update ESTADO.md — HEAD 15f7cae, app en produccion
 
 ## HEAD local
 
-SHA: `15f7cae` — en sync con origin/main.
+SHA: `114b416` — en sync con origin/main. App y admin en sync.
 
 ---
 
