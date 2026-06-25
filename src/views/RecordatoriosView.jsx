@@ -1,10 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React from "react";
 import { ArrowLeft, Bell, CheckCircle, MessageCircle } from "lucide-react";
-import { LS, useCollection } from "../lib/storage.js";
-import { evaluarEstadoRecordatorio, generarMensajeWhatsApp } from "../lib/proximoControl.js";
-import { CONFIG_DEFAULT } from "../lib/constants.js";
-import { normalizarTelWA } from "../lib/messages.js";
-import { abrirEnlaceExterno } from "../lib/whatsappService.js";
+import { useRecordatoriosView } from "../hooks/useRecordatoriosView.js";
 
 const FILTROS = [
   { id: "activos",     label: "Activos" },
@@ -12,77 +8,27 @@ const FILTROS = [
   { id: "completados", label: "Listos" },
 ];
 
-const ESTADO_META = {
-  service_vencido: { label: "Vencido",    chip: "bg-red-500/20 text-red-300 border-red-500/30" },
-  proximo_service: { label: "Próximo",    chip: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30" },
-  normal:          { label: "Normal",     chip: "bg-zinc-700 text-zinc-400 border-zinc-600" },
-  hecho:           { label: "Completado", chip: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" },
+// Token semántico → clase CSS (lógica de presentación, queda en la vista)
+const VARIANT_CHIP = {
+  error:   "bg-red-500/20 text-red-300 border-red-500/30",
+  warning: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
+  muted:   "bg-zinc-700 text-zinc-400 border-zinc-600",
+  success: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
 };
 
-const ORDEN_ESTADO = { service_vencido: 0, proximo_service: 1, normal: 2, hecho: 3 };
-
 export default function RecordatoriosView({ setView, showToast, bikes, clients }) {
-  const recordatorios = useCollection("recordatorios");
-  const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
-  const [filtro, setFiltro] = useState("activos");
-  const [busqueda, setBusqueda] = useState("");
-
-  const enriched = useMemo(() => {
-    return recordatorios
-      .map((rec) => {
-        const moto = bikes?.find((b) => b.id === rec.motoId);
-        const cliente = clients?.find((c) => c.id === rec.clienteId);
-        const kmActual = moto?.kilometrajeActual || moto?.km;
-        const estadoCalc = rec.estado === "hecho"
-          ? "hecho"
-          : evaluarEstadoRecordatorio(rec, kmActual);
-        return { ...rec, moto, cliente, kmActual: kmActual || 0, estadoCalc };
-      })
-      .sort((a, b) =>
-        (ORDEN_ESTADO[a.estadoCalc] ?? 4) - (ORDEN_ESTADO[b.estadoCalc] ?? 4) ||
-        (b.createdAt || 0) - (a.createdAt || 0)
-      );
-  }, [recordatorios, bikes, clients]);
-
-  const counts = useMemo(() => ({
-    activos:     enriched.filter((r) => r.estado !== "hecho").length,
-    todos:       enriched.length,
-    completados: enriched.filter((r) => r.estado === "hecho").length,
-  }), [enriched]);
-
-  const filtered = useMemo(() => {
-    let list = enriched;
-    if (filtro === "activos")     list = list.filter((r) => r.estado !== "hecho");
-    if (filtro === "completados") list = list.filter((r) => r.estado === "hecho");
-    if (busqueda.trim()) {
-      const q = busqueda.trim().toLowerCase();
-      list = list.filter((r) =>
-        r.moto?.patente?.toLowerCase().includes(q) ||
-        r.moto?.marca?.toLowerCase().includes(q) ||
-        r.moto?.modelo?.toLowerCase().includes(q) ||
-        r.cliente?.nombre?.toLowerCase().includes(q) ||
-        r.descripcion?.toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [enriched, filtro, busqueda]);
-
-  const marcarHecho = (id) => {
-    LS.updateDoc("recordatorios", id, { estado: "hecho" });
-    showToast("Marcado como completado");
-  };
-
-  const enviarWhatsApp = (rec) => {
-    const msg = generarMensajeWhatsApp(rec.cliente, rec.moto, rec, config);
-    const tel = rec.cliente?.whatsapp || rec.cliente?.telefono || rec.cliente?.tel || "";
-    abrirEnlaceExterno(`https://wa.me/${normalizarTelWA(tel)}?text=${encodeURIComponent(msg)}`);
-    LS.updateDoc("recordatorios", rec.id, { estado: "avisado", enviado: true });
-  };
+  const {
+    filtered,
+    counts,
+    filtro,   setFiltro,
+    busqueda, setBusqueda,
+    marcarHecho,
+    enviarWhatsApp,
+  } = useRecordatoriosView({ bikes, clients });
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0A0A0A] pb-28 animate-in slide-in-from-right duration-300">
 
-      {/* Header */}
       <div className="px-4 pt-6 pb-4 bg-zinc-950 flex items-center gap-3">
         <button
           onClick={() => setView("home")}
@@ -98,7 +44,6 @@ export default function RecordatoriosView({ setView, showToast, bikes, clients }
         </div>
       </div>
 
-      {/* Filtros */}
       <div className="px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-none">
         {FILTROS.map(({ id, label }) => (
           <button
@@ -118,7 +63,6 @@ export default function RecordatoriosView({ setView, showToast, bikes, clients }
         ))}
       </div>
 
-      {/* Buscador */}
       <div className="px-4 pb-4">
         <input
           type="text"
@@ -129,7 +73,6 @@ export default function RecordatoriosView({ setView, showToast, bikes, clients }
         />
       </div>
 
-      {/* Lista */}
       <div className="flex-1 px-4 space-y-3">
         {filtered.length === 0 && (
           <div className="rounded-3xl border border-zinc-800 bg-zinc-900 p-10 text-center">
@@ -144,27 +87,24 @@ export default function RecordatoriosView({ setView, showToast, bikes, clients }
         )}
 
         {filtered.map((rec) => {
-          const meta = ESTADO_META[rec.estadoCalc] || ESTADO_META.normal;
+          const { label: estadoLabel, variant } = rec.estadoMeta;
           const isActive = rec.estado !== "hecho";
 
           return (
             <div
               key={rec.id}
               className={`rounded-3xl border p-4 space-y-3 transition-all ${
-                isActive
-                  ? "border-zinc-700 bg-zinc-900"
-                  : "border-zinc-800 bg-zinc-950 opacity-60"
+                isActive ? "border-zinc-700 bg-zinc-900" : "border-zinc-800 bg-zinc-950 opacity-60"
               }`}
             >
-              {/* Info principal */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-black text-white uppercase">
                       {rec.moto?.patente || "---"} · {rec.moto?.marca || ""} {rec.moto?.modelo || ""}
                     </p>
-                    <span className={`border rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${meta.chip}`}>
-                      {meta.label}
+                    <span className={`border rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${VARIANT_CHIP[variant]}`}>
+                      {estadoLabel}
                     </span>
                     {rec.testMode && (
                       <span className="border border-purple-500/30 rounded-full bg-purple-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-purple-400">
@@ -204,7 +144,6 @@ export default function RecordatoriosView({ setView, showToast, bikes, clients }
                 </div>
               </div>
 
-              {/* Acciones */}
               {isActive && (
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -214,7 +153,7 @@ export default function RecordatoriosView({ setView, showToast, bikes, clients }
                     <MessageCircle size={13} /> WhatsApp
                   </button>
                   <button
-                    onClick={() => marcarHecho(rec.id)}
+                    onClick={() => { marcarHecho(rec.id); showToast?.("Marcado como completado"); }}
                     className="flex items-center justify-center gap-1.5 rounded-2xl bg-zinc-800 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-300 active:scale-95 transition-all"
                   >
                     <CheckCircle size={13} /> Listo
