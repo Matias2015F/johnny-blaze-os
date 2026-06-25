@@ -9,16 +9,16 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `a29c5a1` | 2026-06-24 |
-| `admin.motogestion.ar` | `motogestion-admin` | `a29c5a1` | 2026-06-24 |
+| `app.motogestion.ar` | `motogestion-app` | `ec70787` | 2026-06-25 |
+| `admin.motogestion.ar` | `motogestion-admin` | `ec70787` | 2026-06-25 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `1167b01` — chore: install mobile-design skill
+SHA: `ec70787` — style: modernize account screen mobile UI (Codex)
 
 ## HEAD local
 
-SHA: `1167b01` — en sync con origin/main. Deploy verificado en app y admin (`a29c5a1`).
+SHA: `ec70787` — en sync con origin/main. Deploy verificado en app y admin.
 
 ---
 
@@ -79,6 +79,11 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 - Claude: `7183f84` - chore: install ui-ux-pro-max skill
 - Claude: `a29c5a1` - fix(ui): emojis → Lucide icons en HomeView/TallerPanel, min-h-[100dvh], close button UX
 - Claude: `1167b01` - chore: install mobile-design skill
+- Claude: `c43d3cd` - chore: ESTADO.md actualizado
+- Claude: `61f1a53` - chore: install database-architect agent
+- Claude: `02b1455` - fix(db): 4 bugs críticos (B1 forceSyncChunk, B2 patente, B4 isFreeAccount, B7 counter offline)
+- Claude: `dd5f20a` - feat(db): M1-M5 mejoras DB/resiliencia (backup size, reputacion, normNombre, cross-device, offline renumber)
+- Codex:  `ec70787` - style: modernize account screen mobile UI (ConfigView.jsx)
 
 ---
 
