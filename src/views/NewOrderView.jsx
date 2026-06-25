@@ -128,7 +128,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
   return (
     <div className="p-6 text-left animate-in slide-in-from-bottom duration-300">
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => setView(prefill ? "historial" : "home")} className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-white active:scale-90 transition-all">
+        <button onClick={() => setView(prefill ? "historial" : "home")} className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-white active:scale-95 transition-all">
           <ArrowLeft size={16} />
         </button>
         <div>
@@ -295,10 +295,10 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
                           }}
                           className="flex-1 bg-zinc-900 rounded-xl px-3 py-1.5 text-xs font-bold text-white outline-none border border-orange-600/50"
                         />
-                        <button type="button" onClick={() => confirmarEdicion(idx)} className="text-emerald-400 active:scale-90 transition-all shrink-0">
+                        <button type="button" onClick={() => confirmarEdicion(idx)} className="text-emerald-400 active:scale-95 transition-all shrink-0">
                           <Check size={15} />
                         </button>
-                        <button type="button" onClick={() => setEditandoIdx(null)} className="text-zinc-500 active:scale-90 transition-all shrink-0">
+                        <button type="button" onClick={() => setEditandoIdx(null)} className="text-zinc-500 active:scale-95 transition-all shrink-0">
                           <X size={15} />
                         </button>
                       </>
@@ -340,7 +340,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
                   <button
                     type="button"
                     onClick={agregarMotivo}
-                    className="shrink-0 rounded-xl bg-orange-600 p-1.5 text-white active:scale-90 transition-all"
+                    className="shrink-0 rounded-xl bg-orange-600 p-1.5 text-white active:scale-95 transition-all"
                   >
                     <Plus size={14} />
                   </button>

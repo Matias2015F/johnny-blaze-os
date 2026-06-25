@@ -30,7 +30,7 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
   return (
     <div className="min-h-screen bg-zinc-100 text-left animate-in slide-in-from-right duration-300 pb-32">
       <div className="bg-zinc-900 p-8 text-white">
-        <button onClick={() => setView("historial")} className="mb-6 text-orange-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
+        <button onClick={() => setView("historial")} className="mb-6 text-orange-500 flex items-center gap-2 text-xs font-black uppercase active:scale-95 transition-all">
           <ArrowLeft size={16} /> Historial
         </button>
         <div className="flex justify-between items-start">

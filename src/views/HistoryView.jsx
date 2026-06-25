@@ -407,7 +407,7 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setView("home")}
-                className="rounded-2xl border border-white/10 bg-white/5 p-3 text-white active:scale-90"
+                className="rounded-2xl border border-white/10 bg-white/5 p-3 text-white active:scale-95"
               >
                 <ArrowLeft size={20} />
               </button>

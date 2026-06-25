@@ -43,7 +43,7 @@ export default function PresupuestosView({ presupuestos = [], bikes = [], client
   return (
     <div className="p-4 pb-28 space-y-4 text-left animate-in fade-in duration-500">
       <div className="flex items-center gap-4">
-        <button onClick={() => setView("home")} className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-white active:scale-90 transition-all">
+        <button onClick={() => setView("home")} className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-white active:scale-95 transition-all">
           <ArrowLeft size={16} />
         </button>
         <h1 className="text-2xl font-black text-white tracking-tighter uppercase flex-1">Presupuestos</h1>

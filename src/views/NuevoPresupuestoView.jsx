@@ -89,7 +89,7 @@ export default function NuevoPresupuestoView({ onCrear, setView, bikes = [], cli
   return (
     <div className="p-6 text-left animate-in slide-in-from-bottom duration-300">
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => setView("presupuestos")} className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-white active:scale-90 transition-all">
+        <button onClick={() => setView("presupuestos")} className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-white active:scale-95 transition-all">
           <ArrowLeft size={16} />
         </button>
         <h1 className="text-3xl font-black text-white tracking-tighter uppercase">Nuevo Presupuesto</h1>

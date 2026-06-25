@@ -47,7 +47,7 @@ function Stepper({ value, onChange, step = 1, min = 0, max = Infinity, format = 
     <div className="flex items-center gap-3">
       <button
         onClick={() => onChange(Math.max(min, value - step))}
-        className="w-11 h-11 rounded-2xl bg-zinc-100 flex items-center justify-center active:scale-90 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400"
+        className="w-11 h-11 rounded-2xl bg-zinc-100 flex items-center justify-center active:scale-95 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400"
       >
         <Minus size={16} className="text-zinc-600" />
       </button>
@@ -57,7 +57,7 @@ function Stepper({ value, onChange, step = 1, min = 0, max = Infinity, format = 
       </div>
       <button
         onClick={() => onChange(Math.min(max, value + step))}
-        className="w-11 h-11 rounded-2xl bg-zinc-900 flex items-center justify-center active:scale-90 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400"
+        className="w-11 h-11 rounded-2xl bg-zinc-900 flex items-center justify-center active:scale-95 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-400"
       >
         <Plus size={16} className="text-white" />
       </button>

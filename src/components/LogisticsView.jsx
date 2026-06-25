@@ -42,7 +42,7 @@ export default function LogisticsView({ order, setView, showToast }) {
 
   return (
     <div className="p-6 text-left animate-in slide-in-from-bottom duration-300">
-      <button onClick={() => setView("detalleOrden")} className="mb-8 text-orange-500 flex items-center gap-2 text-xs font-black uppercase active:scale-90 transition-all">
+      <button onClick={() => setView("detalleOrden")} className="mb-8 text-orange-500 flex items-center gap-2 text-xs font-black uppercase active:scale-95 transition-all">
         <ArrowLeft size={16} /> Volver
       </button>
       <div className="bg-white p-8 rounded-[2.5rem] space-y-5 shadow-2xl text-left">

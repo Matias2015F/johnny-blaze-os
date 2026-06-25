@@ -172,7 +172,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
 
   return (
     <div className="p-6 text-left animate-in fade-in pb-32">
-      <button onClick={() => setView("detalleOrden")} className="mb-8 flex items-center gap-2 text-xs font-black uppercase text-orange-500 transition-all active:scale-90">
+      <button onClick={() => setView("detalleOrden")} className="mb-8 flex items-center gap-2 text-xs font-black uppercase text-orange-500 transition-all active:scale-95">
         <ArrowLeft size={16} /> Volver al trabajo
       </button>
       <h2 className="mb-6 text-3xl font-black uppercase tracking-tighter text-white">

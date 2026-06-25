@@ -84,7 +84,7 @@ export default function PreciosView({ setView }) {
         </div>
         <button
           onClick={() => { setForm({ id: null, tarea: busqueda, precio: "", cilindrada: ccFiltro }); setMostrandoForm(true); }}
-          className="bg-orange-500 hover:bg-orange-600 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-900/40 transition-transform active:scale-90"
+          className="bg-orange-500 hover:bg-orange-600 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-900/40 transition-transform active:scale-95"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
@@ -98,12 +98,12 @@ export default function PreciosView({ setView }) {
           <input
             type="text"
             placeholder="ESCRIB� LA TAREA..."
-            className="w-full bg-gray-800 border-2 border-gray-700 rounded-2xl p-5 text-lg font-black uppercase focus:border-orange-500 outline-none transition-all placeholder:text-gray-700"
+            className="w-full bg-zinc-800 border-2 border-zinc-700 rounded-2xl p-5 text-lg font-black uppercase focus:border-orange-500 outline-none transition-all placeholder:text-zinc-700"
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
           />
           {busqueda && (
-            <button onClick={() => setBusqueda("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600">
+            <button onClick={() => setBusqueda("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-600">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -114,7 +114,7 @@ export default function PreciosView({ setView }) {
           <div className="flex flex-wrap gap-2">
             {sugerencias.map((s, i) => (
               <button key={i} onClick={() => setBusqueda(s)}
-                className="bg-gray-800 border border-gray-700 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-tight hover:border-orange-500 active:bg-orange-500 active:text-white transition-all text-gray-400">
+                className="bg-zinc-800 border border-zinc-700 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-tight hover:border-orange-500 active:bg-orange-500 active:text-white transition-all text-zinc-400">
                 {s}
               </button>
             ))}
@@ -124,17 +124,17 @@ export default function PreciosView({ setView }) {
 
       {/* CILINDRADA */}
       <div className="mb-8">
-        <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3 ml-1">Cilindrada (CC)</p>
+        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 ml-1">Cilindrada (CC)</p>
         <div className="grid grid-cols-4 gap-2">
           {[110, 150, 250, 600].map(cc => (
             <button key={cc} onClick={() => setCcFiltro(cc)}
-              className={`py-3 rounded-xl font-black text-sm border-2 transition-all ${ccFiltro === cc ? 'bg-orange-500 border-orange-400 text-white shadow-lg shadow-orange-900/20' : 'bg-gray-800 border-gray-700 text-gray-400'}`}>
+              className={`py-3 rounded-xl font-black text-sm border-2 transition-all ${ccFiltro === cc ? 'bg-orange-500 border-orange-400 text-white shadow-lg shadow-orange-900/20' : 'bg-zinc-800 border-zinc-700 text-zinc-400'}`}>
               {cc}
             </button>
           ))}
         </div>
         <input type="text" inputMode="numeric" placeholder="OTRA CC..."
-          className="w-full mt-3 bg-gray-900 border-b border-gray-800 p-2 text-center text-xs font-bold focus:border-orange-500 outline-none text-gray-500"
+          className="w-full mt-3 bg-zinc-900 border-b border-zinc-800 p-2 text-center text-xs font-bold focus:border-orange-500 outline-none text-zinc-500"
           onChange={e => setCcFiltro(Number(e.target.value.replace(/\D/g, "")))}
         />
       </div>
@@ -151,33 +151,33 @@ export default function PreciosView({ setView }) {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
-              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">M�nimo Cobrado</p>
+            <div className="bg-zinc-800 rounded-2xl p-4 border border-zinc-700">
+              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">M�nimo Cobrado</p>
               <p className="text-xl font-black text-green-500">{formatMoney(stats.min)}</p>
             </div>
-            <div className="bg-gray-800 rounded-2xl p-4 border border-gray-700">
-              <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">M�ximo Cobrado</p>
+            <div className="bg-zinc-800 rounded-2xl p-4 border border-zinc-700">
+              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">M�ximo Cobrado</p>
               <p className="text-xl font-black text-red-500">{formatMoney(stats.max)}</p>
             </div>
           </div>
 
           <div className="pt-2">
             <div className="flex items-center justify-between mb-4 px-2">
-              <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Desglose</p>
+              <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Desglose</p>
               <span className="text-[10px] font-bold text-orange-500">{stats.count} Trabajos</span>
             </div>
             <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
               {[...filtrados].sort((a, b) => b.precio - a.precio).map(f => (
-                <div key={f.id} className="bg-gray-800/40 p-3 rounded-xl border border-gray-700/50 flex justify-between items-center">
+                <div key={f.id} className="bg-zinc-800/40 p-3 rounded-xl border border-zinc-700/50 flex justify-between items-center">
                   <div className="flex flex-col">
-                    <span className={`text-[8px] font-black px-1 rounded uppercase italic leading-none w-fit ${Math.abs(f.cilindrada - ccFiltro) <= 50 ? 'bg-orange-500/20 text-orange-500' : 'bg-gray-700 text-gray-500'}`}>
+                    <span className={`text-[8px] font-black px-1 rounded uppercase italic leading-none w-fit ${Math.abs(f.cilindrada - ccFiltro) <= 50 ? 'bg-orange-500/20 text-orange-500' : 'bg-zinc-700 text-zinc-500'}`}>
                       {f.cilindrada} CC
                     </span>
                     <span className="text-xs font-bold text-white uppercase mt-1">{f.tarea}</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-black">{formatMoney(f.precio)}</span>
-                    <button onClick={() => { setForm(f); setMostrandoForm(true); }} className="text-gray-700 hover:text-orange-500">
+                    <button onClick={() => { setForm(f); setMostrandoForm(true); }} className="text-zinc-700 hover:text-orange-500">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
@@ -190,8 +190,8 @@ export default function PreciosView({ setView }) {
           </div>
         </div>
       ) : (
-        <div className="bg-gray-800/30 border-2 border-dashed border-gray-800 rounded-3xl p-16 text-center">
-          <p className="text-gray-700 text-[10px] font-black uppercase italic tracking-widest leading-relaxed">
+        <div className="bg-zinc-800/30 border-2 border-dashed border-zinc-800 rounded-3xl p-16 text-center">
+          <p className="text-zinc-700 text-[10px] font-black uppercase italic tracking-widest leading-relaxed">
             {busqueda ? "Sin registros para este trabajo" : "Consult� el historial t�cnico"}
           </p>
         </div>
@@ -200,23 +200,23 @@ export default function PreciosView({ setView }) {
       {/* MODAL CARGA */}
       {mostrandoForm && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <form onSubmit={handleGuardar} className="bg-gray-800 w-full max-w-sm rounded-3xl p-6 border border-gray-700 shadow-2xl space-y-5">
+          <form onSubmit={handleGuardar} className="bg-zinc-800 w-full max-w-sm rounded-3xl p-6 border border-zinc-700 shadow-2xl space-y-5">
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-xl font-black italic uppercase tracking-tighter">Cargar Trabajo</h3>
-              <button type="button" onClick={() => setMostrandoForm(false)} className="bg-gray-700 text-white w-8 h-8 rounded-full flex items-center justify-center">�</button>
+              <button type="button" onClick={() => setMostrandoForm(false)} className="bg-zinc-700 text-white w-8 h-8 rounded-full flex items-center justify-center">×</button>
             </div>
             <div className="space-y-4">
               <input type="text" placeholder="TRABAJO" required
-                className="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 font-black uppercase outline-none focus:border-orange-500"
+                className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-4 font-black uppercase outline-none focus:border-orange-500"
                 value={form.tarea} onChange={e => setForm({ ...form, tarea: e.target.value })}
               />
               <div className="grid grid-cols-2 gap-3">
                 <input type="text" inputMode="numeric" placeholder="PRECIO $" required
-                  className="bg-gray-900 border border-gray-700 rounded-xl p-4 font-black outline-none focus:border-orange-500"
+                  className="bg-zinc-900 border border-zinc-700 rounded-xl p-4 font-black outline-none focus:border-orange-500"
                   value={form.precio} onChange={e => setForm({ ...form, precio: e.target.value.replace(/\D/g, "") })}
                 />
                 <input type="text" inputMode="numeric" placeholder="CC" required
-                  className="bg-gray-900 border border-gray-700 rounded-xl p-4 font-black outline-none focus:border-orange-500"
+                  className="bg-zinc-900 border border-zinc-700 rounded-xl p-4 font-black outline-none focus:border-orange-500"
                   value={form.cilindrada} onChange={e => setForm({ ...form, cilindrada: e.target.value.replace(/\D/g, "") })}
                 />
               </div>

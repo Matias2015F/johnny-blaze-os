@@ -13,7 +13,7 @@ function StarSelector({ value, onChange, label }) {
             type="button"
             onClick={() => onChange(n)}
             aria-label={`${n} estrellas`}
-            className={`h-11 w-11 rounded-xl text-xl font-black transition-all active:scale-90 ${
+            className={`h-11 w-11 rounded-xl text-xl font-black transition-all active:scale-95 ${
               n <= value ? "bg-yellow-400 text-yellow-900" : "bg-zinc-100 text-zinc-300 hover:bg-zinc-200"
             }`}
           >

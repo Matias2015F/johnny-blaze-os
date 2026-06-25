@@ -26,7 +26,10 @@
       "Bash(npx tsc *)",
       "Bash(pkill -f \"node|vite|npm\")",
       "Bash(grep -E \"\\\\.jsx$\")",
-      "Bash(curl -s -I http://localhost:5173)"
+      "Bash(curl -s -I http://localhost:5173)",
+      "PowerShell(code \"C:\\\\Users\\\\Usuario\\\\johnny-blaze-os\")",
+      "Skill(run)",
+      "Skill(run:*)"
     ]
   }
 }

@@ -156,7 +156,7 @@ export default function MiView({ setView, showToast, bikes, clients }) {
       <div className="mx-auto max-w-[440px] p-6 space-y-5">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">Título del sheet</h3>
-          <button onClick={() => setShowSheet(false)} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-90 transition-all">
+          <button onClick={() => setShowSheet(false)} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-95 transition-all">
             <X size={18} />
           </button>
         </div>

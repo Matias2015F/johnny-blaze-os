@@ -484,7 +484,7 @@ export default function AgendaView({ setView }) {
 
       <button
         onClick={() => openModal()}
-        className="fixed bottom-8 right-6 z-30 flex items-center gap-2 rounded-2xl bg-orange-600 px-4 py-4 text-white shadow-2xl shadow-orange-600/20 active:scale-90"
+        className="fixed bottom-8 right-6 z-30 flex items-center gap-2 rounded-2xl bg-orange-600 px-4 py-4 text-white shadow-2xl shadow-orange-600/20 active:scale-95"
       >
         <Plus size={22} strokeWidth={3} />
         <span className="text-[11px] font-black uppercase tracking-widest">Nuevo turno</span>

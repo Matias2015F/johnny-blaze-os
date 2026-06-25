@@ -116,7 +116,7 @@ function ModalRechazoLegacy({ presupuesto, bike, client, config, onConfirm, onCa
         <div className="mx-auto max-w-[440px] p-6 space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-black uppercase tracking-widest text-red-400">Registrar rechazo</h3>
-            <button onClick={onCancel} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-90">
+            <button onClick={onCancel} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-95">
               <X size={18} />
             </button>
           </div>
@@ -258,7 +258,7 @@ function ModalRechazo({ presupuesto, bike, client, config, onConfirm, onCancel }
               <h3 className="text-xs font-black uppercase tracking-widest text-red-400">Cliente rechaza / pospone</h3>
               <p className="mt-1 text-[10px] font-bold text-zinc-500">Cobra diagnostico, cierra sin garantia y genera comprobante.</p>
             </div>
-            <button onClick={onCancel} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-90">
+            <button onClick={onCancel} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-95">
               <X size={18} />
             </button>
           </div>
@@ -592,7 +592,7 @@ export default function PresupuestoDetailView({
 
       {/* Header */}
       <div className="flex items-center gap-4">
-        <button onClick={() => setView("presupuestos")} className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-white active:scale-90 transition-all">
+        <button onClick={() => setView("presupuestos")} className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-white active:scale-95 transition-all">
           <ArrowLeft size={16} />
         </button>
         <div className="flex-1 min-w-0">

@@ -82,7 +82,7 @@ export default function PaymentView({ order, setView, showToast }) {
           <div className="flex items-center gap-4">
             <button
               onClick={() => setView("detalleOrden")}
-              className="rounded-2xl border border-white/10 bg-white/5 p-3 text-white transition-all active:scale-90"
+              className="rounded-2xl border border-white/10 bg-white/5 p-3 text-white transition-all active:scale-95"
             >
               <ArrowLeft size={20} />
             </button>

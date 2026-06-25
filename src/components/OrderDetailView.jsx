@@ -92,7 +92,7 @@ function EditarItemSheet({ tipo, datos, cilindrada, onSave, onCancel }) {
             <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">
               Editar {esFlete ? "flete" : tipo === "repuestos" ? "repuesto" : "insumo"}
             </h3>
-            <button onClick={onCancel} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-90 transition-all">
+            <button onClick={onCancel} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-95 transition-all">
               <X size={18} />
             </button>
           </div>
@@ -870,7 +870,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
       <div className="bg-gradient-to-b from-zinc-800 to-zinc-900 px-5 pb-8 pt-5 text-white shadow-2xl">
         <div className="mx-auto max-w-[440px]">
           <div className="mb-4 flex items-center justify-between">
-            <button onClick={() => setView("ordenes")} className="rounded-2xl border-2 border-orange-500/50 bg-orange-600/20 p-3 text-orange-300 hover:text-orange-100 hover:bg-orange-600/40 shadow-lg backdrop-blur transition-all active:scale-90">
+            <button onClick={() => setView("ordenes")} className="rounded-2xl border-2 border-orange-500/50 bg-orange-600/20 p-3 text-orange-300 hover:text-orange-100 hover:bg-orange-600/40 shadow-lg backdrop-blur transition-all active:scale-95">
               <ArrowLeft size={22} />
             </button>
             <div className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest shadow-lg ${ESTADO_CSS[order.estado]}`}>
@@ -1356,7 +1356,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
                   <p className="text-[9px] font-black uppercase tracking-widest text-red-300">Cierre comun de taller</p>
                   <h3 className="mt-1 text-lg font-black uppercase tracking-tight text-white">Cliente rechaza / pospone</h3>
                 </div>
-                <button onClick={() => setShowRechazoSheet(false)} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-90 transition-all">
+                <button onClick={() => setShowRechazoSheet(false)} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-95 transition-all">
                   <X size={18} />
                 </button>
               </div>
@@ -1545,7 +1545,7 @@ export default function OrderDetailView({ order, clients, bikes, setView, showTo
 
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">Enviar presupuesto al cliente</h3>
-                <button onClick={() => setShowPresupuestoSheet(false)} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 hover:text-white active:scale-90 transition-all">
+                <button onClick={() => setShowPresupuestoSheet(false)} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 hover:text-white active:scale-95 transition-all">
                   <X size={18} />
                 </button>
               </div>

@@ -23,7 +23,7 @@ function Sheet({ onClose, title, children }) {
         <div className="mx-auto max-w-[440px] p-6 space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-black uppercase tracking-widest text-zinc-400">{title}</h3>
-            <button onClick={onClose} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-90 transition-all">
+            <button onClick={onClose} className="rounded-xl bg-zinc-800 p-2 text-zinc-400 active:scale-95 transition-all">
               <X size={18} />
             </button>
           </div>
@@ -508,7 +508,7 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
       <div className="bg-zinc-900 px-4 pt-5 pb-4 border-b border-white/5">
         <div className="mx-auto max-w-[440px] flex items-center gap-4">
           <button onClick={() => { setServiceToEdit?.(null); onBack ? onBack() : setView("detalleOrden"); }}
-            className="p-3 bg-zinc-800 rounded-2xl border border-white/5 text-white active:scale-90 transition-all">
+            className="p-3 bg-zinc-800 rounded-2xl border border-white/5 text-white active:scale-95 transition-all">
             <ArrowLeft size={16} />
           </button>
           <div>
@@ -543,11 +543,11 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
                   </div>
                   <p className="text-xs font-black text-orange-400 shrink-0">{formatMoney(t.monto || 0)}</p>
                   <button onClick={() => setSheet({ tipo: "trabajo", editIdx: i, editData: t })}
-                    className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 active:text-orange-300 active:scale-90 transition-all shrink-0">
+                    className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 active:text-orange-300 active:scale-95 transition-all shrink-0">
                     <EditIcon />
                   </button>
                   <button onClick={() => del("tareas", i)}
-                    className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 active:text-red-300 active:scale-90 transition-all shrink-0">
+                    className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 active:text-red-300 active:scale-95 transition-all shrink-0">
                     <X size={11} />
                   </button>
                 </div>
@@ -576,9 +576,9 @@ export default function TaskManagerView({ order, coleccion = "trabajos", setView
                   </div>
                   <p className="text-xs font-black text-orange-400 shrink-0">{formatMoney((r.monto || 0) * (r.cantidad || 1))}</p>
                   <button onClick={() => setSheet({ tipo: "repuesto", editIdx: i, editData: r })}
-                    className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 active:text-orange-300 active:scale-90 transition-all shrink-0"><EditIcon /></button>
+                    className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 active:text-orange-300 active:scale-95 transition-all shrink-0"><EditIcon /></button>
                   <button onClick={() => del("repuestos", i)}
-                    className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 active:text-red-300 active:scale-90 transition-all shrink-0"><X size={11} /></button>
+                    className="p-1.5 rounded-lg bg-zinc-800 text-zinc-400 active:text-red-300 active:scale-95 transition-all shrink-0"><X size={11} /></button>
                 </div>
               ))}
             </div>

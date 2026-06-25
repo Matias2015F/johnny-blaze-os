@@ -21,7 +21,7 @@ export default function OrderListView({ orders, bikes, clients, setSelectedOrder
   return (
     <div className="p-4 space-y-4 pb-28 text-left animate-in fade-in duration-500">
       <div className="bg-[#141414] p-5 border border-white/5 flex items-center gap-4 sticky top-0 z-40 mb-4 rounded-[2.5rem]">
-        <button onClick={() => setView("home")} className="p-3 bg-black/40 rounded-2xl border border-white/5 text-white active:scale-90">
+        <button onClick={() => setView("home")} className="p-3 bg-black/40 rounded-2xl border border-white/5 text-white active:scale-95">
           <ArrowLeft size={20} />
         </button>
         <h2 className="text-xl font-black uppercase tracking-widest text-white">Trabajos Activos</h2>
