@@ -1,296 +1,91 @@
-import React, { useMemo, useState } from "react";
+import React from "react";
 import {
-  ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  MessageCircle,
-  Clock,
-  Bike,
-  Trash2,
-  Pencil,
-  CheckCircle2,
-  X,
+  ArrowLeft, ChevronLeft, ChevronRight,
+  Plus, MessageCircle, Clock, Bike,
+  Trash2, Pencil, CheckCircle2, X,
 } from "lucide-react";
-import { LS, useCollection, generateId } from "../lib/storage.js";
-import { abrirEnlaceExterno } from "../lib/whatsappService.js";
+import { useAgendaView, STATUS_TOKEN } from "../hooks/useAgendaView.js";
+
+// ── Constantes de display ─────────────────────────────────────────────────────
 
 const WEEK_DAYS = ["D", "L", "M", "M", "J", "V", "S"];
+
 const STATUS_OPTIONS = [
-  { value: "pendiente", label: "Pendiente" },
+  { value: "pendiente",  label: "Pendiente" },
   { value: "confirmado", label: "Confirmado" },
-  { value: "reprogramar", label: "Reprogramar" },
+  { value: "reprogramar",label: "Reprogramar" },
   { value: "suspendido", label: "Suspendido" },
-  { value: "asistio", label: "Asistió" },
+  { value: "asistio",    label: "Asistió" },
   { value: "no_asistio", label: "No asistió" },
 ];
 
-function formatDateKey(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+// Token semántico → clase CSS (lógica de presentación, queda en la vista)
+const VARIANT_CHIP = {
+  success:        "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  warning:        "bg-orange-500/15 text-orange-300 border-orange-500/30",
+  danger:         "bg-rose-500/15 text-rose-300 border-rose-500/30",
+  success_strong: "bg-emerald-500/20 text-emerald-200 border-emerald-500/40",
+  muted:          "bg-zinc-700 text-zinc-300 border-zinc-600",
+  pending:        "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
+};
 
-function getStatusMeta(status) {
-  switch (status) {
-    case "confirmado":
-      return { label: "Confirmado", chip: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" };
-    case "reprogramar":
-      return { label: "Reprogramar", chip: "bg-orange-500/15 text-orange-300 border-orange-500/30" };
-    case "suspendido":
-      return { label: "Suspendido", chip: "bg-rose-500/15 text-rose-300 border-rose-500/30" };
-    case "asistio":
-      return { label: "Asistió", chip: "bg-emerald-500/20 text-emerald-200 border-emerald-500/40" };
-    case "no_asistio":
-      return { label: "No asistió", chip: "bg-zinc-700 text-zinc-300 border-zinc-600" };
-    default:
-      return { label: "Pendiente", chip: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30" };
-  }
-}
-
-function buildWhatsappMessage(appointment, type) {
-  const cliente = appointment.clienteNombre || "cliente";
-  const fecha = appointment.fecha;
-  const hora = appointment.hora || "--:--";
-  const moto = appointment.motoPatente || appointment.motoMarca || "moto";
-
-  if (type === "confirm") {
-    return `Hola ${cliente}, te escribo para confirmar tu turno del ${fecha} a las ${hora} por ${moto}. ¿Vas a asistir, reprogramar o suspender?`;
-  }
-  if (type === "day_before") {
-    return `Hola ${cliente}, mañana ${fecha} a las ${hora} tenés tu turno por ${moto}. ¿Vas a asistir al turno o necesitás reprogramarlo?`;
-  }
-  if (type === "hour_before_confirm") {
-    return `Hola ${cliente}, falta una hora para tu turno de hoy a las ${hora} por ${moto}. ¿Seguís en camino o querés avisarnos un cambio?`;
-  }
-  return `Hola ${cliente}, falta una hora para tu turno de hoy a las ${hora} por ${moto}. Te esperamos en el taller.`;
-}
-
+// Side effect de audio — pertenece a la vista (no tiene lógica de negocio)
 function playReminderSound() {
   if (typeof window === "undefined") return;
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return;
-
   const ctx = new AudioContextClass();
-  const pattern = [880, 660, 880];
-  pattern.forEach((frequency, index) => {
-    const oscillator = ctx.createOscillator();
+  [880, 660, 880].forEach((frequency, index) => {
+    const osc  = ctx.createOscillator();
     const gain = ctx.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.value = frequency;
-    oscillator.connect(gain);
+    osc.type = "sine";
+    osc.frequency.value = frequency;
+    osc.connect(gain);
     gain.connect(ctx.destination);
     const start = ctx.currentTime + index * 0.22;
-    const end = start + 0.16;
+    const end   = start + 0.16;
     gain.gain.setValueAtTime(0.001, start);
-    gain.gain.exponentialRampToValueAtTime(0.18, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.18,  start + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.001, end);
-    oscillator.start(start);
-    oscillator.stop(end + 0.03);
+    osc.start(start);
+    osc.stop(end + 0.03);
   });
   setTimeout(() => ctx.close().catch(() => {}), 1200);
 }
 
+// ── Componente ────────────────────────────────────────────────────────────────
+
 export default function AgendaView({ setView }) {
-  const clients = useCollection("clientes");
-  const bikes = useCollection("motos");
-  const appointments = useCollection("agendaTurnos");
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [clientMode, setClientMode] = useState("historial");
-  const [reminderMenuId, setReminderMenuId] = useState(null);
-  const [formData, setFormData] = useState({
-    clientId: "",
-    bikeId: "",
-    clienteNombre: "",
-    telefono: "",
-    motoPatente: "",
-    motoMarca: "",
-    motoModelo: "",
-    fecha: formatDateKey(new Date()),
-    hora: "09:00",
-    motivo: "",
-    estado: "pendiente",
-    observaciones: "",
-    reminderDayBefore: true,
-    reminderHourBefore: true,
-  });
-
-  const daysInMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  const startDayOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  const selectedDateStr = useMemo(() => formatDateKey(selectedDate), [selectedDate]);
-
-  const dayAppointments = useMemo(() => {
-    return appointments
-      .filter((apt) => apt.fecha === selectedDateStr)
-      .sort((a, b) => (a.hora || "").localeCompare(b.hora || ""));
-  }, [appointments, selectedDateStr]);
-
-  const stats = useMemo(() => {
-    return appointments.reduce(
-      (acc, apt) => {
-        acc.total += 1;
-        if (apt.estado === "confirmado") acc.confirmados += 1;
-        if (apt.reminderDayBefore || apt.reminderHourBefore) acc.recordatorios += 1;
-        return acc;
-      },
-      { total: 0, confirmados: 0, recordatorios: 0 }
-    );
-  }, [appointments]);
-
-  const filteredBikes = useMemo(() => {
-    if (!formData.clientId) return bikes;
-    return bikes.filter((bike) => bike.clienteId === formData.clientId);
-  }, [bikes, formData.clientId]);
-
-  const handlePrevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-  const handleNextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-
-  const isToday = (day) => {
-    const today = new Date();
-    return day === today.getDate() && currentMonth.getMonth() === today.getMonth() && currentMonth.getFullYear() === today.getFullYear();
-  };
-
-  const isSelected = (day) => {
-    return day === selectedDate.getDate() && currentMonth.getMonth() === selectedDate.getMonth() && currentMonth.getFullYear() === selectedDate.getFullYear();
-  };
-
-  const hasAppointment = (day) => {
-    const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    return appointments.some((apt) => apt.fecha === dateStr);
-  };
-
-  const resetForm = (dateValue) => ({
-    clientId: "",
-    bikeId: "",
-    clienteNombre: "",
-    telefono: "",
-    motoPatente: "",
-    motoMarca: "",
-    motoModelo: "",
-    fecha: dateValue,
-    hora: "09:00",
-    motivo: "",
-    estado: "pendiente",
-    observaciones: "",
-    reminderDayBefore: true,
-    reminderHourBefore: true,
-  });
-
-  const openModal = (appointment = null) => {
-    if (appointment) {
-      setEditingId(appointment.id);
-      setClientMode(appointment.clientId || appointment.bikeId ? "historial" : "manual");
-      setFormData({
-        clientId: appointment.clientId || "",
-        bikeId: appointment.bikeId || "",
-        clienteNombre: appointment.clienteNombre || "",
-        telefono: appointment.telefono || "",
-        motoPatente: appointment.motoPatente || "",
-        motoMarca: appointment.motoMarca || "",
-        motoModelo: appointment.motoModelo || "",
-        fecha: appointment.fecha || selectedDateStr,
-        hora: appointment.hora || "09:00",
-        motivo: appointment.motivo || "",
-        estado: appointment.estado || "pendiente",
-        observaciones: appointment.observaciones || "",
-        reminderDayBefore: appointment.reminderDayBefore !== false,
-        reminderHourBefore: appointment.reminderHourBefore !== false,
-      });
-    } else {
-      setEditingId(null);
-      setClientMode("historial");
-      setFormData(resetForm(selectedDateStr));
-    }
-    setIsModalOpen(true);
-  };
-
-  const handleClientChange = (clientId) => {
-    const client = clients.find((item) => item.id === clientId);
-    const clientBikes = bikes.filter((bike) => bike.clienteId === clientId);
-    const bike = clientBikes.length === 1 ? clientBikes[0] : null;
-    setFormData((prev) => ({
-      ...prev,
-      clientId,
-      bikeId: bike?.id || "",
-      clienteNombre: client?.nombre || prev.clienteNombre,
-      telefono: client?.telefono || client?.tel || prev.telefono,
-      motoPatente: bike?.patente || "",
-      motoMarca: bike?.marca || "",
-      motoModelo: bike?.modelo || "",
-    }));
-  };
-
-  const handleBikeChange = (bikeId) => {
-    const bike = bikes.find((item) => item.id === bikeId);
-    setFormData((prev) => ({
-      ...prev,
-      bikeId,
-      motoPatente: bike?.patente || prev.motoPatente,
-      motoMarca: bike?.marca || prev.motoMarca,
-      motoModelo: bike?.modelo || prev.motoModelo,
-    }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const client = clients.find((item) => item.id === formData.clientId);
-    const bike = bikes.find((item) => item.id === formData.bikeId);
-
-    const payload = {
-      clientId: formData.clientId || null,
-      bikeId: formData.bikeId || null,
-      clienteNombre: client?.nombre || formData.clienteNombre || "Cliente sin nombre",
-      telefono: client?.telefono || client?.tel || formData.telefono || "",
-      motoPatente: bike?.patente || formData.motoPatente || "Sin patente",
-      motoMarca: bike?.marca || formData.motoMarca || "",
-      motoModelo: bike?.modelo || formData.motoModelo || "",
-      fecha: formData.fecha,
-      hora: formData.hora,
-      motivo: formData.motivo || "Turno de taller",
-      estado: formData.estado,
-      observaciones: formData.observaciones || "",
-      reminderDayBefore: !!formData.reminderDayBefore,
-      reminderHourBefore: !!formData.reminderHourBefore,
-      updatedAt: Date.now(),
-    };
-
-    if (editingId) {
-      LS.updateDoc("agendaTurnos", editingId, payload);
-    } else {
-      LS.setDoc("agendaTurnos", generateId(), { ...payload, createdAt: Date.now() });
-    }
-
-    setIsModalOpen(false);
-    setEditingId(null);
-    setFormData(resetForm(formData.fecha));
-  };
-
-  const deleteAppointment = (id) => {
-    LS.deleteDoc("agendaTurnos", id);
-  };
-
-  const sendWhatsApp = (appointment, type) => {
-    const telefono = String(appointment.telefono || "").replace(/\D/g, "");
-    if (!telefono) return;
-    const message = buildWhatsappMessage(appointment, type);
-    abrirEnlaceExterno(`https://wa.me/${telefono}?text=${encodeURIComponent(message)}`);
-  };
+  const {
+    clients, filteredBikes,
+    dayAppointments, stats,
+    currentMonth, calendarMeta,
+    selectedDate, selectedDateStr,
+    isToday, isSelected, hasAppointment,
+    prevMonth, nextMonth, selectDay,
+    isModalOpen, openModal, closeModal,
+    editingId, clientMode, setClientMode,
+    formData, setFormData,
+    reminderMenuId, setReminderMenuId,
+    handleClientChange, handleBikeChange,
+    submitAppointment,
+    deleteAppointment,
+    updateEstado,
+    sendWhatsApp,
+    getStatusToken,
+  } = useAgendaView();
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] pb-32 text-white animate-in slide-in-from-right duration-300">
       <div className="p-5 space-y-5">
+
         <div className="flex items-center gap-3">
           <button onClick={() => setView("home")} className="rounded-2xl border border-white/5 bg-zinc-900 p-3 active:scale-95">
             <ArrowLeft size={16} className="text-white" />
           </button>
           <div className="min-w-0">
             <h1 className="flex items-center gap-2 text-xl font-black text-white">
-              <Clock size={20} />
-              Agenda del taller
+              <Clock size={20} /> Agenda del taller
             </h1>
             <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">
               Turnos, confirmaciones y recordatorios previos
@@ -298,6 +93,7 @@ export default function AgendaView({ setView }) {
           </div>
         </div>
 
+        {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           <div className="rounded-[1.75rem] border border-zinc-800 bg-zinc-900/50 p-4">
             <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Turnos</p>
@@ -313,40 +109,35 @@ export default function AgendaView({ setView }) {
           </div>
         </div>
 
+        {/* Calendario */}
         <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900/50 p-4 space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <button onClick={handlePrevMonth} className="rounded-full p-2 text-zinc-300 hover:bg-zinc-800 transition-colors">
+            <button onClick={prevMonth} className="rounded-full p-2 text-zinc-300 hover:bg-zinc-800 transition-colors">
               <ChevronLeft size={20} />
             </button>
             <div className="text-center">
-              <p className="text-sm font-black capitalize text-white">
-                {currentMonth.toLocaleDateString("es-AR", { month: "long", year: "numeric" })}
-              </p>
+              <p className="text-sm font-black capitalize text-white">{calendarMeta.monthLabel}</p>
               <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Calendario de citas</p>
             </div>
-            <button onClick={handleNextMonth} className="rounded-full p-2 text-zinc-300 hover:bg-zinc-800 transition-colors">
+            <button onClick={nextMonth} className="rounded-full p-2 text-zinc-300 hover:bg-zinc-800 transition-colors">
               <ChevronRight size={20} />
             </button>
           </div>
 
           <div className="grid grid-cols-7 gap-1">
-            {WEEK_DAYS.map((day, index) => (
-              <div key={`${day}-${index}`} className="py-1 text-center text-[10px] font-black text-zinc-500">
-                {day}
-              </div>
+            {WEEK_DAYS.map((d, i) => (
+              <div key={`${d}-${i}`} className="py-1 text-center text-[10px] font-black text-zinc-500">{d}</div>
             ))}
           </div>
 
           <div className="grid grid-cols-7 gap-2">
-            {[...Array(startDayOfMonth(currentMonth))].map((_, index) => (
-              <div key={`empty-${index}`} />
-            ))}
-            {[...Array(daysInMonth(currentMonth))].map((_, index) => {
-              const day = index + 1;
+            {[...Array(calendarMeta.startDay)].map((_, i) => <div key={`e-${i}`} />)}
+            {[...Array(calendarMeta.daysInMonth)].map((_, i) => {
+              const day = i + 1;
               return (
                 <button
-                  key={`day-${day}`}
-                  onClick={() => setSelectedDate(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day))}
+                  key={`d-${day}`}
+                  onClick={() => selectDay(day)}
                   className={`relative aspect-square rounded-2xl text-sm font-black transition-all ${
                     isSelected(day)
                       ? "bg-orange-600 text-white shadow-lg shadow-orange-600/20"
@@ -363,6 +154,7 @@ export default function AgendaView({ setView }) {
           </div>
         </div>
 
+        {/* Turnos del día */}
         <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900/40 p-4 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -389,44 +181,40 @@ export default function AgendaView({ setView }) {
             </div>
           ) : (
             <div className="space-y-4">
-              {dayAppointments.map((appointment) => {
-                const status = getStatusMeta(appointment.estado);
+              {dayAppointments.map((apt) => {
+                const { label, variant } = getStatusToken(apt.estado);
                 return (
-                  <div key={appointment.id} className="rounded-[1.75rem] border border-zinc-800 bg-zinc-950/90 p-4 shadow-xl">
+                  <div key={apt.id} className="rounded-[1.75rem] border border-zinc-800 bg-zinc-950/90 p-4 shadow-xl">
                     <div className="flex items-start gap-4">
-                      <div className="min-w-[58px] pt-1 text-lg font-black text-orange-400">
-                        {appointment.hora || "--:--"}
-                      </div>
+                      <div className="min-w-[58px] pt-1 text-lg font-black text-orange-400">{apt.hora || "--:--"}</div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <h3 className="truncate text-base font-black text-white">{appointment.clienteNombre}</h3>
+                            <h3 className="truncate text-base font-black text-white">{apt.clienteNombre}</h3>
                             <div className="mt-1 flex flex-wrap items-center gap-3 text-xs font-black text-zinc-400">
-                              <span className="flex items-center gap-1"><Bike size={13} /> {appointment.motoPatente || "Sin patente"}</span>
-                              <span>{appointment.motoMarca || "Moto"} {appointment.motoModelo || ""}</span>
+                              <span className="flex items-center gap-1"><Bike size={13} /> {apt.motoPatente || "Sin patente"}</span>
+                              <span>{apt.motoMarca || "Moto"} {apt.motoModelo || ""}</span>
                             </div>
                           </div>
-                          <span className={`rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest ${status.chip}`}>
-                            {status.label}
+                          <span className={`rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-widest ${VARIANT_CHIP[variant]}`}>
+                            {label}
                           </span>
                         </div>
 
-                        {appointment.motivo && (
-                          <p className="mt-3 rounded-2xl bg-zinc-900 px-3 py-3 text-[11px] font-bold text-zinc-300">
-                            {appointment.motivo}
-                          </p>
+                        {apt.motivo && (
+                          <p className="mt-3 rounded-2xl bg-zinc-900 px-3 py-3 text-[11px] font-bold text-zinc-300">{apt.motivo}</p>
                         )}
 
                         <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                           <button
-                            onClick={() => sendWhatsApp(appointment, "confirm")}
+                            onClick={() => sendWhatsApp(apt, "confirm")}
                             className="flex items-center justify-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-900 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-200 active:scale-95"
                           >
                             <CheckCircle2 size={14} /> Consultar si asiste
                           </button>
                           <div className="grid grid-cols-2 gap-2">
                             <button
-                              onClick={() => sendWhatsApp(appointment, "day_before")}
+                              onClick={() => sendWhatsApp(apt, "day_before")}
                               className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-emerald-200 active:scale-95"
                             >
                               <MessageCircle size={14} /> 24H
@@ -434,7 +222,7 @@ export default function AgendaView({ setView }) {
                             <button
                               onClick={() => {
                                 playReminderSound();
-                                setReminderMenuId((prev) => (prev === appointment.id ? null : appointment.id));
+                                setReminderMenuId((prev) => prev === apt.id ? null : apt.id);
                               }}
                               className="flex items-center justify-center gap-2 rounded-2xl border border-orange-500/20 bg-orange-500/10 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-orange-200 active:scale-95"
                             >
@@ -443,34 +231,25 @@ export default function AgendaView({ setView }) {
                           </div>
                         </div>
 
-                        {reminderMenuId === appointment.id && (
+                        {reminderMenuId === apt.id && (
                           <div className="mt-3 grid grid-cols-1 gap-2 rounded-2xl border border-orange-500/15 bg-zinc-900 p-3 sm:grid-cols-3">
-                            <button
-                              onClick={() => playReminderSound()}
-                              className="rounded-2xl bg-zinc-800 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-200 active:scale-95"
-                            >
+                            <button onClick={playReminderSound} className="rounded-2xl bg-zinc-800 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-200 active:scale-95">
                               Hacer sonar aviso
                             </button>
-                            <button
-                              onClick={() => sendWhatsApp(appointment, "hour_before")}
-                              className="rounded-2xl bg-orange-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
-                            >
+                            <button onClick={() => sendWhatsApp(apt, "hour_before")} className="rounded-2xl bg-orange-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
                               Avisar al cliente
                             </button>
-                            <button
-                              onClick={() => sendWhatsApp(appointment, "hour_before_confirm")}
-                              className="rounded-2xl bg-emerald-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
-                            >
+                            <button onClick={() => sendWhatsApp(apt, "hour_before_confirm")} className="rounded-2xl bg-emerald-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
                               Preguntar si viene
                             </button>
                           </div>
                         )}
 
                         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                          <button onClick={() => LS.updateDoc("agendaTurnos", appointment.id, { estado: "confirmado", updatedAt: Date.now() })} className="rounded-2xl bg-emerald-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Confirmó</button>
-                          <button onClick={() => LS.updateDoc("agendaTurnos", appointment.id, { estado: "reprogramar", updatedAt: Date.now() })} className="rounded-2xl bg-orange-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Reprogramar</button>
-                          <button onClick={() => openModal(appointment)} className="rounded-2xl bg-zinc-800 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-200 active:scale-95"><Pencil size={14} className="inline mr-1" />Editar</button>
-                          <button onClick={() => deleteAppointment(appointment.id)} className="rounded-2xl bg-rose-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"><Trash2 size={14} className="inline mr-1" />Eliminar</button>
+                          <button onClick={() => updateEstado(apt.id, "confirmado")} className="rounded-2xl bg-emerald-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Confirmó</button>
+                          <button onClick={() => updateEstado(apt.id, "reprogramar")} className="rounded-2xl bg-orange-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95">Reprogramar</button>
+                          <button onClick={() => openModal(apt)} className="rounded-2xl bg-zinc-800 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-zinc-200 active:scale-95"><Pencil size={14} className="inline mr-1" />Editar</button>
+                          <button onClick={() => deleteAppointment(apt.id)} className="rounded-2xl bg-rose-600 px-3 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"><Trash2 size={14} className="inline mr-1" />Eliminar</button>
                         </div>
                       </div>
                     </div>
@@ -482,6 +261,7 @@ export default function AgendaView({ setView }) {
         </div>
       </div>
 
+      {/* FAB */}
       <button
         onClick={() => openModal()}
         className="fixed bottom-8 right-6 z-30 flex items-center gap-2 rounded-2xl bg-orange-600 px-4 py-4 text-white shadow-2xl shadow-orange-600/20 active:scale-95"
@@ -490,6 +270,7 @@ export default function AgendaView({ setView }) {
         <span className="text-[11px] font-black uppercase tracking-widest">Nuevo turno</span>
       </button>
 
+      {/* Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-zinc-950/70 p-0 backdrop-blur-sm sm:items-center sm:p-4">
           <div className="max-h-[92vh] w-full max-w-lg overflow-hidden rounded-t-[2rem] bg-[#111827] shadow-2xl sm:rounded-[2rem]">
@@ -500,19 +281,15 @@ export default function AgendaView({ setView }) {
                 </p>
                 <p className="mt-1 text-base font-black text-white">Calendario conectado al historial</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="rounded-2xl bg-zinc-900 p-3 text-zinc-300 active:scale-95">
+              <button onClick={closeModal} className="rounded-2xl bg-zinc-900 p-3 text-zinc-300 active:scale-95">
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="max-h-[78vh] space-y-5 overflow-y-auto p-5">
+            <form onSubmit={submitAppointment} className="max-h-[78vh] space-y-5 overflow-y-auto p-5">
               <div className="grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => setClientMode("historial")} className={`rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest ${clientMode === "historial" ? "bg-orange-600 text-white" : "bg-zinc-900 text-zinc-400"}`}>
-                  Desde historial
-                </button>
-                <button type="button" onClick={() => setClientMode("manual")} className={`rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest ${clientMode === "manual" ? "bg-orange-600 text-white" : "bg-zinc-900 text-zinc-400"}`}>
-                  Agregar cliente
-                </button>
+                <button type="button" onClick={() => setClientMode("historial")} className={`rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest ${clientMode === "historial" ? "bg-orange-600 text-white" : "bg-zinc-900 text-zinc-400"}`}>Desde historial</button>
+                <button type="button" onClick={() => setClientMode("manual")}    className={`rounded-2xl py-3 text-[10px] font-black uppercase tracking-widest ${clientMode === "manual"    ? "bg-orange-600 text-white" : "bg-zinc-900 text-zinc-400"}`}>Agregar cliente</button>
               </div>
 
               {clientMode === "historial" ? (
@@ -521,19 +298,14 @@ export default function AgendaView({ setView }) {
                     <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Cliente</span>
                     <select value={formData.clientId} onChange={(e) => handleClientChange(e.target.value)} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none">
                       <option value="">Elegí cliente</option>
-                      {clients.map((client) => (
-                        <option key={client.id} value={client.id}>{client.nombre}</option>
-                      ))}
+                      {clients.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                     </select>
                   </label>
-
                   <label className="block space-y-2">
                     <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Moto</span>
                     <select value={formData.bikeId} onChange={(e) => handleBikeChange(e.target.value)} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none">
                       <option value="">{filteredBikes.length === 1 ? "Moto autoseleccionada" : "Elegí moto"}</option>
-                      {filteredBikes.map((bike) => (
-                        <option key={bike.id} value={bike.id}>{bike.patente} · {bike.marca} {bike.modelo}</option>
-                      ))}
+                      {filteredBikes.map((b) => <option key={b.id} value={b.id}>{b.patente} · {b.marca} {b.modelo}</option>)}
                     </select>
                   </label>
                 </div>
@@ -541,20 +313,20 @@ export default function AgendaView({ setView }) {
                 <div className="space-y-4">
                   <label className="block space-y-2">
                     <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Nombre cliente</span>
-                    <input value={formData.clienteNombre} onChange={(e) => setFormData((prev) => ({ ...prev, clienteNombre: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-zinc-600" placeholder="Juan Pérez" />
+                    <input value={formData.clienteNombre} onChange={(e) => setFormData((p) => ({ ...p, clienteNombre: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-zinc-600" placeholder="Juan Pérez" />
                   </label>
                   <label className="block space-y-2">
                     <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">WhatsApp</span>
-                    <input value={formData.telefono} onChange={(e) => setFormData((prev) => ({ ...prev, telefono: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-zinc-600" placeholder="549343..." />
+                    <input value={formData.telefono} onChange={(e) => setFormData((p) => ({ ...p, telefono: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-zinc-600" placeholder="549343..." />
                   </label>
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block space-y-2">
                       <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Patente</span>
-                      <input value={formData.motoPatente} onChange={(e) => setFormData((prev) => ({ ...prev, motoPatente: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-zinc-600" placeholder="ABC123" />
+                      <input value={formData.motoPatente} onChange={(e) => setFormData((p) => ({ ...p, motoPatente: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-zinc-600" placeholder="ABC123" />
                     </label>
                     <label className="block space-y-2">
                       <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Marca / modelo</span>
-                      <input value={formData.motoMarca} onChange={(e) => setFormData((prev) => ({ ...prev, motoMarca: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-zinc-600" placeholder="Honda Wave" />
+                      <input value={formData.motoMarca} onChange={(e) => setFormData((p) => ({ ...p, motoMarca: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-zinc-600" placeholder="Honda Wave" />
                     </label>
                   </div>
                 </div>
@@ -563,42 +335,40 @@ export default function AgendaView({ setView }) {
               <div className="grid grid-cols-2 gap-3">
                 <label className="block space-y-2">
                   <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Fecha</span>
-                  <input type="date" value={formData.fecha} onChange={(e) => setFormData((prev) => ({ ...prev, fecha: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none" />
+                  <input type="date" value={formData.fecha} onChange={(e) => setFormData((p) => ({ ...p, fecha: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none" />
                 </label>
                 <label className="block space-y-2">
                   <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Hora</span>
-                  <input type="time" value={formData.hora} onChange={(e) => setFormData((prev) => ({ ...prev, hora: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none" />
+                  <input type="time" value={formData.hora} onChange={(e) => setFormData((p) => ({ ...p, hora: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none" />
                 </label>
               </div>
 
               <label className="block space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Motivo</span>
-                <input value={formData.motivo} onChange={(e) => setFormData((prev) => ({ ...prev, motivo: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-zinc-600" placeholder="Ej: service, diagnóstico, control" />
+                <input value={formData.motivo} onChange={(e) => setFormData((p) => ({ ...p, motivo: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-zinc-600" placeholder="Ej: service, diagnóstico, control" />
               </label>
 
               <label className="block space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Estado</span>
-                <select value={formData.estado} onChange={(e) => setFormData((prev) => ({ ...prev, estado: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none">
-                  {STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
+                <select value={formData.estado} onChange={(e) => setFormData((p) => ({ ...p, estado: e.target.value }))} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none">
+                  {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </label>
 
               <label className="block space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Observaciones</span>
-                <textarea value={formData.observaciones} onChange={(e) => setFormData((prev) => ({ ...prev, observaciones: e.target.value }))} rows={3} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-zinc-600" placeholder="Notas para la secretaria, pedido del cliente, contexto del turno..." />
+                <textarea value={formData.observaciones} onChange={(e) => setFormData((p) => ({ ...p, observaciones: e.target.value }))} rows={3} className="w-full rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-black text-white outline-none placeholder:text-zinc-600" placeholder="Notas para la secretaria, pedido del cliente, contexto del turno..." />
               </label>
 
               <div className="rounded-2xl bg-zinc-900 p-4 space-y-3">
                 <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Avisos previos</p>
                 <label className="flex items-center justify-between gap-3 text-sm font-black text-white">
                   <span>Recordatorio un día antes</span>
-                  <input type="checkbox" checked={formData.reminderDayBefore} onChange={(e) => setFormData((prev) => ({ ...prev, reminderDayBefore: e.target.checked }))} />
+                  <input type="checkbox" checked={formData.reminderDayBefore} onChange={(e) => setFormData((p) => ({ ...p, reminderDayBefore: e.target.checked }))} />
                 </label>
                 <label className="flex items-center justify-between gap-3 text-sm font-black text-white">
                   <span>Recordatorio una hora antes</span>
-                  <input type="checkbox" checked={formData.reminderHourBefore} onChange={(e) => setFormData((prev) => ({ ...prev, reminderHourBefore: e.target.checked }))} />
+                  <input type="checkbox" checked={formData.reminderHourBefore} onChange={(e) => setFormData((p) => ({ ...p, reminderHourBefore: e.target.checked }))} />
                 </label>
               </div>
 
