@@ -1,222 +1,40 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ChevronRight, FileText, Search, User, Wrench, Check, AlertTriangle, Camera, Upload, X } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
-import jsQR from "jsqr";
-import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
+import { GlobalWorkerOptions } from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { formatMoney } from "../utils/format.js";
-import { validarComprobante } from "../lib/comprobante-validation.js";
-import { LS } from "../lib/storage.js";
+import { useHistoryView } from "../hooks/useHistoryView.js";
 
 GlobalWorkerOptions.workerSrc = pdfWorker;
 
-function cargarImagenDesdeArchivo(file) {
-  return new Promise((resolve, reject) => {
-    const imageUrl = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      URL.revokeObjectURL(imageUrl);
-      resolve(image);
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(imageUrl);
-      reject(new Error("No pudimos abrir esa imagen. Probá con una foto más nítida del QR."));
-    };
-    image.src = imageUrl;
-  });
-}
-
-function detectarQRDesdeCanvas(canvas) {
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  try {
-    ctx.imageSmoothingEnabled = false;
-  } catch {
-  }
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const resultado = jsQR(imageData.data, imageData.width, imageData.height, {
-    inversionAttempts: "attemptBoth",
-  });
-
-  if (!resultado?.data) {
-    throw new Error("No encontramos un código QR legible.");
-  }
-
-  return resultado.data;
-}
-
-async function detectarQRDesdeImagen(file) {
-  const image = await cargarImagenDesdeArchivo(file);
-  const canvas = document.createElement("canvas");
-  canvas.width = image.naturalWidth || image.width;
-  canvas.height = image.naturalHeight || image.height;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
-  return detectarQRDesdeCanvas(canvas);
-}
-
-async function detectarQRDesdePdf(file) {
-  const data = await file.arrayBuffer();
-  const pdf = await getDocument({ data }).promise;
-  const paginasARevisar = Math.min(pdf.numPages, 8);
-
-  for (let pageNumber = 1; pageNumber <= paginasARevisar; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const viewport = page.getViewport({ scale: 2.6 });
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    canvas.width = Math.ceil(viewport.width);
-    canvas.height = Math.ceil(viewport.height);
-
-    await page.render({ canvasContext: context, viewport }).promise;
-
-    try {
-      return detectarQRDesdeCanvas(canvas);
-    } catch (error) {
-      if (pageNumber === paginasARevisar) {
-        throw new Error("No encontramos un código QR dentro del PDF. Asegurate de subir el comprobante completo y no una captura recortada.");
-      }
-    }
-  }
-
-  throw new Error("No encontramos un código QR dentro del PDF.");
-}
-
-async function detectarQRDesdePdfRobusto(file) {
-  const data = await file.arrayBuffer();
-  const pdf = await getDocument({ data }).promise;
-  const paginasARevisar = Math.min(pdf.numPages, 15);
-  const scales = [2.6, 3.2, 3.8];
-
-  for (let pageNumber = 1; pageNumber <= paginasARevisar; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-
-    for (let sIdx = 0; sIdx < scales.length; sIdx += 1) {
-      const viewport = page.getViewport({ scale: scales[sIdx] });
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d", { willReadFrequently: true });
-      canvas.width = Math.ceil(viewport.width);
-      canvas.height = Math.ceil(viewport.height);
-
-      await page.render({ canvasContext: context, viewport }).promise;
-
-      try {
-        return detectarQRDesdeCanvas(canvas);
-      } catch {
-      }
-    }
-  }
-
-  throw new Error("No encontramos un código QR dentro del PDF. Asegurate de subir el comprobante completo y no una captura recortada.");
-}
+const SCANNER_REGION_ID = "historial-comprobante-scanner";
 
 export default function HistoryView({ orders, bikes, clients, setView, setSelectedBikeId }) {
-  const [search, setSearch] = useState("");
-  const [validaciones, setValidaciones] = useState([]);
-  const [qrInputValue, setQrInputValue] = useState("");
-  const [validacionActual, setValidacionActual] = useState(null);
-  const [scanFeedback, setScanFeedback] = useState("");
-  const [scanLoading, setScanLoading] = useState(false);
-  const [scannerOpen, setScannerOpen] = useState(false);
+  const {
+    search, setSearch, helperText,
+    results, resultsGrouped, resumen,
+    qrInputValue, setQrInputValue,
+    validaciones, validacionActual,
+    scanFeedback, setScanFeedback,
+    scanLoading, setScanLoading,
+    validarQR, procesarTextoQR, manejarArchivoQR,
+  } = useHistoryView({ orders, bikes, clients });
+
+  // Estado del scanner — UI/DOM puro, queda en la vista
+  const [scannerOpen,  setScannerOpen]  = useState(false);
   const [scannerReady, setScannerReady] = useState(false);
   const [scannerError, setScannerError] = useState("");
-  const pdfInputRef = useRef(null);
-  const scannerRef = useRef(null);
-  const scannerRegionId = "historial-comprobante-scanner";
-
-  const procesarQRData = (qrData) => {
-    try {
-      const { numeroComprobante, orderId } = qrData;
-
-      const ordenOriginal = LS.getDoc("trabajos", orderId);
-      if (!ordenOriginal) {
-        setValidacionActual({
-          valido: false,
-          razon: "No encontrada en registros",
-          numeroComprobante,
-          fecha: new Date().toISOString()
-        });
-        return;
-      }
-
-      const resultado = validarComprobante(numeroComprobante, qrData, ordenOriginal);
-      const validacion = {
-        ...resultado,
-        numeroComprobante,
-        fecha: new Date().toISOString(),
-        id: Date.now()
-      };
-
-      setValidacionActual(validacion);
-      setValidaciones((prev) => [validacion, ...prev]);
-      setQrInputValue("");
-      setScanFeedback(resultado.valido ? "Comprobante validado correctamente." : "El comprobante no pasó la validación.");
-    } catch (e) {
-      setValidacionActual({
-        valido: false,
-        razon: "Código QR inválido o corrupto: " + e.message,
-        fecha: new Date().toISOString()
-      });
-      setScanFeedback("No pudimos interpretar el contenido del QR.");
-    }
-  };
-
-  const procesarTextoQR = (rawValue) => {
-    if (!rawValue?.trim()) {
-      throw new Error("No encontramos datos dentro del código QR.");
-    }
-
-    setQrInputValue(rawValue);
-    try {
-      const qrData = JSON.parse(rawValue);
-      procesarQRData(qrData);
-      return;
-    } catch {
-      // Nuevo formato: el QR del PDF puede ser una URL pública /verificar/:token
-      const txt = rawValue.trim();
-      if (/^https?:\/\//i.test(txt) || txt.startsWith("/verificar/")) {
-        try {
-          const url = txt.startsWith("/verificar/") ? new URL(txt, window.location.origin) : new URL(txt);
-          if (url.pathname.startsWith("/verificar/")) {
-            setScanFeedback("Abriendo verificaciÃ³n del comprobante...");
-            window.location.assign(url.pathname + url.search + url.hash);
-            return;
-          }
-        } catch {
-          // ignore, fall through
-        }
-      }
-      throw new Error("CÃ³digo QR invÃ¡lido o corrupto.");
-    }
-  };
-
-  const validarQR = () => {
-    if (!qrInputValue.trim()) return;
-    try {
-      procesarTextoQR(qrInputValue);
-    } catch (e) {
-      const mensaje = e instanceof SyntaxError ? "JSON inválido" : e.message;
-      setValidacionActual({
-        valido: false,
-        razon: mensaje,
-        fecha: new Date().toISOString()
-      });
-      setScanFeedback("Revisá el contenido pegado e intentá de nuevo.");
-    }
-  };
+  const pdfInputRef  = useRef(null);
+  const scannerRef   = useRef(null);
 
   const cerrarScanner = async () => {
     setScannerOpen(false);
     setScannerReady(false);
     setScannerError("");
     if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-      } catch {
-      }
-      try {
-        await scannerRef.current.clear();
-      } catch {
-      }
+      try { await scannerRef.current.stop(); } catch { /* ignore */ }
+      try { await scannerRef.current.clear(); } catch { /* ignore */ }
       scannerRef.current = null;
     }
   };
@@ -230,15 +48,11 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
       setScannerError("");
       setScanFeedback("Apuntá la cámara al QR del comprobante.");
       try {
-        const scanner = new Html5Qrcode(scannerRegionId);
+        const scanner = new Html5Qrcode(SCANNER_REGION_ID);
         scannerRef.current = scanner;
         await scanner.start(
           { facingMode: "environment" },
-          {
-            fps: 15,
-            qrbox: { width: 280, height: 280 },
-            aspectRatio: 1,
-          },
+          { fps: 15, qrbox: { width: 280, height: 280 }, aspectRatio: 1 },
           async (decodedText) => {
             if (cancelled) return;
             setScanLoading(true);
@@ -246,22 +60,19 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
               procesarTextoQR(decodedText);
               await cerrarScanner();
             } catch (error) {
-              setValidacionActual({
-                valido: false,
-                razon: error instanceof SyntaxError ? "El QR no contiene un JSON válido." : error.message,
-                fecha: new Date().toISOString()
-              });
-              setScanFeedback("El QR fue leído, pero el contenido no coincide con un comprobante válido.");
+              setScanFeedback(
+                error instanceof SyntaxError
+                  ? "El QR fue leído, pero el contenido no coincide con un comprobante válido."
+                  : error.message
+              );
             } finally {
               setScanLoading(false);
             }
           },
           () => {}
         );
-        if (!cancelled) {
-          setScannerReady(true);
-        }
-      } catch (error) {
+        if (!cancelled) setScannerReady(true);
+      } catch {
         if (!cancelled) {
           setScannerError("No pudimos iniciar la cámara en este dispositivo. Probá con el PDF o una imagen del comprobante.");
           setScanFeedback("No se pudo abrir el lector QR.");
@@ -281,123 +92,6 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
       }
     };
   }, [scannerOpen]);
-
-  const manejarArchivoQR = async (file, origen) => {
-    if (!file) return;
-    setScanLoading(true);
-    setScanFeedback(origen === "pdf" ? "Leyendo QR dentro del PDF..." : "Buscando QR en la imagen...");
-
-    try {
-      const rawValue = origen === "pdf" ? await detectarQRDesdePdfRobusto(file) : await detectarQRDesdeImagen(file);
-      procesarTextoQR(rawValue);
-    } catch (error) {
-      setValidacionActual({
-        valido: false,
-        razon: error.message,
-        fecha: new Date().toISOString()
-      });
-      setScanFeedback(error.message);
-    } finally {
-      setScanLoading(false);
-    }
-  };
-
-  const obtenerFechaOrden = (order) => {
-    // Preferimos la fecha de ingreso (historial real). Fallbacks por compatibilidad.
-    return (
-      order?.fechaIngreso ||
-      order?.fechaComprobante?.slice?.(0, 10) ||
-      order?.fecha ||
-      order?.createdAt ||
-      ""
-    );
-  };
-
-  const results = useMemo(() => {
-    const q = search.trim().toLowerCase();
-
-    const byBike = new Map();
-
-    orders.forEach((order) => {
-      const bike = bikes.find((item) => item.id === order.bikeId);
-      const client = clients.find((item) => item.id === order.clientId);
-      const patente = bike?.patente || "";
-      const cliente = client?.nombre || "";
-      const numeroTrabajo = order?.numeroTrabajo || "";
-      const numeroComprobante = order?.numeroComprobante || "";
-
-      const match =
-        !q ||
-        patente.toLowerCase().includes(q) ||
-        cliente.toLowerCase().includes(q) ||
-        numeroTrabajo.toLowerCase().includes(q) ||
-        numeroComprobante.toLowerCase().includes(q);
-
-      if (!match || !bike) return;
-
-      const current = byBike.get(bike.id) || {
-        bike,
-        client,
-        orders: [],
-        trabajos: 0,
-        comprobantes: 0,
-        repuestos: 0,
-        gastos: 0,
-        totalCobrado: 0,
-        ultimaFecha: "",
-      };
-
-      current.orders.push(order);
-      current.trabajos += 1;
-      current.comprobantes += order.numeroComprobante ? 1 : 0;
-      current.repuestos += (order.repuestos || []).length;
-      current.gastos += (order.insumos || []).length + (order.fletes || []).length;
-      current.totalCobrado += order.total || 0;
-      const f = obtenerFechaOrden(order);
-      current.ultimaFecha = [current.ultimaFecha, f].filter(Boolean).sort().at(-1) || current.ultimaFecha;
-
-      byBike.set(bike.id, current);
-    });
-
-    return Array.from(byBike.values()).sort((a, b) => (b.ultimaFecha || "").localeCompare(a.ultimaFecha || ""));
-  }, [search, orders, bikes, clients]);
-
-  const resultsGrouped = useMemo(() => {
-    // Agrupamos por AAAA-MM, usando la ultimaFecha de cada moto.
-    const groups = new Map();
-    results.forEach((item) => {
-      const key = (item.ultimaFecha || "").toString().slice(0, 7) || "Sin fecha";
-      const arr = groups.get(key) || [];
-      arr.push(item);
-      groups.set(key, arr);
-    });
-
-    const keys = Array.from(groups.keys()).sort((a, b) => {
-      if (a === "Sin fecha") return 1;
-      if (b === "Sin fecha") return -1;
-      return b.localeCompare(a);
-    });
-
-    return keys.map((k) => ({ key: k, items: groups.get(k) || [] }));
-  }, [results]);
-
-  const resumen = useMemo(() => {
-    return results.reduce(
-      (acc, item) => {
-        acc.motos += 1;
-        acc.trabajos += item.trabajos;
-        acc.comprobantes += item.comprobantes;
-        acc.repuestos += item.repuestos;
-        acc.gastos += item.gastos;
-        return acc;
-      },
-      { motos: 0, trabajos: 0, comprobantes: 0, repuestos: 0, gastos: 0 }
-    );
-  }, [results]);
-
-  const helperText = search.trim()
-    ? `Encontramos ${resumen.motos} moto${resumen.motos === 1 ? "" : "s"} para "${search.trim()}"`
-    : "Buscá por patente, cliente, número de trabajo o comprobante";
 
   return (
     <>
@@ -436,6 +130,7 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
             <p className="mt-3 px-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">{helperText}</p>
           </div>
 
+          {/* Validador de comprobantes */}
           <div className="rounded-[2.5rem] border border-zinc-800 bg-zinc-900 p-5 shadow-xl">
             <div className="mb-4 flex items-center gap-3">
               <div className="rounded-xl bg-orange-500/20 p-2">
@@ -479,16 +174,14 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
                 </button>
               </div>
 
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Pegá el JSON del QR aquí"
-                  value={qrInputValue}
-                  onChange={(e) => setQrInputValue(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && validarQR()}
-                  className="w-full rounded-[1.75rem] border border-white/10 bg-black/20 p-3 font-mono text-xs text-white outline-none placeholder:text-zinc-600 focus:border-orange-500"
-                />
-              </div>
+              <input
+                type="text"
+                placeholder="Pegá el JSON del QR aquí"
+                value={qrInputValue}
+                onChange={(e) => setQrInputValue(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && validarQR()}
+                className="w-full rounded-[1.75rem] border border-white/10 bg-black/20 p-3 font-mono text-xs text-white outline-none placeholder:text-zinc-600 focus:border-orange-500"
+              />
               <button
                 onClick={validarQR}
                 disabled={!qrInputValue.trim() || scanLoading}
@@ -509,21 +202,13 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
             )}
 
             {validacionActual && (
-              <div className={`mt-4 rounded-2xl border-2 p-4 ${
-                validacionActual.valido
-                  ? "border-green-500/30 bg-green-500/10"
-                  : "border-red-500/30 bg-red-500/10"
-              }`}>
+              <div className={`mt-4 rounded-2xl border-2 p-4 ${validacionActual.valido ? "border-green-500/30 bg-green-500/10" : "border-red-500/30 bg-red-500/10"}`}>
                 <div className="flex items-start gap-3">
-                  {validacionActual.valido ? (
-                    <Check className="mt-1 shrink-0 text-green-400" size={18} />
-                  ) : (
-                    <AlertTriangle className="mt-1 shrink-0 text-red-400" size={18} />
-                  )}
+                  {validacionActual.valido
+                    ? <Check className="mt-1 shrink-0 text-green-400" size={18} />
+                    : <AlertTriangle className="mt-1 shrink-0 text-red-400" size={18} />}
                   <div className="min-w-0">
-                    <p className={`text-[10px] font-black uppercase ${
-                      validacionActual.valido ? "text-green-300" : "text-red-300"
-                    }`}>
+                    <p className={`text-[10px] font-black uppercase ${validacionActual.valido ? "text-green-300" : "text-red-300"}`}>
                       {validacionActual.razon}
                     </p>
                     {validacionActual.numeroComprobante && (
@@ -549,11 +234,7 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
                 <p className="mb-2 text-[9px] font-black uppercase text-zinc-500">Historial de validaciones</p>
                 <div className="max-h-48 space-y-2 overflow-y-auto">
                   {validaciones.slice(0, 5).map((v) => (
-                    <div key={v.id} className={`rounded-lg border p-3 text-[9px] ${
-                      v.valido
-                        ? "border-green-500/20 bg-green-500/10 text-green-300"
-                        : "border-red-500/20 bg-red-500/10 text-red-300"
-                    }`}>
+                    <div key={v.id} className={`rounded-lg border p-3 text-[9px] ${v.valido ? "border-green-500/20 bg-green-500/10 text-green-300" : "border-red-500/20 bg-red-500/10 text-red-300"}`}>
                       <div className="flex items-center gap-2">
                         {v.valido ? <Check size={12} /> : <AlertTriangle size={12} />}
                         <span className="font-mono font-bold">{v.numeroComprobante?.slice(0, 15)}</span>
@@ -566,27 +247,24 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
             )}
           </div>
 
+          {/* Stats de búsqueda */}
           {search.trim() && (
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-[1.75rem] border border-zinc-800 bg-zinc-900 p-4 shadow-xl">
-                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Motos encontradas</p>
-                <p className="mt-2 text-2xl font-black text-white">{resumen.motos}</p>
-              </div>
-              <div className="rounded-[1.75rem] border border-zinc-800 bg-zinc-900 p-4 shadow-xl">
-                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Trabajos relacionados</p>
-                <p className="mt-2 text-2xl font-black text-white">{resumen.trabajos}</p>
-              </div>
-              <div className="rounded-[1.75rem] border border-zinc-800 bg-zinc-900 p-4 shadow-xl">
-                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Comprobantes</p>
-                <p className="mt-2 text-2xl font-black text-white">{resumen.comprobantes}</p>
-              </div>
-              <div className="rounded-[1.75rem] border border-zinc-800 bg-zinc-900 p-4 shadow-xl">
-                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Repuestos y gastos</p>
-                <p className="mt-2 text-2xl font-black text-white">{resumen.repuestos + resumen.gastos}</p>
-              </div>
+              {[
+                { label: "Motos encontradas",    value: resumen.motos },
+                { label: "Trabajos relacionados", value: resumen.trabajos },
+                { label: "Comprobantes",          value: resumen.comprobantes },
+                { label: "Repuestos y gastos",    value: resumen.repuestos + resumen.gastos },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-[1.75rem] border border-zinc-800 bg-zinc-900 p-4 shadow-xl">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{label}</p>
+                  <p className="mt-2 text-2xl font-black text-white">{value}</p>
+                </div>
+              ))}
             </div>
           )}
 
+          {/* Lista de resultados */}
           <div className="space-y-4">
             {results.length > 0 ? (
               (search.trim() ? [{ key: "Resultados", items: results }] : resultsGrouped).map((group) => (
@@ -605,10 +283,7 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
                   {group.items.map((item) => (
                     <button
                       key={item.bike.id}
-                      onClick={() => {
-                        setSelectedBikeId(item.bike.id);
-                        setView("perfilMoto");
-                      }}
+                      onClick={() => { setSelectedBikeId(item.bike.id); setView("perfilMoto"); }}
                       className="w-full rounded-[2.5rem] border border-zinc-800 bg-zinc-900 p-5 text-left shadow-xl transition-all active:scale-[0.98]"
                     >
                       <div className="flex items-start justify-between gap-3">
@@ -639,15 +314,13 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
                       <div className="mt-3 space-y-2 rounded-[1.5rem] border border-white/5 bg-black/20 p-3">
                         <div className="flex items-center justify-between text-[11px] font-black">
                           <span className="flex items-center gap-2 text-zinc-400">
-                            <Wrench size={14} className="text-orange-400" />
-                            Repuestos usados
+                            <Wrench size={14} className="text-orange-400" /> Repuestos usados
                           </span>
                           <span className="text-white">{item.repuestos}</span>
                         </div>
                         <div className="flex items-center justify-between text-[11px] font-black">
                           <span className="flex items-center gap-2 text-zinc-400">
-                            <FileText size={14} className="text-orange-400" />
-                            Gastos e insumos
+                            <FileText size={14} className="text-orange-400" /> Gastos e insumos
                           </span>
                           <span className="text-white">{item.gastos}</span>
                         </div>
@@ -684,6 +357,7 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
         </div>
       </div>
 
+      {/* Panel del scanner */}
       {scannerOpen && (
         <div className="fixed inset-0 z-[90] flex items-end bg-zinc-950/90 p-4 backdrop-blur-sm sm:items-center sm:justify-center">
           <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-zinc-900 p-4 shadow-2xl">
@@ -699,11 +373,9 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
                 <X size={18} />
               </button>
             </div>
-
             <div className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/40 p-3">
-              <div id={scannerRegionId} className="min-h-[320px] rounded-[1.25rem] bg-zinc-950" />
+              <div id={SCANNER_REGION_ID} className="min-h-[320px] rounded-[1.25rem] bg-zinc-950" />
             </div>
-
             <div className="mt-3 space-y-2">
               <p className="text-[10px] font-bold text-zinc-300">
                 {scannerReady ? "Apuntá el QR al centro del recuadro." : "Preparando cámara..."}
