@@ -1,73 +1,43 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { ArrowLeft, Check, ChevronDown, ChevronUp, Info, Mic, MicOff, Pencil, Plus, Trash2, X } from "lucide-react";
-import { LS } from "../lib/storage.js";
-import { CONFIG_DEFAULT } from "../lib/constants.js";
+import { useNewOrderView } from "../hooks/useNewOrderView.js";
 
 const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-function normalizar(value = "") {
-  return String(value).trim().toUpperCase();
-}
-
 export default function NewOrderView({ handleCreateAll, setView, prefill, bikes = [], clients = [] }) {
-  const [f, setF] = useState({
-    nombre: prefill?.client?.nombre || "",
-    tel: prefill?.client?.tel || "",
-    patente: prefill?.bike?.patente || "",
-    marca: prefill?.bike?.marca || "",
-    modelo: prefill?.bike?.modelo || "",
-    cilindrada: prefill?.bike?.cilindrada || 110,
-    km: prefill?.bike?.km || "",
-    falla: "",
-  });
-  const [ignorarSugerencia, setIgnorarSugerencia] = useState(false);
-  const [escuchando, setEscuchando] = useState(false);
-  const [listaAbierta, setListaAbierta] = useState(false);
-  const [nuevoMotivo, setNuevoMotivo] = useState("");
-  const [editandoIdx, setEditandoIdx] = useState(null);
-  const [editandoTexto, setEditandoTexto] = useState("");
-  const reconRef = useRef(null);
-  const patRef = useRef(null);
-  const kmRef = useRef(null);
-  const marcaRef = useRef(null);
-  const modeloRef = useRef(null);
-  const cilRef = useRef(null);
-  const nombreRef = useRef(null);
-  const telRef = useRef(null);
-  const fallaRef = useRef(null);
+  const {
+    f, setF,
+    showSuggestion, coincidenciaMoto,
+    setIgnorarSugerencia,
+    usarHistorial,
+    agregarChip, appendToFalla,
+    motivosList,
+    listaAbierta, setListaAbierta,
+    nuevoMotivo, setNuevoMotivo, agregarMotivo,
+    editandoIdx, setEditandoIdx,
+    editandoTexto, setEditandoTexto, confirmarEdicion,
+    eliminarMotivo,
+  } = useNewOrderView({ bikes, clients, prefill });
 
+  // Web Speech API — side effect de browser, queda en la vista
+  const [escuchando, setEscuchando] = useState(false);
+  const reconRef  = useRef(null);
+
+  // DOM refs para navegación por teclado
+  const patRef    = useRef(null);
+  const kmRef     = useRef(null);
+  const marcaRef  = useRef(null);
+  const modeloRef = useRef(null);
+  const cilRef    = useRef(null);
+  const nombreRef = useRef(null);
+  const telRef    = useRef(null);
+  const fallaRef  = useRef(null);
+
+  // Enter → foco al siguiente campo
   const sig = (ref) => (e) => {
     if (e.key !== "Enter") return;
     e.preventDefault();
     ref.current?.focus();
-  };
-
-  const config = LS.getDoc("config", "global") || CONFIG_DEFAULT;
-  const motivosList = config.motivosIngreso || CONFIG_DEFAULT.motivosIngreso;
-
-  const guardarMotivos = (lista) => {
-    LS.updateDoc("config", "global", { motivosIngreso: lista });
-  };
-
-  const agregarMotivo = () => {
-    const texto = nuevoMotivo.trim();
-    if (!texto || motivosList.includes(texto)) return;
-    guardarMotivos([...motivosList, texto]);
-    setNuevoMotivo("");
-  };
-
-  const confirmarEdicion = (idx) => {
-    const texto = editandoTexto.trim();
-    if (!texto) return;
-    const nueva = [...motivosList];
-    nueva[idx] = texto;
-    guardarMotivos(nueva);
-    setEditandoIdx(null);
-    setEditandoTexto("");
-  };
-
-  const eliminarMotivo = (idx) => {
-    guardarMotivos(motivosList.filter((_, i) => i !== idx));
   };
 
   const toggleDictado = () => {
@@ -77,58 +47,25 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
       return;
     }
     const rec = new SpeechRecognitionAPI();
-    rec.lang = "es-AR";
-    rec.continuous = false;
+    rec.lang          = "es-AR";
+    rec.continuous    = false;
     rec.interimResults = false;
     rec.maxAlternatives = 1;
-    rec.onresult = (e) => {
-      const texto = e.results[0][0].transcript;
-      setF((prev) => ({ ...prev, falla: prev.falla ? prev.falla + " " + texto : texto }));
-    };
-    rec.onend = () => setEscuchando(false);
-    rec.onerror = () => setEscuchando(false);
+    rec.onresult = (e) => appendToFalla(e.results[0][0].transcript);
+    rec.onend    = () => setEscuchando(false);
+    rec.onerror  = () => setEscuchando(false);
     reconRef.current = rec;
     rec.start();
     setEscuchando(true);
   };
 
-  const agregarChip = (texto) => {
-    setF((prev) => {
-      const actual = prev.falla.trim();
-      if (!actual) return { ...prev, falla: texto };
-      if (actual.includes(texto)) return prev;
-      return { ...prev, falla: actual + ", " + texto };
-    });
-  };
-
-  const coincidenciaMoto = useMemo(() => {
-    if (prefill) return null;
-    const patente = normalizar(f.patente);
-    if (patente.length < 3) return null;
-    const moto = bikes.find((b) => normalizar(b.patenteNormalizada || b.patente) === patente);
-    if (!moto) return null;
-    const cliente = clients.find((c) => c.id === moto.clienteId) || null;
-    return { moto, cliente };
-  }, [bikes, clients, f.patente, prefill]);
-
-  const usarHistorial = () => {
-    if (!coincidenciaMoto) return;
-    setF((actual) => ({
-      ...actual,
-      marca: coincidenciaMoto.moto?.marca || actual.marca,
-      modelo: coincidenciaMoto.moto?.modelo || actual.modelo,
-      cilindrada: coincidenciaMoto.moto?.cilindrada || actual.cilindrada,
-      nombre: coincidenciaMoto.cliente?.nombre || actual.nombre,
-      tel: coincidenciaMoto.cliente?.tel || coincidenciaMoto.cliente?.telefono || actual.tel,
-      km: actual.km || coincidenciaMoto.moto?.kilometrajeActual || coincidenciaMoto.moto?.km || "",
-    }));
-    setIgnorarSugerencia(false);
-  };
-
   return (
     <div className="p-6 text-left animate-in slide-in-from-bottom duration-300">
       <div className="flex items-center gap-4 mb-8">
-        <button onClick={() => setView(prefill ? "historial" : "home")} className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-white active:scale-95 transition-all">
+        <button
+          onClick={() => setView(prefill ? "historial" : "home")}
+          className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-white active:scale-95 transition-all"
+        >
           <ArrowLeft size={16} />
         </button>
         <div>
@@ -136,12 +73,15 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             {prefill ? "Nuevo service" : "Nueva moto al taller"}
           </h1>
           <p className="mt-1 text-[10px] font-bold text-zinc-500">
-            {prefill ? "Anotá cómo entra hoy. Después cargás trabajos y precio." : "Paso 1: patente, km, cliente y qué le pasa. Esto evita reclamos."}
+            {prefill
+              ? "Anotá cómo entra hoy. Después cargás trabajos y precio."
+              : "Paso 1: patente, km, cliente y qué le pasa. Esto evita reclamos."}
           </p>
         </div>
       </div>
+
       <div className="bg-[#141414] p-8 rounded-[2.5rem] space-y-4 border border-white/5 shadow-2xl">
-        {coincidenciaMoto && !ignorarSugerencia && (
+        {showSuggestion && (
           <div className="bg-orange-500/10 border border-orange-500/30 rounded-[2rem] p-4 space-y-3">
             <div className="flex items-start gap-3">
               <div className="bg-orange-500 text-white p-2 rounded-xl flex-shrink-0">
@@ -195,6 +135,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             />
           </div>
         </div>
+
         {!prefill && (
           <div className="grid grid-cols-3 gap-2">
             <div className="space-y-1">
@@ -211,6 +152,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             </div>
           </div>
         )}
+
         <div className="space-y-1">
           <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Cliente</label>
           <input
@@ -223,6 +165,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             enterKeyHint="next"
           />
         </div>
+
         <div className="space-y-1">
           <label className="text-[10px] font-black uppercase text-zinc-500 ml-2">Teléfono</label>
           <input
@@ -235,6 +178,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             enterKeyHint="next"
           />
         </div>
+
         <div className="space-y-1">
           <div className="flex items-center justify-between ml-2 mr-1">
             <label className="text-[10px] font-black uppercase text-zinc-500">Qué le pasa / qué pide el cliente</label>
@@ -265,7 +209,6 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             enterKeyHint="done"
           />
 
-          {/* Lista desplegable de motivos */}
           <div className="pt-1 space-y-1">
             <button
               type="button"
@@ -279,10 +222,7 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             {listaAbierta && (
               <div className="rounded-2xl border border-zinc-700 bg-zinc-800/60 overflow-hidden">
                 {motivosList.map((motivo, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 px-3 py-2.5 border-b border-zinc-700/40 last:border-0"
-                  >
+                  <div key={idx} className="flex items-center gap-2 px-3 py-2.5 border-b border-zinc-700/40 last:border-0">
                     {editandoIdx === idx ? (
                       <>
                         <input
@@ -349,7 +289,11 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             )}
           </div>
         </div>
-        <button onClick={() => handleCreateAll(f)} className="w-full bg-orange-600 text-white py-5 rounded-[2.5rem] font-black uppercase shadow-xl shadow-orange-600/20 active:scale-95 transition-all tracking-widest">
+
+        <button
+          onClick={() => handleCreateAll(f)}
+          className="w-full bg-orange-600 text-white py-5 rounded-[2.5rem] font-black uppercase shadow-xl shadow-orange-600/20 active:scale-95 transition-all tracking-widest"
+        >
           {prefill ? "Abrir service para esta moto" : "Ingresar moto al taller"}
         </button>
         <p className="text-center text-[10px] font-bold leading-relaxed text-zinc-500">
