@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from "react";
 import { AlertTriangle, Bell, Calendar, Clock, ChevronRight, FileText, History, LogOut, MessageCircle, PlusCircle, ReceiptText, User, Wrench, X, Zap } from "lucide-react";
+import { Badge, Card } from "../components/ui/index.js";
 import { auth } from "../firebase.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { evaluarEstado } from "../lib/calc.js";
@@ -11,10 +12,10 @@ import { formatMoneyShort } from "../utils/format.js";
 import { normalizarTelWA } from "../lib/messages.js";
 import { abrirEnlaceExterno } from "../lib/whatsappService.js";
 
-const ESTADO_BADGE = {
-  NORMAL: "bg-green-500/20 text-green-300 border-green-500/30",
-  ALERTA: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-  BLOQUEADO: "bg-red-500/20 text-red-300 border-red-500/30",
+const ESTADO_BADGE_VARIANT = {
+  NORMAL: "success",
+  ALERTA: "warning",
+  BLOQUEADO: "error",
 };
 
 const ESTADO_LABEL_CRON = {
@@ -231,21 +232,21 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
       </header>
 
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-4 text-center">
+        <Card className="text-center">
           <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Listas hoy</p>
           <p className="mt-2 text-2xl font-black text-emerald-400">{listasParaEntregar}</p>
           <p className="mt-1 text-[9px] font-bold text-zinc-600">Para entregar</p>
-        </div>
-        <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-4 text-center">
+        </Card>
+        <Card className="text-center">
           <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Ingresos hoy</p>
           <p className="mt-2 text-2xl font-black text-orange-400">{ingresosHoy}</p>
           <p className="mt-1 text-[9px] font-bold text-zinc-600">Motos nuevas</p>
-        </div>
-        <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900 p-4 text-center">
+        </Card>
+        <Card className="text-center">
           <p className="text-[8px] font-black uppercase tracking-widest text-zinc-500">Cobrado</p>
           <p className="mt-2 text-base font-black leading-none text-yellow-400">{formatMoneyShort(cobradoHoy)}</p>
           <p className="mt-1 text-[9px] font-bold text-zinc-600">Hoy</p>
-        </div>
+        </Card>
       </div>
 
       {accionesUrgentes.length > 0 && (
@@ -511,9 +512,9 @@ export default function HomeView({ setView, bikes, orders, presupuestos = [], se
                   <p className="text-sm font-black uppercase tracking-tight text-white">
                     {bike.patente || "---"} · {bike.marca || ""} {bike.modelo || ""}
                   </p>
-                  <span className={`mt-2 inline-block rounded-lg border px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${ESTADO_BADGE[order.estadoCron]}`}>
+                  <Badge variant={ESTADO_BADGE_VARIANT[order.estadoCron]} className="mt-2">
                     {ESTADO_LABEL_CRON[order.estadoCron]}
-                  </span>
+                  </Badge>
                 </div>
                 {order.maxAutorizado > 0 && (
                   <div className="text-right">

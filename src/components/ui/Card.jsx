@@ -14,10 +14,10 @@ export function Card({
   className = '',
   ...props
 }) {
-  const baseClasses = 'rounded-2xl border p-4 transition-all';
-  
+  const baseClasses = 'rounded-[2rem] border p-4 transition-all';
+
   const variants = {
-    default: 'bg-zinc-900 border-zinc-700',
+    default: 'bg-zinc-900 border-zinc-800',
     accent: 'bg-zinc-900/50 border-orange-500/50',
     alert: 'bg-red-950/30 border-red-600/50',
   };
