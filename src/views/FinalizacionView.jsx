@@ -1,28 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { ArrowLeft, Share2 } from "lucide-react";
-import { LS, obtenerOrden, actualizarOrden, crearEntradaHistorial } from "../lib/storage.js";
-import { abrirEnlaceExterno, generarEnlaceMontoFinal } from "../lib/whatsappService.js";
 import { formatMoney, formatMoneyParts } from "../utils/format.js";
+import { useFinalizacionView } from "../hooks/useFinalizacionView.js";
 
 export default function FinalizacionView({ ordenId, setView }) {
-  const [orden, setOrden] = useState(null);
-  const [cliente, setCliente] = useState(null);
-  const [moto, setMoto] = useState(null);
-  const [costosAdicionales, setCostosAdicionales] = useState(0);
-  const [motivoAdicional, setMotivoAdicional] = useState("");
-  const [whatsappEnviado, setWhatsappEnviado] = useState(false);
+  const {
+    isLoading,
+    contexto,
+    desglose,
+    costosAdicionales, setCostosAdicionales,
+    motivoAdicional,   setMotivoAdicional,
+    whatsappEnviado,
+    enviarWhatsApp,
+    confirmarPago,
+  } = useFinalizacionView({ ordenId });
 
-  useEffect(() => {
-    const o = obtenerOrden(ordenId);
-    if (!o) return;
-    setOrden(o);
-    setCliente(LS.getDoc("clientes", o.clientId) || {});
-    setMoto(LS.getDoc("motos", o.bikeId) || {});
-    setCostosAdicionales(o.costosAdicionales || 0);
-    setMotivoAdicional(o.motivoAdicional || "");
-  }, [ordenId]);
-
-  if (!orden) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center text-zinc-500 text-xs font-black uppercase">
         Cargando...
@@ -30,42 +23,12 @@ export default function FinalizacionView({ ordenId, setView }) {
     );
   }
 
-  const totalManoObra = (orden.tareas || []).reduce((s, t) => s + (t.monto || 0), 0);
-  const totalRepuestos = (orden.repuestos || []).reduce((s, r) => s + (r.monto || 0) * (r.cantidad || 1), 0);
-  const totalInsumos = (orden.insumos || []).reduce((s, i) => s + (i.monto || 0), 0);
-  const totalFletes = (orden.fletes || []).reduce((s, f) => s + (f.monto || 0), 0);
-  const totalMateriales = totalRepuestos + totalInsumos + totalFletes;
-  const ganancia = totalManoObra;
-  const subtotal = totalManoObra + totalMateriales;
-  const costoFinal = subtotal + Number(costosAdicionales || 0);
-
-  const handleEnviarWhatsApp = () => {
-    const enlace = generarEnlaceMontoFinal(orden, costoFinal, cliente, moto);
-    abrirEnlaceExterno(enlace);
-    actualizarOrden(ordenId, {
-      whatsappFinalEnviado: true,
-      costosAdicionales: Number(costosAdicionales || 0),
-      motivoAdicional,
-      costoFinal,
-    });
-    setWhatsappEnviado(true);
-  };
-
-  const handleIrAPago = () => {
-    const entrada = crearEntradaHistorial(orden.estado, "listo_para_emitir");
-    actualizarOrden(ordenId, {
-      costosAdicionales: Number(costosAdicionales || 0),
-      motivoAdicional,
-      costoFinal,
-      estado: "listo_para_emitir",
-      historial: [...(orden.historial || []), entrada],
-    });
-    setView("pago");
-  };
+  const { pesos, centavos } = formatMoneyParts(desglose.costoFinal);
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] pb-32 text-white animate-in slide-in-from-right duration-300">
       <div className="p-5 space-y-5">
+
         <div className="flex items-center gap-3">
           <button
             onClick={() => setView("ejecucion")}
@@ -75,7 +38,7 @@ export default function FinalizacionView({ ordenId, setView }) {
           </button>
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
-              {moto?.patente} · {cliente?.nombre}
+              {contexto.patente} · {contexto.clienteNombre}
             </p>
             <h1 className="text-xl font-black text-white">Finalización</h1>
           </div>
@@ -86,12 +49,12 @@ export default function FinalizacionView({ ordenId, setView }) {
           <div className="rounded-[2rem] border border-zinc-800 bg-zinc-900/50 p-5 space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-zinc-400">Mano de obra</span>
-              <span className="font-black text-white">{formatMoney(totalManoObra)}</span>
+              <span className="font-black text-white">{formatMoney(desglose.manoObra)}</span>
             </div>
-            {totalMateriales > 0 && (
+            {desglose.materiales > 0 && (
               <div className="flex justify-between items-center">
                 <span className="text-sm text-zinc-400">Repuestos / Insumos / Fletes</span>
-                <span className="font-black text-white">{formatMoney(totalMateriales)}</span>
+                <span className="font-black text-white">{formatMoney(desglose.materiales)}</span>
               </div>
             )}
             {Number(costosAdicionales) > 0 && (
@@ -102,13 +65,13 @@ export default function FinalizacionView({ ordenId, setView }) {
             )}
             <div className="border-t border-zinc-700 pt-3 flex justify-between items-center">
               <span className="text-sm font-black text-white">Total a cobrar</span>
-              <span className="text-xl font-black text-orange-400">{formatMoney(costoFinal)}</span>
+              <span className="text-xl font-black text-orange-400">{formatMoney(desglose.costoFinal)}</span>
             </div>
           </div>
 
           <div className="rounded-[1.75rem] border border-emerald-500/20 bg-emerald-500/10 p-4 flex justify-between items-center">
             <span className="text-sm font-black text-emerald-400">Tu ganancia</span>
-            <span className="text-lg font-black text-emerald-400">{formatMoney(ganancia)}</span>
+            <span className="text-lg font-black text-emerald-400">{formatMoney(desglose.ganancia)}</span>
           </div>
         </div>
 
@@ -133,17 +96,15 @@ export default function FinalizacionView({ ordenId, setView }) {
 
         <div className="rounded-[2rem] border border-orange-500/20 bg-orange-600/10 p-6 text-center">
           <p className="text-[10px] font-black uppercase tracking-widest text-orange-400 mb-2">Total a cobrar</p>
-          {(() => { const { pesos, centavos } = formatMoneyParts(costoFinal); return (
-            <p className="leading-none">
-              <span className="text-xs font-bold text-orange-400/50">ARS </span>
-              <span className="text-5xl font-black text-orange-400">{pesos}</span>
-              <span className="text-2xl font-black text-orange-400/60">,{centavos}</span>
-            </p>
-          ); })()}
+          <p className="leading-none">
+            <span className="text-xs font-bold text-orange-400/50">ARS </span>
+            <span className="text-5xl font-black text-orange-400">{pesos}</span>
+            <span className="text-2xl font-black text-orange-400/60">,{centavos}</span>
+          </p>
         </div>
 
         <button
-          onClick={handleEnviarWhatsApp}
+          onClick={enviarWhatsApp}
           disabled={whatsappEnviado}
           className={`w-full flex items-center justify-center gap-2 rounded-[2rem] py-4 text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 ${
             whatsappEnviado
@@ -156,11 +117,12 @@ export default function FinalizacionView({ ordenId, setView }) {
         </button>
 
         <button
-          onClick={handleIrAPago}
+          onClick={() => { confirmarPago(); setView("pago"); }}
           className="w-full rounded-[2rem] bg-orange-600 py-5 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
         >
           Registrar cobro del cliente
         </button>
+
       </div>
     </div>
   );
