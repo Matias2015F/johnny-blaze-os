@@ -8,7 +8,6 @@ import { LS, useCollection } from "../lib/storage.js";
 import { auth } from "../firebase.js";
 import { createCloudBackup, listCloudBackups, restoreCloudBackup } from "../lib/cloudBackup.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
-import { calcularResultadosOrden } from "../lib/calc.js";
 import { APP_BUILD } from "../generated/appVersion.js";
 import { getDisplayModeInfo } from "../lib/appUpdate.js";
 import { isPushSupported } from "../lib/pushService.js";
@@ -26,6 +25,7 @@ import { useBackupPanel } from "../hooks/useBackupPanel.js";
 import { useSistemaActions } from "../hooks/useSistemaActions.js";
 import { useSuscripcionPanel } from "../hooks/useSuscripcionPanel.js";
 import { useReputacionPanel } from "../hooks/useReputacionPanel.js";
+import { useResumenPanel } from "../hooks/useResumenPanel.js";
 
 const DIFICULTADES = [
   { key: "facil",      label: "Fácil",      color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
@@ -89,17 +89,7 @@ function SectionTitle({ children }) {
 import { PantallaAdmin, PLAN_LABELS } from "./AdminPanelView.jsx";
 import { isAdminSurface } from "../lib/surfaces.js";
 function PantallaResumen({ orders, caja }) {
-  const mesActual = new Date().toISOString().slice(0, 7);
-  const ordenesMes = useMemo(() => orders.filter(o => (o.fechaIngreso || "").startsWith(mesActual)), [orders, mesActual]);
-  const { totalMes, gananciaMes } = useMemo(() => ({
-    totalMes:    ordenesMes.reduce((s, o) => s + (o.total || 0), 0),
-    gananciaMes: ordenesMes.reduce((s, o) => s + calcularResultadosOrden(o).gananciaEstimada, 0),
-  }), [ordenesMes]);
-  const balance = useMemo(() => caja.reduce((acc, m) => (m.tipo === "ingreso" ? acc + m.monto : acc - m.monto), 0), [caja]);
-
-  const mes = new Date().toLocaleString("es-AR", { month: "long", year: "numeric" });
-  const balancePositivo = balance >= 0;
-  const gananciaPositiva = gananciaMes >= 0;
+  const { ordenesMes, totalMes, gananciaMes, balance, mes, balancePositivo, gananciaPositiva } = useResumenPanel({ orders, caja });
 
   return (
     <div className="space-y-4">
