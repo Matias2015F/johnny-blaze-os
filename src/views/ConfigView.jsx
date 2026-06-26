@@ -4,15 +4,14 @@ import {
   RotateCcw, FileSpreadsheet, ChevronRight, ChevronLeft, BarChart2,
   Settings, HardDrive, Wrench, Plus, Minus, Star,
 } from "lucide-react";
-import { LS, useCollection, migrateFromRootCollections, forceSyncCacheToFirestore, clearFirestoreData } from "../lib/storage.js";
+import { LS, useCollection } from "../lib/storage.js";
 import { auth, db } from "../firebase.js";
-import { deleteUser } from "firebase/auth";
 import { createCloudBackup, listCloudBackups, restoreCloudBackup } from "../lib/cloudBackup.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
 import { APP_BUILD } from "../generated/appVersion.js";
-import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, ensureNotificationPermission, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, promptInstallApp, sendTestNotification } from "../lib/appUpdate.js";
-import { subscribeToPush, unsubscribeFromPush, getPushStatus, isPushSupported } from "../lib/pushService.js";
+import { getDisplayModeInfo } from "../lib/appUpdate.js";
+import { isPushSupported } from "../lib/pushService.js";
 import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS, actualizarSuscripcionUsuario, crearTicketSoporte, guardarAdminSettings, isPlatformAdminUser, leerAdminSettings, leerUsuarioSaas, normalizeAdminSettings, normalizeDateMs, normalizeSaasUser } from "../services/saasService.js";
 import { logAdminAction } from "../services/adminAuditService.js";
 import { validateAdminSettings, validateExtraDays, validatePlanKey } from "../services/adminValidationService.js";
@@ -25,6 +24,7 @@ import { runIntegrityCheckFromCache } from "../lib/integrityTest.js";
 import { collection, doc, getDoc, getDocs, getDocsFromServer, query, limit, orderBy, where, setDoc } from "firebase/firestore";
 import { useTallerConfig } from "../hooks/useTallerConfig.js";
 import { useBackupPanel } from "../hooks/useBackupPanel.js";
+import { useSistemaActions } from "../hooks/useSistemaActions.js";
 
 const DIFICULTADES = [
   { key: "facil",      label: "Fácil",      color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
@@ -1538,186 +1538,79 @@ function PantallaSuscripcion({ showToast }) {
 }
 
 function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, cfg, setCfg }) {
-  const [migrando, setMigrando] = React.useState(false);
+  const {
+    migrando, deletingAccount, remoteBuild, checkingUpdate, updatingApp,
+    installAvailable, pushStatus, hasRemoteUpdate,
+    migrarRaiz, forzarSync, toggleTestMode, toggleAnalytics,
+    toggleAlertasNavegador, probarNotificacion,
+    buscarActualizacion, instalarActualizacion, instalarApp, eliminarCuenta,
+  } = useSistemaActions({ cfg, setCfg });
+
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = React.useState("");
-  const [deletingAccount, setDeletingAccount] = React.useState(false);
 
-  const handleEliminarCuenta = async () => {
-    if (deleteConfirmText !== "ELIMINAR") return;
-    setDeletingAccount(true);
-    try {
-      const uid = auth.currentUser?.uid;
-      if (uid) await clearFirestoreData(uid).catch(() => {});
-      await deleteUser(auth.currentUser);
-    } catch (e) {
-      if (e.code === "auth/requires-recent-login") {
-        showToast("Cerrá sesión, volvé a ingresar y repetí la operación");
-      } else {
-        showToast("No se pudo eliminar la cuenta. Intentá de nuevo.");
-      }
-      setDeletingAccount(false);
-      setShowDeleteConfirm(false);
-      setDeleteConfirmText("");
-    }
-  };
-  const [remoteBuild, setRemoteBuild] = React.useState(null);
-  const [checkingUpdate, setCheckingUpdate] = React.useState(false);
-  const [updatingApp, setUpdatingApp] = React.useState(false);
-  const [installAvailable, setInstallAvailable] = React.useState(false);
-  const [pushStatus, setPushStatus] = React.useState("inactive");
-  const displayMode = getDisplayModeInfo();
-  const permissionLabel =
-    typeof window !== "undefined" && "Notification" in window ? window.Notification.permission : "no soportado";
+  const displayMode    = getDisplayModeInfo();
+  const permissionLabel = typeof window !== "undefined" && "Notification" in window
+    ? window.Notification.permission : "no soportado";
   const alertasActivas = cfg.alertasNavegadorActivas ?? true;
-  const permisoTexto =
-    permissionLabel === "granted"
-      ? "Permitido"
-      : permissionLabel === "denied"
-        ? "Bloqueado"
-        : permissionLabel === "default"
-          ? "Falta activar"
-          : "No disponible";
-  const hasRemoteUpdate = isNewerBuild(APP_BUILD, remoteBuild);
-
-  React.useEffect(() => {
-    const unbind = bindInstallPromptCapture();
-    const syncInstallState = () => setInstallAvailable(canPromptInstall());
-    syncInstallState();
-    window.addEventListener("jbos-install-available", syncInstallState);
-    const checkRemoteBuild = async () => {
-      try {
-        const remote = await fetchRemoteVersion();
-        setRemoteBuild(remote);
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    checkRemoteBuild();
-    getPushStatus().then(setPushStatus).catch(() => {});
-    return () => {
-      unbind();
-      window.removeEventListener("jbos-install-available", syncInstallState);
-    };
-  }, []);
+  const permisoTexto   = permissionLabel === "granted" ? "Permitido"
+    : permissionLabel === "denied"  ? "Bloqueado"
+    : permissionLabel === "default" ? "Falta activar"
+    : "No disponible";
 
   const handleMigrarRaiz = async () => {
-    setMigrando(true);
-    try {
-      const uid = auth.currentUser?.uid;
-      if (!uid) throw new Error("Sin sesion");
-      const n = await migrateFromRootCollections(uid);
-      showToast(n > 0 ? `Migracion completa: ${n} registros movidos` : "Sin datos en colecciones raiz");
-    } catch (e) {
-      showToast("Error: " + e.message);
-    } finally {
-      setMigrando(false);
-    }
+    const { mensaje } = await migrarRaiz();
+    showToast(mensaje);
   };
 
   const handleForzarSync = async () => {
-    setMigrando(true);
-    try {
-      const uid = auth.currentUser?.uid;
-      if (!uid) throw new Error("Sin sesion");
-      const n = await forceSyncCacheToFirestore(uid);
-      showToast(n > 0 ? `Sincronizado: ${n} registros guardados en la nube` : "No hay datos en memoria para sincronizar");
-    } catch (e) {
-      showToast("Error: " + e.message);
-    } finally {
-      setMigrando(false);
-    }
+    const { mensaje } = await forzarSync();
+    showToast(mensaje);
   };
 
-  const toggleTestMode = () => {
-    const nuevo = { ...cfg, testModeRecordatorios: !cfg.testModeRecordatorios };
-    setCfg(nuevo);
-    LS.setDoc("config", "global", nuevo);
-    showToast(nuevo.testModeRecordatorios ? "Modo prueba activado" : "Modo prueba desactivado");
+  const handleToggleTestMode = () => {
+    const { mensaje } = toggleTestMode();
+    showToast(mensaje);
   };
 
-  const toggleAlertasNavegador = async () => {
-    const activar = !(cfg.alertasNavegadorActivas ?? true);
-    const uid = auth.currentUser?.uid;
-    if (activar) {
-      const permiso = await ensureNotificationPermission();
-      if (permiso !== "granted") {
-        showToast("El navegador no dio permiso para notificar");
-      } else if (uid && isPushSupported()) {
-        subscribeToPush(uid)
-          .then(() => getPushStatus().then(setPushStatus))
-          .catch(console.error);
-      }
-    } else if (uid) {
-      unsubscribeFromPush(uid)
-        .then(() => setPushStatus("inactive"))
-        .catch(console.error);
-    }
-    const nuevo = { ...cfg, alertasNavegadorActivas: activar };
-    setCfg(nuevo);
-    LS.setDoc("config", "global", nuevo);
-    showToast(activar ? "Alertas del navegador activadas" : "Alertas del navegador desactivadas");
+  const handleToggleAnalytics = () => {
+    const { mensaje } = toggleAnalytics();
+    showToast(mensaje);
   };
 
-  const probarNotificacion = async () => {
-    const result = await sendTestNotification();
-    if (result.ok) {
-      showToast("Notificación de prueba enviada.");
-      return;
-    }
-    if (result.permission === "denied") {
-      showToast("El navegador bloqueo las notificaciones");
-      return;
-    }
-    showToast("No se pudo enviar la notificacion de prueba");
+  const handleToggleAlertas = async () => {
+    const { mensaje } = await toggleAlertasNavegador();
+    showToast(mensaje);
   };
 
-  const toggleAnalytics = () => {
-    const nuevo = { ...cfg, analyticsEnabled: !(cfg.analyticsEnabled ?? true) };
-    setCfg(nuevo);
-    LS.setDoc("config", "global", nuevo);
-    showToast(nuevo.analyticsEnabled ? "Analítica activada" : "Analítica desactivada");
+  const handleProbarNotificacion = async () => {
+    const { mensaje } = await probarNotificacion();
+    showToast(mensaje);
   };
 
-  const buscarActualizacion = async () => {
-    setCheckingUpdate(true);
-    try {
-      const remote = await fetchRemoteVersion();
-      setRemoteBuild(remote);
-      showToast(isNewerBuild(APP_BUILD, remote) ? "Hay una versión nueva lista para instalar" : "Esta app ya tiene la última versión");
-    } catch (error) {
-      console.error(error);
-      showToast("No se pudo consultar la última versión");
-    } finally {
-      setCheckingUpdate(false);
-    }
+  const handleBuscarActualizacion = async () => {
+    const { mensaje } = await buscarActualizacion();
+    showToast(mensaje);
   };
 
-  const instalarActualizacion = async () => {
-    setUpdatingApp(true);
-    try {
-      const remote = remoteBuild || await fetchRemoteVersion();
-      await applyRemoteUpdate(remote);
-    } catch (error) {
-      console.error(error);
-      setUpdatingApp(false);
-      showToast("No se pudo instalar la actualizacion");
-    }
+  const handleInstalarActualizacion = async () => {
+    const { ok, mensaje } = await instalarActualizacion();
+    if (!ok && mensaje) showToast(mensaje);
   };
 
-  const instalarApp = async () => {
-    const result = await promptInstallApp();
-    if (result.ok) {
-      setInstallAvailable(false);
-      showToast("Instalacion iniciada");
-      return;
+  const handleInstalarApp = async () => {
+    const { mensaje } = await instalarApp();
+    showToast(mensaje);
+  };
+
+  const handleEliminarCuenta = async () => {
+    if (deleteConfirmText !== "ELIMINAR") return;
+    const { ok, mensaje } = await eliminarCuenta();
+    if (!ok) {
+      showToast(mensaje);
+      setShowDeleteConfirm(false);
+      setDeleteConfirmText("");
     }
-    if (result.reason === "unavailable") {
-      showToast("El instalador no esta disponible en este navegador o dispositivo");
-      return;
-    }
-    showToast("La instalacion fue cancelada");
   };
 
   return (
@@ -1734,7 +1627,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
             </p>
           </div>
           <button
-            onClick={toggleAnalytics}
+            onClick={handleToggleAnalytics}
             className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${(cfg.analyticsEnabled ?? true) ? "bg-emerald-500" : "bg-zinc-200"}`}
           >
             <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-200 ${(cfg.analyticsEnabled ?? true) ? "left-8" : "left-1"}`} />
@@ -1755,7 +1648,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
             <p className="text-[10px] text-zinc-400 font-bold mt-0.5">La app te avisa antes de un control o service para que no se te pase.</p>
           </div>
           <button
-            onClick={toggleAlertasNavegador}
+            onClick={handleToggleAlertas}
             className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${alertasActivas ? "bg-orange-500" : "bg-zinc-200"}`}
           >
             <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-200 ${alertasActivas ? "left-8" : "left-1"}`} />
@@ -1775,13 +1668,13 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3">
           <button
-            onClick={toggleAlertasNavegador}
+            onClick={handleToggleAlertas}
             className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all ${alertasActivas ? "bg-zinc-100 border border-zinc-200 text-zinc-700" : "bg-orange-600 text-white"}`}
           >
             {alertasActivas ? "Desactivar avisos" : "Activar avisos"}
           </button>
           <button
-            onClick={probarNotificacion}
+            onClick={handleProbarNotificacion}
             className="w-full bg-zinc-900 text-white py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
           >
             Probar aviso ahora
@@ -1820,7 +1713,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
             <p className="text-[10px] text-zinc-400 font-bold mt-0.5">Permite crear alertas rapidas para probar recordatorios y WhatsApp</p>
           </div>
           <button
-            onClick={toggleTestMode}
+            onClick={handleToggleTestMode}
             className={`relative w-14 h-7 rounded-full transition-all duration-200 active:scale-95 ${cfg.testModeRecordatorios ? "bg-purple-500" : "bg-zinc-200"}`}
           >
             <span className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow transition-all duration-200 ${cfg.testModeRecordatorios ? "left-8" : "left-1"}`} />
@@ -1879,14 +1772,14 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         </div>
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={buscarActualizacion}
+            onClick={handleBuscarActualizacion}
             disabled={checkingUpdate || updatingApp}
             className="w-full bg-zinc-50 border border-zinc-200 text-zinc-600 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
           >
             {checkingUpdate ? "Buscando..." : "Buscar actualización"}
           </button>
           <button
-            onClick={hasRemoteUpdate ? instalarActualizacion : () => window.location.reload()}
+            onClick={hasRemoteUpdate ? handleInstalarActualizacion : () => window.location.reload()}
             disabled={checkingUpdate || updatingApp}
             className={`w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 ${hasRemoteUpdate ? "bg-orange-600 text-white" : "bg-zinc-900 text-white"}`}
           >
@@ -1895,7 +1788,7 @@ function PantallaSistema({ loadDemoData, clearAllData, handleLogout, showToast, 
         </div>
         {!displayMode.installed && (
           <button
-            onClick={instalarApp}
+            onClick={handleInstalarApp}
             disabled={!installAvailable}
             className={`mt-3 w-full py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 ${installAvailable ? "bg-emerald-600 text-white" : "bg-zinc-200 text-zinc-500"}`}
           >
