@@ -5,7 +5,7 @@ import {
   Settings, HardDrive, Wrench, Plus, Minus, Star,
 } from "lucide-react";
 import { LS, useCollection } from "../lib/storage.js";
-import { auth, db } from "../firebase.js";
+import { auth } from "../firebase.js";
 import { createCloudBackup, listCloudBackups, restoreCloudBackup } from "../lib/cloudBackup.js";
 import { CONFIG_DEFAULT } from "../lib/constants.js";
 import { calcularResultadosOrden } from "../lib/calc.js";
@@ -21,11 +21,11 @@ import MapaPicker from "../components/MapaPicker.jsx";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
 import { runIntegrityCheckFromCache } from "../lib/integrityTest.js";
-import { collection, getDocsFromServer, query, limit, orderBy, where } from "firebase/firestore";
 import { useTallerConfig } from "../hooks/useTallerConfig.js";
 import { useBackupPanel } from "../hooks/useBackupPanel.js";
 import { useSistemaActions } from "../hooks/useSistemaActions.js";
 import { useSuscripcionPanel } from "../hooks/useSuscripcionPanel.js";
+import { useReputacionPanel } from "../hooks/useReputacionPanel.js";
 
 const DIFICULTADES = [
   { key: "facil",      label: "Fácil",      color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
@@ -1796,61 +1796,7 @@ function PublicarRedCard({ aprobados }) {
 }
 
 function PantallaReputacion() {
-  const [ratings, setRatings] = React.useState(null);
-  const [err, setErr] = React.useState(null);
-
-  const ratingTime = (rating) => {
-    const value = rating?.createdAt;
-    if (!value) return 0;
-    if (typeof value === "number") return value;
-    if (typeof value === "string") return new Date(value).getTime() || 0;
-    return value?.toMillis?.() || value?.seconds * 1000 || 0;
-  };
-
-  React.useEffect(() => {
-    if (!auth.currentUser) return;
-
-    const run = async () => {
-      try {
-        // Prefer server-side ordering/limit. If Firestore requires a composite index, fall back gracefully.
-        const snap = await getDocsFromServer(query(
-          collection(db, "ratings"),
-          where("uidTaller", "==", auth.currentUser.uid),
-          orderBy("createdAt", "desc"),
-          limit(60),
-        ));
-        setRatings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      } catch (e) {
-        const msg = e?.message || String(e || "");
-        // Firestore missing composite index usually surfaces as:
-        // - code: "failed-precondition"
-        // - message: "The query requires an index ..."
-        const isMissingIndex =
-          e?.code === "failed-precondition" ||
-          msg.toLowerCase().includes("requires an index");
-        if (isMissingIndex) {
-          try {
-            const snap2 = await getDocsFromServer(query(
-              collection(db, "ratings"),
-              where("uidTaller", "==", auth.currentUser.uid),
-            ));
-            const docs = snap2.docs
-              .map((d) => ({ id: d.id, ...d.data() }))
-              .sort((a, b) => ratingTime(b) - ratingTime(a))
-              .slice(0, 60);
-            setRatings(docs);
-            return;
-          } catch (e2) {
-            setErr(e2?.message || String(e2 || ""));
-            return;
-          }
-        }
-        setErr(msg);
-      }
-    };
-
-    run();
-  }, []);
+  const { ratings, err, avg, ga, pr, pendientes } = useReputacionPanel();
 
   if (ratings === null && !err) {
     return (
@@ -1875,23 +1821,6 @@ function PantallaReputacion() {
       </div>
     );
   }
-
-  const avg = (key) => {
-    const vals = ratings.filter((r) => r[key] > 0).map((r) => r[key]);
-    return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length) : null;
-  };
-  const genAvg = () => {
-    const avgs = CATS_REP.map((c) => avg(c.key)).filter((v) => v !== null);
-    return avgs.length ? avgs.reduce((a, b) => a + b, 0) / avgs.length : null;
-  };
-  const pctRecomienda = () => {
-    const con = ratings.filter((r) => r.recomienda !== undefined && r.recomienda !== null);
-    if (!con.length) return null;
-    return Math.round((con.filter((r) => r.recomienda === true || r.recomienda === "si").length / con.length) * 100);
-  };
-  const pendientes = ratings.filter((r) => !r.status || r.status === "pendiente_validacion").length;
-  const ga = genAvg();
-  const pr = pctRecomienda();
 
   return (
     <div className="animate-in fade-in pb-32 space-y-4">
