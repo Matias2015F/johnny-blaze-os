@@ -23,6 +23,7 @@ import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos }
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
 import { runIntegrityCheckFromCache } from "../lib/integrityTest.js";
 import { collection, doc, getDoc, getDocs, getDocsFromServer, query, limit, orderBy, where, setDoc } from "firebase/firestore";
+import { useTallerConfig } from "../hooks/useTallerConfig.js";
 
 const DIFICULTADES = [
   { key: "facil",      label: "Fácil",      color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
@@ -155,21 +156,19 @@ function PantallaResumen({ orders, caja }) {
 
 // PANTALLA: Taller
 function PantallaTaller({ cfg, setCfg, showToast }) {
-  const margen = cfg.margenPolitica ?? 25;
-  const horaCliente = Math.round((cfg.valorHoraInterno || 0) * (1 + margen / 100));
+  const { margen, horaCliente, setPrecioConfig, guardar, setFactor } = useTallerConfig({ cfg, setCfg });
+
   const [editUbicacion, setEditUbicacion] = React.useState(false);
   const [draftLatLng, setDraftLatLng] = React.useState(() => ({
     lat: cfg.lat ?? null,
     lng: cfg.lng ?? null,
   }));
 
-  // Si no estamos editando el pin, mantenemos el draft alineado al valor guardado.
   React.useEffect(() => {
     if (editUbicacion) return;
     setDraftLatLng({ lat: cfg.lat ?? null, lng: cfg.lng ?? null });
   }, [cfg.lat, cfg.lng, editUbicacion]);
 
-  // Auto-relleno: si el campo email está vacío, usar el mail de login
   React.useEffect(() => {
     const loginEmail = auth.currentUser?.email;
     if (!cfg.emailNotificacion && loginEmail) {
@@ -178,34 +177,9 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persiste precio al cache/Firestore inmediatamente — sin necesitar Guardar
-  const setPrecioConfig = (newCfg) => {
-    const m  = newCfg.margenPolitica ?? 25;
-    const hc = Math.round((newCfg.valorHoraInterno || 0) * (1 + m / 100));
-    const toSave = { ...newCfg, valorHoraCliente: hc };
-    setCfg(toSave);
-    LS.setDoc("config", "global", toSave);
-  };
-
-  const guardar = () => {
-    const toSave = { ...cfg, margenPolitica: margen, valorHoraCliente: horaCliente };
-    LS.setDoc("config", "global", toSave);
-    const uid = auth.currentUser?.uid;
-    if (uid && cfg.emailNotificacion) {
-      setDoc(doc(db, "usuarios", uid), { emailNotificacion: cfg.emailNotificacion }, { merge: true }).catch(console.error);
-    }
-    setDoc(
-      doc(db, "admin_settings", "global"),
-      { notificationEmail: cfg.emailNotificacion || auth.currentUser?.email || DEFAULT_ADMIN_SETTINGS.notificationEmail },
-      { merge: true }
-    ).catch(console.error);
+  const handleGuardar = () => {
+    guardar();
     showToast("Cambios guardados.");
-  };
-
-  const setFactor = (key, val) => {
-    const f = Math.round(val * 10) / 10;
-    if (f <= 0) return;
-    setPrecioConfig({ ...cfg, factorDificultad: { ...(cfg.factorDificultad || CONFIG_DEFAULT.factorDificultad), [key]: f } });
   };
 
   return (
@@ -592,7 +566,7 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
       </Card>
 
       <button
-        onClick={guardar}
+        onClick={handleGuardar}
         className="w-full bg-orange-600 text-white py-4 rounded-3xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
       >
         Guardar cambios
