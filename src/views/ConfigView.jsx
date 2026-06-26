@@ -12,7 +12,7 @@ import { calcularResultadosOrden } from "../lib/calc.js";
 import { APP_BUILD } from "../generated/appVersion.js";
 import { getDisplayModeInfo } from "../lib/appUpdate.js";
 import { isPushSupported } from "../lib/pushService.js";
-import { DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS, PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS, actualizarSuscripcionUsuario, crearTicketSoporte, guardarAdminSettings, isPlatformAdminUser, leerAdminSettings, leerUsuarioSaas, normalizeAdminSettings, normalizeDateMs, normalizeSaasUser } from "../services/saasService.js";
+import { PLATFORM_ADMIN_EMAILS, PLATFORM_ADMIN_UIDS } from "../services/saasService.js";
 import { logAdminAction } from "../services/adminAuditService.js";
 import { validateAdminSettings, validateExtraDays, validatePlanKey } from "../services/adminValidationService.js";
 import { FREE_PLAN_LIMITS, getFreeUsageStatus } from "../services/usageLimitService.js";
@@ -21,10 +21,11 @@ import MapaPicker from "../components/MapaPicker.jsx";
 import { exportarOrdenes, exportarClientes, exportarBalance, exportarRepuestos } from "../utils/export.js";
 import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup, tiempoDesde } from "../utils/backup.js";
 import { runIntegrityCheckFromCache } from "../lib/integrityTest.js";
-import { collection, doc, getDoc, getDocs, getDocsFromServer, query, limit, orderBy, where, setDoc } from "firebase/firestore";
+import { collection, getDocsFromServer, query, limit, orderBy, where } from "firebase/firestore";
 import { useTallerConfig } from "../hooks/useTallerConfig.js";
 import { useBackupPanel } from "../hooks/useBackupPanel.js";
 import { useSistemaActions } from "../hooks/useSistemaActions.js";
+import { useSuscripcionPanel } from "../hooks/useSuscripcionPanel.js";
 
 const DIFICULTADES = [
   { key: "facil",      label: "Fácil",      color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
@@ -915,302 +916,63 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
 
 // PANTALLA: Sistema
 function PantallaSuscripcion({ showToast }) {
-  const [loading, setLoading] = React.useState(true);
-  const [account, setAccount] = React.useState(null);
-  const [settings, setSettings] = React.useState(DEFAULT_ADMIN_SETTINGS);
-  const [invoices, setInvoices] = React.useState([]);
-  const [paymentResult, setPaymentResult] = React.useState(null); // ok | error | pendiente | null
-  const [lastAttempt, setLastAttempt] = React.useState(null); // { invoiceId, preferenceId, mode, planKey, at }
-  const [note, setNote] = React.useState("");
-  const [sending, setSending] = React.useState(false);
-  const [checkoutPlanKey, setCheckoutPlanKey] = React.useState(null);
-  const [cancelOpen, setCancelOpen] = React.useState(false);
+  const {
+    loading, account, settings, invoices, sending, paymentResult, activeAttempt, initError,
+    uid, planKey, planLabel, estadoLabel, activoHasta, previousPlanKey,
+    latestInvoiceAttempt,
+    irAPagar, solicitarCambioPlan, cancelarSuscripcion, enviarReclamo, diagnosticarPago,
+  } = useSuscripcionPanel();
+
+  const [note,             setNote]             = React.useState("");
+  const [checkoutPlanKey,  setCheckoutPlanKey]  = React.useState(null);
+  const [cancelOpen,       setCancelOpen]       = React.useState(false);
   const [cancelReasonCode, setCancelReasonCode] = React.useState("caro");
   const [cancelReasonText, setCancelReasonText] = React.useState("");
-  const [cancelComment, setCancelComment] = React.useState("");
-  const uid = auth.currentUser?.uid;
+  const [cancelComment,    setCancelComment]    = React.useState("");
 
-  const cargar = async () => {
-    if (!uid) return;
-    setLoading(true);
-    try {
-      // Cargar settings y usuario de forma independiente a las facturas
-      const [usuario, global] = await Promise.all([
-        leerUsuarioSaas(uid),
-        leerAdminSettings(),
-      ]);
-      setAccount(usuario);
-      setSettings(global);
-    } catch (error) {
-      console.error(error);
-      showToast("No se pudo cargar la suscripción");
-    } finally {
-      setLoading(false);
-    }
-    // Facturas en subcollection del usuario — falla silencioso para no bloquear settings
-    try {
-      const invoicesSnap = await getDocs(
-        query(collection(db, "usuarios", uid, "billingInvoices"), orderBy("fecha", "desc"), limit(5))
-      );
-      setInvoices(invoicesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    } catch (e) {
-      console.warn("No se pudieron cargar facturas:", e.message);
-    }
-  };
-
-  React.useEffect(() => {
-    cargar();
-  }, [uid]);
-
-  React.useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search || "");
-      const pago = params.get("pago");
-      const cs = params.get("collection_status");
-      let result = null;
-      if (pago === "ok" || pago === "error" || pago === "pendiente") {
-        result = pago;
-      } else if (cs === "approved") {
-        result = "ok";
-      } else if (cs === "rejected" || cs === "cancelled") {
-        result = "error";
-      } else if (cs === "pending" || cs === "in_process") {
-        result = "pendiente";
-      }
-      setPaymentResult(result);
-    } catch {
-      setPaymentResult(null);
-    }
-
-    try {
-      const raw = window.localStorage.getItem("jbos_last_mp_attempt");
-      setLastAttempt(raw ? JSON.parse(raw) : null);
-    } catch {
-      setLastAttempt(null);
-    }
-  }, []);
-
-  const planKey = String(account?.currentPlanKey || account?.plan || "base");
-  const planLabel =
-    account?.estado === "trial"
-      ? "Prueba"
-      : settings?.plans?.[planKey]?.label ||
-        (planKey === "pro" ? "Trimestral" : planKey === "full" ? "Anual" : "Mensual");
-  const estadoLabel = account?.estado === "activo" ? "Activa" : account?.estado === "trial" ? "En prueba" : "Vencida";
-  const activoHasta = normalizeDateMs(account?.activoHasta || account?.trialEndsAt || account?.nextBillingAt);
-  const previousPlanKey = account?.previousPlanKey || "";
-  const latestInvoiceAttempt = React.useMemo(() => {
-    const latest = invoices[0];
-    if (!latest) return null;
-    return {
-      invoiceId: latest.invoiceId || latest.id || null,
-      preferenceId: latest.preferenceId || null,
-      mode: latest.mpMode || null,
-      tokenMode: latest.mercadoPagoTokenMode || null,
-      planKey: latest.planKey || null,
-      at: normalizeDateMs(latest.updatedAt) || normalizeDateMs(latest.createdAt) || null,
-      status: latest.status || null,
-      errorMessage: latest.errorMessage || latest.errorText || null,
-      mpStatus: latest.errorHttpStatus || null,
-    };
-  }, [invoices]);
-  const activeAttempt = React.useMemo(() => {
-    if (!lastAttempt) return latestInvoiceAttempt;
-    if (!latestInvoiceAttempt) return lastAttempt;
-    const localAt = Number(lastAttempt.at || 0);
-    const invoiceAt = Number(latestInvoiceAttempt.at || 0);
-    return invoiceAt >= localAt ? latestInvoiceAttempt : lastAttempt;
-  }, [lastAttempt, latestInvoiceAttempt]);
-  const checkoutPlan = checkoutPlanKey ? (settings.plans?.[checkoutPlanKey] ?? { label: PLAN_LABELS[checkoutPlanKey] || checkoutPlanKey }) : null;
+  const checkoutPlan  = checkoutPlanKey
+    ? (settings.plans?.[checkoutPlanKey] ?? { label: PLAN_LABELS[checkoutPlanKey] || checkoutPlanKey })
+    : null;
   const checkoutPrice = settings.plans?.[checkoutPlanKey]?.price ?? settings.precios?.[checkoutPlanKey] ?? 0;
 
-  const persistPaymentAttempt = (attempt) => {
-    if (!attempt?.invoiceId && !attempt?.preferenceId) return;
-    const normalized = {
-      invoiceId: attempt.invoiceId || null,
-      preferenceId: attempt.preferenceId || null,
-      mode: attempt.mode || null,
-      tokenMode: attempt.tokenMode || null,
-      planKey: attempt.planKey || null,
-      at: attempt.at || Date.now(),
-      status: attempt.status || null,
-      errorMessage: attempt.errorMessage || null,
-      mpStatus: attempt.mpStatus || null,
-    };
-    try {
-      window.localStorage.setItem("jbos_last_mp_attempt", JSON.stringify(normalized));
-    } catch {
-      // ignore
-    }
-    setLastAttempt(normalized);
-  };
+  React.useEffect(() => {
+    if (initError) showToast(initError);
+  }, [initError]);
 
-  const abrirConfirmacionPago = (planKey) => {
-    setCheckoutPlanKey(planKey);
-  };
+  const abrirConfirmacionPago  = (key) => setCheckoutPlanKey(key);
+  const cerrarConfirmacionPago = ()    => setCheckoutPlanKey(null);
 
-  const cerrarConfirmacionPago = () => {
+  const handleIrAPagar = async (key) => {
     setCheckoutPlanKey(null);
+    const { ok, url, sandbox, mensaje } = await irAPagar(key);
+    if (!ok) { showToast(mensaje); return; }
+    if (sandbox) showToast("Pago en modo SANDBOX: entra con usuario COMPRADOR de prueba y usá tarjeta de prueba.");
+    window.location.href = url;
   };
 
-  const irAPagar = async (planKey) => {
-    try {
-      setSending(true);
-      setCheckoutPlanKey(null);
-      const idToken = await auth.currentUser.getIdToken();
-      const res = await fetch("/api/mp-create-preference", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({
-          uid,
-          plan: planKey,
-          planLabel: settings.plans?.[planKey]?.label || planKey,
-          planPrice: settings.precios?.[planKey] ?? 0,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.url) {
-        const statusLine = res?.status ? `HTTP ${res.status}` : "";
-        const hint = String(data.error || data.mpMessage || "").includes("MP_ACCESS_TOKEN")
-          ? " (configuración del servidor)"
-          : "";
-        persistPaymentAttempt({
-          invoiceId: data.invoiceId || null,
-          preferenceId: data.preferenceId || null,
-          planKey,
-          tokenMode: data.tokenMode || null,
-          at: Date.now(),
-          status: "error",
-          errorMessage: [data.mpMessage, data.error, statusLine ? `${statusLine}${hint}` : ""].filter(Boolean).join(" · ") || null,
-          mpStatus: data.mpStatus || null,
-        });
-        await cargar();
-        throw new Error([data.error, data.mpMessage, statusLine ? `${statusLine}${hint}` : ""].filter(Boolean).join(" · ") || "No se pudo generar el pago");
-      }
-
-      persistPaymentAttempt({
-        invoiceId: data.invoiceId || null,
-        preferenceId: data.preferenceId || null,
-        mode: data.mode || null,
-        tokenMode: data.tokenMode || null,
-        planKey,
-        at: Date.now(),
-      });
-      if (data.mode === "sandbox") {
-        showToast("Pago en modo SANDBOX: entra con usuario COMPRADOR de prueba y usá tarjeta de prueba.");
-      }
-      window.location.href = data.url;
-    } catch (error) {
-      console.error(error);
-      showToast(error.message || "No se pudo iniciar el pago");
-      setSending(false);
-    }
+  const handleSolicitarCambioPlan = async (key) => {
+    const { mensaje } = await solicitarCambioPlan(key);
+    showToast(mensaje);
   };
 
-  const guardarPedido = async (patch, okMessage) => {
-    try {
-      setSending(true);
-      await actualizarSuscripcionUsuario(uid, patch);
-      showToast(okMessage);
-      await cargar();
-    } catch (error) {
-      console.error(error);
-      showToast("No se pudo guardar el pedido");
-    } finally {
-      setSending(false);
-    }
+  const handleCancelar = async () => {
+    const { ok, mensaje } = await cancelarSuscripcion({
+      reasonCode: cancelReasonCode, reasonText: cancelReasonText, comment: cancelComment,
+    });
+    showToast(mensaje);
+    if (ok) setCancelOpen(false);
   };
 
-  const cancelarConFeedback = async () => {
-    try {
-      setSending(true);
-      const idToken = await auth.currentUser.getIdToken();
-      const res = await fetch("/api/cancel-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({
-          reasonCode: cancelReasonCode,
-          reasonText: cancelReasonText,
-          comment: cancelComment,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo cancelar");
-      setCancelOpen(false);
-      showToast("Cancelación registrada. Te enviamos un correo con una opción para reactivar.");
-      await cargar();
-    } catch (e) {
-      console.error(e);
-      showToast(e.message || "No se pudo cancelar");
-    } finally {
-      setSending(false);
-    }
+  const handleEnviarReclamo = async () => {
+    if (!note.trim()) { showToast("Escribí el reclamo antes de enviarlo"); return; }
+    const { ok, mensaje } = await enviarReclamo(note.trim());
+    showToast(mensaje);
+    if (ok) setNote("");
   };
 
-  const enviarReclamo = async () => {
-    if (!note.trim()) {
-      showToast("Escribí el reclamo antes de enviarlo");
-      return;
-    }
-    try {
-      setSending(true);
-      await crearTicketSoporte({
-        uid,
-        email: auth.currentUser?.email || "",
-        tipo: "reclamo_suscripcion",
-        mensaje: note.trim(),
-        currentPlanKey: account?.currentPlanKey || "",
-      });
-      setNote("");
-      showToast("Reclamo enviado al administrador");
-    } catch (error) {
-      console.error(error);
-      showToast("No se pudo enviar el reclamo");
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const diagnosticarPago = async () => {
-    try {
-      setSending(true);
-      const idToken = await auth.currentUser.getIdToken();
-      const res = await fetch("/api/mp-diagnose", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
-        body: JSON.stringify({
-          preferenceId: activeAttempt?.preferenceId || null,
-          invoiceId: activeAttempt?.invoiceId || null,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "No se pudo diagnosticar");
-
-      const payment = Array.isArray(data.payments) && data.payments.length ? data.payments[0] : null;
-      const status = payment?.status || payment?.status_detail || null;
-      const detail = payment?.status_detail || null;
-
-      if (!payment) {
-        const invoiceError = data.invoice?.errorMessage || data.invoice?.errorText || data.preferenceError || data.paymentsError;
-        if (invoiceError) {
-          showToast(String(invoiceError).slice(0, 180));
-          return;
-        }
-        if (data.preference) {
-          showToast("Preferencia creada, pero Mercado Pago no registro pago. Revisa que el comprador sea usuario test distinto.");
-          return;
-        }
-        showToast("Sin pagos asociados todavía. Proba de nuevo en 30s.");
-        return;
-      }
-
-      showToast(`MP: ${String(status || "sin estado")} ${detail ? `(${detail})` : ""}`.trim());
-    } catch (error) {
-      console.error(error);
-      showToast(error.message || "No se pudo diagnosticar el pago");
-    } finally {
-      setSending(false);
-    }
+  const handleDiagnosticar = async () => {
+    const { mensaje } = await diagnosticarPago();
+    showToast(mensaje);
   };
 
   if (loading) {
@@ -1250,7 +1012,7 @@ function PantallaSuscripcion({ showToast }) {
               </div>
             )}
             <button
-              onClick={diagnosticarPago}
+              onClick={handleDiagnosticar}
               disabled={sending || (!activeAttempt?.invoiceId && !activeAttempt?.preferenceId)}
               className="mt-3 w-full rounded-2xl bg-zinc-900 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
             >
@@ -1352,7 +1114,7 @@ function PantallaSuscripcion({ showToast }) {
             Cancelar al vencer
           </button>
           <button
-            onClick={() => guardarPedido({ requestedAction: "change_plan", requestedPlanKey: previousPlanKey || "base" }, "Pedido enviado para volver al plan anterior")}
+            onClick={() => handleSolicitarCambioPlan(previousPlanKey || "base")}
             disabled={sending || !previousPlanKey}
             className="rounded-2xl bg-zinc-50 border border-zinc-200 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-700 active:scale-95 disabled:opacity-50"
           >
@@ -1425,7 +1187,7 @@ function PantallaSuscripcion({ showToast }) {
                   Volver
                 </button>
                 <button
-                  onClick={cancelarConFeedback}
+                  onClick={handleCancelar}
                   disabled={sending}
                   className="rounded-2xl bg-red-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
                 >
@@ -1446,7 +1208,7 @@ function PantallaSuscripcion({ showToast }) {
             className="mt-3 w-full rounded-2xl border border-zinc-200 p-4 text-xs font-bold text-zinc-700 outline-none resize-none"
           />
           <button
-            onClick={enviarReclamo}
+            onClick={handleEnviarReclamo}
             disabled={sending}
             className="mt-3 w-full rounded-2xl bg-emerald-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
           >
@@ -1522,7 +1284,7 @@ function PantallaSuscripcion({ showToast }) {
                   Volver
                 </button>
                 <button
-                  onClick={() => irAPagar(checkoutPlanKey)}
+                  onClick={() => handleIrAPagar(checkoutPlanKey)}
                   disabled={sending}
                   className="rounded-2xl bg-orange-600 py-4 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 disabled:opacity-50"
                 >
