@@ -24,6 +24,7 @@ import { descargarBackup, restaurarDesdeTexto, restaurarAutoBackup, estadoBackup
 import { runIntegrityCheckFromCache } from "../lib/integrityTest.js";
 import { collection, doc, getDoc, getDocs, getDocsFromServer, query, limit, orderBy, where, setDoc } from "firebase/firestore";
 import { useTallerConfig } from "../hooks/useTallerConfig.js";
+import { useBackupPanel } from "../hooks/useBackupPanel.js";
 
 const DIFICULTADES = [
   { key: "facil",      label: "Fácil",      color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
@@ -577,45 +578,24 @@ function PantallaTaller({ cfg, setCfg, showToast }) {
 
 // PANTALLA: Datos
 function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setBkpEstado, fileInputRef, handleRestaurarArchivo, handleRestaurarAuto }) {
-  const [backups, setBackups] = React.useState([]);
-  const [loadingBackups, setLoadingBackups] = React.useState(false);
-  const [guardandoBkp, setGuardandoBkp] = React.useState(false);
-  const [restaurando, setRestaurando] = React.useState(null);
-  const [cloudRestoreConfirm, setCloudRestoreConfirm] = React.useState(null);
-  const [confirmText, setConfirmText] = React.useState("");
-  const [restoreStateInfo, setRestoreStateInfo] = React.useState(null);
-  const [integrityResult, setIntegrityResult] = React.useState(null);
-  const [datosView, setDatosView] = React.useState("menu");
+  const {
+    backups, loadingBackups, guardandoBkp, restaurando, restoreStateInfo,
+    cargarBackups, guardarEnNube, ejecutarRestauracion,
+  } = useBackupPanel();
 
-  const cargarBackups = async () => {
-    setLoadingBackups(true);
-    try {
-      const uid = auth.currentUser?.uid;
-      const [lista, rsSnap] = await Promise.all([
-        listCloudBackups(uid),
-        getDoc(doc(db, "users", uid, "restoreState", "current")).catch(() => null),
-      ]);
-      setBackups(lista);
-      if (rsSnap?.exists()) setRestoreStateInfo(rsSnap.data());
-    } catch (e) {
-      showToast("No se pudieron cargar las copias: " + e.message);
-    } finally {
-      setLoadingBackups(false);
-    }
-  };
+  const [cloudRestoreConfirm, setCloudRestoreConfirm] = React.useState(null);
+  const [confirmText,         setConfirmText]         = React.useState("");
+  const [integrityResult,     setIntegrityResult]     = React.useState(null);
+  const [datosView,           setDatosView]           = React.useState("menu");
+
+  React.useEffect(() => {
+    cargarBackups().then((err) => { if (err) showToast(err); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleGuardarEnNube = async () => {
-    setGuardandoBkp(true);
-    try {
-      const uid = auth.currentUser?.uid;
-      const r = await createCloudBackup(uid);
-      showToast(r ? `Copia guardada en la nube. ${r.total} registros protegidos.` : "No se encontraron datos para respaldar.");
-      cargarBackups();
-    } catch (e) {
-      showToast("No se pudo completar la operación: " + e.message);
-    } finally {
-      setGuardandoBkp(false);
-    }
+    const { mensaje } = await guardarEnNube();
+    showToast(mensaje);
   };
 
   const handleRestaurarNube = (backup) => {
@@ -627,20 +607,10 @@ function PantallaDatos({ orders, bikes, clients, cfg, showToast, bkpEstado, setB
     const backup = cloudRestoreConfirm;
     setCloudRestoreConfirm(null);
     setConfirmText("");
-    setRestaurando(backup.id);
-    try {
-      const uid = auth.currentUser?.uid;
-      const n = await restoreCloudBackup(uid, backup.id);
-      showToast(`Restauración completa. ${n} registros recuperados. La app se va a recargar.`);
-      setTimeout(() => window.location.reload(), 1500);
-    } catch (e) {
-      showToast(`No se restauró la copia. Motivo: ${e.message}`);
-    } finally {
-      setRestaurando(null);
-    }
+    const { ok, mensaje } = await ejecutarRestauracion(backup);
+    showToast(mensaje);
+    if (ok) setTimeout(() => window.location.reload(), 1500);
   };
-
-  React.useEffect(() => { cargarBackups(); }, []);
 
   const SubHeader = ({ title, onBack }) => (
     <button onClick={onBack} className="flex items-center gap-2 text-zinc-500 font-black text-[10px] uppercase tracking-widest mb-4 active:opacity-60 transition-opacity">
