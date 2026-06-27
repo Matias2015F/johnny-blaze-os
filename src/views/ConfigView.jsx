@@ -26,6 +26,7 @@ import { useSistemaActions } from "../hooks/useSistemaActions.js";
 import { useSuscripcionPanel } from "../hooks/useSuscripcionPanel.js";
 import { useReputacionPanel } from "../hooks/useReputacionPanel.js";
 import { useResumenPanel } from "../hooks/useResumenPanel.js";
+import { usePublicarRedCard } from "../hooks/usePublicarRedCard.js";
 
 const DIFICULTADES = [
   { key: "facil",      label: "Fácil",      color: "text-green-500",  bg: "bg-green-50",  border: "border-green-200" },
@@ -1670,41 +1671,12 @@ function StarBar({ score }) {
 }
 
 function PublicarRedCard({ aprobados }) {
-  const [publicando, setPublicando] = React.useState(false);
-  const [resultado, setResultado] = React.useState(null);
-  const [err, setErr] = React.useState("");
+  const { publicando, resultado, err, perfilUrl, publicar } = usePublicarRedCard();
   const [showDisclaimer, setShowDisclaimer] = React.useState(false);
 
-  const uid = auth.currentUser?.uid;
-  const perfilUrl = uid ? `https://app.motogestion.ar/taller/${uid}` : null;
-
-  const publicar = async () => {
-    if (publicando) return;
-    setPublicando(true);
+  const handlePublicar = () => {
     setShowDisclaimer(false);
-    setErr("");
-    setResultado(null);
-    try {
-      const token = await auth.currentUser.getIdToken();
-      const cfgActual = LS.getDoc("config", "global") || {};
-      const res = await fetch("/api/publish-workshop", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ciudadTaller:    cfgActual.ciudadTaller    || "",
-          provinciaTaller: cfgActual.provinciaTaller || "",
-          lat: typeof cfgActual.lat === "number" ? cfgActual.lat : null,
-          lng: typeof cfgActual.lng === "number" ? cfgActual.lng : null,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo publicar.");
-      setResultado(data);
-    } catch (e) {
-      setErr(e.message || "Error al publicar.");
-    } finally {
-      setPublicando(false);
-    }
+    publicar();
   };
 
   return (
@@ -1729,7 +1701,7 @@ function PublicarRedCard({ aprobados }) {
                 Cancelar
               </button>
               <button
-                onClick={publicar}
+                onClick={handlePublicar}
                 className="rounded-2xl bg-orange-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95"
               >
                 Acepto y publico
