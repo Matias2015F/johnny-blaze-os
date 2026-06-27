@@ -21,5 +21,9 @@
 ## Datos
 /datos — Diseñar o revisar schemas Firestore, colecciones, campos y retrocompatibilidad.
 
+## Proyecto
+/motogestion — Activar supervisor de sesion. Carga contexto completo, reporta estado de hooks SRP, activa reglas de entorno y coordina agentes. Invocar al inicio de cada sesion o tras corte de contexto. Skill en .clou/skills/motogestion/SKILL.md
+/cierre — Cerrar sesion con traspaso limpio. Verifica produccion, actualiza backlog y contexto, genera tarjeta de cierre autocontenida para reanudar sin perder nada. Skill en .clou/skills/motogestion/CIERRE.md
+
 ## Agentes
 /agents — Invocar un sub-agente especializado del equipo virtual. Agentes disponibles en .clou/agents/: backend-auditor (audita api/ contra el Baseline de Oro), growth-specialist (leads y propuestas comerciales), mcp-orchestrator (integraciones externas sin contaminar contexto de programacion), programacion-mentor (mentor bilingue que explica arquitectura y ensenanza antes de escribir codigo).
