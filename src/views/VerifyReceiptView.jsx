@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase.js";
+import React, { useState } from "react";
+import { useVerifyReceipt } from "../hooks/useVerifyReceipt.js";
 
 function StarSelector({ value, onChange, label }) {
   return (
@@ -46,23 +45,6 @@ function ErrorCard({ title, text, icon = "!" }) {
   );
 }
 
-function normalizeDiscountPct(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(50, Math.round(n)));
-}
-
-function normalizeIncentive(incentive) {
-  const discountPct = normalizeDiscountPct(incentive?.discountPct);
-  if (!incentive?.enabled || discountPct <= 0) return null;
-  return {
-    ...incentive,
-    discountPct,
-    title: incentive.title || `${discountPct}% de descuento en tu proxima visita`,
-    description: incentive.description || "El beneficio queda registrado automaticamente para esta moto si la calificacion queda validada.",
-  };
-}
-
 function LoyaltyRewardCard({ incentive, compact = false }) {
   if (!incentive) return null;
 
@@ -85,71 +67,26 @@ function LoyaltyRewardCard({ incentive, compact = false }) {
 }
 
 export default function VerifyReceiptView({ token }) {
-  const [estado, setEstado] = useState("cargando");
-  const [receipt, setReceipt] = useState(null);
-  const [fase, setFase] = useState("verificacion");
+  const {
+    estado,
+    receipt,
+    fase,
+    setFase,
+    ratingIncentive,
+    enviando,
+    errorEnvio,
+    descargando,
+    downloadError,
+    descargarPdf,
+    submitRating,
+  } = useVerifyReceipt(token);
+
   const [phoneLast4, setPhoneLast4] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [checks, setChecks] = useState([true, true, true, true]);
   const [scores, setScores] = useState({ atencion: 0, claridad: 0, trabajo: 0, cumplimiento: 0 });
   const [recomienda, setRecomienda] = useState(null);
   const [comentario] = useState("");
-  const [enviando, setEnviando] = useState(false);
-  const [errorEnvio, setErrorEnvio] = useState("");
-  const [ratingIncentive, setRatingIncentive] = useState(null);
-  const [descargando, setDescargando] = useState(false);
-  const [downloadError, setDownloadError] = useState("");
-
-  useEffect(() => {
-    if (!token) {
-      setEstado("no_encontrado");
-      return;
-    }
-
-    getDoc(doc(db, "publicReceipts", token))
-      .then((snap) => {
-        if (!snap.exists()) {
-          setEstado("no_encontrado");
-          return;
-        }
-
-        const data = snap.data();
-        setReceipt(data);
-        setRatingIncentive(normalizeIncentive(data.incentive));
-        if (data.estado === "anulado") {
-          setEstado("anulado");
-          return;
-        }
-        if (data.ratingUsed) {
-          setEstado("ya_calificado");
-          return;
-        }
-        if (Number(data.ratingExpiresAt || 0) < Date.now()) {
-          setEstado("vencido");
-          return;
-        }
-        setEstado("verificado");
-        // Si hay telefono, primero confirma identidad; despues valida y califica en una sola pantalla.
-        setFase(data.hasPhoneVerification ? "verificacion" : "formulario");
-      })
-      .catch(() => setEstado("no_encontrado"));
-  }, [token]);
-
-  useEffect(() => {
-    if (!token || !receipt || ratingIncentive) return;
-
-    let cancelled = false;
-    fetch(`/api/verify-document?mode=receipt-incentive&token=${encodeURIComponent(token)}`)
-      .then((response) => response.json().catch(() => ({})))
-      .then((data) => {
-        if (!cancelled && data?.ok) setRatingIncentive(normalizeIncentive(data.incentive));
-      })
-      .catch(() => {});
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token, receipt, ratingIncentive]);
 
   const verificarTelefono = () => {
     if (phoneLast4.replace(/\D/g, "").length !== 4) {
@@ -174,56 +111,9 @@ export default function VerifyReceiptView({ token }) {
     if (recomienda === null) setRecomienda(valor >= 4);
   };
 
-  const descargarPdf = async () => {
-    setDescargando(true);
-    setDownloadError("");
-    try {
-      const resp = await fetch(`/api/download-receipt-pdf?token=${encodeURIComponent(token)}`);
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok || !data.ok) throw new Error(data.error || "No se pudo obtener el enlace.");
-      window.open(data.url, "_blank");
-    } catch (e) {
-      setDownloadError(e.message || "No se pudo descargar. Intentá de nuevo.");
-    } finally {
-      setDescargando(false);
-    }
-  };
-
   const enviarCalificacion = async () => {
     if (!formValido || enviando) return;
-    setEnviando(true);
-    setErrorEnvio("");
-
-    try {
-      const response = await fetch("/api/submit-rating", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token,
-          phoneLast4: phoneLast4.replace(/\D/g, ""),
-          scoreAtencion: scores.atencion,
-          scoreClaridad: scores.claridad,
-          scoreTrabajo: scores.trabajo,
-          scoreCumplimiento: scores.cumplimiento,
-          recomienda: recomienda ?? scores.atencion >= 4,
-          comentario: comentario.trim(),
-        }),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok) {
-        if (response.status === 403) setFase("verificacion");
-        throw new Error(data.error || "No pudimos guardar la calificación.");
-      }
-
-      setFase("enviado");
-      setEstado("ya_calificado");
-      if (receipt?.pdfStoragePath) await descargarPdf();
-    } catch (error) {
-      setErrorEnvio(error.message || "No se pudo enviar la calificación. Intentá de nuevo.");
-    } finally {
-      setEnviando(false);
-    }
+    await submitRating({ phoneLast4, scores, recomienda, comentario });
   };
 
   const fechaLabel = receipt?.fechaEmision
