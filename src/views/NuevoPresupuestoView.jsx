@@ -1,11 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { db, auth } from "../firebase.js";
-import { getDoc, doc } from "firebase/firestore";
+import React, { useRef, useState } from "react";
 import { ArrowLeft, Info, Mic, MicOff } from "lucide-react";
-
-function normalizar(value = "") {
-  return String(value).trim().toUpperCase();
-}
+import { useNuevoPresupuesto } from "../hooks/useNuevoPresupuesto.js";
 
 export default function NuevoPresupuestoView({ onCrear, setView, bikes = [], clients = [] }) {
   const [f, setF] = useState({
@@ -20,19 +15,10 @@ export default function NuevoPresupuestoView({ onCrear, setView, bikes = [], cli
     validezDias: 7,
   });
   const [ignorarSugerencia, setIgnorarSugerencia] = useState(false);
-  const [beneficio, setBeneficio] = useState(null);
-
-  useEffect(() => {
-    if (!coincidenciaMoto) { setBeneficio(null); return; }
-    const patente = normalizar(f.patente);
-    const uid = auth.currentUser?.uid;
-    if (!uid || !patente) { setBeneficio(null); return; }
-    getDoc(doc(db, "users", uid, "clienteBeneficios", patente))
-      .then(snap => setBeneficio(snap.exists() && snap.data()?.estado === "activo" ? snap.data() : null))
-      .catch(() => setBeneficio(null));
-  }, [coincidenciaMoto, f.patente]);
   const [dictando, setDictando] = useState(false);
   const recognitionRef = useRef(null);
+
+  const { beneficio, coincidenciaMoto } = useNuevoPresupuesto({ patente: f.patente, bikes, clients });
 
   const toggleDictado = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -62,15 +48,6 @@ export default function NuevoPresupuestoView({ onCrear, setView, bikes = [], cli
 
     rec.start();
   };
-
-  const coincidenciaMoto = useMemo(() => {
-    const patente = normalizar(f.patente);
-    if (patente.length < 3) return null;
-    const moto = bikes.find((b) => normalizar(b.patenteNormalizada || b.patente) === patente);
-    if (!moto) return null;
-    const cliente = clients.find((c) => c.id === moto.clienteId) || null;
-    return { moto, cliente };
-  }, [bikes, clients, f.patente]);
 
   const usarHistorial = () => {
     if (!coincidenciaMoto) return;
