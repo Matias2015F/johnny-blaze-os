@@ -1,45 +1,30 @@
-import React, { useState, useEffect } from "react";
-import { ArrowLeft, Clock } from "lucide-react";
-import { LS, obtenerOrden, actualizarOrden } from "../lib/storage.js";
+import React from "react";
+import { ArrowLeft } from "lucide-react";
+import { useEsperandoAprobacion } from "../hooks/useEsperandoAprobacion.js";
 import { formatMoney, formatMoneyParts } from "../utils/format.js";
 
 export default function EsperandoAprobacionView({ ordenId, setView }) {
-  const [orden, setOrden] = useState(null);
-  const [cliente, setCliente] = useState(null);
-  const [moto, setMoto] = useState(null);
-  const [tiempoEspera, setTiempoEspera] = useState(0);
-
-  useEffect(() => {
-    const o = obtenerOrden(ordenId);
-    if (!o) return;
-    setOrden(o);
-    setCliente(LS.getDoc("clientes", o.clientId) || {});
-    setMoto(LS.getDoc("motos", o.bikeId) || {});
-  }, [ordenId]);
-
-  useEffect(() => {
-    const interval = setInterval(() => setTiempoEspera((t) => t + 1), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const horas = Math.floor(tiempoEspera / 3600);
-  const minutos = Math.floor((tiempoEspera % 3600) / 60);
-  const segundos = tiempoEspera % 60;
-
-  const totalTareas = (orden?.tareas || []).reduce((s, t) => s + (t.monto || 0), 0);
-  const totalRepuestos = (orden?.repuestos || []).reduce((s, r) => s + (r.monto || 0) * (r.cantidad || 1), 0);
-  const totalInsumos = (orden?.insumos || []).reduce((s, i) => s + (i.monto || 0), 0);
-  const totalFletes = (orden?.fletes || []).reduce((s, f) => s + (f.monto || 0), 0);
-  const totalPresupuesto = orden?.total || totalTareas + totalRepuestos + totalInsumos + totalFletes;
+  const {
+    orden,
+    cliente,
+    moto,
+    horas,
+    minutos,
+    segundos,
+    totalTareas,
+    totalRepuestos,
+    totalInsumos,
+    totalFletes,
+    totalPresupuesto,
+    aprobar,
+  } = useEsperandoAprobacion(ordenId);
 
   const handleAprobar = () => {
-    actualizarOrden(ordenId, { estado: "aprobacion", aprobado_fecha: Date.now() });
-    setView("ejecucion");
+    const { ok } = aprobar();
+    if (ok) setView("ejecucion");
   };
 
-  const handleModificar = () => {
-    setView("gestionarTareas");
-  };
+  const handleModificar = () => setView("gestionarTareas");
 
   if (!orden) {
     return (
@@ -125,4 +110,3 @@ export default function EsperandoAprobacionView({ ordenId, setView }) {
     </div>
   );
 }
-
