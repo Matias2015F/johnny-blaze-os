@@ -1,16 +1,15 @@
 # Contexto MotoGestion — Estado actual
-**Fecha:** 2026-06-27 | **Commit:** `35aaf77` | **Produccion:** `app.motogestion.ar`
+**Fecha:** 2026-06-28 | **Commit HEAD/origin:** `5e5a55f` | **Commit deploy Vercel:** `35aaf77` | **Produccion:** `app.motogestion.ar`
 
-**Comando de inicio:** `"continuamos con MotoGestion"`
+**Comando de inicio:** `/motogestion`
 
 ---
 
-## 1. Progreso y Hitos — Refactor SRP
+## 1. Tarjeta de Cierre de Sesion (2026-06-27)
 
-Objetivo completado: separacion absoluta Capa Presentacion (UI) de Capa Dominio (logica).
-Regla: "La UX no cumple funciones. Primero extrae la logica a un hook."
+### Hitos fijados en la sesion
 
-### ConfigView.jsx — 100% desacoplado de Firestore
+**8 hooks SRP extraidos de `ConfigView.jsx` (cbee5b7 -> 35aaf77):**
 
 | Sub-componente | Hook extraido | Commit |
 |---|---|---|
@@ -23,116 +22,110 @@ Regla: "La UX no cumple funciones. Primero extrae la logica a un hook."
 | PantallaResumen | `src/hooks/useResumenPanel.js` | `cbee5b7` |
 | PublicarRedCard | `src/hooks/usePublicarRedCard.js` | `35aaf77` |
 
-### Resultado
-
 - `firebase/firestore` import eliminado por completo de ConfigView.jsx
-- `db` eliminado del import de firebase.jsx en ConfigView
-- Imports de saasService reducidos a solo `PLATFORM_ADMIN_EMAILS`, `PLATFORM_ADMIN_UIDS`
-- Imports de appUpdate y pushService reducidos a `getDisplayModeInfo` e `isPushSupported`
-- `calcularResultadosOrden` de calc.js eliminado (movido a useResumenPanel)
-- `deleteUser` de firebase/auth eliminado (movido a useSistemaActions)
+- Skills `/motogestion` y `/cierre` creados y commiteados (`5e5a55f`)
+- Auditoria integral de `src/views/` con backlog P1/P2/P3 documentado
+- Reglas de entorno Windows memorizadas
+
+### Respaldos de sesion
+
+- `.clou/contexto-motogestion-actual.md` — actualizado (fuente de verdad)
+- `.clou/skills/motogestion/SKILL.md` — backlog verificado
+- `memory/project_johnny_blaze.md` — HEAD actualizado
+- `Downloads/motogestion-cierre-2026-06-27.txt` — backup externo
 
 ---
 
-## 2. Arquitectura y Conexiones
+## 2. Estado del Repo y Deploy
 
-### Ecosistema
-
-```
-app.motogestion.ar    -> github.com/Matias2015F/johnny-blaze-os (rama main)
-admin.motogestion.ar  -> mismo repo, proyecto Vercel: motogestion-admin
-motogestion.ar        -> github.com/Matias2015F/motogestion-landing
-```
-
-### Patron SRP establecido
-
-```
-src/hooks/use[Nombre].js  -- logica de dominio, estado async, efectos
-src/views/*.jsx            -- solo render + wrappers handle* que llaman showToast(mensaje)
-```
-
-Contrato de hooks:
-- Acciones async -> `{ ok: bool, mensaje: string }`
-- `irAPagar` -> `{ ok, url, sandbox, mensaje }` (caso especial MP)
-- NUNCA `showToast` dentro de un hook
-- NUNCA `setView`/`navigate` dentro de un hook
-- `initError`: hook expone el error del init, vista lo toastea en `useEffect([initError])`
-- Hooks que leen cfg reciben `{ cfg, setCfg }` como parametros (no poseen el estado)
-
-### Storage — Filtro Anti-Derroche
-
-`storage.js` centraliza el unico punto de escritura a Firestore desde el frontend.
-`useCollection(col)` es el unico punto de suscripcion reactiva con `onSnapshot`.
-Las vistas no escriben directamente a Firestore.
-Esto protege la cuota de Firebase para 500+ usuarios sin micro-lecturas basura.
+| Capa | SHA | Estado |
+|---|---|---|
+| `origin/main` | `5e5a55f` | en sync con local |
+| Vercel app.motogestion.ar | `35aaf77` | **ATRASADO** — `5e5a55f` es solo docs, no urgente |
+| Vercel admin.motogestion.ar | desconocido | verificar antes de sync |
 
 ---
 
-## 3. Agentes y Skills Activos
+## 3. Backlog Remanente — Proximo en la Trinchera
 
-### Agente guardian (si existe)
-`.claude/agents/auditor-arquitectura.md` — vigila que la UI se mantenga tonta,
-bloquea la inyeccion de logica de negocio en vistas y listeners duplicados de DB.
+| Prioridad | Tarea |
+|---|---|
+| **P1** | `useVerifyReceipt` <- `src/views/VerifyReceiptView.jsx` |
+| **P2** | `useEsperandoAprobacion` <- `src/views/EsperandoAprobacionView.jsx` |
+| **Deuda critica** | Node.js 24.x en `package.json` — **DEADLINE: 2026-10-01** |
 
-### Skills a activar por dominio
-- Arquitectura/refactor: `engineering-skills:senior-architect`, `engineering-skills:senior-frontend`
-- Firebase: `firebase-basics`, `firebase-firestore`, `firebase-auth-basics`
-- Deploy: `vercel:deploy`
-- Revision: `engineering-skills:code-reviewer`
-- Seguridad: `engineering-skills:senior-security`
+### Vistas candidatas SRP (por complejidad/impacto)
+
+```bash
+# Auditar antes de tocar:
+grep -n "useState\|useEffect\|fetch\|LS\." src/views/NombreView.jsx
+```
+
+1. `src/views/HomeView.jsx`
+2. `src/views/NewOrderView.jsx`
+3. `src/views/HistoryView.jsx` (chunk 845KB — deuda futura: dynamic import)
+4. `src/views/AgendaView.jsx`
+5. `src/views/RecordatoriosView.jsx`
+
+### Otros pendientes
+
+- Sync `admin.motogestion.ar` con commits actuales
+- Limpiar repos y proyectos Vercel sin uso (`gh repo list`, `npx vercel ls`) — confirmar antes de borrar
 
 ---
 
-## 4. Alertas Tecnicas
+## 4. Inventario del Ecosistema de Trabajo
 
-### URGENTE: Node.js 20.x deprecated en Vercel
-**Deadline: 2026-10-01**
-```json
-// package.json -- agregar:
-"engines": { "node": "24.x" }
-```
+### Agentes activos (`.claude/agents/`)
 
-### Chunk grande
-`HistoryView-*.js` = 845KB minified.
-Deuda futura: `dynamic import()` para code-split HistoryView.
+| Agente | Cuando invocar | Modelo |
+|---|---|---|
+| `auditor-arquitectura` | ANTES de tocar cualquier vista — bloquea logica de dominio inline en JSX y listeners duplicados | Opus |
+| `motogestion-auditor` | Estado real del codebase y produccion. Fuente de verdad antes de deployar, vender o presentar | Opus |
+| `backend-auditor` | Antes de tocar cualquier archivo en `api/` — audita contra el Baseline de Oro | Sonnet 4.6 |
+| `growth-specialist` | Captacion de talleres: leads Google Maps/Reddit, propuestas comerciales, outreach | Opus |
+| `mcp-orchestrator` | Integraciones externas (Google Sheets, WhatsApp API, Supabase, Zapier) sin contaminar contexto de codigo | Sonnet 4.6 |
+| `programacion-mentor` | Explicar arquitectura y el "por que" en espanol antes de escribir codigo | Opus |
+| `database-architect` | Diseno de schema, modelado, migraciones entre servicios | Sonnet 4.6 |
+
+### Skills del proyecto (`.clou/skills/`)
+
+| Comando | Archivo | Funcion |
+|---|---|---|
+| `/motogestion` | `motogestion/SKILL.md` | Apertura de sesion: carga contexto, backlog SRP, reglas de entorno |
+| `/cierre` | `CIERRE.md` | Cierre de sesion: verifica prod, actualiza contexto, genera tarjeta de traspaso |
+| — | `backup.md` | SOP backup del Baseline de Oro (13 archivos) a `backups/YYYY-MM-DD_HHMM/` |
+| — | `funcion-unica.md` | Principio SRP — guia para extraer hooks de vistas |
+
+---
+
+## 5. Protocolos Especiales
+
+### SKILL C+B (`CLAUDE.md`)
+
+Activa simultaneamente:
+- **Opcion C:** El asistente declara skills antes de tocar codigo (`/respaldo`, `/seguro`, `/revision`)
+- **Opcion B:** Auditoria de estado `DECIDED / IMPLEMENTED / CONNECTED_TO_UI / ENFORCED_RUNTIME / DEPLOYED`
+
+### `/arquitectura-soberana`
+
+Freno de dominio: confirma entorno antes de cualquier cambio:
+- `[1]` App usuario (`app.motogestion.ar`)
+- `[2]` App admin (`admin.motogestion.ar`)
+- `[3]` Landing (`motogestion.ar`)
+
+---
+
+## 6. Alertas Tecnicas
 
 ### API limit
+
 12/12 funciones serverless en `api/` (limite Vercel Hobby).
 NO crear archivo nuevo sin eliminar otro. Patron: `?mode=` + rewrite en `vercel.json`.
 
 ---
 
-## 5. Pendientes y Proximos Pasos
-
-### A) Continuar refactor SRP — vistas candidatas
-
-```bash
-# Auditar una vista antes de tocarla:
-grep -n "useState\|useEffect\|fetch\|LS\." src/views/NombreView.jsx
-```
-
-Ordenadas por complejidad/impacto:
-1. `src/views/HomeView.jsx`
-2. `src/views/NewOrderView.jsx`
-3. `src/views/HistoryView.jsx` (chunk mas grande)
-4. `src/views/AgendaView.jsx`
-5. `src/views/RecordatoriosView.jsx`
-
-### B) Node.js 24.x en package.json (Deadline 2026-10-01)
-
-### C) Sync admin.motogestion.ar con commits de esta sesion
-
-### D) Limpiar repos y proyectos Vercel sin uso (pedido del usuario)
-```bash
-gh repo list --limit 50
-npx vercel ls --scope matias2015fs-projects
-```
-Confirmar con el usuario antes de borrar — es irreversible.
-Conservar: app usuario, admin, landing.
-
----
-
-## 6. Archivos Protegidos (Baseline de Oro)
+## 7. Archivos Protegidos (Baseline de Oro)
 
 Modificar sin instruccion explicita esta prohibido:
 ```
@@ -144,8 +137,23 @@ api/_firebase-admin.js  firestore.rules  src/utils/calc.js
 ```
 
 `noModificaCamposSuscripcion()` en `firestore.rules` bloquea autopromociones de plan.
-Si se rompe, cualquier usuario puede escalar su plan sin pagar.
 
 ---
 
-*Generado 2026-06-27. Para continuar: "continuamos con MotoGestion"*
+## 8. Patron SRP (contrato establecido)
+
+```
+src/hooks/use[Nombre].js  -- logica de dominio, estado async, efectos
+src/views/*.jsx            -- solo render + wrappers handle* que llaman showToast(mensaje)
+```
+
+- Acciones async -> `{ ok: bool, mensaje: string }`
+- `irAPagar` -> `{ ok, url, sandbox, mensaje }` (caso especial MP)
+- NUNCA `showToast` dentro de un hook
+- NUNCA `setView`/`navigate` dentro de un hook
+- `initError`: hook expone el error del init, vista lo toastea en `useEffect([initError])`
+- Hooks que leen cfg reciben `{ cfg, setCfg }` como parametros (no poseen el estado)
+
+---
+
+*Actualizado 2026-06-28. Para continuar: `/motogestion`*

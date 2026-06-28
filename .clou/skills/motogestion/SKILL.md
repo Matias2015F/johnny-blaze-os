@@ -71,6 +71,8 @@ Patron: `?mode=nuevo_modo` en funcion existente + rewrite en `vercel.json`.
 
 ### DONE — Ya tienen hook extraido
 
+*Ultima verificacion: 2026-06-27 | HEAD local: `5e5a55f` | Produccion: `35aaf77`*
+
 | Vista | Hook | Commit |
 |---|---|---|
 | ConfigView / OrderDetailView | `useOrderDetailView.js` | `5c91ec6` |
