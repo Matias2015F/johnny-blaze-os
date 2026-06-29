@@ -9,18 +9,16 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `114b416` | 2026-06-25 |
+| `app.motogestion.ar` | `motogestion-app` | `5634dde` | 2026-06-29 |
 | `admin.motogestion.ar` | `motogestion-admin` | `114b416` | 2026-06-25 |
-
-> NOTA: origin/main esta en `6ef5b19`. Los commits e5f8b63..6ef5b19 (Fase 1 + Fase 2.x) estan pusheados pero NO deploados a Vercel.
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `6ef5b19` — Fase 2.2: HomeView usa Card + Badge del design system
+SHA: `5634dde` — chore(package-lock): sincronizar engines node a 24.x
 
 ## HEAD local
 
-SHA: `6ef5b19` — en sync con origin/main.
+SHA: `5634dde` — en sync con origin/main.
 
 ---
 
@@ -62,16 +60,27 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 
 ## Ultima sesion
 
-**Fecha:** 2026-06-25
+**Fecha:** 2026-06-29
 **IA:** Claude (Sonnet 4.6)
 **Trabajo realizado:**
-- Claude: `e5f8b63` - Fase 1: Design System Tokens — gray→zinc global, active:scale-95, colores semánticos en tailwind.config.js
-- Claude: `506a9a2` - Fase 2: UI Component Library — Button/Input/Card/Badge + barrel export index.js
-- Claude: `654f6df` - Fase 2.1: LoginScreen refactorizado con Input + Button (validado en browser)
-- Claude: `28c5461` - Directiva Fase 2: plan detallado de rollout por vista
-- Claude: `6ef5b19` - Fase 2.2: HomeView usa Card (mini-stats) + Badge (ESTADO_BADGE) — Card.jsx alineado con spec CLAUDE.md
+- Deploy verificado: `5634dde` en produccion (`app.motogestion.ar/version.json` confirmado)
+- Committeado: `5634dde` chore(package-lock): sincronizar engines node a 24.x
+- Lint: 0 errors, 59 warnings preexistentes (ninguno nuevo)
+- Build local: OK en 15.44s / Build Vercel: OK en 36.04s
+- Node runtime: 24.x (engines sincronizado en package.json + package-lock.json)
 
-**Pendiente de deploy:** commits e5f8b63..6ef5b19 estan en origin/main pero NO deploados a app.motogestion.ar
+**Estado por fase:**
+- P1: completo
+- P2.0 (Node 24): completo
+- P2.1 (resolverTicketSoporte): completo
+- P2.2-A (dynamic imports HistoryView): aplicado pero PARCIAL — ver nota abajo
+- P2.2-B: PENDIENTE
+
+**Nota P2.2-A / P2.2-B:**
+`HistoryView` sigue pesando **512.56 kB** (supera umbral 500 kB).
+Causa: `pdfjs-dist` es importado estaticamente en `useHistoryView.js`, lo que cancela el code-split de Vite aunque `HistoryView.jsx` lo importe dinamicamente.
+Proxima tarea: mover el import estatico de `pdfjs-dist` en `useHistoryView.js` a patron lazy/dynamic import (P2.2-B).
+No continuar con OrderDetailView ni ConfigView hasta cerrar P2.2-B.
 
 ---
 
