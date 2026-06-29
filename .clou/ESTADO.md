@@ -9,16 +9,16 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `5634dde` | 2026-06-29 |
+| `app.motogestion.ar` | `motogestion-app` | `a4912f9` | 2026-06-29 |
 | `admin.motogestion.ar` | `motogestion-admin` | `114b416` | 2026-06-25 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `5634dde` — chore(package-lock): sincronizar engines node a 24.x
+SHA: `a4912f9` — perf(P2.2-B): separar pdfjs-dist del chunk HistoryView
 
 ## HEAD local
 
-SHA: `5634dde` — en sync con origin/main.
+SHA: `a4912f9` — en sync con origin/main.
 
 ---
 
@@ -76,11 +76,13 @@ No agregar ningun archivo nuevo en `api/` sin eliminar otro primero.
 - P2.2-A (dynamic imports HistoryView): aplicado pero PARCIAL — ver nota abajo
 - P2.2-B: PENDIENTE
 
-**Nota P2.2-A / P2.2-B:**
-`HistoryView` sigue pesando **512.56 kB** (supera umbral 500 kB).
-Causa: `pdfjs-dist` es importado estaticamente en `useHistoryView.js`, lo que cancela el code-split de Vite aunque `HistoryView.jsx` lo importe dinamicamente.
-Proxima tarea: mover el import estatico de `pdfjs-dist` en `useHistoryView.js` a patron lazy/dynamic import (P2.2-B).
-No continuar con OrderDetailView ni ConfigView hasta cerrar P2.2-B.
+**Nota P2.2-B — COMPLETADO:**
+`HistoryView` bajo de 512 kB a **150.92 kB** (-70%).
+`pdfjs-dist` separado en chunk independiente `pdf-*.js` (361 kB, cargado on-demand).
+Warning de Vite >500 kB: eliminado. Produccion verificada en `a4912f9`.
+
+**Proximo ticket:** DX-001 — Arquitectura del entorno de desarrollo.
+Alcance acotado: crear `.claude/templates/` unicamente. No mover reglas, no tocar CLAUDE.md, no tocar agentes ni skills existentes.
 
 ---
 
