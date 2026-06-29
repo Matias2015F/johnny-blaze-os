@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { ArrowLeft, FileText, Plus, Search } from "lucide-react";
 import { formatMoney } from "../utils/format.js";
+import { usePresupuestosView } from "../hooks/usePresupuestosView.js";
 
 const ESTADO_LABEL = {
   borrador:   "Borrador",
@@ -22,21 +23,7 @@ export default function PresupuestosView({ presupuestos = [], bikes = [], client
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("todos");
 
-  const lista = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
-    return presupuestos
-      .filter((p) => {
-        if (filtroEstado !== "todos" && p.estado !== filtroEstado) return false;
-        if (!q) return true;
-        const bike = bikes.find((b) => b.id === p.bikeId);
-        const client = clients.find((c) => c.id === p.clientId);
-        const patente = (bike?.patente || "").toLowerCase();
-        const nombre = (client?.nombre || "").toLowerCase();
-        const num = (p.numeroPresupuesto || "").toLowerCase();
-        return patente.includes(q) || nombre.includes(q) || num.includes(q);
-      })
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  }, [presupuestos, bikes, clients, busqueda, filtroEstado]);
+  const { lista } = usePresupuestosView({ presupuestos, bikes, clients, busqueda, filtroEstado });
 
   const estadosDisponibles = ["todos", "borrador", "enviado", "aprobado", "rechazado", "convertido"];
 
