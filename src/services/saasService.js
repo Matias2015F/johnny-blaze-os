@@ -25,7 +25,7 @@ export const PLAN_BILLING_DAYS = {
 
 export const DEFAULT_SAAS_ADMIN_SETTINGS = {
   precios: {
-    base: 125000,
+    base: 65000,
     pro:  300000,
     full: 900000,
     currency: "ARS",
@@ -65,7 +65,8 @@ export function isPlatformAdminUser(userLike = {}) {
 
 export function normalizeAdminSettings(raw = {}) {
   const precios = raw.precios || {};
-  const basePrice = Number(precios.base ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.base);
+  const _basePriceRaw = Number(precios.base ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.base);
+  const basePrice = Number.isFinite(_basePriceRaw) && _basePriceRaw >= 1000 ? _basePriceRaw : DEFAULT_SAAS_ADMIN_SETTINGS.precios.base;
   const proPrice  = Number(precios.pro  ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.pro);
   const fullPrice = Number(precios.full ?? DEFAULT_SAAS_ADMIN_SETTINGS.precios.full);
   const currency  = precios.currency || DEFAULT_SAAS_ADMIN_SETTINGS.precios.currency;
