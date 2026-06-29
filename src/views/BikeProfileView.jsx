@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { ArrowLeft, PlusCircle, ChevronDown, Bell, MessageCircle, X, Printer } from "lucide-react";
 import { formatMoney } from "../utils/format.js";
-import { calcularResultadosOrden } from "../lib/calc.js";
-import { LS, useCollection } from "../lib/storage.js";
-import { evaluarEstadoRecordatorio, generarMensajeWhatsApp } from "../lib/proximoControl.js";
+import { LS } from "../lib/storage.js";
+import { generarMensajeWhatsApp } from "../lib/proximoControl.js";
 import { normalizarTelWA } from "../lib/messages.js";
 import { abrirEnlaceExterno } from "../lib/whatsappService.js";
+import { useBikeProfile } from "../hooks/useBikeProfile.js";
 
 export default function BikeProfileView({ bikeId, orders, bikes, clients, setView, handleStartNewService, setSelectedOrderId, setFinalPdfData }) {
   const b = bikes.find((x) => x.id === bikeId);
@@ -14,16 +14,9 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
     .filter((o) => o.bikeId === bikeId)
     .sort((a, z) => z.fechaIngreso.localeCompare(a.fechaIngreso));
   const [expandedId, setExpandedId] = useState(null);
-  const recordatorios = useCollection("recordatorios");
-  const config = LS.getDoc("config", "global") || {};
 
   const kmActual = b?.kilometrajeActual || b?.km;
-
-  const alertasMoto = (recordatorios || [])
-    .filter(r => r.motoId === bikeId && (r.estado === "pendiente" || r.estado === "avisado"))
-    .map(r => ({ ...r, estadoAlerta: evaluarEstadoRecordatorio(r, kmActual) }))
-    .filter(r => r.estadoAlerta !== "normal")
-    .sort((a, _b) => (a.estadoAlerta === "service_vencido" ? -1 : 1));
+  const { alertasMoto, config, calcularTotal } = useBikeProfile({ bikeId, kmActual });
 
   if (!b) return null;
 
@@ -129,7 +122,7 @@ export default function BikeProfileView({ bikeId, orders, bikes, clients, setVie
         )}
         {history.map((order) => {
           const isExpanded = expandedId === order.id;
-          const totalOrden = calcularResultadosOrden(order).total;
+          const totalOrden = calcularTotal(order);
           return (
             <div key={order.id} className="bg-white rounded-[2.5rem] border border-zinc-200 overflow-hidden shadow-sm">
               <div onClick={() => setExpandedId(isExpanded ? null : order.id)} className="p-6 flex justify-between items-center cursor-pointer active:bg-zinc-50">
