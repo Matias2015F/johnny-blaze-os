@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import jsQR from "jsqr";
-import { getDocument } from "pdfjs-dist";
 import { LS } from "../lib/storage.js";
 import { validarComprobante } from "../lib/comprobante-validation.js";
 
@@ -40,6 +39,7 @@ async function detectarQRDesdeImagen(file) {
 }
 
 async function detectarQRDesdePdfRobusto(file) {
+  const { getDocument } = await import("pdfjs-dist");
   const data = await file.arrayBuffer();
   const pdf   = await getDocument({ data }).promise;
   const pages  = Math.min(pdf.numPages, 15);
