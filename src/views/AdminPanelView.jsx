@@ -7,7 +7,7 @@ import { LS, useCollection } from "../lib/storage.js";
 import { auth, db } from "../firebase.js";
 import {
   collection, doc, getDoc, getDocs, getDocsFromServer,
-  query, limit, orderBy, where, setDoc,
+  query, limit, orderBy, where,
 } from "firebase/firestore";
 import {
   DEFAULT_SAAS_ADMIN_SETTINGS as DEFAULT_ADMIN_SETTINGS,
@@ -15,7 +15,7 @@ import {
   actualizarSuscripcionUsuario, crearTicketSoporte,
   guardarAdminSettings, isPlatformAdminUser, leerAdminSettings,
   leerUsuarioSaas, normalizeAdminSettings, normalizeDateMs,
-  normalizeSaasUser,
+  normalizeSaasUser, resolverTicketSoporte,
 } from "../services/saasService.js";
 import { logAdminAction } from "../services/adminAuditService.js";
 import { validateAdminSettings, validateExtraDays, validatePlanKey } from "../services/adminValidationService.js";
@@ -561,7 +561,7 @@ function PantallaAdmin({ showToast, scrollRef }) {
   const resolverTicket = async (ticketId, ticket) => {
     setAccionandoOther(`ticket-${ticketId}`);
     try {
-      await setDoc(doc(db, "soporteTickets", ticketId), { estado: "resuelto", updatedAt: new Date().toISOString() }, { merge: true });
+      await resolverTicketSoporte(ticketId);
       await logAdminAction({ action: "resolve_ticket", targetUid: ticket?.uid || "", targetEmail: ticket?.email || "", actorUid: user?.uid || "", actorEmail: user?.email || "", before: { estado: ticket?.estado || "nuevo" }, after: { estado: "resuelto" }, reason: "Marcado resuelto desde panel admin" });
       showToast("Reclamo marcado como resuelto.");
       cargar();

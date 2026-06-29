@@ -338,3 +338,11 @@ export async function crearTicketSoporte(payload = {}) {
   });
   return docRef.id;
 }
+
+export async function resolverTicketSoporte(ticketId) {
+  await setDoc(
+    doc(db, SAAS_COLLECTIONS.soporteTickets, ticketId),
+    { estado: "resuelto", updatedAt: new Date().toISOString() },
+    { merge: true },
+  );
+}
