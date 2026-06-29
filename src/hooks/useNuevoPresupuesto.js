@@ -23,9 +23,11 @@ export function useNuevoPresupuesto({ patente, bikes, clients }) {
     const pat = normalizar(patente);
     const uid = auth.currentUser?.uid;
     if (!uid || !pat) { setBeneficio(null); return; }
+    let cancelled = false;
     getDoc(doc(db, "users", uid, "clienteBeneficios", pat))
-      .then((snap) => setBeneficio(snap.exists() && snap.data()?.estado === "activo" ? snap.data() : null))
-      .catch(() => setBeneficio(null));
+      .then((snap) => { if (!cancelled) setBeneficio(snap.exists() && snap.data()?.estado === "activo" ? snap.data() : null); })
+      .catch(() => { if (!cancelled) setBeneficio(null); });
+    return () => { cancelled = true; };
   }, [coincidenciaMoto, patente]);
 
   return { beneficio, coincidenciaMoto };
