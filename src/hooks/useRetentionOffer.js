@@ -65,8 +65,9 @@ export function useRetentionOffer(token) {
     } catch (e) {
       setErr(e.message || "No se pudo iniciar el pago");
       setEstado("error");
-      setSending(false);
       return { ok: false, mensaje: e.message };
+    } finally {
+      setSending(false);
     }
   };
 
