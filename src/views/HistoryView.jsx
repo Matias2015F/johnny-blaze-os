@@ -1,12 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ChevronRight, FileText, Search, User, Wrench, Check, AlertTriangle, Camera, Upload, X } from "lucide-react";
-import { Html5Qrcode } from "html5-qrcode";
-import { GlobalWorkerOptions } from "pdfjs-dist";
 import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import { formatMoney } from "../utils/format.js";
 import { useHistoryView } from "../hooks/useHistoryView.js";
-
-GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const SCANNER_REGION_ID = "historial-comprobante-scanner";
 
@@ -48,6 +44,7 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
       setScannerError("");
       setScanFeedback("Apuntá la cámara al QR del comprobante.");
       try {
+        const { Html5Qrcode } = await import("html5-qrcode");
         const scanner = new Html5Qrcode(SCANNER_REGION_ID);
         scannerRef.current = scanner;
         await scanner.start(
@@ -147,10 +144,14 @@ export default function HistoryView({ orders, bikes, clients, setView, setSelect
               type="file"
               accept="application/pdf,image/*"
               className="hidden"
-              onChange={(e) => {
+              onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 const esPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+                if (esPdf) {
+                  const { GlobalWorkerOptions } = await import("pdfjs-dist");
+                  GlobalWorkerOptions.workerSrc = pdfWorker;
+                }
                 manejarArchivoQR(file, esPdf ? "pdf" : "imagen");
                 e.target.value = "";
               }}
