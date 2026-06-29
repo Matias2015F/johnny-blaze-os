@@ -1,9 +1,15 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useRetentionOffer } from "../hooks/useRetentionOffer.js";
 import { formatMoney } from "../utils/format.js";
 
 export default function RetentionOfferView({ token }) {
   const { estado, err, offer, settings, sending, pagar } = useRetentionOffer(token);
+
+  useEffect(() => {
+    if (estado !== "activa") return;
+    const t = setTimeout(() => { window.location.replace("https://app.motogestion.ar"); }, 2500);
+    return () => clearTimeout(t);
+  }, [estado]);
 
   if (estado === "login") {
     return (
@@ -29,7 +35,6 @@ export default function RetentionOfferView({ token }) {
   }
 
   if (estado === "activa") {
-    setTimeout(() => { window.location.replace("https://app.motogestion.ar"); }, 2500);
     return (
       <div className="min-h-screen bg-[#0b0b0b] flex items-center justify-center p-6">
         <div className="w-full max-w-sm rounded-[2rem] border border-emerald-900/40 bg-zinc-950 p-6 text-white space-y-3">
