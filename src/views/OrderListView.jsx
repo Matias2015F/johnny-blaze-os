@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { ESTADO_LABEL, ESTADO_CSS } from "../lib/constants.js";
 import { formatMoneyShort } from "../utils/format.js";
@@ -6,16 +6,20 @@ import { calcularResultadosOrden } from "../lib/calc.js";
 import { LS } from "../lib/storage.js";
 
 export default function OrderListView({ orders, bikes, clients, setSelectedOrderId, setView, showToast }) {
+  const [localConfirm, setLocalConfirm] = useState(null);
   const ESTADOS_CERRADOS = new Set(["entregada", "cerrado_emitido"]);
   const activas = orders.filter((o) => !ESTADOS_CERRADOS.has(o.estado));
 
   const eliminarOrdenDiagnostico = (event, order) => {
     event.stopPropagation();
     if (order.estado !== "diagnostico") return;
-    const ok = window.confirm("Eliminar esta orden en diagnostico? Esta accion no se puede deshacer.");
-    if (!ok) return;
-    LS.deleteDoc("trabajos", order.id);
-    showToast?.("Orden eliminada");
+    setLocalConfirm({
+      mensaje: "¿Eliminar esta orden?\nEsta acción no se puede deshacer.",
+      onOk: () => {
+        LS.deleteDoc("trabajos", order.id);
+        showToast?.("Orden eliminada");
+      },
+    });
   };
 
   return (
@@ -62,6 +66,18 @@ export default function OrderListView({ orders, bikes, clients, setSelectedOrder
           })
         )}
       </div>
+
+      {localConfirm && (
+        <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-6">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-[2rem] p-6 w-full max-w-sm space-y-4">
+            <p className="text-white font-black text-sm text-center leading-relaxed whitespace-pre-line">{localConfirm.mensaje}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => setLocalConfirm(null)} className="bg-zinc-800 text-zinc-300 py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">Cancelar</button>
+              <button onClick={() => { localConfirm.onOk(); setLocalConfirm(null); }} className="bg-red-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
