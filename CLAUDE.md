@@ -108,6 +108,21 @@ Idea
 → verificación en producción
 ```
 
+### Flujo Operativo Estricto: Un Ticket = Una Sesión
+
+Al finalizar un ticket:
+
+1. Confirmar el estado de `git status`.
+2. Confirmar que el commit existe (si el ticket requería cambios de código).
+3. Confirmar que el deploy fue verificado mediante `version.json` (si el ticket requería deploy).
+4. Confirmar que `ESTADO.md` fue actualizado (si hubo cambios de estado).
+5. No iniciar un nuevo ticket hasta informar que el actual quedó cerrado.
+6. Recordar ejecutar `/clear` antes de comenzar un ticket nuevo.
+
+Auditorías, mapas, análisis y revisiones de arquitectura pueden cerrar correctamente sin commits, deploys ni actualización de `ESTADO.md`. No forzar esos pasos donde no corresponden.
+
+---
+
 ### Protocolo de commit y deploy — OBLIGATORIO antes de declarar cualquier tarea terminada
 
 Ningún cambio se considera completo hasta haber ejecutado estos 10 pasos en orden. Sin excepciones.
