@@ -77,9 +77,9 @@ export function normalizeAdminSettings(raw = {}) {
   const duracionTrialDias = Number(raw.duracionTrialDias ?? DEFAULT_SAAS_ADMIN_SETTINGS.duracionTrialDias);
   const features = { ...DEFAULT_SAAS_FEATURES, ...(raw.features || {}) };
   const planDurations = {
-    base: Number.isFinite(baseDays) && baseDays > 0 ? baseDays : DEFAULT_SAAS_ADMIN_SETTINGS.planDurations.base,
-    pro: Number.isFinite(proDays) && proDays > 0 ? proDays : DEFAULT_SAAS_ADMIN_SETTINGS.planDurations.pro,
-    full: Number.isFinite(fullDays) && fullDays > 0 ? fullDays : DEFAULT_SAAS_ADMIN_SETTINGS.planDurations.full,
+    base: Number.isFinite(baseDays) && baseDays >= 28  ? baseDays : DEFAULT_SAAS_ADMIN_SETTINGS.planDurations.base,
+    pro:  Number.isFinite(proDays)  && proDays  >= 60  ? proDays  : DEFAULT_SAAS_ADMIN_SETTINGS.planDurations.pro,
+    full: Number.isFinite(fullDays) && fullDays >= 300 ? fullDays : DEFAULT_SAAS_ADMIN_SETTINGS.planDurations.full,
   };
 
   return {

@@ -227,15 +227,18 @@ async function handlePublicPrices(req, res) {
     const data = snap.exists ? snap.data() || {} : {};
     const precios = data.precios || {};
     const planDurations = data.planDurations || {};
+    const _baseDays = Number(planDurations.base ?? PRICES_FALLBACK.planDurations.base);
+    const _proDays  = Number(planDurations.pro  ?? PRICES_FALLBACK.planDurations.pro);
+    const _fullDays = Number(planDurations.full ?? PRICES_FALLBACK.planDurations.full);
     return res.status(200).json({
       base:     Number(precios.base     ?? PRICES_FALLBACK.base),
       pro:      Number(precios.pro      ?? PRICES_FALLBACK.pro),
       full:     Number(precios.full     ?? PRICES_FALLBACK.full),
       currency: precios.currency        || PRICES_FALLBACK.currency,
       planDurations: {
-        base: Number(planDurations.base ?? PRICES_FALLBACK.planDurations.base),
-        pro: Number(planDurations.pro ?? PRICES_FALLBACK.planDurations.pro),
-        full: Number(planDurations.full ?? PRICES_FALLBACK.planDurations.full),
+        base: Number.isFinite(_baseDays) && _baseDays >= 28  ? _baseDays : PRICES_FALLBACK.planDurations.base,
+        pro:  Number.isFinite(_proDays)  && _proDays  >= 60  ? _proDays  : PRICES_FALLBACK.planDurations.pro,
+        full: Number.isFinite(_fullDays) && _fullDays >= 300 ? _fullDays : PRICES_FALLBACK.planDurations.full,
       },
     });
   } catch (err) {
