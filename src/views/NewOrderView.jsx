@@ -177,6 +177,9 @@ export default function NewOrderView({ handleCreateAll, setView, prefill, bikes 
             onKeyDown={sig(fallaRef)}
             enterKeyHint="next"
           />
+          <p className="ml-2 text-[10px] font-bold text-zinc-400">
+            Habilita el comprobante verificado y el descuento de fidelidad del cliente.
+          </p>
         </div>
 
         <div className="space-y-1">

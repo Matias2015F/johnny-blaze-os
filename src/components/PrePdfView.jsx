@@ -55,6 +55,22 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
   const [receiptError, setReceiptError] = useState("");
   const [generandoPdf, setGenerandoPdf] = useState(false);
 
+  // HF-OB-2: el telefono del cliente habilita la calificacion verificada (auto-aprobada).
+  // Sin telefono, el comprobante sale como public_link y la calificacion requiere
+  // moderacion manual. Misma derivacion que usa irAlPdf.
+  const telClienteRaw = (client?.celular || client?.tel || client?.whatsapp || client?.telefono || "").replace(/\D/g, "");
+  const tieneTelefono = telClienteRaw.length >= 4;
+  const [telInline, setTelInline] = useState("");
+  const [telGuardado, setTelGuardado] = useState(false);
+
+  const guardarTelefonoInline = () => {
+    const limpio = telInline.replace(/\D/g, "");
+    if (limpio.length < 6) return;
+    LS.updateDoc("clientes", order.clientId, { tel: limpio });
+    setTelGuardado(true);
+    showToast?.("Telefono guardado. El comprobante saldra verificado.");
+  };
+
   const totalOrden = calcularResultadosOrden(order).total;
   const totalPagado = (order.pagos || []).reduce((s, p) => s + (p.monto || 0), 0);
   const saldo = totalOrden - totalPagado;
@@ -344,6 +360,38 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
         {receiptError && (
           <div className="rounded-3xl border-2 border-red-200 bg-red-50 p-4">
             <p className="text-[10px] font-black uppercase leading-tight text-red-600">{receiptError}</p>
+          </div>
+        )}
+
+        {!generatedToken && !tieneTelefono && !telGuardado && (
+          <div className="space-y-3 rounded-3xl border-2 border-amber-200 bg-amber-50 p-4">
+            <p className="text-[10px] font-black uppercase leading-tight text-amber-700">
+              Este cliente no tiene telefono cargado
+            </p>
+            <p className="text-xs leading-relaxed text-amber-800">
+              Sin telefono el comprobante sale sin calificacion verificada: la opinion del
+              cliente queda pendiente de revision y no suma directo a tu reputacion publica.
+              Agregalo para emitir verificado (tambien habilita el descuento de fidelidad).
+            </p>
+            <input
+              type="tel"
+              inputMode="numeric"
+              value={telInline}
+              onChange={(e) => setTelInline(e.target.value)}
+              placeholder="Ej: 3434123456"
+              className="w-full rounded-2xl border border-amber-300 bg-white p-3 font-black text-zinc-900 outline-none focus:border-amber-500"
+            />
+            <button
+              type="button"
+              onClick={guardarTelefonoInline}
+              disabled={telInline.replace(/\D/g, "").length < 6}
+              className="w-full rounded-2xl bg-amber-600 py-3 text-[10px] font-black uppercase tracking-widest text-white active:scale-95 transition-all disabled:opacity-40"
+            >
+              Guardar y emitir verificado
+            </button>
+            <p className="text-center text-[10px] text-amber-700">
+              Tambien podes emitir igual sin telefono.
+            </p>
           </div>
         )}
 
