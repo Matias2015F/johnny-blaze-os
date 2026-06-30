@@ -252,6 +252,7 @@ export default function App() {
   const autoBackupDone = useRef(false);
   const lastServerAccountAtRef = useRef(0);
   const [dismissedBannerKey, setDismissedBannerKey] = useState("");
+  const [bootstrapNonce, setBootstrapNonce] = useState(0);
 
   const banner = useMemo(() => buildBannerData(account, settings), [account, settings]);
 
@@ -376,11 +377,21 @@ export default function App() {
         return;
       }
 
-      try {
-        await ensureAccountProfile();
-      } catch (error) {
-        console.error(error);
+      // Bootstrap del perfil con un reintento. Si falla, no dejamos al usuario
+      // nuevo atascado en "loading": marcamos el fallo para que el snapshot pueda
+      // derivar a "error_perfil" cuando confirme que no existe doc (HF-OB-1).
+      let profileBootstrapOk = false;
+      for (let intento = 0; intento <= 1; intento++) {
+        try {
+          await ensureAccountProfile();
+          profileBootstrapOk = true;
+          break;
+        } catch (error) {
+          console.error(error);
+          if (intento === 0) await new Promise((r) => setTimeout(r, 1500));
+        }
       }
+      if (cancelled) return;
 
       try {
         const remoteSettings = await leerAdminSettings();
@@ -393,7 +404,10 @@ export default function App() {
       if (unsubAccount) unsubAccount();
       unsubAccount = onSnapshot(ref, { includeMetadataChanges: true }, async (snap) => {
         if (!snap.exists()) {
-          if (!snap.metadata.fromCache) setEstado("loading");
+          // Doc confirmado inexistente desde el servidor: si el bootstrap funcionó
+          // es consistencia eventual (transitorio "loading"); si falló, es el borde
+          // de HF-OB-1 y mostramos pantalla recuperable.
+          if (!snap.metadata.fromCache) setEstado(profileBootstrapOk ? "loading" : "error_perfil");
           return;
         }
         const data = { id: snap.id, ...snap.data() };
@@ -407,7 +421,7 @@ export default function App() {
       unsubAuth();
       if (unsubAccount) unsubAccount();
     };
-  }, [applyAccountData, refreshAccountFromServer]);
+  }, [applyAccountData, refreshAccountFromServer, bootstrapNonce]);
 
 
   const matchVerify = window.location.pathname.match(/^\/verificar\/([^/]+)$/);
@@ -440,6 +454,39 @@ export default function App() {
   }
 
   if (estado === "login") return <LoginScreen />;
+
+  if (estado === "error_perfil") {
+    return (
+      <div className="min-h-screen bg-[#0b0b0b] text-white flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-sm space-y-5 rounded-[2rem] border border-zinc-800 bg-[#151515] p-8 text-center">
+          <div className="text-4xl">📡</div>
+          <div className="space-y-1">
+            <h2 className="text-lg font-black uppercase tracking-tight">No pudimos preparar tu cuenta</h2>
+            <p className="text-xs leading-relaxed text-zinc-400">
+              Parece un problema de conexion. Revisa tu internet y volve a intentar.
+              Tus datos estan seguros.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setEstado("loading");
+              setBootstrapNonce((n) => n + 1);
+            }}
+            className="w-full rounded-2xl bg-orange-600 py-4 text-[11px] font-black uppercase tracking-widest text-white active:scale-95 transition-all"
+          >
+            Reintentar
+          </button>
+          <button
+            onClick={() => auth.signOut()}
+            className="w-full text-[10px] font-black uppercase tracking-widest text-zinc-600 transition-colors hover:text-zinc-400"
+          >
+            Cerrar sesion
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (estado === "bloqueado") return <PantallaBloqueo account={account} settings={settings} />;
 
   const modoLectura = estado === "lectura";
