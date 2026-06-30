@@ -9,16 +9,16 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `19da164` | 2026-06-29 |
+| `app.motogestion.ar` | `motogestion-app` | `9efd7d2` | 2026-06-29 |
 | `admin.motogestion.ar` | `motogestion-admin` | `114b416` | 2026-06-25 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `19da164` — fix(ONBOARD-001-A): recuperar bootstrap de perfil SaaS
+SHA: `9efd7d2` — feat(ONBOARD-001-B): reforzar captura de telefono para reputacion verificada
 
 ## HEAD local
 
-SHA: `19da164` — en sync con origin/main (cambio sin commitear: .clou/ESTADO.md, este archivo).
+SHA: `9efd7d2` — en sync con origin/main (cambio sin commitear: .clou/ESTADO.md, este archivo).
 
 ---
 
@@ -129,8 +129,15 @@ Etapa activa: RC-2 — Growth
   Aditivo, solo App.jsx. Directiva: .clou/directives/onboard-profile-bootstrap.md.
   Deploy verificado en produccion (version.json 19da164). Camino feliz verificado en preview.
 
+- ONBOARD-001-B `9efd7d2`: fix HF-OB-2. Refuerzo no bloqueante de captura de telefono.
+  PrePdfView: si el cliente no tiene telefono al emitir, advertencia ambar + input inline
+  que persiste el tel (LS.updateDoc) para emitir verificado; se puede emitir igual sin tel.
+  NewOrderView: hint bajo el campo Telefono. No toca crearPublicReceipt, submit-rating,
+  irAlPdf ni Baseline. Directiva: .clou/directives/onboard-phone-capture.md.
+  Deploy verificado (version.json 9efd7d2). Hint verificado en preview; advertencia
+  PrePdfView compila pero no gatillada interactivamente (requiere flujo completo real).
+
 **Proximo ticket RC-2 (pendiente de decision):**
-- HF-OB-2 (reputacion debil sin telefono del cliente) — fricion del loop de valor, no breakage.
 - GROWTH-001/002 (landing: testimonios reales + beneficio 15% en hero).
 - CAPTACION-001 (outreach con growth-specialist).
 - HF-QA004-1 (P2): corregir antes de construir dashboards RC-3/DI-001.
