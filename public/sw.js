@@ -29,6 +29,10 @@ self.addEventListener("fetch", (event) => {
 
   const { pathname } = url;
 
+  // Las APIs deben ir siempre a red. Si el SW devuelve "/" como fallback,
+  // el frontend intenta parsear HTML como JSON y rompe con "Unexpected token <".
+  if (pathname.startsWith("/api/")) return;
+
   // Never cache these files — always network so version checks get fresh data
   if (pathname === "/version.json" || pathname === "/index.html") {
     event.respondWith(
@@ -37,6 +41,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  const acceptsHtml = event.request.headers.get("accept")?.includes("text/html");
+  const isNavigationRequest = event.request.mode === "navigate" || acceptsHtml;
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -44,7 +51,13 @@ self.addEventListener("fetch", (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)).catch(() => null);
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/"))),
+      .catch(() =>
+        caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          if (isNavigationRequest) return caches.match("/");
+          return Response.error();
+        })
+      ),
   );
 });
 
