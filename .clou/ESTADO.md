@@ -9,16 +9,17 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `cc9767f` | 2026-07-01 |
-| `admin.motogestion.ar` | `motogestion-admin` | `114b416` | 2026-06-25 |
+| `app.motogestion.ar` | `motogestion-app` | `1dda30d` | 2026-07-01 |
+| `admin.motogestion.ar` | `motogestion-admin` | `114b416` | 2026-06-25 (recuperado via HF-INFRA-002) |
+| `motogestion.ar` | `motogestion-landing` | `7fa7ccd` | 2026-07-01 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `cc9767f` — fix(HF-QA004-4): acumular reputacion en ratings auto-aprobados + helper _reputation compartido
+SHA: `1dda30d` — fix(SaaS): actualizar trial free a 30 dias
 
 ## HEAD local
 
-SHA: `cc9767f` — en sync con origin/main (cambio sin commitear: .clou/ESTADO.md, este archivo).
+SHA: `1dda30d` — en sync con origin/main. Cambio sin commitear: `.clou/ESTADO.md` (este archivo).
 
 ---
 
@@ -154,8 +155,110 @@ garantia digital, historial certificado) + beneficio 15%, y fila de prueba socia
 fila queda oculta. CSS aditivo, sin tocar precios/URLs/estructura/app/admin. Deploy a motogestion.ar
 verificado (markup live). GROWTH-002 quedo absorbido en GROWTH-001 (misma zona/objetivo).
 
+**HF-INFRA-001 — RESUELTO OPERATIVAMENTE (P0/P1, 2026-07-01):**
+`admin.motogestion.ar` no mostraba la app de administracion: cargaba la landing en su lugar.
+Reportado por el usuario al intentar entrar al panel admin para cambiar duracionTrialDias.
+
+Diagnostico confirmado por `curl -I` (read-only, sin credenciales) a los 3 dominios:
+
+| Dominio | Content-Type/tamano | Headers |
+|---|---|---|
+| `motogestion.ar` (landing) | text/html, ~152 KB | Sin CSP - landing estatica |
+| `admin.motogestion.ar` | text/html, ~149 KB | Sin CSP - misma forma que la landing |
+| `app.motogestion.ar` | text/html, 5.6 KB | CSP estricta + X-Frame-Options DENY - SPA real |
+
+Diagnostico corregido con API/CLI Vercel: el dominio estaba en `motogestion-admin`, pero el ultimo
+deployment productivo del proyecto admin habia sido generado desde el repo `motogestion-landing`.
+Por eso el alias `admin.motogestion.ar` servia landing aunque el dominio figurara en el proyecto
+admin.
+
+Accion ejecutada:
+`npx vercel alias set motogestion-admin-34r61yotp-matias2015fs-projects.vercel.app admin.motogestion.ar --scope matias2015fs-projects`
+
+Deployment restaurado:
+- Project: `motogestion-admin` (`prj_SMj9OfT4md9tZTvBHMfl7b2Ro9ZT`)
+- Deployment: `dpl_J45kPonmB234uTkmq5pcU7qyxjt7`
+- URL origen: `motogestion-admin-34r61yotp-matias2015fs-projects.vercel.app`
+- Repo/commit: `johnny-blaze-os` `114b416779e2f5348ee0a9daa59b3fb4150d59c7`
+
+Verificacion post-fix:
+| Dominio | Resultado |
+|---|---|
+| `admin.motogestion.ar/version.json` | `200`, JSON, SHA `114b416`, CSP estricta, `X-Frame-Options: DENY` |
+| `admin.motogestion.ar/` | `200`, SPA, ~5.6 KB, CSP estricta, `X-Frame-Options: DENY` |
+| `motogestion.ar/` | landing publica intacta |
+| `app.motogestion.ar/version.json` | app intacta |
+
+Impacto: admin real recuperado. Ya no bloquea el paso 2 de CAPTACION-001.
+
+Riesgo pendiente: el proyecto `motogestion-admin` sigue teniendo historial reciente de deployments
+desde `motogestion-landing`. Corregir o desconectar la integracion Git incorrecta en Vercel para
+que un push futuro de landing no vuelva a pisar el admin.
+
+**HF-INFRA-002 — RESUELTO (P0/P1, 2026-07-01):**
+Corregida la integracion Git del proyecto Vercel `motogestion-admin`.
+
+Estado anterior confirmado via API:
+- `link.repo`: `motogestion-landing`
+- `link.productionBranch`: `master`
+- `outputDirectory`: `apps/dashboard-admin/dist` (ruta vieja/inexistente en el repo canonico)
+
+Acciones ejecutadas:
+1. Vinculo local temporal a `motogestion-admin`.
+2. `vercel git disconnect` para desconectar `Matias2015F/motogestion-landing`.
+3. `vercel git connect https://github.com/Matias2015F/johnny-blaze-os`.
+4. PATCH `/v9/projects/prj_SMj9OfT4md9tZTvBHMfl7b2Ro9ZT`:
+   - `buildCommand`: `npm run build:admin`
+   - `outputDirectory`: `dist`
+   - `rootDirectory`: `null`
+5. Vinculo local restaurado a `motogestion-app`.
+
+Estado final verificado:
+- `link.repo`: `johnny-blaze-os`
+- `link.productionBranch`: `main`
+- `buildCommand`: `npm run build:admin`
+- `outputDirectory`: `dist`
+- `rootDirectory`: `null`
+- `admin.motogestion.ar` resuelve a `dpl_J45kPonmB234uTkmq5pcU7qyxjt7`
+- `admin.motogestion.ar/version.json` responde SHA `114b416`
+- `.vercel/project.json` local queda restaurado a `motogestion-app`
+
+Nota: `vercel promote motogestion-admin-34r61yotp...` devolvio 409 porque Vercel ya considera
+ese deployment como produccion corriente. No hubo deploy nuevo.
+
+**CAPTACION-001 (paso trial 30 dias) — CERRADO (2026-07-01):**
+Decision de negocio confirmada: extender trial Free de 14 a 30 dias (Plan Mensual ARS 65.000
+sin cambios, facturacion cada 30 dias sin cambios, Trimestral/Anual sin cambios).
+
+Secuencia ejecutada:
+1. `admin_settings/global.duracionTrialDias` actualizado a 30 desde `admin.motogestion.ar`
+   (panel, con audit log) una vez resuelto HF-INFRA-001/002. Guardado sin error de validacion
+   (adminValidationService.js ya aceptaba 0-30, sin cambio de logica).
+2. Commit app `1dda30d` — `src/services/saasService.js:33` fallback
+   DEFAULT_SAAS_ADMIN_SETTINGS.duracionTrialDias 14->30. Build+lint OK (0 errores, 59 warnings
+   preexistentes). Push a `origin/main`.
+3. Commit landing `7fa7ccd` — `motogestion-landing/index.html`, 3 referencias comerciales
+   "14 dias"->"30 dias" (og:description, twitter:description, CTA hero). Referencias tecnicas
+   no tocadas (vigencia calificaciones, periodo de facturacion, ya decian 30). Push a
+   `origin/master`.
+4. Deploy `npx vercel --prod` en ambos proyectos (`motogestion-app`, `motogestion-landing`).
+5. Verificacion en produccion:
+   - `app.motogestion.ar/version.json` -> SHA `1dda30d` (coincide con el commit).
+   - `motogestion.ar` -> `curl` confirma "Empezar gratis — 30 dias" y cero ocurrencias de
+     "14 dias"/"14 días".
+   - Panel admin (`admin.motogestion.ar`) -> duracionTrialDias=30 confirmado por el usuario tras
+     HF-INFRA-002.
+
+Hallazgo pendiente para la proxima etapa de CAPTACION-001 (redaccion de propuesta comercial):
+`src/services/usageLimitService.js` ya tiene limites de modo Free ENFORCED_RUNTIME (via
+TallerPanel.jsx) con valores distintos a los mencionados en la decision de negocio:
+clientesTotal=60, motosTotal=60, trabajosTotal=20, presupuestosTotal=20, comprobantesEmitidos=15
+(no "5 clientes/5 vehiculos"). Resolver esta discrepancia antes de imprimir esos numeros en
+cualquier documento comercial.
+
 **Proximo ticket RC-2 (pendiente de decision):**
-- CAPTACION-001 (outreach con growth-specialist).
+- CAPTACION-001 (continuacion): resolver discrepancia de usageLimitService.js, luego redactar
+  propuesta comercial completa y guion de outreach (growth-specialist), en ese orden.
 - HF-QA004-1 (P2): corregir antes de construir dashboards RC-3/DI-001.
 
 ---
