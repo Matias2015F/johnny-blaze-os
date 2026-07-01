@@ -9,16 +9,16 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `9efd7d2` | 2026-06-29 |
+| `app.motogestion.ar` | `motogestion-app` | `d8cf35f` | 2026-07-01 |
 | `admin.motogestion.ar` | `motogestion-admin` | `114b416` | 2026-06-25 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `9efd7d2` — feat(ONBOARD-001-B): reforzar captura de telefono para reputacion verificada
+SHA: `d8cf35f` — fix(HF-QA004-1): calcular sumaScore real desde subscores en moderate-rating
 
 ## HEAD local
 
-SHA: `9efd7d2` — en sync con origin/main (cambio sin commitear: .clou/ESTADO.md, este archivo).
+SHA: `d8cf35f` — en sync con origin/main (cambio sin commitear: .clou/ESTADO.md, este archivo).
 
 ---
 
@@ -78,11 +78,15 @@ No existen bloqueantes funcionales para comenzar la etapa comercial.
 
 Hallazgos pendientes (no bloqueantes):
 
-HF-QA004-1
-Bug latente en `moderate-rating.js`: lee `ratingData.score` que `submit-rating.js` nunca escribe.
-`usuarios/{uid}.reputacion.sumaScore` siempre incrementa en 0. Campo no leido hoy en `src`.
-Corregir antes de construir dashboards RC-3/DI-001 que consuman `reputacion`.
-Prioridad: P2
+HF-QA004-1 — RESUELTO `d8cf35f` (2026-07-01)
+`moderate-rating.js` ya no lee el campo inexistente `ratingData.score`. Nueva funcion
+`ratingScore()` calcula el promedio real (1-5) desde scoreAtencion/Claridad/Trabajo/Cumplimiento.
+Increment/decrement simetricos. Sin impacto de UI (campo no leido en `src` aun). Deploy verificado.
+
+HF-QA004-4 (nuevo, P2) — Gap descubierto durante HF-QA004-1:
+Los ratings auto-aprobados en `submit-rating.js` (phoneVerified && fraudScore<20) nunca
+actualizan `reputacion.aprobados` ni `reputacion.sumaScore` (solo la ruta de moderacion admin lo hace).
+Corregir antes de construir dashboards RC-3/DI-001. No tocado ahora por scope del ticket.
 
 HF-QA004-2
 `publicWorkshops.ratingAvg` es un snapshot que solo se recalcula al republicar manualmente
