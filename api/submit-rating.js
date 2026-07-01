@@ -1,6 +1,8 @@
 const { createHash } = require("crypto");
+const { FieldValue } = require("firebase-admin/firestore");
 const { db } = require("./_firebase-admin.js");
 const { applyRateLimit } = require("./_ratelimit.js");
+const { ratingScore } = require("./_reputation.js");
 
 function parseJsonText(text) {
   const clean = String(text || "").replace(/^\uFEFF/, "").trim();
@@ -187,6 +189,7 @@ module.exports = async function handler(req, res) {
       return {
         ratingId: ratingRef.id,
         autoAprobado: rating.status === "aprobado",
+        score: ratingScore(rating),
         uidTaller: receipt.uidTaller || "",
         bikePatente: receipt.bikePatente || "",
         bikeId: receipt.bikeId || "",
@@ -194,6 +197,15 @@ module.exports = async function handler(req, res) {
         incentiveDiscountPct: normalizeDiscountPct(receipt.incentive?.discountPct),
       };
     });
+
+    if (result.autoAprobado && result.uidTaller) {
+      // Ruta auto-aprobada: acumula reputacion igual que moderate-rating.js (HF-QA004-4).
+      db.collection("usuarios").doc(result.uidTaller).update({
+        "reputacion.aprobados": FieldValue.increment(1),
+        "reputacion.sumaScore": FieldValue.increment(result.score),
+        "reputacion.updatedAt": Date.now(),
+      }).catch((e) => console.warn("[submit-rating] reputacion update:", e.message));
+    }
 
     if (result.autoAprobado) {
       crearBeneficioCalificacion({

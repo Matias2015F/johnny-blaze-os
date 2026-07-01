@@ -8,6 +8,7 @@ try {
 }
 
 const { applyRateLimit } = require("./_ratelimit.js");
+const { ratingScore } = require("./_reputation.js");
 
 function safeString(value, max = 500) {
   return String(value || "").trim().slice(0, max);
@@ -17,16 +18,6 @@ function normalizeDiscountPct(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return 0;
   return Math.max(0, Math.min(50, Math.round(n)));
-}
-
-// Promedio real de la calificacion a partir de los 4 subscores (1-5) que
-// escribe submit-rating.js. No existe un campo `score` plano en ratings/{id}.
-function ratingScore(data) {
-  const parts = [data.scoreAtencion, data.scoreClaridad, data.scoreTrabajo, data.scoreCumplimiento]
-    .map((v) => Number(v))
-    .filter((n) => Number.isFinite(n) && n >= 1 && n <= 5);
-  if (!parts.length) return 0;
-  return parts.reduce((a, b) => a + b, 0) / parts.length;
 }
 
 module.exports = async function handler(req, res) {
