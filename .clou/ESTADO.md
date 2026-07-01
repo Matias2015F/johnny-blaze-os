@@ -146,8 +146,15 @@ Etapa activa: RC-2 — Growth
   Deploy verificado (version.json 9efd7d2). Hint verificado en preview; advertencia
   PrePdfView compila pero no gatillada interactivamente (requiere flujo completo real).
 
+**GROWTH-001 — CERRADO `8c1cbb2` (2026-07-01, repo motogestion-landing / master):**
+Hero de motogestion.ar antes del scroll: chips de diferenciadores (comprobante verificable,
+garantia digital, historial certificado) + beneficio 15%, y fila de prueba social REAL en vivo
+(talleres/trabajos/calificaciones/recomienda) espejando el endpoint existente public-workshops
+(misma fuente que la seccion red; hoy 2/35/19/100%). Sin datos inventados; si falla el fetch la
+fila queda oculta. CSS aditivo, sin tocar precios/URLs/estructura/app/admin. Deploy a motogestion.ar
+verificado (markup live). GROWTH-002 quedo absorbido en GROWTH-001 (misma zona/objetivo).
+
 **Proximo ticket RC-2 (pendiente de decision):**
-- GROWTH-001/002 (landing: testimonios reales + beneficio 15% en hero).
 - CAPTACION-001 (outreach con growth-specialist).
 - HF-QA004-1 (P2): corregir antes de construir dashboards RC-3/DI-001.
 
