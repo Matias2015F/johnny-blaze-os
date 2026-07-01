@@ -24,6 +24,16 @@ const ALLOWED_ORIGINS = [
   "https://app.motogestion.ar",
 ];
 
+function requireStorageBucket() {
+  const bucket = String(process.env.FIREBASE_STORAGE_BUCKET || "").trim();
+  if (!bucket) {
+    const error = new Error("FIREBASE_STORAGE_BUCKET no esta definida");
+    error.status = 500;
+    throw error;
+  }
+  return bucket;
+}
+
 function setCors(req, res) {
   const origin = req.headers.origin || "";
   if (ALLOWED_ORIGINS.includes(origin)) {
@@ -346,7 +356,8 @@ async function handleDownloadPdf(req, res) {
       return res.status(404).json({ ok: false, error: "El PDF no fue generado todavia. Pediselo al taller." });
     }
 
-    const file = getStorage().bucket("johnny-blaze-taller.firebasestorage.app").file(receipt.pdfStoragePath);
+    const bucket = requireStorageBucket();
+    const file = getStorage().bucket(bucket).file(receipt.pdfStoragePath);
     const [exists] = await file.exists();
     if (!exists) {
       return res.status(404).json({ ok: false, error: "El archivo PDF no se encontro en el servidor." });
@@ -361,6 +372,9 @@ async function handleDownloadPdf(req, res) {
     return res.status(200).json({ ok: true, url, expiresIn: 900 });
   } catch (error) {
     console.error("[download-pdf]", error.message);
+    if (error.status === 500 && error.message === "FIREBASE_STORAGE_BUCKET no esta definida") {
+      return res.status(500).json({ ok: false, error: "Falta configurar FIREBASE_STORAGE_BUCKET en el servidor." });
+    }
     return res.status(500).json({ ok: false, error: "No se pudo generar el enlace de descarga." });
   }
 }
