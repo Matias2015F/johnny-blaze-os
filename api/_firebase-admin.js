@@ -22,11 +22,13 @@ const { getAuth } = require("firebase-admin/auth");
 if (!getApps().length) {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_B64;
   if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT_B64 no está definida");
+  const storageBucket = String(process.env.FIREBASE_STORAGE_BUCKET || "").trim();
+  if (!storageBucket) throw new Error("FIREBASE_STORAGE_BUCKET no está definida");
 
   const serviceAccount = JSON.parse(Buffer.from(raw, "base64").toString("utf8"));
   initializeApp({
     credential: cert(serviceAccount),
-    storageBucket: "johnny-blaze-taller.firebasestorage.app",
+    storageBucket,
   });
 }
 
