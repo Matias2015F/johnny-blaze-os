@@ -9,16 +9,16 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `d8cf35f` | 2026-07-01 |
+| `app.motogestion.ar` | `motogestion-app` | `cc9767f` | 2026-07-01 |
 | `admin.motogestion.ar` | `motogestion-admin` | `114b416` | 2026-06-25 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `d8cf35f` — fix(HF-QA004-1): calcular sumaScore real desde subscores en moderate-rating
+SHA: `cc9767f` — fix(HF-QA004-4): acumular reputacion en ratings auto-aprobados + helper _reputation compartido
 
 ## HEAD local
 
-SHA: `d8cf35f` — en sync con origin/main (cambio sin commitear: .clou/ESTADO.md, este archivo).
+SHA: `cc9767f` — en sync con origin/main (cambio sin commitear: .clou/ESTADO.md, este archivo).
 
 ---
 
@@ -83,10 +83,15 @@ HF-QA004-1 — RESUELTO `d8cf35f` (2026-07-01)
 `ratingScore()` calcula el promedio real (1-5) desde scoreAtencion/Claridad/Trabajo/Cumplimiento.
 Increment/decrement simetricos. Sin impacto de UI (campo no leido en `src` aun). Deploy verificado.
 
-HF-QA004-4 (nuevo, P2) — Gap descubierto durante HF-QA004-1:
-Los ratings auto-aprobados en `submit-rating.js` (phoneVerified && fraudScore<20) nunca
-actualizan `reputacion.aprobados` ni `reputacion.sumaScore` (solo la ruta de moderacion admin lo hace).
-Corregir antes de construir dashboards RC-3/DI-001. No tocado ahora por scope del ticket.
+HF-QA004-4 — RESUELTO `cc9767f` (2026-07-01)
+La ruta auto-aprobada de `submit-rating.js` ahora acumula `reputacion.aprobados` y `sumaScore`
+(fire-and-forget post-transaccion, mismo patron que el beneficio). Calculo compartido extraido
+a `api/_reputation.js` (`ratingScore`, prefijo _ no cuenta en el limite de 12). moderate-rating.js
+importa el helper (elimina copia local). Sin doble conteo: moderate chequea prevStatus antes de
+incrementar. No se toco transaccion, antifraude ni ranking publico. Deploy verificado.
+
+Con HF-QA004-1 + HF-QA004-4 cerrados, ambas rutas (admin y auto) acumulan reputacion correctamente.
+`reputacion` queda como fuente confiable para dashboards RC-3/DI-001.
 
 HF-QA004-2
 `publicWorkshops.ratingAvg` es un snapshot que solo se recalcula al republicar manualmente
