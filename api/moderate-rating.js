@@ -19,6 +19,16 @@ function normalizeDiscountPct(value) {
   return Math.max(0, Math.min(50, Math.round(n)));
 }
 
+// Promedio real de la calificacion a partir de los 4 subscores (1-5) que
+// escribe submit-rating.js. No existe un campo `score` plano en ratings/{id}.
+function ratingScore(data) {
+  const parts = [data.scoreAtencion, data.scoreClaridad, data.scoreTrabajo, data.scoreCumplimiento]
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n) && n >= 1 && n <= 5);
+  if (!parts.length) return 0;
+  return parts.reduce((a, b) => a + b, 0) / parts.length;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Metodo no permitido" });
   if (!db) return res.status(500).json({ error: "Servidor sin base de datos" });
@@ -74,7 +84,7 @@ module.exports = async function handler(req, res) {
     const ratingData = snap.data() || {};
     const prevStatus = ratingData.status || "pendiente_validacion";
     const uidTaller = ratingData.uidTaller || "";
-    const score = Number(ratingData.score) || 0;
+    const score = ratingScore(ratingData);
     if (uidTaller) {
       const nowApproved = normalizedDecision === "aprobar";
       const wasApproved = prevStatus === "aprobado";
