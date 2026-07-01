@@ -78,13 +78,38 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
   const printRootRef = useRef(null);
   const [generating, setGenerating] = useState(false);
+  const [publicationStep, setPublicationStep] = useState("");
+  const [publicationError, setPublicationError] = useState("");
 
   const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   const isStandalone = window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
   const shouldGeneratePdfFile = isMobileDevice || isStandalone;
 
+  async function publicarComprobantePdf(blob) {
+    if (!receiptToken) return;
+
+    const uid = auth.currentUser?.uid;
+    if (!uid) {
+      throw new Error("No hay usuario autenticado para publicar el comprobante verificable.");
+    }
+
+    const [{ ref: storageRef, uploadBytes }, { doc, updateDoc }] = await Promise.all([
+      import("firebase/storage"),
+      import("firebase/firestore"),
+    ]);
+
+    const path = `receipts/${uid}/${receiptToken}/comprobante.pdf`;
+    await uploadBytes(storageRef(storage, path), blob, { contentType: "application/pdf" });
+    await updateDoc(doc(db, "publicReceipts", receiptToken), {
+      pdfStoragePath: path,
+      pdfGeneratedAt: Date.now(),
+    });
+  }
+
   async function handleGuardarPdf() {
     setGenerating(true);
+    setPublicationError("");
+    setPublicationStep("Generando PDF...");
     const el = printRootRef.current;
     const previousRootStyle = el
       ? {
@@ -200,23 +225,23 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
 
       const blob = pdf.output("blob");
 
-      // P2 — background upload to Storage; unlocks gated PDF download after client rates
       if (receiptToken) {
-        const uid = auth.currentUser?.uid;
-        if (uid) {
-          Promise.all([import("firebase/storage"), import("firebase/firestore")])
-            .then(async ([{ ref: storageRef, uploadBytes }, { doc, updateDoc }]) => {
-              const path = `receipts/${uid}/${receiptToken}/comprobante.pdf`;
-              await uploadBytes(storageRef(storage, path), blob, { contentType: "application/pdf" });
-              await updateDoc(doc(db, "publicReceipts", receiptToken), {
-                pdfStoragePath: path,
-                pdfGeneratedAt: Date.now(),
-              });
-            })
-            .catch(() => {});
+        setPublicationStep("Publicando comprobante...");
+        try {
+          await publicarComprobantePdf(blob);
+        } catch (error) {
+          console.error("No se pudo publicar el comprobante PDF", {
+            orderId: order.id,
+            receiptToken,
+            numeroComprobante,
+            error,
+          });
+          setPublicationError("No se pudo publicar el comprobante. Reintentá la descarga o avisale al taller.");
+          return;
         }
       }
 
+      setPublicationStep("Comprobante listo para compartir.");
       const file = new File([blob], `${numeroComprobante}.pdf`, { type: "application/pdf" });
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], title: numeroComprobante });
@@ -642,6 +667,19 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
         </div>
       </div>
 
+      {(publicationStep || publicationError) && (
+        <div className="fixed bottom-28 left-1/2 z-40 w-[min(92vw,560px)] -translate-x-1/2 print:hidden">
+          <div
+            className={`rounded-2xl border px-4 py-3 text-sm shadow-2xl ${
+              publicationError ? "border-red-200 bg-red-50 text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"
+            }`}
+          >
+            <p className="font-black uppercase tracking-wide">{publicationError ? "Error de publicación" : "Comprobante público"}</p>
+            <p className="mt-1 text-sm font-medium leading-snug">{publicationError || publicationStep}</p>
+          </div>
+        </div>
+      )}
+
       <div className="print-toolbar fixed bottom-8 left-1/2 flex -translate-x-1/2 gap-3 print:hidden">
         <button
           onClick={() => setView("detalleOrden")}
@@ -655,7 +693,7 @@ export default function ExportPdfView({ order, bike, client, setView, extraData 
           className="flex items-center gap-2 rounded-3xl bg-red-600 px-8 py-4 text-xs font-black uppercase text-white shadow-2xl transition-all active:scale-95 disabled:opacity-60 disabled:scale-100"
         >
           {generating ? (
-            "Generando PDF..."
+            publicationStep || "Generando PDF..."
           ) : shouldGeneratePdfFile ? (
             <><Printer size={16} /> Descargar PDF</>
           ) : (
