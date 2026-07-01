@@ -30,7 +30,7 @@ export const DEFAULT_SAAS_ADMIN_SETTINGS = {
     full: 900000,
     currency: "ARS",
   },
-  duracionTrialDias: 14,
+  duracionTrialDias: 30,
   graceDaysDefault: 3,
   applyPricingToNewAccountsOnly: true,
   notificationEmail: "matias4604@gmail.com",
