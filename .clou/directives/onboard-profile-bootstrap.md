@@ -56,8 +56,8 @@ del snapshot y el usuario entra en estado trial.
 ## Regla de seguridad (qué NO se toca)
 
 - `resolveAccountAccess` y `normalizeSaasUser` en `saasService.js`: intactos.
-- `ensureSaasUserProfile`: intacto (no se cambia la creación del perfil ni el
-  trial de 14 días).
+- `ensureSaasUserProfile`: intacto (no se cambia la creacion del perfil ni el
+  trial de 30 dias).
 - La rama de usuario existente en `ensureSaasUserProfile`: intacta.
 - Las rutas públicas (`/verificar`, `/oferta`, `/taller`, `/login`): intactas.
 - No se modifica la lógica de pago, webhook ni los campos de suscripción.

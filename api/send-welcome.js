@@ -8,6 +8,7 @@ const { applyRateLimit } = require("./_ratelimit.js");
 const { getAuth } = require("firebase-admin/auth");
 
 const MS_DAY = 24 * 60 * 60 * 1000;
+const DEFAULT_TRIAL_DAYS = 30;
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
@@ -68,7 +69,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, skipped: true, reason: "sin email" });
     }
 
-    const trialHasta = data.activoHasta || data.trialEndsAt || (Date.now() + 14 * MS_DAY);
+    const trialHasta = data.activoHasta || data.trialEndsAt || (Date.now() + DEFAULT_TRIAL_DAYS * MS_DAY);
     const diasTrial = Math.max(1, Math.ceil((trialHasta - Date.now()) / MS_DAY));
 
     const tpl = templateBienvenida({

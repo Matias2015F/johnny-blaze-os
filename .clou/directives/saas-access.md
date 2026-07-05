@@ -32,7 +32,7 @@ y mostrar el estado correcto de suscripción en la UI.
 
 ## Dependencia de precios (Firestore)
 `admin_settings/global.precios` debe tener:
-- `base: 125000`
+- `base: 65000`
 - `pro: 300000`
 - `full: 900000`
 Si está desactualizado, la app muestra precios incorrectos. Actualizar manualmente

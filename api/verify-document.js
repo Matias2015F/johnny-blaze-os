@@ -221,7 +221,7 @@ async function handlePublishWorkshop(req, res) {
 }
 
 const PRICES_FALLBACK = {
-  base: 125000,
+  base: 65000,
   pro: 300000,
   full: 900000,
   currency: "ARS",

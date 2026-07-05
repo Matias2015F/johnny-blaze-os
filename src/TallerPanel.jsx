@@ -10,7 +10,7 @@ import { CONFIG_DEFAULT, hoyEstable } from "./lib/constants.js";
 import { APP_BUILD } from "./generated/appVersion.js";
 import { applyRemoteUpdate, bindInstallPromptCapture, canPromptInstall, fetchRemoteVersion, getDisplayModeInfo, isNewerBuild, promptInstallApp } from "./lib/appUpdate.js";
 import { ensureAccountProfile, trackEvent } from "./lib/telemetry.js";
-import { upsertClienteYMoto } from "./services/clienteMotoService.js";
+import { previewClienteMotoUpsert, upsertClienteYMoto } from "./services/clienteMotoService.js";
 import { nextNumeroOT, nextNumeroPRE } from "./services/counterService.js";
 import { buildUsageSnapshot, canUseFreeResource, persistUsageSnapshot } from "./services/usageLimitService.js";
 import { logAction } from "./services/auditService.js";
@@ -335,7 +335,14 @@ export default function TallerPanel({ modoLectura = false, account = null }) {
 
   // -- Crear orden nueva ------------------------------------------------------
   const handleCreateOrder = async (payload) => {
-    const check = canUseFreeResource(account, usageSnapshot, "nuevaOrden");
+    const preview = previewClienteMotoUpsert(payload, { clients, bikes });
+    const check = canUseFreeResource(account, usageSnapshot, "crearOrden", {
+      deltas: {
+        trabajosTotal: 1,
+        clientesTotal: preview.createsClient ? 1 : 0,
+        motosTotal: preview.createsBike ? 1 : 0,
+      },
+    });
     if (!check.ok) {
       showToast(check.message);
       setView("config");
@@ -407,7 +414,14 @@ export default function TallerPanel({ modoLectura = false, account = null }) {
 
   // -- Presupuestos -----------------------------------------------------------
   const handleCreatePresupuesto = async (payload) => {
-    const check = canUseFreeResource(account, usageSnapshot, "nuevoPresupuesto");
+    const preview = previewClienteMotoUpsert(payload, { clients, bikes });
+    const check = canUseFreeResource(account, usageSnapshot, "crearPresupuesto", {
+      deltas: {
+        presupuestosTotal: 1,
+        clientesTotal: preview.createsClient ? 1 : 0,
+        motosTotal: preview.createsBike ? 1 : 0,
+      },
+    });
     if (!check.ok) {
       showToast(check.message);
       setView("config");
@@ -454,6 +468,15 @@ export default function TallerPanel({ modoLectura = false, account = null }) {
   const handleConvertirPresupuestoAOT = async () => {
     const pres = presupuestos.find((p) => p.id === selectedPresupuestoId);
     if (!pres) return;
+
+    const check = canUseFreeResource(account, usageSnapshot, "crearOrden", {
+      deltas: { trabajosTotal: 1 },
+    });
+    if (!check.ok) {
+      showToast(check.message);
+      setView("config");
+      return;
+    }
 
     const numeroTrabajo = await nextNumeroOT(orders.length + 1);
     const orden = LS.addDoc("trabajos", {

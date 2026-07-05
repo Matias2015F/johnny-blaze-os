@@ -2,11 +2,11 @@ import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebase.js";
 
 export const FREE_PLAN_LIMITS = {
-  trabajosTotal: 20,
-  presupuestosTotal: 20,
-  clientesTotal: 60,
-  motosTotal: 60,
-  comprobantesEmitidos: 15,
+  trabajosTotal: 10,
+  presupuestosTotal: 10,
+  clientesTotal: 10,
+  motosTotal: 10,
+  comprobantesEmitidos: 10,
 };
 
 const RESOURCE_LABELS = {
@@ -18,8 +18,11 @@ const RESOURCE_LABELS = {
 };
 
 const RESOURCE_ACTION_MAP = {
-  nuevaOrden: ["trabajosTotal", "clientesTotal", "motosTotal"],
-  nuevoPresupuesto: ["presupuestosTotal", "clientesTotal", "motosTotal"],
+  nuevaOrden: ["trabajosTotal"],
+  nuevoPresupuesto: ["presupuestosTotal"],
+  crearOrden: ["trabajosTotal", "clientesTotal", "motosTotal"],
+  crearPresupuesto: ["presupuestosTotal", "clientesTotal", "motosTotal"],
+  prePdf: ["comprobantesEmitidos"],
   emitirComprobante: ["comprobantesEmitidos"],
 };
 
@@ -96,26 +99,31 @@ export function getFreeUsageStatus(account, snapshot) {
   };
 }
 
-export function canUseFreeResource(account, snapshot, action) {
+export function canUseFreeResource(account, snapshot, action, options = {}) {
   const status = getFreeUsageStatus(account, snapshot);
   if (!status.freeMode) return { ok: true, status };
 
   const resourceKeys = RESOURCE_ACTION_MAP[action];
   if (!resourceKeys?.length) return { ok: true, status };
+  const deltas = options.deltas || {};
 
   const blockedKey = resourceKeys.find((key) => {
     const limit = FREE_PLAN_LIMITS[key];
     const used = Number(snapshot?.counts?.[key] || 0);
-    return limit && used >= limit;
+    const hasDelta = Object.prototype.hasOwnProperty.call(deltas, key);
+    const delta = Number(deltas[key] || 0);
+    return limit && (hasDelta ? used + delta > limit : used >= limit);
   });
 
   if (blockedKey) {
     const limit = FREE_PLAN_LIMITS[blockedKey];
     const used = Number(snapshot?.counts?.[blockedKey] || 0);
+    const delta = Number(deltas[blockedKey] || 0);
+    const projected = used + delta;
     return {
       ok: false,
       status,
-      message: `Modo free: limite de ${RESOURCE_LABELS[blockedKey]} alcanzado (${used}/${limit}). Activa un plan para seguir creando.`,
+      message: `Modo free: limite de ${RESOURCE_LABELS[blockedKey]} alcanzado (${Math.max(used, projected)}/${limit}). Activa un plan para seguir creando.`,
     };
   }
 

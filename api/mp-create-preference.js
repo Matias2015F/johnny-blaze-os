@@ -7,7 +7,7 @@ try {
 const { applyRateLimit } = require("./_ratelimit.js");
 
 const PLANES_FALLBACK = {
-  base: { label: "Mensual",    monto: 125000 },
+  base: { label: "Mensual",    monto: 65000 },
   pro:  { label: "Trimestral", monto: 300000 },
   full: { label: "Anual",      monto: 900000 },
 };

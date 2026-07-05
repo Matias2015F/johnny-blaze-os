@@ -23,7 +23,7 @@ Propuesta de valor real (en palabras del mecanico):
 
 Planes actuales:
 - Trial gratuito (dias configurables, actualmente definidos en admin_settings/global)
-- Plan Mensual (base) — ARS 125.000 / 30 dias
+- Plan Mensual (base) — ARS 65.000 / 30 dias
 - Plan Trimestral (pro) — ARS 300.000 / 90 dias
 - Plan Anual (full) — ARS 900.000 / 365 dias
 

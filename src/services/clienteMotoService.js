@@ -7,6 +7,34 @@ function normNombre(s) {
 function normTel(s) {
   return (s || "").replace(/\D/g, "").replace(/^0+/, "");
 }
+function normPatente(s) {
+  return (s || "").toUpperCase().replace(/[-\s]/g, "");
+}
+
+export function findClienteExistente(payload, clients = []) {
+  return clients.find((c) =>
+    normNombre(c.nombre) === normNombre(payload.nombre) &&
+    normTel(c.tel || c.telefono) === normTel(payload.tel)
+  ) || null;
+}
+
+export function findMotoExistente(payload, bikes = []) {
+  const patenteInput = normPatente(payload.patente);
+  if (!patenteInput) return null;
+  return bikes.find((b) => {
+    const norm = normPatente(b.patenteNormalizada || b.patente || "");
+    return norm === patenteInput;
+  }) || null;
+}
+
+export function previewClienteMotoUpsert(payload, { clients = [], bikes = [] } = {}) {
+  const clienteExistente = findClienteExistente(payload, clients);
+  const motoExistente = findMotoExistente(payload, bikes);
+  return {
+    createsClient: !clienteExistente,
+    createsBike: !motoExistente,
+  };
+}
 
 /**
  * Busca o crea cliente + moto, actualiza titularidad si corresponde.
@@ -23,10 +51,7 @@ export function upsertClienteYMoto(
   const kmActual = Number(payload.km) || 0;
 
   // Buscar cliente por nombre + teléfono — normalizados para evitar duplicados por acentos/prefijos
-  const clienteExistente = clients.find((c) =>
-    normNombre(c.nombre) === normNombre(payload.nombre) &&
-    normTel(c.tel || c.telefono) === normTel(payload.tel)
-  );
+  const clienteExistente = findClienteExistente(payload, clients);
   const clientId = clienteExistente
     ? clienteExistente.id
     : LS.addDoc("clientes", {
@@ -40,11 +65,8 @@ export function upsertClienteYMoto(
       }).id;
 
   // Buscar moto por patente — normalizar eliminando guiones/espacios para evitar duplicados
-  const patenteInput = payload.patente.toUpperCase().replace(/[-\s]/g, "");
-  const motoExistente = bikes.find((b) => {
-    const norm = (b.patenteNormalizada || b.patente || "").toUpperCase().replace(/[-\s]/g, "");
-    return norm === patenteInput;
-  });
+  const patenteInput = normPatente(payload.patente);
+  const motoExistente = findMotoExistente(payload, bikes);
   let bikeId;
   if (motoExistente) {
     bikeId = motoExistente.id;
