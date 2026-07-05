@@ -9,17 +9,17 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `8f5e332` | 2026-07-05 |
+| `app.motogestion.ar` | `motogestion-app` | `ec44cf2` | 2026-07-05 |
 | `admin.motogestion.ar` | `motogestion-admin` | `114b416` | 2026-06-25 (recuperado via HF-INFRA-002) |
 | `motogestion.ar` | `motogestion-landing` | `7fa7ccd` | 2026-07-01 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `8f5e332` - fix(telemetry): avoid sensitive receipt metadata
+SHA: `ec44cf2` - feat(free): align trial limits
 
 ## HEAD local
 
-SHA: `8f5e332` - en sync con origin/main. Sin cambios de codigo pendientes. Untracked local conocido: `ESTADO_CHAT_MOTOGESTION_2026-07-01.md`.
+SHA: `ec44cf2` - en sync con origin/main. Sin cambios pendientes.
 
 ---
 
@@ -120,6 +120,68 @@ Etapa activa: RC-2 — Growth
 ---
 
 ## Ultima sesion
+
+**Fecha:** 2026-07-05
+**IA:** Codex
+**Ticket cerrado:** CAPTACION-001-B - Alinear limites reales del Plan Free
+
+**Trabajo realizado:**
+- `ec44cf2`: Plan Free queda alineado a 30 dias + 10 clientes + 10 motos +
+  10 ordenes + 10 presupuestos + 10 comprobantes.
+- `src/services/usageLimitService.js`: `FREE_PLAN_LIMITS` ahora usa 10 para los
+  cinco recursos y `canUseFreeResource()` soporta deltas prospectivos.
+- `src/services/clienteMotoService.js`: se agrega preview sin escritura para saber si
+  una orden/presupuesto va a crear cliente o moto.
+- `src/TallerPanel.jsx`: crear orden, crear presupuesto y convertir presupuesto a OT
+  bloquean solo si la accion superaria algun limite. Usar cliente/moto existente no
+  bloquea por estar justo en 10. `prePdf` queda conectado al limite de comprobantes.
+- `api/mp-create-preference.js` y `api/verify-document.js`: fallback del plan Mensual
+  alineado a ARS 65.000 si Firestore no responde.
+- `api/send-welcome.js` e `index.html`: fallback/copy heredado de 14 dias actualizado a 30.
+- `docs/landing.html` y `growth-specialist`: copy interno alineado para no prometer
+  Trial ilimitado ni precio viejo.
+
+**Validacion:**
+- `git diff --check`: OK (solo avisos LF -> CRLF de Windows).
+- `npm run build`: OK.
+- `npm run lint`: OK, 0 errores, 59 warnings heredados.
+- Deploy productivo Vercel OK: `app.motogestion.ar/version.json` -> SHA `ec44cf2`,
+  buildTime `2026-07-05T18:12:20.600Z`.
+- `https://app.motogestion.ar/api/public-prices` -> `base: 65000`, `pro: 300000`,
+  `full: 900000`, `planDurations.base: 30`.
+- HTML productivo de `app.motogestion.ar` confirma "30 dias gratis" y ya no muestra 14 dias.
+
+**Estado operativo:**
+```txt
+DECIDED:
+- CAPTACION-001-A: Plan Free = 30 dias + limites 10/10/10/10/10.
+
+IMPLEMENTED_IN_DOMAIN:
+- Si, en usageLimitService + preview de cliente/moto + fallbacks API.
+
+CONNECTED_TO_UI:
+- Si, TallerPanel enforcea nueva orden, nuevo presupuesto, conversion a OT y prePdf.
+- Si, AdminPanelView lee la misma constante FREE_PLAN_LIMITS.
+
+ENFORCED_IN_RUNTIME:
+- Si, deploy productivo verificado en app.motogestion.ar.
+
+DEPLOYED:
+- Si, SHA ec44cf2.
+```
+
+**Respaldo:**
+- `bash scripts/backup.sh` no puede ejecutarse porque WSL no tiene distribuciones instaladas.
+- Respaldo equivalente realizado con PowerShell en `backups/2026-07-05_1504/`.
+- Resultado: 12/13 archivos copiados; `DIRECTIVES.md` no existe en el repo.
+
+**Pendiente comercial:**
+- Recién ahora queda habilitado escribir propuesta comercial y guiones de outreach
+  con Free = 30 dias y limites 10.
+
+---
+
+## Sesion anterior
 
 **Fecha:** 2026-07-05
 **IA:** Codex
@@ -300,16 +362,12 @@ Secuencia ejecutada:
    - Panel admin (`admin.motogestion.ar`) -> duracionTrialDias=30 confirmado por el usuario tras
      HF-INFRA-002.
 
-Hallazgo pendiente para la proxima etapa de CAPTACION-001 (redaccion de propuesta comercial):
-`src/services/usageLimitService.js` ya tiene limites de modo Free ENFORCED_RUNTIME (via
-TallerPanel.jsx) con valores distintos a los mencionados en la decision de negocio:
-clientesTotal=60, motosTotal=60, trabajosTotal=20, presupuestosTotal=20, comprobantesEmitidos=15
-(no "5 clientes/5 vehiculos"). Resolver esta discrepancia antes de imprimir esos numeros en
-cualquier documento comercial.
+Hallazgo posterior resuelto en CAPTACION-001-B (`ec44cf2`, 2026-07-05):
+`src/services/usageLimitService.js` quedo alineado a Plan Free 30 dias con limites 10/10/10/10/10.
 
-**Proximo ticket RC-2 (pendiente de decision):**
-- CAPTACION-001 (continuacion): resolver discrepancia de usageLimitService.js, luego redactar
-  propuesta comercial completa y guion de outreach (growth-specialist), en ese orden.
+**Proximo ticket RC-2:**
+- CAPTACION-001-C: redactar propuesta comercial completa con Plan Free 30 dias y limites 10.
+- Luego preparar guion de outreach (growth-specialist), en ese orden.
 - HF-QA004-1 (P2): corregir antes de construir dashboards RC-3/DI-001.
 
 ---

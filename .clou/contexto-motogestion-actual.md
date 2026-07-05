@@ -1,11 +1,32 @@
 # Contexto MotoGestion — Estado actual
-**Fecha:** 2026-07-05 | **Commit HEAD/origin:** `8f5e332` | **Commit deploy Vercel:** `8f5e332` | **Produccion:** `app.motogestion.ar`
+**Fecha:** 2026-07-05 | **Commit HEAD/origin:** `ec44cf2` | **Commit deploy Vercel:** `ec44cf2` | **Produccion:** `app.motogestion.ar`
 
 **Comando de inicio:** `/motogestion`
 
 ---
 
 ## 0. Ultima reanudacion verificada (2026-07-05)
+
+**CAPTACION-001-B cerrado y deployado:**
+- Plan Free definido y aplicado: 30 dias, 1 usuario, hasta 10 clientes, 10 motos,
+  10 ordenes, 10 presupuestos y 10 comprobantes.
+- `src/services/usageLimitService.js` expone `FREE_PLAN_LIMITS` con 10 en los cinco
+  recursos y soporta deltas prospectivos.
+- `src/TallerPanel.jsx` enforcea nueva orden, nuevo presupuesto, conversion PRE -> OT
+  y entrada a `prePdf` para limite de comprobantes.
+- Usar cliente/moto existente no bloquea por estar justo en el limite de clientes/motos.
+- Fallbacks de precio en `api/mp-create-preference.js` y `api/verify-document.js`
+  quedan en ARS 65.000 para el plan Mensual.
+- Produccion verificada: `https://app.motogestion.ar/version.json` -> SHA `ec44cf2`,
+  buildTime `2026-07-05T18:12:20.600Z`.
+- `https://app.motogestion.ar/api/public-prices` devuelve `base: 65000`.
+- Validaciones locales: `git diff --check` OK, `npm run build` OK, `npm run lint`
+  OK con 59 warnings heredados.
+- Proximo ticket: CAPTACION-001-C, propuesta comercial. No iniciar outreach antes.
+
+---
+
+## 0.1 Reanudacion anterior (2026-07-05)
 
 **HF-PRIV-001 cerrado y deployado:**
 - `src/components/PrePdfView.jsx` ya no envia `total` ni `hashVerificacion` a
@@ -62,8 +83,8 @@
 
 | Capa | SHA | Estado |
 |---|---|---|
-| `origin/main` | `8f5e332` | en sync con local |
-| Vercel app.motogestion.ar | `8f5e332` | sincronizado y verificado por `version.json` |
+| `origin/main` | `ec44cf2` | en sync con local |
+| Vercel app.motogestion.ar | `ec44cf2` | sincronizado y verificado por `version.json` |
 | Vercel admin.motogestion.ar | desconocido | verificar antes de sync |
 
 ---

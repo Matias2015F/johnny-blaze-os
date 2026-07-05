@@ -1,5 +1,5 @@
 ## ID y Estado
-free-plan-limits - CAPTACION-001-B en implementacion
+free-plan-limits - CAPTACION-001-B cerrado
 
 ## Objetivo principal
 Alinear el contrato comercial del Plan Free con el runtime real de la app, el panel admin,
@@ -62,4 +62,4 @@ Plan Free:
 ## Historial de cambios
 | Fecha | Commit | Cambio |
 |---|---|---|
-| 2026-07-05 | pendiente | Directiva creada para CAPTACION-001-B. |
+| 2026-07-05 | ec44cf2 | Plan Free alineado a limites 10/10/10/10/10, fallbacks 30 dias y ARS 65.000. |
