@@ -9,17 +9,17 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `1dda30d` | 2026-07-01 |
+| `app.motogestion.ar` | `motogestion-app` | `8f5e332` | 2026-07-05 |
 | `admin.motogestion.ar` | `motogestion-admin` | `114b416` | 2026-06-25 (recuperado via HF-INFRA-002) |
 | `motogestion.ar` | `motogestion-landing` | `7fa7ccd` | 2026-07-01 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `1dda30d` — fix(SaaS): actualizar trial free a 30 dias
+SHA: `8f5e332` - fix(telemetry): avoid sensitive receipt metadata
 
 ## HEAD local
 
-SHA: `1dda30d` — en sync con origin/main. Cambio sin commitear: `.clou/ESTADO.md` (este archivo).
+SHA: `8f5e332` - en sync con origin/main. Sin cambios de codigo pendientes. Untracked local conocido: `ESTADO_CHAT_MOTOGESTION_2026-07-01.md`.
 
 ---
 
@@ -120,6 +120,57 @@ Etapa activa: RC-2 — Growth
 ---
 
 ## Ultima sesion
+
+**Fecha:** 2026-07-05
+**IA:** Codex
+**Ticket cerrado:** HF-PRIV-001 - Telemetria de comprobantes sin datos sensibles
+
+**Trabajo realizado:**
+- `8f5e332`: `src/components/PrePdfView.jsx` deja de enviar `total` y `hashVerificacion`
+  en `telemetryEvents.metadata` durante `trackEvent("emitir_comprobante")`.
+- Se conserva `numeroComprobante` como metadata operativa suficiente.
+- No se toca `snapshotFinal`, QR, `publicReceipts`, `receiptToken`, PDF ni evidencia juridica
+  del comprobante. El hash sigue guardado donde corresponde para verificacion documental.
+- Motivo: `trackEvent` persiste eventos globales en `telemetryEvents`; el total cobrado y el
+  hash de verificacion no son necesarios para metricas de uso.
+
+**Validacion:**
+- `git diff --check`: OK (solo aviso de LF -> CRLF en Windows para `PrePdfView.jsx`).
+- `npm run build`: OK.
+- `npm run lint`: OK, 0 errores, 59 warnings heredados.
+- Deploy productivo Vercel OK: `app.motogestion.ar/version.json` -> SHA `8f5e332`,
+  buildTime `2026-07-05T00:44:08.686Z`.
+
+**Estado operativo:**
+```txt
+DECIDED:
+- HF-PRIV-001: no persistir total ni hashVerificacion en metadata de telemetria.
+
+IMPLEMENTED_IN_DOMAIN:
+- Si, en PrePdfView.jsx.
+
+CONNECTED_TO_UI:
+- Si, el flujo de emision de comprobante usa ese trackEvent.
+
+ENFORCED_IN_RUNTIME:
+- Si, deploy productivo verificado en app.motogestion.ar.
+
+DEPLOYED:
+- Si, SHA 8f5e332.
+```
+
+**Respaldo:**
+- `bash scripts/backup.sh` no pudo ejecutarse porque WSL no tiene distribuciones instaladas.
+- Respaldo equivalente realizado con PowerShell en `backups/2026-07-04_2141/`.
+- Resultado: 12/13 archivos copiados; `DIRECTIVES.md` no existe en el repo.
+
+**Pendiente local no tocado:**
+- `ESTADO_CHAT_MOTOGESTION_2026-07-01.md` sigue untracked y contiene datos desfasados.
+  No se commiteo ni borro para no mezclarlo con el fix.
+
+---
+
+## Sesion anterior
 
 **Fecha:** 2026-06-29
 **IA:** Claude (Sonnet 4.6 / Opus 4.x)

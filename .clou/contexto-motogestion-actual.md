@@ -1,7 +1,29 @@
 # Contexto MotoGestion — Estado actual
-**Fecha:** 2026-06-28 | **Commit HEAD/origin:** `5e5a55f` | **Commit deploy Vercel:** `35aaf77` | **Produccion:** `app.motogestion.ar`
+**Fecha:** 2026-07-05 | **Commit HEAD/origin:** `8f5e332` | **Commit deploy Vercel:** `8f5e332` | **Produccion:** `app.motogestion.ar`
 
 **Comando de inicio:** `/motogestion`
+
+---
+
+## 0. Ultima reanudacion verificada (2026-07-05)
+
+**HF-PRIV-001 cerrado y deployado:**
+- `src/components/PrePdfView.jsx` ya no envia `total` ni `hashVerificacion` a
+  `telemetryEvents.metadata` durante `trackEvent("emitir_comprobante")`.
+- Se mantiene `numeroComprobante` como metadata operativa.
+- La evidencia del comprobante no cambia: `snapshotFinal.hash`, QR, `publicReceipts`,
+  `receiptToken` y PDF siguen funcionando como antes.
+- Produccion verificada: `https://app.motogestion.ar/version.json` -> SHA `8f5e332`,
+  buildTime `2026-07-05T00:44:08.686Z`.
+- Validaciones locales: `npm run build` OK, `npm run lint` OK con 59 warnings heredados.
+
+**Respaldo de sesion:**
+- `bash scripts/backup.sh` fallo porque WSL no tiene distribuciones instaladas.
+- Backup equivalente PowerShell creado en `backups/2026-07-04_2141/` con 12/13 archivos.
+- Falta `DIRECTIVES.md` porque no existe en el repo.
+
+**Nota local:**
+- `ESTADO_CHAT_MOTOGESTION_2026-07-01.md` queda untracked y no fue tocado.
 
 ---
 
@@ -40,8 +62,8 @@
 
 | Capa | SHA | Estado |
 |---|---|---|
-| `origin/main` | `5e5a55f` | en sync con local |
-| Vercel app.motogestion.ar | `35aaf77` | **ATRASADO** — `5e5a55f` es solo docs, no urgente |
+| `origin/main` | `8f5e332` | en sync con local |
+| Vercel app.motogestion.ar | `8f5e332` | sincronizado y verificado por `version.json` |
 | Vercel admin.motogestion.ar | desconocido | verificar antes de sync |
 
 ---
