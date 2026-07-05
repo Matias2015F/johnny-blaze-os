@@ -15,11 +15,11 @@
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `ec44cf2` - feat(free): align trial limits
+SHA: cierre documental posterior a `ec44cf2` - codigo Plan Free desplegado en `ec44cf2`
 
 ## HEAD local
 
-SHA: `ec44cf2` - en sync con origin/main. Sin cambios pendientes.
+SHA: en sync con origin/main. Codigo Plan Free desplegado en `ec44cf2`; cierre documental posterior sin redeploy requerido.
 
 ---
 

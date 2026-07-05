@@ -1,5 +1,5 @@
 # Contexto MotoGestion — Estado actual
-**Fecha:** 2026-07-05 | **Commit HEAD/origin:** `ec44cf2` | **Commit deploy Vercel:** `ec44cf2` | **Produccion:** `app.motogestion.ar`
+**Fecha:** 2026-07-05 | **Commit deploy Vercel:** `ec44cf2` | **Produccion:** `app.motogestion.ar` | **Repo:** cierre documental posterior a `ec44cf2`
 
 **Comando de inicio:** `/motogestion`
 
@@ -83,7 +83,7 @@
 
 | Capa | SHA | Estado |
 |---|---|---|
-| `origin/main` | `ec44cf2` | en sync con local |
+| `origin/main` | cierre docs posterior a `ec44cf2` | en sync con local |
 | Vercel app.motogestion.ar | `ec44cf2` | sincronizado y verificado por `version.json` |
 | Vercel admin.motogestion.ar | desconocido | verificar antes de sync |
 
