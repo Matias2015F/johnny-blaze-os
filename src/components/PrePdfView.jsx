@@ -134,7 +134,7 @@ export default function PrePdfView({ order, setView, setFinalPdfData, showToast 
       screen: "prePdf",
       entityType: "trabajo",
       entityId: order.id,
-      metadata: { numeroComprobante, total: totalOrden, hashVerificacion: snapshotFinal.hash },
+      metadata: { numeroComprobante },
     }).catch(console.error);
 
     LS.updateDoc("trabajos", order.id, {
