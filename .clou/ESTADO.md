@@ -15,6 +15,14 @@
 
 ## HEAD en GitHub (origin/main)
 
+SHA: `9c16472` - documentacion CAPTACION-001-D versionada. No cambios de codigo.
+
+## HEAD local
+
+SHA: en sync con origin/main. Repo limpio. No deploy requerido (documentacion pura).
+
+## HEAD en GitHub (origin/main)
+
 SHA: cierre documental posterior a `ec44cf2` - codigo Plan Free desplegado en `ec44cf2`; landing publica desplegada en `237b1a0`; material comercial CAPTACION-001-C versionado en docs
 
 ## HEAD local
@@ -120,6 +128,62 @@ Etapa activa: RC-2 — Growth
 ---
 
 ## Ultima sesion
+
+**Fecha:** 2026-07-05
+**IA:** Claude (Haiku)
+**Ticket cerrado:** CAPTACION-001-D - Lista piloto de 20 talleres
+
+**Trabajo realizado:**
+- Se compila lista piloto de 20 talleres mecanicos de motos reales en zona prioritaria
+  (Rosario, Paraná, Diamante, Crespo, Oro Verde).
+- Fuentes de datos verificadas: directorios publicos (licuo.com.ar, paranaonline.com.ar,
+  ciclolandiamotos.com.ar, fulltimemotos.com.ar), Google Maps y redes sociales (IG/FB).
+- Datos mínimos por taller: nombre, ciudad, provincia, teléfono/WhatsApp, redes,
+  prioridad (Alta/Media/Baja), motivo de prioridad, primer mensaje recomendado.
+- Marcado de confiabilidad: "Verificado" si 2+ fuentes, "No verificado" si falta confirmación.
+- Talleres de prioridad Alta (6): Moto Garage, Mecánica Leo (Rosario); Motomecánica El Ruso,
+  CRESPO MOTOS, Delgado Motos (zona prioritaria núcleo).
+- Talleres de prioridad Media (8): Paraná, bajo overhead de conversión, perfil objetivo
+  cuaderno/papel.
+- Talleres de prioridad Baja (6): confirmación de rubro/estado antes de contactar.
+- Documento entregable: `docs/comercial/CAPTACION-001-D-lista-piloto-20-talleres.md`.
+- Indice actualizado: `docs/INDEX.md`.
+- NO contactar todavía: lista es insumo para revisión y personalización manual del equipo
+  comercial. Mensaje adaptado por tipo de taller segun guion CAPTACION-001-C.
+
+**Validacion:**
+- `npm run build`: OK.
+- `npm run lint`: OK, 0 errores, 59 warnings heredados.
+- No se modifico codigo, app, admin, API ni landing.
+- No hubo deploy: documentacion pura.
+- Commit: `9c16472` — docs(captacion): lista piloto de 20 talleres para outreach manual.
+- Push a GitHub: OK.
+
+**Estado operativo:**
+```txt
+DECIDED:
+- CAPTACION-001: Fase piloto: 20 talleres reales para contacto manual estratégico.
+
+IMPLEMENTED_IN_DOMAIN:
+- Si, lista compilada y documentada.
+
+CONNECTED_TO_UI:
+- No aplica. Documentacion pura.
+
+ENFORCED_IN_RUNTIME:
+- No aplica. App/admin/landing sin cambios.
+
+DEPLOYED:
+- No aplica. Documentacion versionada en repo.
+```
+
+**Proximo ticket recomendado:**
+- CAPTACION-001-E - Contacto manual de los 6 talleres prioritarios Alta, adaptación de
+  mensajes segun respuesta, seguimiento y metricas de conversion a Plan Free.
+
+---
+
+## Sesion anterior
 
 **Fecha:** 2026-07-05
 **IA:** Codex
