@@ -15,11 +15,11 @@
 
 ## HEAD en GitHub (origin/main)
 
-SHA: cierre documental posterior a `ec44cf2` - codigo Plan Free desplegado en `ec44cf2`; landing publica desplegada en `237b1a0`
+SHA: cierre documental posterior a `ec44cf2` - codigo Plan Free desplegado en `ec44cf2`; landing publica desplegada en `237b1a0`; material comercial CAPTACION-001-C versionado en docs
 
 ## HEAD local
 
-SHA: en sync con origin/main. Codigo Plan Free desplegado en `ec44cf2`; landing publica desplegada en `237b1a0`; cierre documental posterior sin redeploy de app requerido.
+SHA: en sync con origin/main. Codigo Plan Free desplegado en `ec44cf2`; landing publica desplegada en `237b1a0`; cierre documental/comercial posterior sin redeploy de app requerido.
 
 ---
 
@@ -120,6 +120,64 @@ Etapa activa: RC-2 — Growth
 ---
 
 ## Ultima sesion
+
+**Fecha:** 2026-07-05
+**IA:** Codex
+**Ticket cerrado:** CAPTACION-001-C - Propuesta comercial y guion de outreach
+
+**Trabajo realizado:**
+- Se crea `docs/comercial/CAPTACION-001-C-propuesta-y-outreach.md` como material
+  comercial base para propuesta, WhatsApp, email, llamada y manejo de objeciones.
+- Se enlaza el documento desde `docs/INDEX.md`.
+- El contrato usado queda alineado al cierre vigente:
+  Plan Free = 30 dias, 1 usuario, hasta 10 clientes, 10 motos, 10 ordenes,
+  10 presupuestos, 10 comprobantes, sin tarjeta, sin compromiso.
+  Plan Mensual = ARS 65.000, facturacion cada 30 dias.
+- El material evita vender el Mensual como primer paso: la accion principal es
+  probar el Free con trabajos reales.
+- Se agregan reglas de uso para no prometer capacidad sin limite, no inventar
+  testimonios/datos y personalizar siempre con un dato real del taller.
+
+**Validacion:**
+- Documento comercial verificado sin caracteres fuera de ASCII.
+- Documento comercial verificado sin patrones viejos: `14 dias`, `60 clientes`,
+  `60 motos`, `20 trabajos`, `20 presupuestos`, `15 comprobantes`, `125000`,
+  `125.000`, `Plan Base`.
+- `npm run build`: OK.
+- `npm run lint`: OK, 0 errores, 59 warnings heredados.
+- No se modifico codigo, app, admin, API ni landing.
+- No hubo deploy: no corresponde para documentacion comercial.
+
+**Estado operativo:**
+```txt
+DECIDED:
+- Si, contrato Free/Mensual confirmado por CAPTACION-001-A/B.
+
+IMPLEMENTED_IN_DOMAIN:
+- Si, material comercial en docs/comercial.
+
+CONNECTED_TO_UI:
+- No aplica. No hubo cambio de producto.
+
+ENFORCED_IN_RUNTIME:
+- No aplica. App runtime sigue en ec44cf2 y landing real en 237b1a0.
+
+DEPLOYED:
+- No aplica. Documentacion versionada en repo.
+```
+
+**Respaldo:**
+- `bash scripts/backup.sh` no puede ejecutarse porque WSL no tiene distribuciones instaladas.
+- Respaldo equivalente realizado con PowerShell en `backups/2026-07-05_2123/`.
+- Resultado: 12/13 archivos copiados; `DIRECTIVES.md` no existe en el repo.
+
+**Siguiente ticket recomendado:**
+- CAPTACION-001-D - Lista piloto de 20 talleres. No enviar en masa sin revisar
+  personalizacion por taller.
+
+---
+
+## Sesion anterior
 
 **Fecha:** 2026-07-05
 **IA:** Codex

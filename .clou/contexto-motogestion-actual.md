@@ -7,6 +7,29 @@
 
 ## 0. Ultima reanudacion verificada (2026-07-05)
 
+**CAPTACION-001-C cerrado como material comercial:**
+- Documento creado: `docs/comercial/CAPTACION-001-C-propuesta-y-outreach.md`.
+- Indice actualizado: `docs/INDEX.md`.
+- Contenido incluido: propuesta comercial completa, version corta para WhatsApp,
+  guiones de primer contacto, secuencia de seguimiento, secuencia de email frio,
+  guion de llamada/audio, manejo de objeciones, reglas de uso y metricas.
+- Contrato comercial usado:
+  - Plan Free: 30 dias, 1 usuario, hasta 10 clientes, 10 motos, 10 ordenes,
+    10 presupuestos, 10 comprobantes, sin tarjeta, sin compromiso.
+  - Plan Mensual: ARS 65.000, facturacion cada 30 dias.
+- Validado sin patrones viejos: `14 dias`, `60 clientes`, `60 motos`,
+  `20 trabajos`, `20 presupuestos`, `15 comprobantes`, `125000`, `125.000`,
+  `Plan Base`.
+- `npm run build`: OK.
+- `npm run lint`: OK, 0 errores, 59 warnings heredados.
+- No se modifico codigo, app, admin, API ni landing. No hubo deploy.
+- Proximo ticket recomendado: CAPTACION-001-D, lista piloto de 20 talleres.
+  No enviar en masa sin revisar personalizacion por taller.
+
+---
+
+## 0.1 Reanudacion anterior (2026-07-05)
+
 **CAPTACION-001-B cerrado y deployado:**
 - Plan Free definido y aplicado: 30 dias, 1 usuario, hasta 10 clientes, 10 motos,
   10 ordenes, 10 presupuestos y 10 comprobantes.
@@ -22,11 +45,11 @@
 - `https://app.motogestion.ar/api/public-prices` devuelve `base: 65000`.
 - Validaciones locales: `git diff --check` OK, `npm run build` OK, `npm run lint`
   OK con 59 warnings heredados.
-- Proximo ticket: CAPTACION-001-C, propuesta comercial. No iniciar outreach antes.
+- CAPTACION-001-C ya quedo cerrado como material comercial base.
 
 ---
 
-## 0.1 Reanudacion anterior (2026-07-05)
+## 0.2 Reanudacion anterior (2026-07-05)
 
 **HF-PRIV-001 cerrado y deployado:**
 - `src/components/PrePdfView.jsx` ya no envia `total` ni `hashVerificacion` a

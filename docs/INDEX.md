@@ -1,6 +1,6 @@
 # MotoGestion - Documentacion
 
-Ultima actualizacion: 2026-06-05
+Ultima actualizacion: 2026-07-05
 
 ## Base tecnica
 
@@ -13,3 +13,7 @@ Ultima actualizacion: 2026-06-05
 ## SOP
 
 - [Actualizar precios y planes](skills/actualizar-precios-planes.md)
+
+## Comercial
+
+- [CAPTACION-001-C - Propuesta comercial y outreach](comercial/CAPTACION-001-C-propuesta-y-outreach.md)
