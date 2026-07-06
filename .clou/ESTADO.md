@@ -11,15 +11,15 @@
 |---|---|---|---|
 | `app.motogestion.ar` | `motogestion-app` | `ec44cf2` | 2026-07-05 |
 | `admin.motogestion.ar` | `motogestion-admin` | `114b416` | 2026-06-25 (recuperado via HF-INFRA-002) |
-| `motogestion.ar` | `motogestion-landing` | `7fa7ccd` | 2026-07-01 |
+| `motogestion.ar` | `motogestion-landing` | `237b1a0` | 2026-07-05 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: cierre documental posterior a `ec44cf2` - codigo Plan Free desplegado en `ec44cf2`
+SHA: cierre documental posterior a `ec44cf2` - codigo Plan Free desplegado en `ec44cf2`; landing publica desplegada en `237b1a0`
 
 ## HEAD local
 
-SHA: en sync con origin/main. Codigo Plan Free desplegado en `ec44cf2`; cierre documental posterior sin redeploy requerido.
+SHA: en sync con origin/main. Codigo Plan Free desplegado en `ec44cf2`; landing publica desplegada en `237b1a0`; cierre documental posterior sin redeploy de app requerido.
 
 ---
 
@@ -123,7 +123,7 @@ Etapa activa: RC-2 — Growth
 
 **Fecha:** 2026-07-05
 **IA:** Codex
-**Ticket cerrado:** CAPTACION-001-B - Alinear limites reales del Plan Free
+**Ticket cerrado:** CAPTACION-001-B - Alinear limites reales del Plan Free y landing publica
 
 **Trabajo realizado:**
 - `ec44cf2`: Plan Free queda alineado a 30 dias + 10 clientes + 10 motos +
@@ -140,6 +140,10 @@ Etapa activa: RC-2 — Growth
 - `api/send-welcome.js` e `index.html`: fallback/copy heredado de 14 dias actualizado a 30.
 - `docs/landing.html` y `growth-specialist`: copy interno alineado para no prometer
   Trial ilimitado ni precio viejo.
+- Landing real (`C:\Users\Usuario\motogestion-landing`) cerrada en `237b1a0`:
+  `index.html` ya no promete trial ilimitado ni precio Mensual viejo. Muestra 30 dias,
+  1 usuario, hasta 10 clientes, 10 motos, 10 ordenes, 10 presupuestos, 10 comprobantes,
+  sin tarjeta, sin compromiso, y Plan Mensual ARS 65.000 / 30 dias.
 
 **Validacion:**
 - `git diff --check`: OK (solo avisos LF -> CRLF de Windows).
@@ -150,6 +154,14 @@ Etapa activa: RC-2 — Growth
 - `https://app.motogestion.ar/api/public-prices` -> `base: 65000`, `pro: 300000`,
   `full: 900000`, `planDurations.base: 30`.
 - HTML productivo de `app.motogestion.ar` confirma "30 dias gratis" y ya no muestra 14 dias.
+- Landing local verificada con servidor estatico: HTTP 200, sin patrones contradictorios
+  (`14 dias`, `carga ilimitada`, `125000`, `125.000`, `60 clientes`, `20 presupuestos`,
+  `15 comprobantes`, `plan Base`).
+- Deploy productivo landing Vercel OK: `motogestion.ar` aliasado desde
+  `dpl_BikV7Mk3UquL2ta8qXDS2Rzr72rA`.
+- HTML productivo de `motogestion.ar` confirma `lowPrice: 65000`, "30 dias de prueba",
+  "Hasta 10 clientes y 10 motos", "Hasta 10 ordenes", "Hasta 10 presupuestos y
+  10 comprobantes", "PLAN MENSUAL" y "65.000". No aparecen las contradicciones buscadas.
 
 **Estado operativo:**
 ```txt
@@ -167,7 +179,7 @@ ENFORCED_IN_RUNTIME:
 - Si, deploy productivo verificado en app.motogestion.ar.
 
 DEPLOYED:
-- Si, SHA ec44cf2.
+- Si. App: SHA ec44cf2. Landing: SHA 237b1a0.
 ```
 
 **Respaldo:**
