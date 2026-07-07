@@ -9,25 +9,17 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `ec44cf2` | 2026-07-05 |
-| `admin.motogestion.ar` | `motogestion-admin` | `114b416` | 2026-06-25 (recuperado via HF-INFRA-002) |
+| `app.motogestion.ar` | `motogestion-app` | `53bd8b8` | 2026-07-07 (deploy manual) |
+| `admin.motogestion.ar` | `motogestion-admin` | `64a1915` | 2026-07-06 (auto-deploy Git) |
 | `motogestion.ar` | `motogestion-landing` | `237b1a0` | 2026-07-05 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `9c16472` - documentacion CAPTACION-001-D versionada. No cambios de codigo.
+SHA: `53bd8b8` - baja de docs de captacion (CAPTACION-001-C/D) + INDEX.md limpio. No cambios de codigo.
 
 ## HEAD local
 
-SHA: en sync con origin/main. Repo limpio. No deploy requerido (documentacion pura).
-
-## HEAD en GitHub (origin/main)
-
-SHA: cierre documental posterior a `ec44cf2` - codigo Plan Free desplegado en `ec44cf2`; landing publica desplegada en `237b1a0`; material comercial CAPTACION-001-C versionado en docs
-
-## HEAD local
-
-SHA: en sync con origin/main. Codigo Plan Free desplegado en `ec44cf2`; landing publica desplegada en `237b1a0`; cierre documental/comercial posterior sin redeploy de app requerido.
+SHA: en sync con origin/main (`53bd8b8`). Repo limpio.
 
 ---
 
@@ -128,6 +120,65 @@ Etapa activa: RC-2 — Growth
 ---
 
 ## Ultima sesion
+
+**Fecha:** 2026-07-06 / 2026-07-07
+**IA:** Claude (Sonnet 5)
+**Ticket cerrado:** Recuperacion de VISION.md + alineacion de SHA app/admin
+
+**Trabajo realizado:**
+- Se detecto que `VISION.md` habia quedado generado en `C:\Users\Usuario\Downloads\VISION.md`
+  en una sesion previa y nunca se copio al repo. `CLAUDE.md` y `.clou/ESTADO.md` si estaban
+  commiteados (se verifico con `git ls-files` y `git log`).
+- `VISION.md` copiado a la raiz del repo, commiteado y pusheado (`64a1915`).
+- Se reviso el desfasaje entre `app.motogestion.ar` (`ec44cf2`) y `admin.motogestion.ar`.
+  `admin.motogestion.ar` tiene auto-deploy via Git integration de Vercel (se actualiza solo
+  al pushear a `main`); `app.motogestion.ar` NO se auto-deploya, requiere
+  `npx vercel --prod --scope matias2015fs-projects` manual.
+- Confirmado que los 7 commits pendientes entre `ec44cf2` y HEAD eran 100% documentacion
+  (`ESTADO.md`, `contexto-motogestion-actual.md`, `free-plan-limits.md`, `VISION.md`,
+  `docs/INDEX.md`, CAPTACION-001-C, CAPTACION-001-D) — sin diff de codigo (`git diff --stat`
+  confirmado, cero archivos de `src/` o `api/`).
+- Por decision del usuario, se dieron de baja los docs de captacion `CAPTACION-001-C` y
+  `CAPTACION-001-D` (`git rm` + limpieza de `docs/INDEX.md`), commit `53bd8b8`, pusheado.
+  Quedan recuperables en el historial de git si hacen falta.
+- Se corrio deploy manual (`npx vercel --prod --scope matias2015fs-projects`) para alinear
+  el SHA de `app.motogestion.ar` con HEAD.
+
+**Validacion:**
+- `npm run build`: OK antes del deploy.
+- No se modifico codigo de `src/` ni `api/` en ningun commit de esta sesion.
+- Commits: `64a1915` (VISION.md), `53bd8b8` (baja docs captacion + INDEX.md).
+- Push a GitHub: OK, ambos commits en `origin/main`.
+- Deploy: OK, verificado via `https://app.motogestion.ar/version.json` → `53bd8b8`,
+  `buildTime: 2026-07-07T00:37:59.351Z`.
+- `admin.motogestion.ar` quedo en `64a1915` (un commit atras de `app`), sin diff de codigo
+  respecto a `53bd8b8` — solo le falta el commit de baja de docs, no requiere accion.
+
+**Estado operativo:**
+```txt
+DECIDED:
+- Alinear SHA de app y admin; recuperar VISION.md perdido; dar de baja docs de captacion.
+
+IMPLEMENTED_IN_DOMAIN:
+- Si. VISION.md en repo. Docs de captacion eliminados. INDEX.md actualizado.
+
+CONNECTED_TO_UI:
+- No aplica. Documentacion pura, sin cambios de codigo ni UI.
+
+ENFORCED_IN_RUNTIME:
+- No aplica.
+
+DEPLOYED:
+- Si. app.motogestion.ar en 53bd8b8, verificado via version.json.
+```
+
+**Proximo ticket recomendado:**
+- Ninguno abierto. Si se retoma CAPTACION-001, habria que regenerar la documentacion
+  de captacion desde cero (se dio de baja en esta sesion).
+
+---
+
+## Sesion anterior
 
 **Fecha:** 2026-07-05
 **IA:** Claude (Haiku)
