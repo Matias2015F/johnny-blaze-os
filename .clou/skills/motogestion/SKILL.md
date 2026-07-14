@@ -67,11 +67,11 @@ Patron: `?mode=nuevo_modo` en funcion existente + rewrite en `vercel.json`.
 
 ---
 
-## 3. BACKLOG SRP — ESTADO VERIFICADO (2026-07-14, HEAD 4536309)
+## 3. BACKLOG SRP — ESTADO VERIFICADO (2026-07-14, HEAD 7f98796)
 
 ### DONE — Ya tienen hook extraido
 
-*Ultima verificacion: 2026-07-14 | HEAD local: `4536309` | Produccion app: `53bd8b8`*
+*Ultima verificacion: 2026-07-14 | HEAD local: `7f98796` | Produccion app: `2cb4a11`*
 
 | Vista | Hook | Commit |
 |---|---|---|

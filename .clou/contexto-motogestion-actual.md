@@ -1,11 +1,38 @@
 # Contexto MotoGestion — Estado actual
-**Fecha:** 2026-07-05 | **Commit deploy Vercel:** `ec44cf2` | **Produccion:** `app.motogestion.ar` | **Repo:** cierre documental posterior a `ec44cf2`
+**Fecha:** 2026-07-14 | **Commit deploy Vercel:** `2cb4a11` | **Produccion:** `app.motogestion.ar` | **Repo:** `7f98796` (2 commits doc-only posteriores al deploy, sin deploy pendiente)
 
 **Comando de inicio:** `/motogestion`
 
 ---
 
-## 0. Ultima reanudacion verificada (2026-07-05)
+## 0. Ultima reanudacion verificada (2026-07-14)
+
+**Backlog SRP corregido + fix de encoding U+FFFD deployado:**
+- Se verifico el backlog de `SKILL.md` (marcado como "pendiente" desde 2026-06-27) contra el
+  codigo real: los 8 hooks P1/P2/P3 (`useVerifyReceipt`, `useRetentionOffer`,
+  `useTallerPublicView`, `useEsperandoAprobacion`, `useNuevoPresupuesto`, `usePreciosPanel`,
+  `usePresupuestosView`, `useBikeProfile`) ya estaban implementados y deployados desde el
+  2026-06-28. Los 4 items de "deuda tecnica activa" (Node 24.x, HistoryView lazy-load, emojis,
+  sync admin) tambien ya estaban resueltos. `SKILL.md` corregido para reflejar el estado real.
+- Se detecto corrupcion real de encoding (caracter de reemplazo Unicode U+FFFD) en texto
+  visible al mecanico en `src/views/BikeProfileView.jsx` y `src/views/PreciosView.jsx`
+  ("proximo", "diagnostico", "Memoria Tecnica", "Minimo/Maximo Cobrado"), presente desde
+  mayo 2026 sin reportar. Tambien en comentarios de `src/TallerPanel.jsx` (Baseline de Oro,
+  sin impacto UI, corregido con confirmacion explicita del usuario).
+- Corregida la ruta `src/utils/calc.js` (no existe) -> `src/lib/calc.js` (real) en
+  `CLAUDE.md`, `SKILL.md`, este archivo, y la memoria del agente `motogestion-auditor`
+  que ya habia detectado el mismo drift en una auditoria de 2026-06-02.
+- `npm run build`: OK. `npm run lint`: OK, 0 errores, 59 warnings heredados.
+- Commits: `da846fd`, `c82acad`, `b7b896a` (docs backlog), `2cb4a11` (fix encoding,
+  **deployado**), `157bd83` (docs ESTADO), `7f98796` (docs ruta calc.js).
+- Deploy verificado: `https://app.motogestion.ar/version.json` -> SHA `2cb4a11`,
+  buildTime `2026-07-14T20:07:31.302Z`.
+- Proximo ticket recomendado: ninguno abierto. Backlog SRP completo, sin deuda tecnica activa
+  registrada. Ver seccion 3 para candidatas SRP no evaluadas (HomeView, NewOrderView, etc.)
+
+---
+
+## 0.1 Reanudacion anterior (2026-07-05)
 
 **CAPTACION-001-C cerrado como material comercial:**
 - Documento creado: `docs/comercial/CAPTACION-001-C-propuesta-y-outreach.md`.
@@ -28,7 +55,7 @@
 
 ---
 
-## 0.1 Reanudacion anterior (2026-07-05)
+## 0.2 Reanudacion anterior (2026-07-05)
 
 **CAPTACION-001-B cerrado y deployado:**
 - Plan Free definido y aplicado: 30 dias, 1 usuario, hasta 10 clientes, 10 motos,
@@ -49,7 +76,7 @@
 
 ---
 
-## 0.2 Reanudacion anterior (2026-07-05)
+## 0.3 Reanudacion anterior (2026-07-05)
 
 **HF-PRIV-001 cerrado y deployado:**
 - `src/components/PrePdfView.jsx` ya no envia `total` ni `hashVerificacion` a
@@ -106,21 +133,19 @@
 
 | Capa | SHA | Estado |
 |---|---|---|
-| `origin/main` | cierre docs posterior a `ec44cf2` | en sync con local |
-| Vercel app.motogestion.ar | `ec44cf2` | sincronizado y verificado por `version.json` |
-| Vercel admin.motogestion.ar | desconocido | verificar antes de sync |
+| `origin/main` | `7f98796` | en sync con local, repo limpio |
+| Vercel app.motogestion.ar | `2cb4a11` | sincronizado y verificado por `version.json`. 2 commits doc-only por delante (`157bd83`, `7f98796`), no requieren deploy |
+| Vercel admin.motogestion.ar | `64a1915` | 3 commits atras de origin/main, sin diff de codigo — no requiere accion (ver `.clou/ESTADO.md`) |
 
 ---
 
 ## 3. Backlog Remanente — Proximo en la Trinchera
 
-| Prioridad | Tarea |
-|---|---|
-| **P1** | `useVerifyReceipt` <- `src/views/VerifyReceiptView.jsx` |
-| **P2** | `useEsperandoAprobacion` <- `src/views/EsperandoAprobacionView.jsx` |
-| **Deuda critica** | Node.js 24.x en `package.json` — **DEADLINE: 2026-10-01** |
+Ninguno. El backlog SRP P1/P2/P3 y la deuda tecnica activa (Node 24.x, HistoryView
+lazy-load, emojis, sync admin) se verificaron el 2026-07-14 y ya estaban resueltos
+en su totalidad desde el 2026-06-28. Ver `.clou/skills/motogestion/SKILL.md` seccion 3-4.
 
-### Vistas candidatas SRP (por complejidad/impacto)
+### Vistas candidatas SRP no evaluadas todavia (por complejidad/impacto)
 
 ```bash
 # Auditar antes de tocar:
@@ -129,13 +154,12 @@ grep -n "useState\|useEffect\|fetch\|LS\." src/views/NombreView.jsx
 
 1. `src/views/HomeView.jsx`
 2. `src/views/NewOrderView.jsx`
-3. `src/views/HistoryView.jsx` (chunk 845KB — deuda futura: dynamic import)
+3. `src/views/HistoryView.jsx` (ya usa lazy-load; chunk actual ~151KB gzip 53KB)
 4. `src/views/AgendaView.jsx`
 5. `src/views/RecordatoriosView.jsx`
 
 ### Otros pendientes
 
-- Sync `admin.motogestion.ar` con commits actuales
 - Limpiar repos y proyectos Vercel sin uso (`gh repo list`, `npx vercel ls`) — confirmar antes de borrar
 
 ---
