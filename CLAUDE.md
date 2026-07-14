@@ -300,7 +300,7 @@ Modificar cualquiera de estos archivos sin instrucción explícita está prohibi
 | `api/verify-document.js` | Puente app↔landing: talleres públicos, publicación de perfil, leads, verificación de comprobantes. |
 | `api/_firebase-admin.js` | Inicialización Admin SDK + `verifyIdToken()` + `assertAdmin()`. No tocar la inicialización. |
 | `firestore.rules` | `noModificaCamposSuscripcion()` bloquea autopromociones de plan. Si se rompe, cualquier usuario puede escalar su plan. |
-| `src/utils/calc.js` | Cálculos financieros de OTs. No tocar sin tests manuales contra casos reales. |
+| `src/lib/calc.js` | Cálculos financieros de OTs. No tocar sin tests manuales contra casos reales. |
 
 ---
 

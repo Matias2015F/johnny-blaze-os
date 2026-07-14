@@ -169,9 +169,10 @@ DEPLOYED:
 ```
 
 **Proximo ticket recomendado:**
-- Ninguno abierto. Pendiente menor sin resolver: `CLAUDE.md` lista `src/utils/calc.js` como
-  archivo del Baseline de Oro, pero el archivo real esta en `src/lib/calc.js` (no existe
-  `src/utils/calc.js`). Revisar y corregir la ruta en la tabla de Archivos criticos.
+- Ninguno abierto. El pendiente de `src/utils/calc.js` (ruta incorrecta en Baseline de Oro)
+  se corrigio en la misma sesion: actualizado a `src/lib/calc.js` en `CLAUDE.md`, `SKILL.md`,
+  `contexto-motogestion-actual.md` y en la memoria del agente `motogestion-auditor`
+  (`reference_claudemd_drift.md`, que ya habia detectado el mismo drift en 2026-06-02).
 
 ---
 

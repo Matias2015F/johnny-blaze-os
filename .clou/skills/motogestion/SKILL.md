@@ -49,7 +49,7 @@ api/mp-webhook.js            api/mp-create-preference.js
 api/cancel-plan.js           api/retention-offer.js
 api/send-welcome.js          api/verify-document.js
 api/_firebase-admin.js       firestore.rules
-src/utils/calc.js
+src/lib/calc.js
 ```
 
 ### Limite critico de API

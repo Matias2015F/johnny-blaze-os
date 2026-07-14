@@ -199,7 +199,7 @@ src/App.jsx  src/TallerPanel.jsx  src/lib/storage.js
 src/services/saasService.js  src/services/counterService.js
 api/mp-webhook.js  api/mp-create-preference.js  api/cancel-plan.js
 api/retention-offer.js  api/send-welcome.js  api/verify-document.js
-api/_firebase-admin.js  firestore.rules  src/utils/calc.js
+api/_firebase-admin.js  firestore.rules  src/lib/calc.js
 ```
 
 `noModificaCamposSuscripcion()` en `firestore.rules` bloquea autopromociones de plan.
