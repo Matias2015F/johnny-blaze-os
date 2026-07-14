@@ -117,20 +117,26 @@ HomeView, AgendaView, RecordatoriosView, NewOrderView, RetiroView, EjecucionView
 
 ## 4. DEUDA TECNICA ACTIVA
 
+*Verificado 2026-07-14 — los 4 items historicos ya estaban resueltos desde 2026-06-28:*
+
 ```
-[ ] Node.js 24.x — DEADLINE 2026-10-01
-    Agregar en package.json: "engines": { "node": "24.x" }
+[x] Node.js 24.x — RESUELTO commit `9045b9f` (2026-06-28)
+    package.json tiene "engines": { "node": "24.x" }. Node local verificado: v24.14.1.
 
-[ ] HistoryView chunk 845KB
-    Aplicar dynamic import() en TallerPanel.jsx:
-    const HistoryView = lazy(() => import("./views/HistoryView"))
+[x] HistoryView chunk — RESUELTO
+    TallerPanel.jsx:25 ya usa lazy(() => import("./views/HistoryView.jsx")).
+    Chunk actual en build: ~151KB (gzip 53KB), lejos de los 845KB originales.
 
-[ ] EsperandoAprobacionView usa emojis en produccion
-    Reemplazar por iconos lucide-react (reglas del proyecto prohiben emojis)
+[x] EsperandoAprobacionView usa emojis — RESUELTO
+    Sin emojis en el archivo. Usa iconos de lucide-react (ArrowLeft, etc.)
 
-[ ] admin.motogestion.ar desactualizado
-    Hacer deploy con swap de project.json al proyecto motogestion-admin
+[x] admin.motogestion.ar desactualizado — SIN ACCION REQUERIDA
+    Ver .clou/ESTADO.md: admin queda 1 commit atras de app (64a1915 vs 53bd8b8)
+    sin diff de codigo. Auto-deploy via Git integration de Vercel.
 ```
+
+No hay deuda tecnica activa pendiente en esta lista. Antes de asumir un item como
+pendiente, verificar contra el codigo real — este archivo se desactualiza rapido.
 
 ---
 
