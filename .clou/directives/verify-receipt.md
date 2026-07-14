@@ -73,3 +73,5 @@ No tocar durante este refactor:
 | Fecha | Commit | Cambio |
 |---|---|---|
 | 2026-06-28 | — | Directiva creada |
+| 2026-06-28 | `e538ac4` | Hook implementado: `useVerifyReceipt.js` extraido de `VerifyReceiptView.jsx` |
+| 2026-07-14 | — | Verificado en sesion posterior: vista sin imports de Firebase/fetch, `npm run build` y `npm run lint` OK (0 errores). Criterio de exito cumplido. |

@@ -67,11 +67,11 @@ Patron: `?mode=nuevo_modo` en funcion existente + rewrite en `vercel.json`.
 
 ---
 
-## 3. BACKLOG SRP — ESTADO VERIFICADO (2026-06-27, commit 35aaf77)
+## 3. BACKLOG SRP — ESTADO VERIFICADO (2026-07-14, HEAD 4536309)
 
 ### DONE — Ya tienen hook extraido
 
-*Ultima verificacion: 2026-06-27 | HEAD local: `5e5a55f` | Produccion: `35aaf77`*
+*Ultima verificacion: 2026-07-14 | HEAD local: `4536309` | Produccion app: `53bd8b8`*
 
 | Vista | Hook | Commit |
 |---|---|---|
@@ -86,51 +86,24 @@ Patron: `?mode=nuevo_modo` en funcion existente + rewrite en `vercel.json`.
 | HistoryView | `useHistoryView.js` | (sesion previa) |
 | FinalizacionView | `useFinalizacionView.js` | `04e6d17` |
 | PresupuestoDetailView | `usePresupuestoDetailView.js` | `8a61bb3` |
+| VerifyReceiptView | `useVerifyReceipt.js` | `e538ac4` (2026-06-28) |
+| RetentionOfferView | `useRetentionOffer.js` | `147df6e` (2026-06-28) |
+| TallerPublicView | `useTallerPublicView.js` | `e4c308d` (2026-06-28) |
+| EsperandoAprobacionView | `useEsperandoAprobacion.js` | `ee0202a` (2026-06-28) |
+| NuevoPresupuestoView | `useNuevoPresupuesto.js` | `a340f65` (2026-06-28) |
+| PreciosView | `usePreciosPanel.js` | `bc9b694` (2026-06-28) |
+
+Confirmado 2026-07-14: `VerifyReceiptView.jsx` no tiene imports de `firebase/firestore` ni `fetch` directo.
+`npm run build` OK, `npm run lint` OK (0 errores, 59 warnings heredados).
 
 ### PENDIENTES — Backlog ordenado por prioridad
 
-**P1 — Logica de dominio + Firestore directo mezclado en vista (abordar primero):**
+Todo el backlog P1/P2 registrado el 2026-06-27 fue completado el 2026-06-28 (ver tabla DONE arriba).
+Quedan solo los items P3 menores, sin verificar en esta pasada:
 
 ```
-[ ] useVerifyReceipt       <- VerifyReceiptView.jsx
-    11 useState, getDoc Firestore (publicReceipts/{token}), 3 fetch async
-    (/api/submit-rating, /api/download-receipt-pdf, /api/verify-document)
-    Vista publica sin auth — la mas cargada y mas critica para el cliente externo
-
-[ ] useRetentionOffer      <- RetentionOfferView.jsx
-    fetch /api/retention-offer (init), fetch /api/mp-create-preference?mode=retention (accion)
-    Maquina de estados: cargando | login | ok | activa | error
-    Patron identico a useSuscripcionPanel
-
-[ ] useTallerPublicView    <- TallerPublicView.jsx
-    getDoc directo a Firestore (publicWorkshops/{uid})
-    Estado: cargando | ok | error
-```
-
-**P2 — Logica mezclada con form state:**
-
-```
-[ ] useEsperandoAprobacion <- EsperandoAprobacionView.jsx
-    useEffect carga orden/cliente/moto desde LS
-    Timer con setInterval
-    5 calculos de totales inline en render (totalTareas, totalRepuestos, etc.)
-    handleAprobar llama actualizarOrden — debe retornar { ok } y la vista navega
-
-[ ] useNuevoPresupuesto    <- NuevoPresupuestoView.jsx
-    getDoc directo a Firestore: users/{uid}/clienteBeneficios/{patente}
-    useMemo para coincidenciaMoto
-    Estado: beneficio (dato de Firestore), ignorarSugerencia
-```
-
-**P3 — Derivados puros (menor urgencia):**
-
-```
-[ ] usePreciosPanel        <- PreciosView.jsx
-    2 useMemo: sugerencias y stats/filtrados
-    Form state (busqueda, ccFiltro) queda en la vista
-
 [ ] calcularResultadosOrden en BikeProfileView.jsx
-    Llamado inline en JSX — mover import a hook
+    Verificar si sigue llamado inline en JSX o ya fue movido a hook
 
 [ ] PresupuestosView.jsx
     1 useMemo de filtrado — caso minimo
