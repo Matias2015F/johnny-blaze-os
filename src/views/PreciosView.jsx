@@ -35,7 +35,7 @@ export default function PreciosView({ setView }) {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-black italic tracking-tighter uppercase leading-none">Precios</h1>
-          <p className="text-orange-500 text-[10px] font-bold tracking-[0.3em] uppercase">Memoria T�cnica</p>
+          <p className="text-orange-500 text-[10px] font-bold tracking-[0.3em] uppercase">Memoria Técnica</p>
         </div>
         <button
           onClick={() => { setForm({ id: null, tarea: busqueda, precio: "", cilindrada: ccFiltro }); setMostrandoForm(true); }}
@@ -47,12 +47,12 @@ export default function PreciosView({ setView }) {
         </button>
       </div>
 
-      {/* B�SQUEDA */}
+      {/* BÚSQUEDA */}
       <div className="space-y-4 mb-6">
         <div className="relative">
           <input
             type="text"
-            placeholder="ESCRIB� LA TAREA..."
+            placeholder="ESCRIBÍ LA TAREA..."
             className="w-full bg-zinc-800 border-2 border-zinc-700 rounded-2xl p-5 text-lg font-black uppercase focus:border-orange-500 outline-none transition-all placeholder:text-zinc-700"
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
@@ -107,11 +107,11 @@ export default function PreciosView({ setView }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-zinc-800 rounded-2xl p-4 border border-zinc-700">
-              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">M�nimo Cobrado</p>
+              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">Mínimo Cobrado</p>
               <p className="text-xl font-black text-green-500">{formatMoney(stats.min)}</p>
             </div>
             <div className="bg-zinc-800 rounded-2xl p-4 border border-zinc-700">
-              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">M�ximo Cobrado</p>
+              <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">Máximo Cobrado</p>
               <p className="text-xl font-black text-red-500">{formatMoney(stats.max)}</p>
             </div>
           </div>
@@ -147,7 +147,7 @@ export default function PreciosView({ setView }) {
       ) : (
         <div className="bg-zinc-800/30 border-2 border-dashed border-zinc-800 rounded-3xl p-16 text-center">
           <p className="text-zinc-700 text-[10px] font-black uppercase italic tracking-widest leading-relaxed">
-            {busqueda ? "Sin registros para este trabajo" : "Consult� el historial t�cnico"}
+            {busqueda ? "Sin registros para este trabajo" : "Consultá el historial técnico"}
           </p>
         </div>
       )}

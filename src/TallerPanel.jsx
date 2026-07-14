@@ -15,7 +15,7 @@ import { nextNumeroOT, nextNumeroPRE } from "./services/counterService.js";
 import { buildUsageSnapshot, canUseFreeResource, persistUsageSnapshot } from "./services/usageLimitService.js";
 import { logAction } from "./services/auditService.js";
 
-// HomeView se carga de forma eager � es la pantalla inicial
+// HomeView se carga de forma eager — es la pantalla inicial
 import HomeView from "./views/HomeView.jsx";
 
 // El resto se carga bajo demanda (code splitting) y reduce el bundle inicial
@@ -909,7 +909,7 @@ export default function TallerPanel({ modoLectura = false, account = null }) {
         </div>
       )}
 
-      {/* Modal de confirmaci�n � reemplaza window.confirm */}
+      {/* Modal de confirmación — reemplaza window.confirm */}
       {confirm && (
         <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-6">
           <div className="bg-[#151515] border border-zinc-800 rounded-[2rem] p-8 w-full max-w-sm space-y-5">
