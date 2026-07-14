@@ -9,17 +9,17 @@
 
 | Entorno | Proyecto Vercel | SHA | Fecha deploy |
 |---|---|---|---|
-| `app.motogestion.ar` | `motogestion-app` | `53bd8b8` | 2026-07-07 (deploy manual) |
-| `admin.motogestion.ar` | `motogestion-admin` | `64a1915` | 2026-07-06 (auto-deploy Git) |
+| `app.motogestion.ar` | `motogestion-app` | `2cb4a11` | 2026-07-14 (deploy manual, verificado via version.json) |
+| `admin.motogestion.ar` | `motogestion-admin` | `64a1915` | 2026-07-06 (auto-deploy Git) — 3 commits atras de app, sin diff de codigo hasta 2cb4a11, verificar antes de asumir sync |
 | `motogestion.ar` | `motogestion-landing` | `237b1a0` | 2026-07-05 |
 
 ## HEAD en GitHub (origin/main)
 
-SHA: `53bd8b8` - baja de docs de captacion (CAPTACION-001-C/D) + INDEX.md limpio. No cambios de codigo.
+SHA: `2cb4a11` - fix(encoding): corregir texto corrupto (U+FFFD) en BikeProfileView.jsx, PreciosView.jsx, TallerPanel.jsx.
 
 ## HEAD local
 
-SHA: en sync con origin/main (`53bd8b8`). Repo limpio.
+SHA: en sync con origin/main (`2cb4a11`). Repo limpio.
 
 ---
 
@@ -120,6 +120,62 @@ Etapa activa: RC-2 — Growth
 ---
 
 ## Ultima sesion
+
+**Fecha:** 2026-07-14
+**IA:** Claude (Sonnet 5)
+**Ticket cerrado:** Correccion de backlog SRP desactualizado en SKILL.md + fix de encoding UTF-8 (U+FFFD) en 3 vistas
+
+**Trabajo realizado:**
+- Se retomo la sesion con `/motogestion`. El backlog de `SKILL.md` (verificado 2026-06-27)
+  listaba 8 hooks SRP como pendientes (P1/P2/P3). Se verifico contra el codigo real: los 8
+  ya estaban extraidos y deployados desde el 2026-06-28 (commits `e538ac4`, `147df6e`,
+  `e4c308d`, `ee0202a`, `a340f65`, `bc9b694`, `89f05eb`, mas `useBikeProfile.js`). Tambien
+  los 4 items de "deuda tecnica activa" (Node 24.x, HistoryView lazy-load, emojis, sync admin)
+  ya estaban resueltos. `SKILL.md` y `.clou/directives/verify-receipt.md` actualizados para
+  reflejar el estado real (commits `da846fd`, `c82acad`, `b7b896a`, solo documentacion).
+- Durante la revision de `BikeProfileView.jsx` se detecto corrupcion real de encoding
+  (caracter de reemplazo Unicode U+FFFD) en texto visible al mecanico: "proximo", "diagnostico",
+  "Memoria Tecnica", "Minimo/Maximo Cobrado", etc. Bug presente desde mayo 2026 (commits
+  `03730f18` y `c33d1fab`), nunca reportado. Se encontro tambien en `TallerPanel.jsx` (solo
+  comentarios de codigo, sin impacto UI; es Baseline de Oro, se pidio confirmacion antes de tocar).
+- Corregidos manualmente los 13 casos en `src/views/BikeProfileView.jsx`, `src/views/PreciosView.jsx`
+  y `src/TallerPanel.jsx`. Verificado: sin U+FFFD restante en `src/` ni `api/`, bundle de
+  produccion confirmado con acentos correctos antes del deploy.
+
+**Validacion:**
+- `npm run build`: OK.
+- `npm run lint`: OK, 0 errores, 59 warnings heredados (sin errores nuevos).
+- Commits: `da846fd`, `c82acad`, `b7b896a` (docs, sin deploy), `2cb4a11` (fix encoding, deployado).
+- Push a GitHub: OK, todos en `origin/main`.
+- Deploy: OK, `npx vercel --prod --scope matias2015fs-projects`, verificado via
+  `https://app.motogestion.ar/version.json` → `2cb4a11`, buildTime `2026-07-14T20:07:31.302Z`.
+
+**Estado operativo:**
+```txt
+DECIDED:
+- Corregir documentacion desactualizada de SKILL.md; corregir encoding roto detectado.
+
+IMPLEMENTED_IN_DOMAIN:
+- Si. Fix aplicado en los 3 archivos afectados.
+
+CONNECTED_TO_UI:
+- Si. Texto corregido visible en PreciosView y BikeProfileView (vistas montadas por TallerPanel).
+
+ENFORCED_IN_RUNTIME:
+- Si, verificado en bundle de produccion antes del deploy.
+
+DEPLOYED:
+- Si. app.motogestion.ar en 2cb4a11, verificado via version.json.
+```
+
+**Proximo ticket recomendado:**
+- Ninguno abierto. Pendiente menor sin resolver: `CLAUDE.md` lista `src/utils/calc.js` como
+  archivo del Baseline de Oro, pero el archivo real esta en `src/lib/calc.js` (no existe
+  `src/utils/calc.js`). Revisar y corregir la ruta en la tabla de Archivos criticos.
+
+---
+
+## Sesion anterior
 
 **Fecha:** 2026-07-06 / 2026-07-07
 **IA:** Claude (Sonnet 5)
