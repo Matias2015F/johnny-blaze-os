@@ -92,22 +92,17 @@ Patron: `?mode=nuevo_modo` en funcion existente + rewrite en `vercel.json`.
 | EsperandoAprobacionView | `useEsperandoAprobacion.js` | `ee0202a` (2026-06-28) |
 | NuevoPresupuestoView | `useNuevoPresupuesto.js` | `a340f65` (2026-06-28) |
 | PreciosView | `usePreciosPanel.js` | `bc9b694` (2026-06-28) |
+| PresupuestosView | `usePresupuestosView.js` | `89f05eb` (2026-06-28) |
+| BikeProfileView | `useBikeProfile.js` (envuelve `calcularResultadosOrden`) | (sesion 2026-06-28) |
 
 Confirmado 2026-07-14: `VerifyReceiptView.jsx` no tiene imports de `firebase/firestore` ni `fetch` directo.
 `npm run build` OK, `npm run lint` OK (0 errores, 59 warnings heredados).
 
 ### PENDIENTES — Backlog ordenado por prioridad
 
-Todo el backlog P1/P2 registrado el 2026-06-27 fue completado el 2026-06-28 (ver tabla DONE arriba).
-Quedan solo los items P3 menores, sin verificar en esta pasada:
-
-```
-[ ] calcularResultadosOrden en BikeProfileView.jsx
-    Verificar si sigue llamado inline en JSX o ya fue movido a hook
-
-[ ] PresupuestosView.jsx
-    1 useMemo de filtrado — caso minimo
-```
+Ninguno. Todo el backlog P1/P2/P3 registrado el 2026-06-27 fue completado el 2026-06-28
+(ver tabla DONE arriba). Verificado item por item el 2026-07-14 contra el codigo real,
+no contra este documento.
 
 ### Vistas LIMPIAS (no requieren hook)
 
